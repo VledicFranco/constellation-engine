@@ -1,0 +1,22 @@
+# Text Search and Analysis
+# Check if text contains specific terms and analyze it
+
+# Inputs
+in document: String
+in searchTerm: String
+
+# Clean and prepare text
+trimmed = Trim(document)
+lowercased = Lowercase(trimmed)
+
+# Search for term
+found = Contains(lowercased, searchTerm)
+
+# Analyze document
+wordCount = WordCount(trimmed)
+length = TextLength(trimmed)
+
+# Output results
+out found
+out wordCount
+out length

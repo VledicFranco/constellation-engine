@@ -1,0 +1,72 @@
+{
+  "name": "constellation-lang",
+  "displayName": "Constellation Language Support",
+  "description": "Language support for Constellation orchestration DSL with LSP integration",
+  "version": "0.1.0",
+  "publisher": "constellation",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:constellation"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "constellation",
+        "aliases": [
+          "Constellation",
+          "constellation-lang"
+        ],
+        "extensions": [
+          ".cst"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "constellation",
+        "scopeName": "source.constellation",
+        "path": "./syntaxes/constellation.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "constellation.executePipeline",
+        "title": "Constellation: Execute Current Pipeline"
+      }
+    ],
+    "configuration": {
+      "title": "Constellation",
+      "properties": {
+        "constellation.server.url": {
+          "type": "string",
+          "default": "ws://localhost:8080/lsp",
+          "description": "WebSocket URL of the Constellation Language Server"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0",
+    "ws": "^8.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.x",
+    "@types/vscode": "^1.75.0",
+    "@types/ws": "^8.5.8",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.2.0"
+  }
+}

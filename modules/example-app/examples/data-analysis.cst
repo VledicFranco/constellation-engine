@@ -1,0 +1,17 @@
+# Data Analysis Pipeline
+# This example demonstrates numeric data processing
+
+# Input: list of numbers
+in numbers: List<Int>
+
+# Calculate statistics
+total = SumList(numbers)
+avg = Average(numbers)
+maximum = Max(numbers)
+minimum = Min(numbers)
+
+# Output all statistics
+out total
+out avg
+out maximum
+out minimum
