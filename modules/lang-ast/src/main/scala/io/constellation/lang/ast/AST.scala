@@ -85,7 +85,7 @@ object Located {
 /** A complete constellation-lang program */
 final case class Program(
   declarations: List[Declaration],
-  output: Located[Expression]
+  outputs: List[Located[String]]  // List of declared output variable names
 )
 
 /** Top-level declarations */
@@ -108,6 +108,11 @@ object Declaration {
   final case class Assignment(
     target: Located[String],
     value: Located[Expression]
+  ) extends Declaration
+
+  /** Output declaration: out varName */
+  final case class OutputDecl(
+    name: Located[String]
   ) extends Declaration
 }
 

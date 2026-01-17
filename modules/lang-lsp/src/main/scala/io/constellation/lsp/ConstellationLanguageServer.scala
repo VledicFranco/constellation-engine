@@ -539,23 +539,25 @@ class ConstellationLanguageServer(
           jsonToCValue(json).map(name -> _)
         }
 
+        // Get the declared outputs from the compiled DAG spec
+        val declaredOutputs = compiled.dagSpec.declaredOutputs
+
         for {
           _ <- constellation.setDag(dagName, compiled.dagSpec)
           result <- constellation.runDag(dagName, cvalueInputs).attempt
           endTime = System.currentTimeMillis()
           execResult = result match {
             case Right(state) =>
-              // Convert output CValues back to JSON
-              // state.data is Map[UUID, Eval[CValue]] - we need to get by UUID and call .value
-              // For now, just return basic output confirmation
-              val outputJson: Map[String, Json] = state.data.flatMap { case (uuid, evalCvalue) =>
-                // Try to find the nickname for this UUID from the DAG spec
-                state.dag.data.get(uuid).flatMap { spec =>
-                  spec.nicknames.values.headOption.map { nickname =>
-                    nickname -> cvalueToJson(evalCvalue.value)
+              // Use outputBindings to look up data by UUID
+              val outputBindings = compiled.dagSpec.outputBindings
+              val outputJson: Map[String, Json] = declaredOutputs.flatMap { outputName =>
+                outputBindings.get(outputName).flatMap { dataNodeUuid =>
+                  state.data.get(dataNodeUuid).map { evalCvalue =>
+                    outputName -> cvalueToJson(evalCvalue.value)
                   }
                 }
-              }
+              }.toMap
+
               ExecutePipelineResult(
                 success = true,
                 outputs = Some(outputJson),

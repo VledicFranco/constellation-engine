@@ -42,12 +42,25 @@ object DagCompiler {
         program.nodes.get(nodeId).foreach(processNode)
       }
 
+      // Build output bindings: map output variable names to data node UUIDs
+      val outputBindings: Map[String, UUID] = program.declaredOutputs.flatMap { outputName =>
+        // Look up the IR node ID for this variable
+        program.variableBindings.get(outputName).flatMap { irNodeId =>
+          // Look up the data node UUID for this IR node
+          nodeOutputs.get(irNodeId).map { dataNodeId =>
+            outputName -> dataNodeId
+          }
+        }
+      }.toMap
+
       val dagSpec = DagSpec(
         metadata = ComponentMetadata.empty(dagName),
         modules = moduleNodes,
         data = dataNodes,
         inEdges = inEdges,
-        outEdges = outEdges
+        outEdges = outEdges,
+        declaredOutputs = program.declaredOutputs,
+        outputBindings = outputBindings
       )
 
       CompileResult(dagSpec, syntheticModules)

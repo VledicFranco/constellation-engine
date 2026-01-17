@@ -172,25 +172,24 @@ object ConstellationParser {
     (withSpan(identifier) ~ (equals *> withSpan(expression)))
       .map { case (name, expr) => Declaration.Assignment(name, expr) }
 
+  private val outputDecl: P[Declaration.OutputDecl] =
+    (outKw *> withSpan(identifier))
+      .map { name => Declaration.OutputDecl(name) }
+
   private val declaration: P[Declaration] =
-    typeDef.backtrack | inputDecl.backtrack | assignment
+    typeDef.backtrack | inputDecl.backtrack | outputDecl.backtrack | assignment
 
-  private val outputDecl: P[Located[Expression]] =
-    outKw *> withSpan(expression)
-
-  // A statement is either a declaration or an output (at the end)
-  private val statement: P[Either[Declaration, Located[Expression]]] =
-    outputDecl.map(Right(_)).backtrack | declaration.map(Left(_))
-
-  // Full program: sequence of statements ending with exactly one output
+  // Full program: sequence of declarations with at least one output declaration
   val program: Parser0[Program] =
-    (ws *> statement.repSep0(ws) <* ws).flatMap { statements =>
-      val decls = statements.collect { case Left(d) => d }
-      val outputs = statements.collect { case Right(o) => o }
-      outputs match {
-        case List(out) => P.pure(Program(decls, out))
-        case Nil => P.fail
-        case _ => P.fail // Multiple outputs not allowed
+    (ws *> declaration.repSep0(ws) <* ws).flatMap { declarations =>
+      // Collect output declarations
+      val outputs = declarations.collect {
+        case Declaration.OutputDecl(name) => name
+      }
+      if (outputs.isEmpty) {
+        P.fail // At least one output required
+      } else {
+        P.pure(Program(declarations, outputs))
       }
     }
 

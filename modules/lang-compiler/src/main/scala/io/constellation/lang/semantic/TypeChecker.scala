@@ -23,8 +23,7 @@ final case class TypeEnvironment(
 /** Typed program after type checking */
 final case class TypedProgram(
   declarations: List[TypedDeclaration],
-  output: TypedExpression,
-  outputType: SemanticType
+  outputs: List[(String, SemanticType, Span)]  // (name, type, span) for each declared output
 )
 
 /** Typed declarations */
@@ -36,6 +35,7 @@ object TypedDeclaration {
   final case class TypeDef(name: String, definition: SemanticType, span: Span) extends TypedDeclaration
   final case class InputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
   final case class Assignment(name: String, value: TypedExpression, span: Span) extends TypedDeclaration
+  final case class OutputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
 }
 
 /** Typed expressions */
@@ -98,10 +98,13 @@ object TypeChecker {
           }
         case (invalid, _) => invalid
       }
-      .andThen { case (finalEnv, typedDecls) =>
-        checkExpression(program.output.value, program.output.span, finalEnv).map { typedOutput =>
-          TypedProgram(typedDecls, typedOutput, typedOutput.semanticType)
+      .map { case (finalEnv, typedDecls) =>
+        // Collect output declarations with their types
+        val outputs = typedDecls.collect {
+          case TypedDeclaration.OutputDecl(name, semanticType, span) =>
+            (name, semanticType, span)
         }
+        TypedProgram(typedDecls, outputs)
       }
 
     result.toEither.left.map(_.toList)
@@ -131,6 +134,15 @@ object TypeChecker {
         val newEnv = env.addVariable(target.value, typedExpr.semanticType)
         val span = Span(target.span.start, value.span.end)
         (newEnv, TypedDeclaration.Assignment(target.value, typedExpr, span))
+      }
+
+    case Declaration.OutputDecl(name) =>
+      // Check that the output variable exists in scope
+      env.lookupVariable(name.value) match {
+        case Some(semanticType) =>
+          (env, TypedDeclaration.OutputDecl(name.value, semanticType, name.span)).validNel
+        case None =>
+          CompileError.UndefinedVariable(name.value, Some(name.span)).invalidNel
       }
   }
 

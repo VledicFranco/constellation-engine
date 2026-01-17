@@ -48,13 +48,55 @@ object ExecutionHelper {
 
   /** Extract outputs from Runtime.State and convert to JSON.
     *
-    * Identifies output data nodes using bottomLevelDataNodes,
-    * retrieves their CValue from the state, and converts to JSON.
+    * If the DAG has explicit output declarations (declaredOutputs), only those
+    * outputs are returned. Otherwise, falls back to returning all bottom-level
+    * data nodes (legacy behavior).
     *
     * @param state The runtime state after DAG execution
     * @return IO containing Map of output names to JSON values
     */
   def extractOutputs(state: Runtime.State): IO[Map[String, Json]] = {
+    val declaredOutputs = state.dag.declaredOutputs
+
+    if (declaredOutputs.nonEmpty) {
+      // New behavior: filter to only declared outputs
+      extractDeclaredOutputs(state, declaredOutputs)
+    } else {
+      // Legacy behavior: return all bottom-level data nodes
+      extractAllOutputs(state)
+    }
+  }
+
+  /** Extract only the declared outputs from the runtime state */
+  private def extractDeclaredOutputs(
+    state: Runtime.State,
+    declaredOutputs: List[String]
+  ): IO[Map[String, Json]] = {
+    val outputBindings = state.dag.outputBindings
+
+    // Use outputBindings to look up data by UUID instead of by name
+    declaredOutputs.traverse { outputName =>
+      outputBindings.get(outputName) match {
+        case Some(dataNodeUuid) =>
+          state.data.get(dataNodeUuid) match {
+            case Some(evalCvalue) =>
+              val json = JsonCValueConverter.cValueToJson(evalCvalue.value)
+              IO.pure(outputName -> json)
+            case None =>
+              IO.raiseError(new RuntimeException(
+                s"Data node for output '$outputName' (UUID: $dataNodeUuid) not found in runtime state."
+              ))
+          }
+        case None =>
+          IO.raiseError(new RuntimeException(
+            s"Output binding for '$outputName' not found. Available bindings: ${outputBindings.keys.mkString(", ")}"
+          ))
+      }
+    }.map(_.toMap)
+  }
+
+  /** Extract all bottom-level data nodes (legacy behavior) */
+  private def extractAllOutputs(state: Runtime.State): IO[Map[String, Json]] = {
     state.dag.bottomLevelDataNodes.toList.traverse { case (uuid, dataSpec) =>
       // Get CValue from state
       state.data.get(uuid) match {

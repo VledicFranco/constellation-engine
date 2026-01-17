@@ -18,8 +18,10 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    program.declarations should have size 1
+    // 1 TypeDef + 1 OutputDecl = 2 declarations
+    program.declarations should have size 2
     program.declarations.head shouldBe a[Declaration.TypeDef]
+    program.declarations.last shouldBe a[Declaration.OutputDecl]
 
     val typeDef = program.declarations.head.asInstanceOf[Declaration.TypeDef]
     typeDef.name.value shouldBe "Message"
@@ -39,7 +41,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    program.declarations should have size 2
+    // 1 TypeDef + 1 InputDecl + 1 OutputDecl = 3 declarations
+    program.declarations should have size 3
     val inputDecl = program.declarations(1).asInstanceOf[Declaration.InputDecl]
     inputDecl.typeExpr.value shouldBe a[TypeExpr.Parameterized]
 
@@ -68,8 +71,10 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    program.declarations should have size 2
-    program.declarations.foreach(_ shouldBe a[Declaration.InputDecl])
+    // 2 InputDecl + 1 OutputDecl = 3 declarations
+    program.declarations should have size 3
+    program.declarations.take(2).foreach(_ shouldBe a[Declaration.InputDecl])
+    program.declarations.last shouldBe a[Declaration.OutputDecl]
   }
 
   it should "parse function calls" in {
@@ -82,7 +87,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    program.declarations should have size 2
+    // 1 InputDecl + 1 Assignment + 1 OutputDecl = 3 declarations
+    program.declarations should have size 3
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
     assignment.value.value shouldBe a[Expression.FunctionCall]
 
@@ -247,8 +253,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    // 1 type def + 2 inputs + 3 assignments = 6 declarations
-    program.declarations should have size 6
+    // 1 type def + 2 inputs + 3 assignments + 1 output = 7 declarations
+    program.declarations should have size 7
   }
 
   it should "fail on undefined keywords used as identifiers" in {
@@ -311,5 +317,69 @@ class ParserTest extends AnyFlatSpec with Matchers {
 
     val stringInput = program.declarations.head.asInstanceOf[Declaration.InputDecl]
     stringInput.typeExpr.value shouldBe TypeExpr.Primitive("String")
+  }
+
+  // Multiple output declaration tests
+
+  it should "parse multiple output declarations" in {
+    val source = """
+      in x: Int
+      in y: Int
+      z = x
+      out x
+      out z
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    // Should have 2 inputs + 1 assignment + 2 outputs = 5 declarations
+    program.declarations should have size 5
+
+    // Should have 2 outputs in the outputs list
+    program.outputs should have size 2
+    program.outputs.map(_.value) should contain allOf ("x", "z")
+  }
+
+  it should "collect output declarations in order" in {
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      out c
+      out a
+      out b
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    // Outputs should be in declaration order
+    program.outputs.map(_.value) shouldBe List("c", "a", "b")
+  }
+
+  it should "parse output declarations interspersed with other declarations" in {
+    val source = """
+      in x: Int
+      out x
+      y = x
+      out y
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    program.outputs should have size 2
+    program.outputs.map(_.value) shouldBe List("x", "y")
+  }
+
+  it should "require at least one output declaration" in {
+    val source = """
+      in x: Int
+      y = x
+    """
+    val result = ConstellationParser.parse(source)
+    // Should fail because no output is declared
+    result.isLeft shouldBe true
   }
 }

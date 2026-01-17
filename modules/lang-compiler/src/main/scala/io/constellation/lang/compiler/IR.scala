@@ -78,9 +78,9 @@ object IRNode {
 /** The complete IR program representing a constellation-lang program */
 final case class IRProgram(
   nodes: Map[UUID, IRNode],
-  inputs: List[UUID],           // IDs of input nodes (for top-level data)
-  output: UUID,                 // ID of the output node
-  outputType: SemanticType
+  inputs: List[UUID],                   // IDs of input nodes (for top-level data)
+  declaredOutputs: List[String],        // Names of declared output variables
+  variableBindings: Map[String, UUID]   // Variable name -> IR node ID (for resolving outputs)
 ) {
 
   /** Get all dependencies for a given node */

@@ -29,13 +29,15 @@ object IRGenerator {
   /** Generate IR from a typed program */
   def generate(program: TypedProgram): IRProgram = {
     val (finalCtx, inputIds) = generateDeclarations(program.declarations, GenContext.empty)
-    val (resultCtx, outputId) = generateExpression(program.output, finalCtx)
+
+    // Extract declared output variable names
+    val declaredOutputs = program.outputs.map(_._1)
 
     IRProgram(
-      nodes = resultCtx.nodes,
+      nodes = finalCtx.nodes,
       inputs = inputIds,
-      output = outputId,
-      outputType = program.outputType
+      declaredOutputs = declaredOutputs,
+      variableBindings = finalCtx.bindings
     )
   }
 
@@ -60,6 +62,10 @@ object IRGenerator {
       case TypedDeclaration.Assignment(name, value, _) =>
         val (newCtx, valueId) = generateExpression(value, currentCtx)
         currentCtx = newCtx.bind(name, valueId)
+
+      case TypedDeclaration.OutputDecl(_, _, _) =>
+        // Output declarations don't generate IR nodes, they just mark variables as outputs
+        ()
     }
 
     (currentCtx, inputIds)

@@ -11,6 +11,8 @@ case class DagSpec(
   data: Map[UUID, DataNodeSpec],
   inEdges: Set[(UUID, UUID)], // data node -> module node
   outEdges: Set[(UUID, UUID)], // module node -> data node
+  declaredOutputs: List[String] = List.empty, // Explicitly declared output variable names
+  outputBindings: Map[String, UUID] = Map.empty, // Output name -> data node UUID
 ) {
 
   def name: String = metadata.name
@@ -44,6 +46,7 @@ object DagSpec {
     data = Map.empty,
     inEdges = Set.empty,
     outEdges = Set.empty,
+    declaredOutputs = List.empty,
   )
 }
 

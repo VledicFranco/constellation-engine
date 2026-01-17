@@ -3,6 +3,7 @@ package io.constellation.lang
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.*
+import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.CompileResult
 import io.constellation.lang.semantic.*
 import org.scalatest.flatspec.AnyFlatSpec
@@ -388,5 +389,108 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have a data node for the literal
     compiled.dagSpec.data should not be empty
+  }
+
+  // Multiple outputs tests
+
+  it should "track multiple declared outputs" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      in y: Int
+      z = x
+      out x
+      out z
+    """
+
+    val result = compiler.compile(source, "multi-out-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.declaredOutputs should contain allOf ("x", "z")
+    compiled.dagSpec.declaredOutputs should have size 2
+    // y is NOT declared as output
+    compiled.dagSpec.declaredOutputs should not contain "y"
+  }
+
+  it should "create output bindings for all declared outputs" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      in y: Int
+      z = x
+      out x
+      out z
+    """
+
+    val result = compiler.compile(source, "bindings-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // outputBindings should contain mappings for x and z
+    compiled.dagSpec.outputBindings.keys should contain allOf ("x", "z")
+    compiled.dagSpec.outputBindings should have size 2
+    // y is NOT in output bindings
+    compiled.dagSpec.outputBindings.keys should not contain "y"
+  }
+
+  it should "map aliased outputs to correct data nodes" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      z = x
+      out z
+    """
+
+    val result = compiler.compile(source, "alias-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // z should be bound to the same data node as x
+    val zBinding = compiled.dagSpec.outputBindings.get("z")
+    zBinding.isDefined shouldBe true
+
+    // The data node should exist
+    compiled.dagSpec.data.get(zBinding.get).isDefined shouldBe true
+  }
+
+  it should "handle multiple outputs from different expressions" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: { x: Int }
+      in b: { y: Int }
+      merged = a + b
+      out a
+      out merged
+    """
+
+    val result = compiler.compile(source, "multi-expr-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.declaredOutputs should contain allOf ("a", "merged")
+    compiled.dagSpec.outputBindings should have size 2
+
+    // a and merged should point to different data nodes
+    val aBinding = compiled.dagSpec.outputBindings("a")
+    val mergedBinding = compiled.dagSpec.outputBindings("merged")
+    aBinding should not equal mergedBinding
+  }
+
+  it should "report error for undefined output variable" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      out undefined_var
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedVariable]) shouldBe true
   }
 }
