@@ -18,7 +18,7 @@ object DataModules {
   val sumList: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "SumList",
-      description = "Sums a list of integers",
+      description = "Calculates the sum of all integers in a list. Returns 0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -35,7 +35,7 @@ object DataModules {
   val average: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Average",
-      description = "Calculates the average of a list of numbers",
+      description = "Calculates the arithmetic mean of a list of numbers. Returns 0.0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -56,7 +56,7 @@ object DataModules {
   val max: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Max",
-      description = "Finds the maximum value in a list",
+      description = "Finds the maximum (largest) value in a list of integers. Returns 0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -73,7 +73,7 @@ object DataModules {
   val min: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Min",
-      description = "Finds the minimum value in a list",
+      description = "Finds the minimum (smallest) value in a list of integers. Returns 0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -92,7 +92,7 @@ object DataModules {
   val filterGreaterThan: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "FilterGreaterThan",
-      description = "Filters numbers greater than a threshold",
+      description = "Filters a list to keep only numbers greater than the specified threshold value. Returns only values strictly greater than the threshold.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -109,7 +109,7 @@ object DataModules {
   val multiplyEach: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "MultiplyEach",
-      description = "Multiplies each number in a list by a constant",
+      description = "Multiplies each number in a list by a constant multiplier. Returns a new list with the transformed values.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -128,7 +128,7 @@ object DataModules {
   val range: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Range",
-      description = "Generates a range of numbers from start to end",
+      description = "Generates a list of consecutive integers from start to end (inclusive). Useful for iteration and sequence generation.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -147,7 +147,7 @@ object DataModules {
   val formatNumber: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "FormatNumber",
-      description = "Formats a number with thousand separators",
+      description = "Formats a number with thousand separators (commas) for improved readability. Example: 1000000 becomes 1,000,000.",
       majorVersion = 1,
       minorVersion = 0
     )

@@ -41,7 +41,8 @@ class LspWebSocketHandler(
                 method = "textDocument/publishDiagnostics",
                 params = Some(params.asJson)
               )
-              serverMessages.offer(notification.asJson.noSpaces)
+              val message = formatLspMessage(notification.asJson.noSpaces)
+              serverMessages.offer(message)
             }
           ).flatMap { languageServer =>
             // Process incoming messages from client
@@ -51,15 +52,23 @@ class LspWebSocketHandler(
                   parseMessage(message).flatMap {
                     case Left(request) =>
                       // Handle request, send response
-                      languageServer.handleRequest(request).flatMap { response =>
-                        serverMessages.offer(response.asJson.noSpaces)
-                      }
+                      for {
+                        _ <- IO.println(s"[WS] Processing request method: ${request.method}")
+                        response <- languageServer.handleRequest(request)
+                        json = response.asJson.noSpaces
+                        _ <- IO.println(s"[WS] Sending response: ${json.take(200)}${if (json.length > 200) "..." else ""}")
+                        message = formatLspMessage(json)
+                        _ <- serverMessages.offer(message)
+                      } yield ()
                     case Right(notification) =>
                       // Handle notification, no response
-                      languageServer.handleNotification(notification)
+                      for {
+                        _ <- IO.println(s"[WS] Processing notification method: ${notification.method}")
+                        _ <- languageServer.handleNotification(notification)
+                      } yield ()
                   }.handleErrorWith { error =>
                     // Log error and continue
-                    IO.println(s"Error processing message: ${error.getMessage}")
+                    IO.println(s"[WS] Error processing message: ${error.getMessage}")
                   }
                 }
                 .compile
@@ -90,21 +99,51 @@ class LspWebSocketHandler(
       }
   }
 
+  /** Format outgoing message with LSP Content-Length header */
+  private def formatLspMessage(json: String): String = {
+    val contentLength = json.getBytes("UTF-8").length
+    s"Content-Length: $contentLength\r\n\r\n$json"
+  }
+
+  /** Extract JSON content from LSP message (strips Content-Length header if present) */
+  private def extractJsonFromLspMessage(message: String): String = {
+    // LSP messages may have format: "Content-Length: XXX\r\n\r\n{json}"
+    // or just plain JSON
+    if (message.startsWith("Content-Length:")) {
+      // Find the double newline that separates headers from content
+      val headerEnd = message.indexOf("\r\n\r\n")
+      if (headerEnd > 0) {
+        message.substring(headerEnd + 4) // Skip past "\r\n\r\n"
+      } else {
+        message
+      }
+    } else {
+      message
+    }
+  }
+
   /** Parse incoming message as either Request or Notification */
   private def parseMessage(message: String): IO[Either[Request, Notification]] = {
-    IO.fromEither(
-      parse(message).flatMap { json =>
-        // Try to parse as Request first (has "id" field)
-        json.hcursor.downField("id").as[String] match {
-          case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
-            // Has "id" field, it's a request
-            json.as[Request].map(Left.apply)
-          case _ =>
-            // No "id" field, it's a notification
-            json.as[Notification].map(Right.apply)
+    val jsonContent = extractJsonFromLspMessage(message)
+
+    // Skip empty messages
+    if (jsonContent.trim.isEmpty) {
+      IO.raiseError(new Exception("Empty message"))
+    } else {
+      IO.fromEither(
+        parse(jsonContent).flatMap { json =>
+          // Try to parse as Request first (has "id" field)
+          json.hcursor.downField("id").as[String] match {
+            case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
+              // Has "id" field, it's a request
+              json.as[Request].map(Left.apply)
+            case _ =>
+              // No "id" field, it's a notification
+              json.as[Notification].map(Right.apply)
+          }
         }
-      }
-    )
+      )
+    }
   }
 }
 

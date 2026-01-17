@@ -24,6 +24,10 @@ class ConstellationLanguageServer(
       case "initialize" =>
         handleInitialize(request)
 
+      case "shutdown" =>
+        // LSP shutdown request - just return success
+        IO.pure(Response(id = request.id, result = Some(Json.Null)))
+
       case "textDocument/completion" =>
         handleCompletion(request)
 
@@ -50,6 +54,9 @@ class ConstellationLanguageServer(
       case "initialized" =>
         IO.unit // Client finished initialization
 
+      case "exit" =>
+        IO.unit // Client is exiting, cleanup if needed
+
       case "textDocument/didOpen" =>
         handleDidOpen(notification)
 
@@ -74,9 +81,7 @@ class ConstellationLanguageServer(
           triggerCharacters = Some(List("(", ",", " "))
         )),
         hoverProvider = Some(true),
-        executeCommandProvider = Some(ExecuteCommandOptions(
-          commands = List("constellation.executePipeline")
-        ))
+        executeCommandProvider = None // Command handled client-side
       )
     )
 
@@ -119,26 +124,39 @@ class ConstellationLanguageServer(
   private def handleHover(request: Request): IO[Response] = {
     request.params match {
       case None =>
-        IO.pure(Response(
+        for {
+          _ <- IO.println(s"[HOVER] Missing params in request")
+        } yield Response(
           id = request.id,
           error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        )
       case Some(json) =>
         json.as[HoverParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
+            for {
+              _ <- IO.println(s"[HOVER] Params decode error: ${decodeError.message}")
+            } yield Response(
               id = request.id,
               error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            )
           case Right(params) =>
-            documentManager.getDocument(params.textDocument.uri).flatMap {
-              case Some(document) =>
-                getHover(document, params.position).map { hover =>
-                  Response(id = request.id, result = hover.map(_.asJson))
-                }
-              case None =>
-                IO.pure(Response(id = request.id, result = None))
-            }
+            for {
+              _ <- IO.println(s"[HOVER] Request received for uri: ${params.textDocument.uri}, position: ${params.position}")
+              maybeDoc <- documentManager.getDocument(params.textDocument.uri)
+              response <- maybeDoc match {
+                case Some(document) =>
+                  for {
+                    hover <- getHover(document, params.position)
+                    response = Response(id = request.id, result = hover.map(_.asJson))
+                    _ <- IO.println(s"[HOVER] Response result: ${hover.isDefined}")
+                    _ <- IO.println(s"[HOVER] Response JSON: ${response.asJson.noSpaces}")
+                  } yield response
+                case None =>
+                  for {
+                    _ <- IO.println(s"[HOVER] Document not found: ${params.textDocument.uri}")
+                  } yield Response(id = request.id, result = None)
+              }
+            } yield response
         }
     }
   }
@@ -242,11 +260,33 @@ class ConstellationLanguageServer(
 
     constellation.getModules.map { modules =>
       val moduleCompletions = modules.map { module =>
+        // Format signature for detail field
+        val signature = TypeFormatter.formatSignature(
+          module.name,
+          module.consumes,
+          module.produces
+        )
+
+        // Enhanced documentation with type info
+        val enhancedDoc = if (module.consumes.nonEmpty || module.produces.nonEmpty) {
+          val paramsDoc = TypeFormatter.formatParameters(module.consumes)
+          val returnsDoc = TypeFormatter.formatReturns(module.produces)
+          s"""${module.metadata.description}
+             |
+             |**Parameters:**
+             |$paramsDoc
+             |
+             |**Returns:** $returnsDoc
+             |""".stripMargin
+        } else {
+          module.metadata.description
+        }
+
         CompletionItem(
           label = module.name,
           kind = Some(CompletionItemKind.Function),
-          detail = Some(s"v${module.majorVersion}.${module.minorVersion}"),
-          documentation = Some(module.metadata.description),
+          detail = Some(signature),
+          documentation = Some(enhancedDoc),
           insertText = Some(s"${module.name}()"),
           filterText = Some(module.name),
           sortText = Some(module.name)
@@ -270,20 +310,76 @@ class ConstellationLanguageServer(
   private def getHover(document: DocumentState, position: Position): IO[Option[Hover]] = {
     val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
 
-    constellation.getModules.map { modules =>
-      modules.find(_.name == wordAtCursor).map { module =>
-        val markdown = s"""**${module.name}** (v${module.majorVersion}.${module.minorVersion})
-                          |
-                          |${module.description}
-                          |
-                          |**Tags:** ${module.tags.mkString(", ")}
-                          |""".stripMargin
+    for {
+      _ <- IO.println(s"[HOVER DEBUG] Word at cursor: '$wordAtCursor'")
+      modules <- constellation.getModules
+      _ <- IO.println(s"[HOVER DEBUG] Total modules: ${modules.size}")
+      _ <- IO.println(s"[HOVER DEBUG] Looking for module: '$wordAtCursor'")
 
-        Hover(
-          contents = MarkupContent(kind = "markdown", value = markdown)
-        )
+      matchingModule = modules.find(_.name == wordAtCursor)
+      _ <- IO.println(s"[HOVER DEBUG] Found module: ${matchingModule.isDefined}")
+
+      result <- matchingModule match {
+        case Some(module) =>
+          for {
+            _ <- IO.println(s"[HOVER DEBUG] Module: ${module.name}, consumes: ${module.consumes.keys.mkString(", ")}, produces: ${module.produces.keys.mkString(", ")}")
+            signature = TypeFormatter.formatSignature(
+              module.name,
+              module.consumes,
+              module.produces
+            )
+            _ <- IO.println(s"[HOVER DEBUG] Signature: $signature")
+            hover <- (for {
+              h <- IO.pure(constructHoverContent(module, signature))
+              _ <- IO.println(s"[HOVER DEBUG] Hover constructed successfully")
+            } yield Some(h)).handleErrorWith { error =>
+              for {
+                _ <- IO.println(s"[HOVER DEBUG] Error constructing hover: ${error.getMessage}")
+              } yield None
+            }
+          } yield hover
+
+        case None =>
+          for {
+            _ <- IO.println(s"[HOVER DEBUG] No module found for '$wordAtCursor'")
+          } yield None
       }
+    } yield result
+  }
+
+  private def constructHoverContent(module: io.constellation.ModuleNodeSpec, signature: String): Hover = {
+    // Format parameters section
+    val paramsSection = if (module.consumes.nonEmpty) {
+      s"""
+         |### Parameters
+         |${TypeFormatter.formatParameters(module.consumes)}
+         |""".stripMargin
+    } else {
+      ""
     }
+
+    // Format returns section
+    val returnsSection = s"""
+                            |### Returns
+                            |${TypeFormatter.formatReturns(module.produces)}
+                            |""".stripMargin
+
+    // Use metadata.description for consistency with completion
+    // Handle tags safely in case they're empty
+    val tagsString = if (module.tags.nonEmpty) module.tags.mkString(", ") else "none"
+
+    val markdown = s"""### `$signature`
+                      |
+                      |**Version**: ${module.majorVersion}.${module.minorVersion}
+                      |
+                      |${module.metadata.description}
+                      |$paramsSection$returnsSection
+                      |**Tags**: $tagsString
+                      |""".stripMargin
+
+    Hover(
+      contents = MarkupContent(kind = "markdown", value = markdown)
+    )
   }
 
   private def validateDocument(uri: String): IO[Unit] = {
@@ -296,11 +392,14 @@ class ConstellationLanguageServer(
 
           case Left(errors) =>
             val diagnostics = errors.flatMap { error =>
-              error.position.map { pos =>
+              error.span.map { span =>
+                // Convert span to line/col using SourceFile
+                val (startLC, endLC) = document.sourceFile.spanToLineCol(span)
+
                 Diagnostic(
                   range = Range(
-                    start = Position(pos.line - 1, pos.column - 1),
-                    end = Position(pos.line - 1, pos.column + 10)
+                    start = Position(startLC.line - 1, startLC.col - 1),  // LSP uses 0-based
+                    end = Position(endLC.line - 1, endLC.col - 1)
                   ),
                   severity = Some(DiagnosticSeverity.Error),
                   code = None,
