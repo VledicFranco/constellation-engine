@@ -101,8 +101,40 @@ object LspMessages {
   case class ExecutePipelineResult(
     success: Boolean,
     outputs: Option[Map[String, Json]],
+    error: Option[String],
+    executionTimeMs: Option[Long] = None
+  )
+
+  // ========== Custom: Get Input Schema ==========
+
+  case class GetInputSchemaParams(
+    uri: String
+  )
+
+  case class GetInputSchemaResult(
+    success: Boolean,
+    inputs: Option[List[InputField]],
     error: Option[String]
   )
+
+  case class InputField(
+    name: String,
+    `type`: TypeDescriptor,
+    line: Int
+  )
+
+  sealed trait TypeDescriptor
+
+  object TypeDescriptor {
+    case class PrimitiveType(name: String) extends TypeDescriptor
+    case class ListType(elementType: TypeDescriptor) extends TypeDescriptor
+    case class RecordType(fields: List[RecordField]) extends TypeDescriptor
+    case class MapType(keyType: TypeDescriptor, valueType: TypeDescriptor) extends TypeDescriptor
+    case class ParameterizedType(name: String, params: List[TypeDescriptor]) extends TypeDescriptor
+    case class RefType(name: String) extends TypeDescriptor
+  }
+
+  case class RecordField(name: String, `type`: TypeDescriptor)
 
   // JSON encoders/decoders
 
@@ -159,4 +191,65 @@ object LspMessages {
 
   given Encoder[ExecutePipelineResult] = deriveEncoder
   given Decoder[ExecutePipelineResult] = deriveDecoder
+
+  given Encoder[GetInputSchemaParams] = deriveEncoder
+  given Decoder[GetInputSchemaParams] = deriveDecoder
+
+  given Encoder[GetInputSchemaResult] = deriveEncoder
+  given Decoder[GetInputSchemaResult] = deriveDecoder
+
+  given Encoder[RecordField] = deriveEncoder
+  given Decoder[RecordField] = deriveDecoder
+
+  // TypeDescriptor requires manual encoder/decoder for discriminated union
+  given Encoder[TypeDescriptor] = Encoder.instance {
+    case TypeDescriptor.PrimitiveType(name) =>
+      Json.obj("kind" -> Json.fromString("primitive"), "name" -> Json.fromString(name))
+    case TypeDescriptor.ListType(elementType) =>
+      Json.obj("kind" -> Json.fromString("list"), "elementType" -> Encoder[TypeDescriptor].apply(elementType))
+    case TypeDescriptor.RecordType(fields) =>
+      Json.obj("kind" -> Json.fromString("record"), "fields" -> Encoder[List[RecordField]].apply(fields))
+    case TypeDescriptor.MapType(keyType, valueType) =>
+      Json.obj(
+        "kind" -> Json.fromString("map"),
+        "keyType" -> Encoder[TypeDescriptor].apply(keyType),
+        "valueType" -> Encoder[TypeDescriptor].apply(valueType)
+      )
+    case TypeDescriptor.ParameterizedType(name, params) =>
+      Json.obj(
+        "kind" -> Json.fromString("parameterized"),
+        "name" -> Json.fromString(name),
+        "params" -> Encoder[List[TypeDescriptor]].apply(params)
+      )
+    case TypeDescriptor.RefType(name) =>
+      Json.obj("kind" -> Json.fromString("ref"), "name" -> Json.fromString(name))
+  }
+
+  given Decoder[TypeDescriptor] = Decoder.instance { cursor =>
+    cursor.downField("kind").as[String].flatMap {
+      case "primitive" =>
+        cursor.downField("name").as[String].map(TypeDescriptor.PrimitiveType(_))
+      case "list" =>
+        cursor.downField("elementType").as[TypeDescriptor].map(TypeDescriptor.ListType(_))
+      case "record" =>
+        cursor.downField("fields").as[List[RecordField]].map(TypeDescriptor.RecordType(_))
+      case "map" =>
+        for {
+          keyType <- cursor.downField("keyType").as[TypeDescriptor]
+          valueType <- cursor.downField("valueType").as[TypeDescriptor]
+        } yield TypeDescriptor.MapType(keyType, valueType)
+      case "parameterized" =>
+        for {
+          name <- cursor.downField("name").as[String]
+          params <- cursor.downField("params").as[List[TypeDescriptor]]
+        } yield TypeDescriptor.ParameterizedType(name, params)
+      case "ref" =>
+        cursor.downField("name").as[String].map(TypeDescriptor.RefType(_))
+      case other =>
+        Left(DecodingFailure(s"Unknown TypeDescriptor kind: $other", cursor.history))
+    }
+  }
+
+  given Encoder[InputField] = deriveEncoder
+  given Decoder[InputField] = deriveDecoder
 }

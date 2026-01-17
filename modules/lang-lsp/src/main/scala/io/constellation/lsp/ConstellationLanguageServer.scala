@@ -6,6 +6,8 @@ import io.circe._
 import io.circe.syntax._
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
+import io.constellation.lang.ast.{Declaration, TypeExpr, Span, SourceFile}
+import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspTypes._
 import io.constellation.lsp.protocol.LspMessages._
@@ -36,6 +38,9 @@ class ConstellationLanguageServer(
 
       case "constellation/executePipeline" =>
         handleExecutePipeline(request)
+
+      case "constellation/getInputSchema" =>
+        handleGetInputSchema(request)
 
       case method =>
         IO.pure(Response(
@@ -193,6 +198,110 @@ class ConstellationLanguageServer(
             }
         }
     }
+  }
+
+  private def handleGetInputSchema(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[GetInputSchemaParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            documentManager.getDocument(params.uri).flatMap {
+              case Some(document) =>
+                IO.pure(getInputSchema(document)).map { schemaResult =>
+                  Response(id = request.id, result = Some(schemaResult.asJson))
+                }
+              case None =>
+                IO.pure(Response(
+                  id = request.id,
+                  result = Some(GetInputSchemaResult(
+                    success = false,
+                    inputs = None,
+                    error = Some("Document not found")
+                  ).asJson)
+                ))
+            }
+        }
+    }
+  }
+
+  private def getInputSchema(document: DocumentState): GetInputSchemaResult = {
+    ConstellationParser.parse(document.text) match {
+      case Right(program) =>
+        val sourceFile = document.sourceFile
+        val inputFields = program.declarations.collect {
+          case Declaration.InputDecl(name, typeExpr) =>
+            val (startLC, _) = sourceFile.spanToLineCol(name.span)
+            InputField(
+              name = name.value,
+              `type` = typeExprToDescriptor(typeExpr.value),
+              line = startLC.line
+            )
+        }
+        GetInputSchemaResult(
+          success = true,
+          inputs = Some(inputFields),
+          error = None
+        )
+      case Left(error) =>
+        GetInputSchemaResult(
+          success = false,
+          inputs = None,
+          error = Some(error.message)
+        )
+    }
+  }
+
+  private def typeExprToDescriptor(typeExpr: TypeExpr): TypeDescriptor = typeExpr match {
+    case TypeExpr.Primitive(name) =>
+      TypeDescriptor.PrimitiveType(name)
+
+    case TypeExpr.Record(fields) =>
+      TypeDescriptor.RecordType(
+        fields.map { case (name, fieldType) =>
+          RecordField(name, typeExprToDescriptor(fieldType))
+        }
+      )
+
+    case TypeExpr.Parameterized(name, params) =>
+      // Special case for List<T> and Map<K,V>
+      name match {
+        case "List" if params.size == 1 =>
+          TypeDescriptor.ListType(typeExprToDescriptor(params.head))
+        case "Map" if params.size == 2 =>
+          TypeDescriptor.MapType(
+            typeExprToDescriptor(params.head),
+            typeExprToDescriptor(params(1))
+          )
+        case _ =>
+          TypeDescriptor.ParameterizedType(name, params.map(typeExprToDescriptor))
+      }
+
+    case TypeExpr.TypeRef(name) =>
+      TypeDescriptor.RefType(name)
+
+    case TypeExpr.TypeMerge(left, right) =>
+      // For merged types, represent as a record with fields from both sides
+      // This is a simplification - actual merge semantics depend on the type system
+      (typeExprToDescriptor(left), typeExprToDescriptor(right)) match {
+        case (TypeDescriptor.RecordType(leftFields), TypeDescriptor.RecordType(rightFields)) =>
+          TypeDescriptor.RecordType(leftFields ++ rightFields)
+        case (leftDesc, rightDesc) =>
+          // Fallback: create a pseudo-record with _left and _right
+          TypeDescriptor.RecordType(List(
+            RecordField("_merged_left", leftDesc),
+            RecordField("_merged_right", rightDesc)
+          ))
+      }
   }
 
   // ========== Notification Handlers ==========
@@ -417,28 +526,48 @@ class ConstellationLanguageServer(
   }
 
   private def executePipeline(document: DocumentState, inputs: Map[String, Json]): IO[ExecutePipelineResult] = {
+    import io.constellation.CValue
+
     // Generate unique DAG name from URI
     val dagName = s"lsp-${document.uri.hashCode.abs}"
 
     compiler.compile(document.text, dagName) match {
       case Right(compiled) =>
+        val startTime = System.currentTimeMillis()
+        // Convert JSON inputs to CValue
+        val cvalueInputs: Map[String, CValue] = inputs.flatMap { case (name, json) =>
+          jsonToCValue(json).map(name -> _)
+        }
+
         for {
           _ <- constellation.setDag(dagName, compiled.dagSpec)
-          // Convert JSON inputs to CValue (simplified - would need proper conversion)
-          // For now, assume inputs are already in correct format
-          result <- constellation.runDag(dagName, Map.empty).attempt
+          result <- constellation.runDag(dagName, cvalueInputs).attempt
+          endTime = System.currentTimeMillis()
           execResult = result match {
             case Right(state) =>
+              // Convert output CValues back to JSON
+              // state.data is Map[UUID, Eval[CValue]] - we need to get by UUID and call .value
+              // For now, just return basic output confirmation
+              val outputJson: Map[String, Json] = state.data.flatMap { case (uuid, evalCvalue) =>
+                // Try to find the nickname for this UUID from the DAG spec
+                state.dag.data.get(uuid).flatMap { spec =>
+                  spec.nicknames.values.headOption.map { nickname =>
+                    nickname -> cvalueToJson(evalCvalue.value)
+                  }
+                }
+              }
               ExecutePipelineResult(
                 success = true,
-                outputs = Some(Map.empty), // Would convert CValue to JSON
-                error = None
+                outputs = Some(outputJson),
+                error = None,
+                executionTimeMs = Some(endTime - startTime)
               )
             case Left(error) =>
               ExecutePipelineResult(
                 success = false,
                 outputs = None,
-                error = Some(error.getMessage)
+                error = Some(error.getMessage),
+                executionTimeMs = Some(endTime - startTime)
               )
           }
         } yield execResult
@@ -449,6 +578,47 @@ class ConstellationLanguageServer(
           outputs = None,
           error = Some(errors.map(_.message).mkString("; "))
         ))
+    }
+  }
+
+  private def jsonToCValue(json: Json): Option[io.constellation.CValue] = {
+    import io.constellation.CValue._
+    json.fold(
+      jsonNull = None,
+      jsonBoolean = b => Some(CBoolean(b)),
+      jsonNumber = n => n.toLong.map(l => CInt(l)).orElse(Some(CFloat(n.toDouble))),
+      jsonString = s => Some(CString(s)),
+      jsonArray = arr => {
+        val values = arr.flatMap(jsonToCValue).toVector
+        if (values.nonEmpty) {
+          Some(CList(values, values.head.ctype))
+        } else {
+          Some(CList(Vector.empty, io.constellation.CType.CString)) // Default to string list
+        }
+      },
+      jsonObject = obj => {
+        val fields = obj.toMap.flatMap { case (k, v) =>
+          jsonToCValue(v).map(k -> _)
+        }
+        val structure = fields.map { case (k, v) => k -> v.ctype }
+        Some(CProduct(fields, structure))
+      }
+    )
+  }
+
+  private def cvalueToJson(cvalue: io.constellation.CValue): Json = {
+    import io.constellation.CValue._
+    cvalue match {
+      case CString(v) => Json.fromString(v)
+      case CInt(v) => Json.fromLong(v)
+      case CFloat(v) => Json.fromDoubleOrNull(v)
+      case CBoolean(v) => Json.fromBoolean(v)
+      case CList(values, _) => Json.fromValues(values.map(cvalueToJson))
+      case CProduct(fields, _) => Json.fromFields(fields.map { case (k, v) => k -> cvalueToJson(v) })
+      case CMap(pairs, _, _) => Json.fromFields(pairs.map { case (k, v) =>
+        k.asInstanceOf[CString].value -> cvalueToJson(v)
+      })
+      case CUnion(value, _, tag) => Json.obj("tag" -> Json.fromString(tag), "value" -> cvalueToJson(value))
     }
   }
 }

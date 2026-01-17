@@ -6,6 +6,7 @@ import {
 } from 'vscode-languageclient/node';
 import * as ws from 'ws';
 import { Duplex } from 'stream';
+import { ScriptRunnerPanel } from './panels/ScriptRunnerPanel';
 
 let client: LanguageClient | undefined;
 
@@ -141,6 +142,23 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(executeCommand);
+
+  // Register script runner command with webview panel
+  const runScriptCommand = vscode.commands.registerCommand(
+    'constellation.runScript',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'constellation') {
+        vscode.window.showWarningMessage('Open a Constellation file (.cst) to run');
+        return;
+      }
+
+      const uri = editor.document.uri.toString();
+      ScriptRunnerPanel.createOrShow(context.extensionUri, client, uri);
+    }
+  );
+
+  context.subscriptions.push(runScriptCommand);
 
   // Start the client
   client.start().catch((error) => {
