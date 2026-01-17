@@ -62,9 +62,9 @@ object TextProcessingApp extends IOApp.Simple {
       _ <- IO.println("📦 Registering custom modules...")
       _ <- registerCustomModules(constellation)
 
-      // Step 3: Create compiler (no stdlib functions needed for this example)
+      // Step 3: Create compiler with registered modules
       _ <- IO.println("🔧 Creating compiler...")
-      compiler = LangCompiler.empty
+      compiler <- buildCompiler(constellation)
 
       // Step 4: Print registered modules
       _ <- IO.println("\n✅ Available custom modules:")
@@ -97,5 +97,39 @@ object TextProcessingApp extends IOApp.Simple {
     allModules.traverse { module =>
       constellation.setModule(module)
     }.void
+  }
+
+  /** Build a LangCompiler with all registered modules from Constellation */
+  private def buildCompiler(constellation: io.constellation.Constellation): IO[LangCompiler] = {
+    constellation.getModules.map { modules =>
+      val builder = modules.foldLeft(LangCompiler.builder) { (b, moduleSpec) =>
+        // Extract params and return type from module spec
+        val params = moduleSpec.consumes.map { case (name, ctype) =>
+          name -> io.constellation.lang.semantic.SemanticType.fromCType(ctype)
+        }.toList
+
+        val returns = moduleSpec.produces.get("out") match {
+          case Some(ctype) => io.constellation.lang.semantic.SemanticType.fromCType(ctype)
+          case None =>
+            // If no "out", create a record from all produces
+            io.constellation.lang.semantic.SemanticType.SRecord(
+              moduleSpec.produces.map { case (name, ctype) =>
+                name -> io.constellation.lang.semantic.SemanticType.fromCType(ctype)
+              }
+            )
+        }
+
+        // Register function signature for type checking
+        val sig = io.constellation.lang.semantic.FunctionSignature(
+          name = moduleSpec.name,
+          params = params,
+          returns = returns,
+          moduleName = moduleSpec.name
+        )
+
+        b.withFunction(sig)
+      }
+      builder.build
+    }
   }
 }

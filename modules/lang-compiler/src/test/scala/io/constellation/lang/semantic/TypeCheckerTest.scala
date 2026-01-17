@@ -428,7 +428,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isLeft shouldBe true
     val error = result.left.toOption.get.head
-    error.position.isDefined shouldBe true
+    error.span.isDefined shouldBe true
   }
 
   // Type merge semantics

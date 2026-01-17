@@ -268,7 +268,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val result = ConstellationParser.parse(source)
     result.isLeft shouldBe true
     val error = result.left.toOption.get
-    error.position.isDefined shouldBe true
+    error.span.isDefined shouldBe true
   }
 
   it should "parse type merge expressions" in {

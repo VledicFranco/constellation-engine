@@ -54,26 +54,26 @@ object DagCompiler {
     }
 
     private def processNode(node: IRNode): Unit = node match {
-      case IRNode.Input(id, name, outputType) =>
+      case IRNode.Input(id, name, outputType, _) =>
         // Input nodes become top-level data nodes
         val dataId = UUID.randomUUID()
         val cType = SemanticType.toCType(outputType)
         dataNodes = dataNodes + (dataId -> DataNodeSpec(name, Map(dataId -> name), cType))
         nodeOutputs = nodeOutputs + (id -> dataId)
 
-      case IRNode.ModuleCall(id, moduleName, languageName, inputs, outputType) =>
+      case IRNode.ModuleCall(id, moduleName, languageName, inputs, outputType, _) =>
         processModuleCall(id, moduleName, languageName, inputs, outputType)
 
-      case IRNode.MergeNode(id, left, right, outputType) =>
+      case IRNode.MergeNode(id, left, right, outputType, _) =>
         processMergeNode(id, left, right, outputType)
 
-      case IRNode.ProjectNode(id, source, fields, outputType) =>
+      case IRNode.ProjectNode(id, source, fields, outputType, _) =>
         processProjectNode(id, source, fields, outputType)
 
-      case IRNode.ConditionalNode(id, condition, thenBranch, elseBranch, outputType) =>
+      case IRNode.ConditionalNode(id, condition, thenBranch, elseBranch, outputType, _) =>
         processConditionalNode(id, condition, thenBranch, elseBranch, outputType)
 
-      case IRNode.LiteralNode(id, value, outputType) =>
+      case IRNode.LiteralNode(id, value, outputType, _) =>
         processLiteralNode(id, value, outputType)
     }
 

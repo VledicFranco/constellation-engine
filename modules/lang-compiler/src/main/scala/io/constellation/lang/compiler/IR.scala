@@ -1,5 +1,6 @@
 package io.constellation.lang.compiler
 
+import io.constellation.lang.ast.Span
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
@@ -14,6 +15,7 @@ import java.util.UUID
 sealed trait IRNode {
   def id: UUID
   def outputType: SemanticType
+  def debugSpan: Option[Span]
 }
 
 object IRNode {
@@ -22,7 +24,8 @@ object IRNode {
   final case class Input(
     id: UUID,
     name: String,
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 
   /** A module call node representing an ML model or function invocation */
@@ -31,7 +34,8 @@ object IRNode {
     moduleName: String,           // The registered module name in Constellation
     languageName: String,         // The name used in constellation-lang
     inputs: Map[String, UUID],    // Parameter name -> input node ID
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 
   /** A merge node combining two record types using type algebra */
@@ -39,7 +43,8 @@ object IRNode {
     id: UUID,
     left: UUID,
     right: UUID,
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 
   /** A projection node selecting fields from a record */
@@ -47,7 +52,8 @@ object IRNode {
     id: UUID,
     source: UUID,
     fields: List[String],
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 
   /** A conditional node for if/else expressions */
@@ -56,14 +62,16 @@ object IRNode {
     condition: UUID,
     thenBranch: UUID,
     elseBranch: UUID,
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 
   /** A literal value node */
   final case class LiteralNode(
     id: UUID,
     value: Any,
-    outputType: SemanticType
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
   ) extends IRNode
 }
 
@@ -77,12 +85,12 @@ final case class IRProgram(
 
   /** Get all dependencies for a given node */
   def dependencies(nodeId: UUID): Set[UUID] = nodes.get(nodeId) match {
-    case Some(IRNode.Input(_, _, _)) => Set.empty
-    case Some(IRNode.ModuleCall(_, _, _, inputs, _)) => inputs.values.toSet
-    case Some(IRNode.MergeNode(_, left, right, _)) => Set(left, right)
-    case Some(IRNode.ProjectNode(_, source, _, _)) => Set(source)
-    case Some(IRNode.ConditionalNode(_, cond, thenBr, elseBr, _)) => Set(cond, thenBr, elseBr)
-    case Some(IRNode.LiteralNode(_, _, _)) => Set.empty
+    case Some(IRNode.Input(_, _, _, _)) => Set.empty
+    case Some(IRNode.ModuleCall(_, _, _, inputs, _, _)) => inputs.values.toSet
+    case Some(IRNode.MergeNode(_, left, right, _, _)) => Set(left, right)
+    case Some(IRNode.ProjectNode(_, source, _, _, _)) => Set(source)
+    case Some(IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _)) => Set(cond, thenBr, elseBr)
+    case Some(IRNode.LiteralNode(_, _, _, _)) => Set.empty
     case None => Set.empty
   }
 

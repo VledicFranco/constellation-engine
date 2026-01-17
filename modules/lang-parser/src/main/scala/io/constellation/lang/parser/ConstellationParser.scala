@@ -61,10 +61,10 @@ object ConstellationParser {
   private val openAngle: P[Unit] = token(P.char('<'))
   private val closeAngle: P[Unit] = token(P.char('>'))
 
-  // Position tracking
-  private def withPos[A](p: P[A]): P[Located[A]] =
-    (P.caret.with1 ~ p).map { case (caret, value) =>
-      Located(value, Position(caret.line, caret.col, caret.offset))
+  // Span tracking - captures full range (start and end offsets)
+  private def withSpan[A](p: P[A]): P[Located[A]] =
+    (P.caret.with1 ~ p ~ P.caret).map { case ((start, value), end) =>
+      Located(value, Span(start.offset, end.offset))
     }
 
   // Type expressions
@@ -101,19 +101,19 @@ object ConstellationParser {
   lazy val expression: P[Expression] = P.defer(exprMerge)
 
   private lazy val exprMerge: P[Expression] =
-    (exprProjection ~ (plus *> withPos(exprProjection)).rep0).map {
-      case (first, Nil) => first
+    (withSpan(exprProjection) ~ (plus *> withSpan(exprProjection)).rep0).map {
+      case (first, Nil) => first.value
       case (first, rest) =>
-        rest.foldLeft(first) { (left, right) =>
-          Expression.Merge(Located(left, Position.zero), right)
+        rest.foldLeft(first.value) { (left, right) =>
+          Expression.Merge(Located(left, first.span), right)
         }
     }
 
   private lazy val exprProjection: P[Expression] =
-    (exprPrimary ~ projection.?).map {
-      case (expr, None) => expr
-      case (expr, Some(fields)) =>
-        Expression.Projection(Located(expr, Position.zero), fields)
+    (withSpan(exprPrimary) ~ projection.?).map {
+      case (locExpr, None) => locExpr.value
+      case (locExpr, Some(fields)) =>
+        Expression.Projection(locExpr, fields)
     }
 
   private val projection: P[List[String]] =
@@ -129,19 +129,15 @@ object ConstellationParser {
     identifier.map(Expression.VarRef(_))
 
   private lazy val functionCall: P[Expression.FunctionCall] =
-    (identifier ~ (openParen *> expression.repSep0(comma) <* closeParen))
+    (identifier ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen))
       .map { case (name, args) =>
-        Expression.FunctionCall(name, args.toList.map(e => Located(e, Position.zero)))
+        Expression.FunctionCall(name, args.toList)
       }
 
   private lazy val conditional: P[Expression.Conditional] =
-    ((ifKw *> openParen *> expression <* closeParen) ~ expression ~ (elseKw *> expression))
+    ((ifKw *> openParen *> withSpan(expression) <* closeParen) ~ withSpan(expression) ~ (elseKw *> withSpan(expression)))
       .map { case ((cond, thenBr), elseBr) =>
-        Expression.Conditional(
-          Located(cond, Position.zero),
-          Located(thenBr, Position.zero),
-          Located(elseBr, Position.zero)
-        )
+        Expression.Conditional(cond, thenBr, elseBr)
       }
 
   // Literals
@@ -165,22 +161,22 @@ object ConstellationParser {
 
   // Declarations
   private val typeDef: P[Declaration.TypeDef] =
-    (typeKw *> withPos(typeIdentifier) ~ (equals *> withPos(typeExpr)))
+    (typeKw *> withSpan(typeIdentifier) ~ (equals *> withSpan(typeExpr)))
       .map { case (name, defn) => Declaration.TypeDef(name, defn) }
 
   private val inputDecl: P[Declaration.InputDecl] =
-    (inKw *> withPos(identifier) ~ (colon *> withPos(typeExpr)))
+    (inKw *> withSpan(identifier) ~ (colon *> withSpan(typeExpr)))
       .map { case (name, typ) => Declaration.InputDecl(name, typ) }
 
   private val assignment: P[Declaration.Assignment] =
-    (withPos(identifier) ~ (equals *> withPos(expression)))
+    (withSpan(identifier) ~ (equals *> withSpan(expression)))
       .map { case (name, expr) => Declaration.Assignment(name, expr) }
 
   private val declaration: P[Declaration] =
     typeDef.backtrack | inputDecl.backtrack | assignment
 
   private val outputDecl: P[Located[Expression]] =
-    outKw *> withPos(expression)
+    outKw *> withSpan(expression)
 
   // A statement is either a declaration or an output (at the end)
   private val statement: P[Either[Declaration, Located[Expression]]] =
@@ -201,14 +197,10 @@ object ConstellationParser {
   /** Parse a constellation-lang program */
   def parse(source: String): Either[CompileError.ParseError, Program] =
     program.parseAll(source).left.map { err =>
-      val pos = err.failedAtOffset
-      // Calculate line and column from offset
-      val lines = source.take(pos).split("\n", -1)
-      val line = lines.length
-      val col = lines.lastOption.map(_.length + 1).getOrElse(1)
+      val offset = err.failedAtOffset
       CompileError.ParseError(
         s"Parse error: ${err.expected.toList.map(_.toString).mkString(", ")}",
-        Some(Position(line, col, pos))
+        Some(Span.point(offset))
       )
     }
 }

@@ -5,6 +5,7 @@ import {
   StreamInfo
 } from 'vscode-languageclient/node';
 import * as ws from 'ws';
+import { Duplex } from 'stream';
 
 let client: LanguageClient | undefined;
 
@@ -31,13 +32,48 @@ export function activate(context: vscode.ExtensionContext) {
       socket.on('open', () => {
         console.log('Connected to Constellation Language Server');
 
-        // Create duplex stream from WebSocket
-        const stream: StreamInfo = {
-          writer: socket,
-          reader: socket
+        // Create a duplex stream wrapper around the WebSocket
+        const stream = new Duplex({
+          write(chunk: any, encoding: string, callback: (error?: Error | null) => void) {
+            try {
+              const message = chunk.toString();
+              socket.send(message, (error) => {
+                if (error) {
+                  callback(error);
+                } else {
+                  callback();
+                }
+              });
+            } catch (error) {
+              callback(error as Error);
+            }
+          },
+          read() {
+            // Data is pushed when received via 'message' event
+          }
+        });
+
+        // Push data to the stream when WebSocket receives messages
+        socket.on('message', (data: ws.Data) => {
+          stream.push(data.toString());
+        });
+
+        socket.on('close', () => {
+          console.log('Disconnected from Constellation Language Server');
+          stream.push(null); // Signal end of stream
+        });
+
+        socket.on('error', (error) => {
+          console.error('WebSocket error:', error);
+          stream.destroy(error);
+        });
+
+        const streamInfo: StreamInfo = {
+          writer: stream,
+          reader: stream
         };
 
-        resolve(stream);
+        resolve(streamInfo);
       });
 
       socket.on('error', (error) => {
@@ -47,10 +83,6 @@ export function activate(context: vscode.ExtensionContext) {
           'Make sure the server is running.'
         );
         reject(error);
-      });
-
-      socket.on('close', () => {
-        console.log('Disconnected from Constellation Language Server');
       });
     });
   };
