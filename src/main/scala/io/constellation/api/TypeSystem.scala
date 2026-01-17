@@ -58,25 +58,25 @@ object CTypeTag {
     override def cType: CType = cType0
   }
 
-  implicit val stringInjector: CTypeTag[String] =
+  given stringTag: CTypeTag[String] =
     of[String](CType.CString)
 
-  implicit val intInjector: CTypeTag[Long] =
+  given longTag: CTypeTag[Long] =
     of[Long](CType.CInt)
 
-  implicit val floatInjector: CTypeTag[Double] =
+  given doubleTag: CTypeTag[Double] =
     of[Double](CType.CFloat)
 
-  implicit val booleanInjector: CTypeTag[Boolean] =
+  given booleanTag: CTypeTag[Boolean] =
     of[Boolean](CType.CBoolean)
 
-  implicit def vectorInjector[A](implicit injector: CTypeTag[A]): CTypeTag[Vector[A]] =
+  given vectorTag[A](using injector: CTypeTag[A]): CTypeTag[Vector[A]] =
     of[Vector[A]](CType.CList(injector.cType))
 
-  implicit def listInjector[A](implicit injector: CTypeTag[A]): CTypeTag[List[A]] =
+  given listTag[A](using injector: CTypeTag[A]): CTypeTag[List[A]] =
     of[List[A]](CType.CList(injector.cType))
 
-  implicit def mapInjector[A, B](implicit keyInjector: CTypeTag[A], valueInjector: CTypeTag[B]): CTypeTag[Map[A, B]] =
+  given mapTag[A, B](using keyInjector: CTypeTag[A], valueInjector: CTypeTag[B]): CTypeTag[Map[A, B]] =
     of[Map[A, B]](CType.CMap(keyInjector.cType, valueInjector.cType))
 }
 
@@ -90,40 +90,40 @@ trait CValueExtractor[A] {
 
 object CValueExtractor {
 
-  implicit val stringExtractor: CValueExtractor[String] = {
+  given stringExtractor: CValueExtractor[String] = {
     case CValue.CString(value) => IO.pure(value)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CString, but got $other"))
   }
 
-  implicit val intExtractor: CValueExtractor[Long] = {
+  given longExtractor: CValueExtractor[Long] = {
     case CValue.CInt(value) => IO.pure(value)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CInt, but got $other"))
   }
 
-  implicit val floatExtractor: CValueExtractor[Double] = {
+  given doubleExtractor: CValueExtractor[Double] = {
     case CValue.CFloat(value) => IO.pure(value)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CFloat, but got $other"))
   }
 
-  implicit val booleanExtractor: CValueExtractor[Boolean] = {
+  given booleanExtractor: CValueExtractor[Boolean] = {
     case CValue.CBoolean(value) => IO.pure(value)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CBoolean, but got $other"))
   }
 
-  implicit def vectorExtractor[A](implicit extractor: CValueExtractor[A]): CValueExtractor[Vector[A]] = {
+  given vectorExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[Vector[A]] = {
     case CValue.CList(value, _) => value.traverse(extractor.extract)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CList, but got $other"))
   }
 
-  implicit def listExtractor[A](implicit extractor: CValueExtractor[A]): CValueExtractor[List[A]] =
+  given listExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[List[A]] =
     vectorExtractor[A].map(_.toList)
 
-  implicit def mapExtractor[A, B](implicit
+  given mapExtractor[A, B](using
     keyExtractor: CValueExtractor[A],
     valueExtractor: CValueExtractor[B]
   ): CValueExtractor[Map[A, B]] = {
@@ -151,24 +151,24 @@ trait CValueInjector[A] {
 
 object CValueInjector {
 
-  implicit val stringInjector: CValueInjector[String] = (value: String) => CValue.CString(value)
+  given stringInjector: CValueInjector[String] = (value: String) => CValue.CString(value)
 
-  implicit val intInjector: CValueInjector[Long] = (value: Long) => CValue.CInt(value)
+  given longInjector: CValueInjector[Long] = (value: Long) => CValue.CInt(value)
 
-  implicit val floatInjector: CValueInjector[Double] = (value: Double) => CValue.CFloat(value)
+  given doubleInjector: CValueInjector[Double] = (value: Double) => CValue.CFloat(value)
 
-  implicit val booleanInjector: CValueInjector[Boolean] = (value: Boolean) => CValue.CBoolean(value)
+  given booleanInjector: CValueInjector[Boolean] = (value: Boolean) => CValue.CBoolean(value)
 
-  implicit def vectorInjector[A](implicit
+  given vectorInjector[A](using
     injector: CValueInjector[A],
     typeTag: CTypeTag[A]
   ): CValueInjector[Vector[A]] =
     (value: Vector[A]) => CValue.CList(value.map(injector.inject), typeTag.cType)
 
-  implicit def listInjector[A](implicit injector: CValueInjector[A], typeTag: CTypeTag[A]): CValueInjector[List[A]] =
+  given listInjector[A](using injector: CValueInjector[A], typeTag: CTypeTag[A]): CValueInjector[List[A]] =
     vectorInjector[A].contramap(_.toVector)
 
-  implicit def mapInjector[A, B](implicit
+  given mapInjector[A, B](using
     keyInjector: CValueInjector[A],
     valueInjector: CValueInjector[B],
     keyTypeTag: CTypeTag[A],

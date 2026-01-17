@@ -8,12 +8,12 @@ object ModulePlusOne {
 
   case class Output(nPlusOne: Long)
 
-  def run(n: Long): Long = n + 1
+  def run(input: Input): Output = Output(input.n + 1)
 
   val module: Module.Uninitialized =
     ModuleBuilder
       .metadata(name = "PlusOne", description = "Adds one to the input", majorVersion = 0, minorVersion = 1)
       .tags("math", "demo")
       .implementationPure(run)
-      .buildSimple
+      .build
 }

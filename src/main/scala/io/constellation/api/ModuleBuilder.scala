@@ -4,9 +4,9 @@ import cats.Eval
 import cats.effect.IO
 import io.constellation.api.ModuleBuilder.{SimpleIn, SimpleOut}
 import io.circe.Json
-import shapeless.{HList, LabelledGeneric, Lazy}
 
 import scala.concurrent.duration.FiniteDuration
+import scala.deriving.Mirror
 
 object ModuleBuilder {
 
@@ -20,7 +20,7 @@ object ModuleBuilder {
     majorVersion: Int,
     minorVersion: Int,
     tags: List[String] = List.empty,
-  ): ModuleBuilder[Any, Any] = new ModuleBuilder(
+  ): ModuleBuilderInit = ModuleBuilderInit(
     ComponentMetadata(
       name = name,
       description = description,
@@ -31,21 +31,69 @@ object ModuleBuilder {
   )
 }
 
-final case class ModuleBuilder[I, O](
+/** Initial builder state before implementation is defined */
+final case class ModuleBuilderInit(
   _metadata: ComponentMetadata,
   _config: ModuleConfig = ModuleConfig.default,
   _context: Option[Map[String, Json]] = None,
-  _run: I => IO[Module.Produces[O]] = (_: I) =>
-    IO.raiseError(new RuntimeException("Module implementation is not defined")),
 ) {
 
-  def map[O2](f: O => O2): ModuleBuilder[I, O2] =
+  def name(newName: String): ModuleBuilderInit =
+    copy(_metadata = _metadata.copy(name = newName))
+
+  def description(newDescription: String): ModuleBuilderInit =
+    copy(_metadata = _metadata.copy(description = newDescription))
+
+  def tags(newTags: String*): ModuleBuilderInit =
+    copy(_metadata = _metadata.copy(tags = newTags.toList))
+
+  def version(major: Int, minor: Int): ModuleBuilderInit =
+    copy(_metadata = _metadata.copy(majorVersion = major, minorVersion = minor))
+
+  def inputsTimeout(newTimeout: FiniteDuration): ModuleBuilderInit =
+    copy(_config = _config.copy(inputsTimeout = newTimeout))
+
+  def moduleTimeout(newTimeout: FiniteDuration): ModuleBuilderInit =
+    copy(_config = _config.copy(moduleTimeout = newTimeout))
+
+  def definitionContext(newContext: Map[String, Json]): ModuleBuilderInit =
+    copy(_context = Some(newContext))
+
+  def implementation[I <: Product, O <: Product](newRun: I => IO[O]): ModuleBuilder[I, O] =
+    ModuleBuilder(
+      _metadata = _metadata,
+      _config = _config,
+      _context = _context,
+      _run = (input: I) => newRun(input).map(Module.Produces(_, Eval.later(Map.empty)))
+    )
+
+  def implementationPure[I <: Product, O <: Product](newRun: I => O): ModuleBuilder[I, O] =
+    implementation((input: I) => IO.pure(newRun(input)))
+
+  def implementationWithContext[I <: Product, O <: Product](newRun: I => IO[Module.Produces[O]]): ModuleBuilder[I, O] =
+    ModuleBuilder(
+      _metadata = _metadata,
+      _config = _config,
+      _context = _context,
+      _run = newRun
+    )
+}
+
+/** Typed builder with implementation defined */
+final case class ModuleBuilder[I <: Product, O <: Product](
+  _metadata: ComponentMetadata,
+  _config: ModuleConfig = ModuleConfig.default,
+  _context: Option[Map[String, Json]] = None,
+  _run: I => IO[Module.Produces[O]],
+) {
+
+  def map[O2 <: Product](f: O => O2): ModuleBuilder[I, O2] =
     copy(_run = (input: I) => _run(input).map(o => o.copy(data = f(o.data))))
 
-  def contraMap[I2](f: I2 => I): ModuleBuilder[I2, O] =
+  def contraMap[I2 <: Product](f: I2 => I): ModuleBuilder[I2, O] =
     copy(_run = (input: I2) => _run(f(input)))
 
-  def biMap[I2, O2](f: I2 => I, g: O => O2): ModuleBuilder[I2, O2] =
+  def biMap[I2 <: Product, O2 <: Product](f: I2 => I, g: O => O2): ModuleBuilder[I2, O2] =
     copy(_run = (input: I2) => _run(f(input)).map(o => o.copy(data = g(o.data))))
 
   def name(newName: String): ModuleBuilder[I, O] =
@@ -69,33 +117,17 @@ final case class ModuleBuilder[I, O](
   def definitionContext(newContext: Map[String, Json]): ModuleBuilder[I, O] =
     copy(_context = Some(newContext))
 
-  def implementation[I2, O2](newRun: I2 => IO[O2]): ModuleBuilder[I2, O2] =
-    copy(_run = (input: I2) => newRun(input).map(Module.Produces(_, Eval.later(Map.empty))))
-
-  def implementationPure[I2, O2](newRun: I2 => O2): ModuleBuilder[I2, O2] =
-    implementation((input: I2) => IO.pure(newRun(input)))
-
-  def implementationWithContext[I2, O2](newRun: I2 => IO[Module.Produces[O2]]): ModuleBuilder[I2, O2] =
-    copy(_run = newRun)
-
-  def build[HI <: HList, HO <: HList](implicit
-    inputToHList: LabelledGeneric.Aux[I, HI],
-    outputToHList: shapeless.LabelledGeneric.Aux[O, HO],
-    specBuilderConsumes: Lazy[DataNodeSpecBuilder[HI]],
-    specBuilderProduces: Lazy[DataNodeSpecBuilder[HO]],
-    registerConsumes: Lazy[RegisterData[HI]],
-    registerProduces: Lazy[RegisterData[HO]],
-    awaitOnInputs: Lazy[AwaitOnInputs[HI]],
-    provideOnOutputs: Lazy[ProvideOnOutputs[HO]]
-  ): Module.Uninitialized = {
+  inline def build(using mi: Mirror.ProductOf[I], mo: Mirror.ProductOf[O]): Module.Uninitialized = {
     val spec = ModuleNodeSpec(metadata = _metadata, config = _config, definitionContext = _context)
-    Module.uninitialized(spec, _run)
+    Module.uninitialized[I, O](spec, _run)
   }
 
-  def buildSimple(implicit
+  inline def buildSimple(using
     inTag: CTypeTag[I],
     outTag: CTypeTag[O],
     outInjector: CValueInjector[O],
+    miIn: Mirror.ProductOf[SimpleIn[I]],
+    moOut: Mirror.ProductOf[SimpleOut[O]],
   ): Module.Uninitialized = {
     biMap[SimpleIn[I], SimpleOut[O]](_.in, SimpleOut(_)).build
   }

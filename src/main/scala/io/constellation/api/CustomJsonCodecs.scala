@@ -1,173 +1,101 @@
 package io.constellation.api
 
 import cats.Eval
-import io.circe.syntax._
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
-import shapeless.labelled.{FieldType, field}
-import shapeless.{:+:, :: => :++:, CNil, Coproduct, HList, HNil, Inl, Inr, LabelledGeneric, Lazy, Witness}
+import io.circe.syntax.*
+import io.circe.{Decoder, Encoder, HCursor, Json}
 
 import java.util.UUID
 import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 object json extends CustomJsonCodecs
 
-trait CustomJsonCodecs extends LowerPriorityDerivedCodecs {
+trait CustomJsonCodecs {
 
-  implicit def finiteDurationEncoder: Encoder[FiniteDuration] =
+  given finiteDurationEncoder: Encoder[FiniteDuration] =
     Encoder.instance(_.toMillis.asJson)
 
-  implicit def finiteDurationDecoder: Decoder[FiniteDuration] =
+  given finiteDurationDecoder: Decoder[FiniteDuration] =
     Decoder.instance(_.as[Long].map(_.millis))
 
-  implicit def exceptionEncoder: Encoder[Throwable] =
+  given exceptionEncoder: Encoder[Throwable] =
     Encoder.instance(e => e.getMessage.asJson)
 
-  implicit def exceptionDecoder: Decoder[Throwable] =
+  given exceptionDecoder: Decoder[Throwable] =
     Decoder.instance(_.as[String].map(new RuntimeException(_)))
 
-  implicit def uuidMapEncoder[A](implicit encoder: Encoder[A]): Encoder[Map[UUID, A]] =
+  given uuidMapEncoder[A](using encoder: Encoder[A]): Encoder[Map[UUID, A]] =
     Encoder[Map[String, A]].contramap[Map[UUID, A]](_.map { case (k, v) => k.toString -> v })
 
-  implicit def uuidMapDecoder[A](implicit decoder: Decoder[A]): Decoder[Map[UUID, A]] =
+  given uuidMapDecoder[A](using decoder: Decoder[A]): Decoder[Map[UUID, A]] =
     Decoder[Map[String, A]].map(_.map { case (k, v) => UUID.fromString(k) -> v })
 
-  implicit def evalEncoder[A](implicit encoder: Encoder[A]): Encoder[Eval[A]] =
+  given evalEncoder[A](using encoder: Encoder[A]): Encoder[Eval[A]] =
     Encoder.instance(_.value.asJson)
 
-  implicit def evalDecoder[A](implicit decoder: Decoder[A]): Decoder[Eval[A]] =
+  given evalDecoder[A](using decoder: Decoder[A]): Decoder[Eval[A]] =
     Decoder.instance(_.as[A].map(Eval.now))
 
-  implicit def higherPriorityListEncoder[A](implicit encoder: Encoder[A]): Encoder[List[A]] =
-    Encoder.encodeList
+  // CType codecs with tagged union format
+  given ctypeEncoder: Encoder[CType] = Encoder.instance {
+    case CType.CString => Json.obj("tag" -> "CString".asJson)
+    case CType.CInt => Json.obj("tag" -> "CInt".asJson)
+    case CType.CFloat => Json.obj("tag" -> "CFloat".asJson)
+    case CType.CBoolean => Json.obj("tag" -> "CBoolean".asJson)
+    case CType.CList(valuesType) =>
+      Json.obj("tag" -> "CList".asJson, "valuesType" -> valuesType.asJson)
+    case CType.CMap(keysType, valuesType) =>
+      Json.obj("tag" -> "CMap".asJson, "keysType" -> keysType.asJson, "valuesType" -> valuesType.asJson)
+    case CType.CProduct(structure) =>
+      Json.obj("tag" -> "CProduct".asJson, "structure" -> structure.asJson)
+    case CType.CUnion(structure) =>
+      Json.obj("tag" -> "CUnion".asJson, "structure" -> structure.asJson)
+  }
 
-  implicit def higherPriorityListDecoder[A](implicit decoder: Decoder[A]): Decoder[List[A]] =
-    Decoder.decodeList
-
-  implicit def higherPriorityOptionEncoder[A](implicit encoder: Encoder[A]): Encoder[Option[A]] =
-    Encoder.encodeOption(encoder)
-
-  implicit def higherPriorityOptionDecoder[A](implicit decoder: Decoder[A]): Decoder[Option[A]] =
-    Decoder.decodeOption(decoder)
-
-  implicit def higherPriorityTuple2Encoder[A, B](implicit encoderA: Encoder[A], encoderB: Encoder[B]): Encoder[(A, B)] =
-    Encoder.encodeTuple2
-
-  implicit def higherPriorityTuple2Decoder[A, B](implicit decoderA: Decoder[A], decoderB: Decoder[B]): Decoder[(A, B)] =
-    Decoder.decodeTuple2
-}
-
-trait LowerPriorityDerivedCodecs {
-
-  implicit def deriveTaggedEncoder[A](implicit encoder: Lazy[DerivedTaggedEncoder[A]]): Encoder[A] =
-    encoder.value.encoder
-
-  implicit def deriveTaggedDecoder[A](implicit decoder: Lazy[DerivedTaggedDecoder[A]]): Decoder[A] =
-    decoder.value.decoder
-}
-
-trait DerivedTaggedEncoder[A] {
-  def encoder: Encoder.AsObject[A]
-}
-
-object DerivedTaggedEncoder {
-
-  implicit def higherPriorityListEncoder[A](implicit encoder: Encoder[A]): Encoder[List[A]] = Encoder.encodeList
-
-  implicit def generic[A, H](implicit
-    gen: LabelledGeneric.Aux[A, H],
-    derivedEncoder: Lazy[DerivedTaggedEncoder[H]],
-  ): DerivedTaggedEncoder[A] = new DerivedTaggedEncoder[A] {
-    def encoder: Encoder.AsObject[A] = Encoder.AsObject.instance { a =>
-      val obj = derivedEncoder.value.encoder.encodeObject(gen.to(a))
-      JsonObject(obj.toList: _*)
+  given ctypeDecoder: Decoder[CType] = Decoder.instance { c =>
+    c.downField("tag").as[String].flatMap {
+      case "CString" => Right(CType.CString)
+      case "CInt" => Right(CType.CInt)
+      case "CFloat" => Right(CType.CFloat)
+      case "CBoolean" => Right(CType.CBoolean)
+      case "CList" => c.downField("valuesType").as[CType].map(CType.CList.apply)
+      case "CMap" => for {
+        keysType <- c.downField("keysType").as[CType]
+        valuesType <- c.downField("valuesType").as[CType]
+      } yield CType.CMap(keysType, valuesType)
+      case "CProduct" => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
+      case "CUnion" => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
+      case other => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
     }
   }
 
-  implicit def hnil: DerivedTaggedEncoder[HNil] = new DerivedTaggedEncoder[HNil] {
-    def encoder: Encoder.AsObject[HNil] = Encoder.AsObject.instance(_ => JsonObject.empty)
+  // Module.Status codecs with tagged union format
+  given moduleStatusEncoder: Encoder[Module.Status] = Encoder.instance {
+    case Module.Status.Unfired =>
+      Json.obj("tag" -> "Unfired".asJson)
+    case Module.Status.Fired(latency, context) =>
+      Json.obj(
+        "tag" -> "Fired".asJson,
+        "latency" -> latency.asJson,
+        "context" -> context.asJson
+      )
+    case Module.Status.Timed(latency) =>
+      Json.obj("tag" -> "Timed".asJson, "latency" -> latency.asJson)
+    case Module.Status.Failed(error) =>
+      Json.obj("tag" -> "Failed".asJson, "error" -> error.asJson)
   }
 
-  implicit def hcons[K <: Symbol, H, T <: HList](implicit
-    key: Witness.Aux[K],
-    headEncoder: Lazy[Encoder[H]],
-    tailEncoder: DerivedTaggedEncoder[T]
-  ): DerivedTaggedEncoder[FieldType[K, H] :++: T] = new DerivedTaggedEncoder[FieldType[K, H] :++: T] {
-    def encoder: Encoder.AsObject[FieldType[K, H] :++: T] = Encoder.AsObject.instance[FieldType[K, H] :++: T] {
-      case head :++: tail =>
-        val obj = (key.value.name, headEncoder.value(head))
-        val fields = obj :: tailEncoder.encoder.encodeObject(tail).toList
-        JsonObject(fields: _*)
-    }
-  }
-
-  implicit def cnil: DerivedTaggedEncoder[CNil] = new DerivedTaggedEncoder[CNil] {
-    def encoder: Encoder.AsObject[CNil] = Encoder.AsObject.instance(_ => JsonObject.empty)
-  }
-
-  implicit def ccons[K <: Symbol, H, T <: Coproduct](implicit
-    key: Witness.Aux[K],
-    headEncoder: Lazy[DerivedTaggedEncoder[H]],
-    tailEncoder: DerivedTaggedEncoder[T]
-  ): DerivedTaggedEncoder[FieldType[K, H] :+: T] = new DerivedTaggedEncoder[FieldType[K, H] :+: T] {
-    def encoder: Encoder.AsObject[FieldType[K, H] :+: T] = Encoder.AsObject.instance {
-      case Inl(head) =>
-        val tag = ("tag", key.value.name.asJson)
-        val obj = headEncoder.value.encoder.encodeObject(head).toList
-        JsonObject(tag :: obj: _*)
-      case Inr(tail) => tailEncoder.encoder.encodeObject(tail)
-    }
-  }
-}
-
-trait DerivedTaggedDecoder[A] {
-  def decoder: Decoder[A]
-}
-
-object DerivedTaggedDecoder {
-
-  implicit def generic[A, H](implicit
-    gen: LabelledGeneric.Aux[A, H],
-    derivedDecoder: Lazy[DerivedTaggedDecoder[H]]
-  ): DerivedTaggedDecoder[A] = new DerivedTaggedDecoder[A] {
-    def decoder: Decoder[A] = derivedDecoder.value.decoder.map(gen.from)
-  }
-
-  implicit def hnil: DerivedTaggedDecoder[HNil] = new DerivedTaggedDecoder[HNil] {
-    def decoder: Decoder[HNil] = Decoder.const(HNil)
-  }
-
-  implicit def hcons[K <: Symbol, H, T <: HList](implicit
-    key: Witness.Aux[K],
-    headDecoder: Lazy[Decoder[H]],
-    tailDecoder: DerivedTaggedDecoder[T]
-  ): DerivedTaggedDecoder[FieldType[K, H] :++: T] = new DerivedTaggedDecoder[FieldType[K, H] :++: T] {
-    def decoder: Decoder[FieldType[K, H] :++: T] = Decoder.instance { cursor =>
-      for {
-        head <- cursor.get[H](key.value.name)(headDecoder.value)
-        tail <- tailDecoder.decoder(cursor)
-      } yield field[K](head) :: tail
-    }
-  }
-
-  implicit def cnil: DerivedTaggedDecoder[CNil] = new DerivedTaggedDecoder[CNil] {
-    def decoder: Decoder[CNil] =
-      Decoder.failed(DecodingFailure("Expected a Coproduct, this should be unreachable", Nil))
-  }
-
-  implicit def ccons[K <: Symbol, H, T <: Coproduct](implicit
-    key: Witness.Aux[K],
-    headDecoder: Lazy[DerivedTaggedDecoder[H]],
-    tailDecoder: DerivedTaggedDecoder[T]
-  ): DerivedTaggedDecoder[FieldType[K, H] :+: T] = new DerivedTaggedDecoder[FieldType[K, H] :+: T] {
-    def decoder: Decoder[FieldType[K, H] :+: T] = Decoder.instance { cursor =>
-      cursor.get[String]("tag").flatMap {
-        case tag if tag == key.value.name =>
-          for {
-            head <- cursor.as[H](headDecoder.value.decoder)
-          } yield Inl(field[K](head))
-        case _ =>
-          tailDecoder.decoder(cursor).map(t => Inr(t))
-      }
+  given moduleStatusDecoder: Decoder[Module.Status] = Decoder.instance { c =>
+    c.downField("tag").as[String].flatMap {
+      case "Unfired" => Right(Module.Status.Unfired)
+      case "Fired" => for {
+        latency <- c.downField("latency").as[FiniteDuration]
+        context <- c.downField("context").as[Option[Map[String, Json]]]
+      } yield Module.Status.Fired(latency, context)
+      case "Timed" =>
+        c.downField("latency").as[FiniteDuration].map(Module.Status.Timed.apply)
+      case "Failed" =>
+        c.downField("error").as[Throwable].map(Module.Status.Failed.apply)
+      case other => Left(io.circe.DecodingFailure(s"Unknown Module.Status tag: $other", c.history))
     }
   }
 }

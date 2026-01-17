@@ -6,13 +6,12 @@ import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.{catsSyntaxParallelTraverse1, toTraverseOps}
 import cats.{Eval, Monoid}
 import io.circe.Json
-import shapeless._
-import shapeless.labelled.{FieldType, field}
-import shapeless.syntax.typeable._
 
 import java.util.UUID
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
+import scala.deriving.Mirror
+import scala.compiletime.{constValueTuple, erasedValue, summonInline}
 
 final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.MutableState) {
 
@@ -47,9 +46,9 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
     case CValue.CInt(value)      => IO.pure(value)
     case CValue.CString(value)   => IO.pure(value)
     case CValue.CBoolean(value)  => IO.pure(value)
+    case CValue.CFloat(value)    => IO.pure(value)
     case CValue.CList(values, _) => IO.pure(values.map(cValueToAny))
-    // case CValue.CMap(map, _, _) => IO.pure(map)
-    case _ => IO.raiseError(new RuntimeException("Unsupported CValue type for conversion to Witness"))
+    case _ => IO.raiseError(new RuntimeException("Unsupported CValue type for conversion"))
   }
 }
 
@@ -201,155 +200,157 @@ object Module {
         .map(Namespace(_))
   }
 
-  def uninitialized[I, O, HI <: HList, HO <: HList](partialSpec: ModuleNodeSpec, run0: I => IO[Module.Produces[O]])(
-    implicit
-    inputToHList: LabelledGeneric.Aux[I, HI],
-    outputToHList: shapeless.LabelledGeneric.Aux[O, HO],
-    specBuilderConsumes: Lazy[DataNodeSpecBuilder[HI]],
-    specBuilderProduces: Lazy[DataNodeSpecBuilder[HO]],
-    registerConsumes: Lazy[RegisterData[HI]],
-    registerProduces: Lazy[RegisterData[HO]],
-    awaitOnInputs: Lazy[AwaitOnInputs[HI]],
-    provideOnOutputs: Lazy[ProvideOnOutputs[HO]],
-  ): Module.Uninitialized = Module.Uninitialized(
-    spec = partialSpec.copy(consumes = specBuilderConsumes.value.build, produces = specBuilderProduces.value.build),
-    init = (moduleId, dagSpec) => {
-      for {
-        consumesNamespace <- Module.Namespace.consumes(moduleId, dagSpec)
-        producesNamespace <- Module.Namespace.produces(moduleId, dagSpec)
-        consumesTable <- registerConsumes.value.registerData(consumesNamespace)
-        producesTable <- registerProduces.value.registerData(producesNamespace)
-        runnableModule = Module.Runnable(
-          id = moduleId,
-          data = consumesTable ++ producesTable,
-          run = runtime => {
-            (for {
-              _ <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
-              consumes <- awaitOnInputs.value.awaitOnInputs(consumesNamespace, runtime)
-              consumesGen = inputToHList.from(consumes)
-              producesAndLatency <- run0(consumesGen).timed.timeout(partialSpec.config.moduleTimeout)
-              (latency, produces) = producesAndLatency
-              producesContext = () => {
-                val context = produces.implementationContext.value
-                if (context.isEmpty) None
-                else Some(context)
-              }
-              producesGen = outputToHList.to(produces.data)
-              _ <- provideOnOutputs.value.provideOutputs(producesNamespace, runtime, producesGen)
-              _ <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, producesContext()))
-            } yield ())
-              .timeout(partialSpec.config.inputsTimeout)
-              .handleErrorWith {
-                case _: TimeoutException =>
-                  runtime.setModuleStatus(moduleId, Module.Status.Timed(partialSpec.config.inputsTimeout))
-                case e =>
-                  runtime.setModuleStatus(moduleId, Module.Status.Failed(e))
-              }
-              .void
-          }
-        )
-      } yield runnableModule
+  // TODO: Phase 4 - Implement with Scala 3 Mirrors
+  // This will replace the shapeless-based implementation
+  inline def uninitialized[I <: Product, O <: Product](
+    partialSpec: ModuleNodeSpec,
+    run0: I => IO[Module.Produces[O]]
+  )(using mi: Mirror.ProductOf[I], mo: Mirror.ProductOf[O]): Module.Uninitialized = {
+    // Build consumes/produces specs from case class field names and types
+    val consumesSpec = buildDataNodeSpec[I]
+    val producesSpec = buildDataNodeSpec[O]
+
+    Module.Uninitialized(
+      spec = partialSpec.copy(consumes = consumesSpec, produces = producesSpec),
+      init = (moduleId, dagSpec) => {
+        for {
+          consumesNamespace <- Module.Namespace.consumes(moduleId, dagSpec)
+          producesNamespace <- Module.Namespace.produces(moduleId, dagSpec)
+          consumesTable <- registerData[I](consumesNamespace)
+          producesTable <- registerData[O](producesNamespace)
+          runnableModule = Module.Runnable(
+            id = moduleId,
+            data = consumesTable ++ producesTable,
+            run = runtime => {
+              (for {
+                _ <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
+                consumes <- awaitOnInputs[I](consumesNamespace, runtime)
+                producesAndLatency <- run0(consumes).timed.timeout(partialSpec.config.moduleTimeout)
+                (latency, produces) = producesAndLatency
+                producesContext = () => {
+                  val context = produces.implementationContext.value
+                  if (context.isEmpty) None
+                  else Some(context)
+                }
+                _ <- provideOnOutputs[O](producesNamespace, runtime, produces.data)
+                _ <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, producesContext()))
+              } yield ())
+                .timeout(partialSpec.config.inputsTimeout)
+                .handleErrorWith {
+                  case _: TimeoutException =>
+                    runtime.setModuleStatus(moduleId, Module.Status.Timed(partialSpec.config.inputsTimeout))
+                  case e =>
+                    runtime.setModuleStatus(moduleId, Module.Status.Failed(e))
+                }
+                .void
+            }
+          )
+        } yield runnableModule
+      }
+    )
+  }
+
+  // Helper to get field names from a Product type at compile time
+  inline def getFieldNames[T <: Product](using m: Mirror.ProductOf[T]): List[String] = {
+    val labels = constValueTuple[m.MirroredElemLabels]
+    tupleToList(labels)
+  }
+
+  private inline def tupleToList[T <: Tuple](t: T): List[String] = {
+    inline t match {
+      case _: EmptyTuple => Nil
+      case t: (h *: tail) => t.head.asInstanceOf[String] :: tupleToList(t.tail)
     }
-  )
+  }
+
+  // Build Map[String, CType] from case class structure
+  inline def buildDataNodeSpec[T <: Product](using m: Mirror.ProductOf[T]): Map[String, CType] = {
+    val names = getFieldNames[T]
+    val types = getFieldTypes[T]
+    names.zip(types).toMap
+  }
+
+  inline def getFieldTypes[T <: Product](using m: Mirror.ProductOf[T]): List[CType] = {
+    getTypesFromTuple[m.MirroredElemTypes]
+  }
+
+  private inline def getTypesFromTuple[T <: Tuple]: List[CType] = {
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (h *: tail) =>
+        summonInline[CTypeTag[h]].cType :: getTypesFromTuple[tail]
+    }
+  }
+
+  // Register deferred data slots for each field
+  inline def registerData[T <: Product](namespace: Namespace)(using m: Mirror.ProductOf[T]): IO[Runtime.MutableDataTable] = {
+    val names = getFieldNames[T]
+    names.traverse { name =>
+      for {
+        dataId <- namespace.nameId(name)
+        deferred <- Deferred[IO, Any]
+      } yield dataId -> deferred
+    }.map(_.toMap)
+  }
+
+  // Await on inputs and construct case class
+  inline def awaitOnInputs[T <: Product](namespace: Namespace, runtime: Runtime)(using m: Mirror.ProductOf[T]): IO[T] = {
+    val names = getFieldNames[T]
+    for {
+      values <- names.traverse { name =>
+        for {
+          dataId <- namespace.nameId(name)
+          value <- runtime.getTableData(dataId)
+        } yield value
+      }
+      tuple = Tuple.fromArray(values.toArray)
+    } yield m.fromTuple(tuple.asInstanceOf[m.MirroredElemTypes])
+  }
+
+  // Provide outputs to runtime
+  inline def provideOnOutputs[T <: Product](namespace: Namespace, runtime: Runtime, outputs: T)(using m: Mirror.ProductOf[T]): IO[Unit] = {
+    val names = getFieldNames[T]
+    val values = outputs.productIterator.toList
+    val injectors = getInjectors[T]
+
+    names.zip(values).zip(injectors).traverse { case ((name, value), injector) =>
+      for {
+        dataId <- namespace.nameId(name)
+        _ <- runtime.setTableData(dataId, value)
+        _ <- runtime.setStateData(dataId, injector.asInstanceOf[CValueInjector[Any]].inject(value))
+      } yield ()
+    }.void
+  }
+
+  inline def getInjectors[T <: Product](using m: Mirror.ProductOf[T]): List[CValueInjector[?]] = {
+    getInjectorsFromTuple[m.MirroredElemTypes]
+  }
+
+  private inline def getInjectorsFromTuple[T <: Tuple]: List[CValueInjector[?]] = {
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (h *: tail) =>
+        summonInline[CValueInjector[h]] :: getInjectorsFromTuple[tail]
+    }
+  }
 }
 
+// Type class for building data node specs - used by inline methods
 trait DataNodeSpecBuilder[A] {
-
   def build: Map[String, CType]
 }
 
-object DataNodeSpecBuilder {
-
-  implicit def hnil: DataNodeSpecBuilder[HNil] = new DataNodeSpecBuilder[HNil] {
-    def build: Map[String, CType] = Map.empty[String, CType]
-  }
-
-  implicit def hcons[K <: Symbol, V, T <: HList](implicit
-    key: Witness.Aux[K],
-    headTag: CTypeTag[V],
-    tail: DataNodeSpecBuilder[T],
-  ): DataNodeSpecBuilder[FieldType[K, V] :: T] = new DataNodeSpecBuilder[FieldType[K, V] :: T] {
-
-    def build: Map[String, CType] = {
-      val headName = key.value.name
-      val headType = headTag.cType
-      tail.build.updated(headName, headType)
-    }
-  }
-}
-
+// Type class for awaiting on inputs
 trait AwaitOnInputs[I] {
-
   def awaitOnInputs(namespace: Module.Namespace, runtime: Runtime): IO[I]
 }
 
-object AwaitOnInputs {
-
-  implicit def hnil: AwaitOnInputs[HNil] =
-    (_: Module.Namespace, _: Runtime) => IO.pure(HNil)
-
-  implicit def hcons[K <: Symbol, V, T <: HList](implicit
-    tail: AwaitOnInputs[T],
-    key: Witness.Aux[K],
-    typeable: Typeable[V]
-  ): AwaitOnInputs[FieldType[K, V] :: T] = new AwaitOnInputs[FieldType[K, V] :: T] {
-
-    def awaitOnInputs(namespace: Module.Namespace, runtime: Runtime): IO[FieldType[K, V] :: T] = {
-      for {
-        tailValues <- tail.awaitOnInputs(namespace, runtime)
-        dataId <- namespace.nameId(key.value.name)
-        valueAny <- runtime.getTableData(dataId)
-        value <- IO.fromOption(valueAny.cast[V])(
-          new RuntimeException(s"Failed to cast value for data ${key.value.name} to type ${typeable.describe}")
-        )
-      } yield field[K](value) :: tailValues
-    }
-  }
-}
-
-trait ProvideOnOutputs[O <: HList] {
-
+// Type class for providing outputs
+trait ProvideOnOutputs[O] {
   def provideOutputs(namespace: Module.Namespace, runtime: Runtime, outputs: O): IO[Unit]
 }
 
-object ProvideOnOutputs {
-
-  implicit def hnil: ProvideOnOutputs[HNil] =
-    (_: Module.Namespace, _: Runtime, _: HNil) => IO.unit
-
-  implicit def hcons[K <: Symbol, V, T <: HList](implicit
-    tail: ProvideOnOutputs[T],
-    key: Witness.Aux[K],
-    headInjector: CValueInjector[V]
-  ): ProvideOnOutputs[FieldType[K, V] :: T] =
-    (namespace: Module.Namespace, runtime: Runtime, outputs: FieldType[K, V] :: T) =>
-      for {
-        dataId <- namespace.nameId(key.value.name)
-        _ <- runtime.setTableData(dataId, outputs.head)
-        _ <- runtime.setStateData(dataId, headInjector.inject(outputs.head))
-        _ <- tail.provideOutputs(namespace, runtime, outputs.tail)
-      } yield ()
-}
-
-trait RegisterData[T <: HList] {
-
+// Type class for registering data
+trait RegisterData[T] {
   def registerData(namespace: Module.Namespace): IO[Runtime.MutableDataTable]
-}
-
-object RegisterData {
-
-  implicit def hnil: RegisterData[HNil] =
-    (_: Module.Namespace) => IO.pure(Map.empty)
-
-  implicit def hcons[K <: Symbol, V, T <: HList](implicit
-    key: Witness.Aux[K],
-    tail: RegisterData[T],
-  ): RegisterData[FieldType[K, V] :: T] =
-    (namespace: Module.Namespace) =>
-      for {
-        dataId <- namespace.nameId(key.value.name)
-        deferred <- Deferred[IO, Any]
-        tailTable <- tail.registerData(namespace)
-        newTable = tailTable.updated(dataId, deferred)
-      } yield newTable
 }

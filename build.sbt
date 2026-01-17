@@ -1,5 +1,5 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "3.3.1"
 ThisBuild / organization := "io.constellation"
 
 lazy val root = (project in file("."))
@@ -9,9 +9,6 @@ lazy val root = (project in file("."))
       // Cats
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
-
-      // Shapeless for generic programming
-      "com.chuusai" %% "shapeless" % "2.3.10",
 
       // Circe for JSON
       "io.circe" %% "circe-core" % "0.14.6",
@@ -25,6 +22,5 @@ lazy val root = (project in file("."))
       "-deprecation",
       "-feature",
       "-unchecked",
-      "-Xlint:unused",
     ),
   )
