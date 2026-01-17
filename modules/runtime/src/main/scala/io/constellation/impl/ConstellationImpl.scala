@@ -49,6 +49,13 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
       }
     } yield result
   }
+
+  def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State] = {
+    for {
+      modules <- moduleRegistry.initModules(dagSpec)
+      context <- Runtime.run(dagSpec, inputs, modules)
+    } yield context
+  }
 }
 
 object ConstellationImpl {

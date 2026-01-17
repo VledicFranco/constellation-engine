@@ -19,4 +19,7 @@ trait Constellation {
   def getDag(name: String): IO[Option[DagSpec]]
 
   def runDag(name: String, inputs: Map[String, CValue]): IO[Runtime.State]
+
+  /** Run a DAG directly without storing it */
+  def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State]
 }

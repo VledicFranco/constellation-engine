@@ -37,18 +37,37 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
     }
 
   def setTableDataCValue(dataId: UUID, data: CValue): IO[Unit] =
-    for {
-      anyData <- cValueToAny(data)
-      _ <- setTableData(dataId, anyData)
-    } yield ()
+    table.get(dataId) match {
+      case Some(_) =>
+        for {
+          anyData <- cValueToAny(data)
+          _ <- setTableData(dataId, anyData)
+        } yield ()
+      case None =>
+        // No table entry for this data node (e.g., passthrough DAG with no modules)
+        // This is fine - only modules need the table entries
+        IO.unit
+    }
 
   private def cValueToAny(cValue: CValue): IO[Any] = cValue match {
-    case CValue.CInt(value)      => IO.pure(value)
-    case CValue.CString(value)   => IO.pure(value)
-    case CValue.CBoolean(value)  => IO.pure(value)
-    case CValue.CFloat(value)    => IO.pure(value)
-    case CValue.CList(values, _) => IO.pure(values.map(cValueToAny))
-    case _ => IO.raiseError(new RuntimeException("Unsupported CValue type for conversion"))
+    case CValue.CInt(value)       => IO.pure(value)
+    case CValue.CString(value)    => IO.pure(value)
+    case CValue.CBoolean(value)   => IO.pure(value)
+    case CValue.CFloat(value)     => IO.pure(value)
+    case CValue.CList(values, _)  => values.traverse(cValueToAny).map(_.toVector)
+    case CValue.CMap(pairs, _, _) =>
+      pairs.traverse { case (k, v) =>
+        for {
+          kAny <- cValueToAny(k)
+          vAny <- cValueToAny(v)
+        } yield (kAny, vAny)
+      }.map(_.toVector)
+    case CValue.CProduct(fields, _) =>
+      fields.toList.traverse { case (name, value) =>
+        cValueToAny(value).map(name -> _)
+      }.map(_.toMap)
+    case CValue.CUnion(value, _, tag) =>
+      cValueToAny(value).map(v => (tag, v))
   }
 }
 

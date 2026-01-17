@@ -58,6 +58,30 @@ object ApiModels {
     given Decoder[ExecuteResponse] = deriveDecoder
   }
 
+  /** Request to compile and run a script in one step */
+  case class RunRequest(
+    source: String,
+    inputs: Map[String, Json]
+  )
+
+  object RunRequest {
+    given Encoder[RunRequest] = deriveEncoder
+    given Decoder[RunRequest] = deriveDecoder
+  }
+
+  /** Response from compile-and-run */
+  case class RunResponse(
+    success: Boolean,
+    outputs: Map[String, Json] = Map.empty,
+    compilationErrors: List[String] = List.empty,
+    error: Option[String] = None
+  )
+
+  object RunResponse {
+    given Encoder[RunResponse] = deriveEncoder
+    given Decoder[RunResponse] = deriveDecoder
+  }
+
   /** Response listing available DAGs */
   case class DagListResponse(
     dags: Map[String, ComponentMetadata]

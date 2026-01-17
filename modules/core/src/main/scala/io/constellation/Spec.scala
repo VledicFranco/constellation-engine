@@ -23,9 +23,16 @@ case class DagSpec(
 
   def minorVersion: Int = metadata.minorVersion
 
+  /** Data nodes that are inputs to the DAG (not produced by any module) */
   def topLevelDataNodes: Map[UUID, DataNodeSpec] = {
-    val topLevelUuids = inEdges.map(_._1).diff(outEdges.map(_._2))
-    data.filter { case (dataUuid, _) => topLevelUuids.contains(dataUuid) }
+    val producedByModules = outEdges.map(_._2)
+    data.filter { case (dataUuid, _) => !producedByModules.contains(dataUuid) }
+  }
+
+  /** Data nodes that are outputs of the DAG (not consumed by any module) */
+  def bottomLevelDataNodes: Map[UUID, DataNodeSpec] = {
+    val consumedByModules = inEdges.map(_._1)
+    data.filter { case (dataUuid, _) => !consumedByModules.contains(dataUuid) }
   }
 }
 
