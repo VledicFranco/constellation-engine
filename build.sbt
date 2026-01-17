@@ -15,6 +15,9 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % "0.14.6",
       "io.circe" %% "circe-parser" % "0.14.6",
 
+      // Parser combinators for constellation-lang
+      "org.typelevel" %% "cats-parse" % "1.0.0",
+
       // Testing
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     ),
