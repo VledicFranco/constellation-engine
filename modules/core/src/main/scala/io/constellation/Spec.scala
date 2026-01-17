@@ -27,6 +27,11 @@ case class DagSpec(
     val topLevelUuids = inEdges.map(_._1).diff(outEdges.map(_._2))
     data.filter { case (dataUuid, _) => topLevelUuids.contains(dataUuid) }
   }
+
+  def bottomLevelDataNodes: Map[UUID, DataNodeSpec] = {
+    val bottomLevelUuids = outEdges.map(_._2).diff(inEdges.map(_._1))
+    data.filter { case (dataUuid, _) => bottomLevelUuids.contains(dataUuid) }
+  }
 }
 
 object DagSpec {

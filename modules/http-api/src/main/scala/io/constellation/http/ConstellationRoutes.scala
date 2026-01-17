@@ -42,27 +42,69 @@ class ConstellationRoutes(
 
     // Execute a DAG with inputs
     case req @ POST -> Root / "execute" =>
-      for {
+      (for {
         execReq <- req.as[ExecuteRequest]
-        // Convert JSON inputs to CValues
         dagOpt <- constellation.getDag(execReq.dagName)
+
         response <- dagOpt match {
           case Some(dagSpec) =>
-            // For now, return a simple success response
-            // In a full implementation, we'd need to convert JSON to CValue,
-            // run the DAG, and convert results back to JSON
-            Ok(ExecuteResponse(
-              success = true,
-              outputs = Map.empty,
-              error = None
-            ))
+            for {
+              // Convert inputs: JSON → CValue
+              convertResult <- ExecutionHelper.convertInputs(execReq.inputs, dagSpec).attempt
+              response <- convertResult match {
+                case Left(error) =>
+                  BadRequest(ExecuteResponse(
+                    success = false,
+                    error = Some(s"Input error: ${error.getMessage}")
+                  ))
+
+                case Right(cValueInputs) =>
+                  for {
+                    // Execute DAG
+                    execResult <- constellation.runDag(execReq.dagName, cValueInputs).attempt
+                    response <- execResult match {
+                      case Left(error) =>
+                        InternalServerError(ExecuteResponse(
+                          success = false,
+                          error = Some(s"Execution failed: ${error.getMessage}")
+                        ))
+
+                      case Right(state) =>
+                        for {
+                          // Extract outputs: CValue → JSON
+                          outputResult <- ExecutionHelper.extractOutputs(state).attempt
+                          response <- outputResult match {
+                            case Left(error) =>
+                              InternalServerError(ExecuteResponse(
+                                success = false,
+                                error = Some(s"Output error: ${error.getMessage}")
+                              ))
+
+                            case Right(outputs) =>
+                              Ok(ExecuteResponse(
+                                success = true,
+                                outputs = outputs,
+                                error = None
+                              ))
+                          }
+                        } yield response
+                    }
+                  } yield response
+              }
+            } yield response
+
           case None =>
             NotFound(ErrorResponse(
               error = "DagNotFound",
               message = s"DAG '${execReq.dagName}' not found"
             ))
         }
-      } yield response
+      } yield response).handleErrorWith { error =>
+        InternalServerError(ExecuteResponse(
+          success = false,
+          error = Some(s"Unexpected error: ${error.getMessage}")
+        ))
+      }
 
     // List all available DAGs
     case GET -> Root / "dags" =>
