@@ -384,3 +384,102 @@ Assigned Issue: #<number> - <title>
 ```
 
 This helps the user track which agent is doing what.
+
+### Quick Start Context
+
+**What is Constellation Engine?**
+
+A type-safe, composable ML orchestration framework for Scala 3. Users:
+1. Define processing modules using the `ModuleBuilder` API
+2. Compose pipelines using `constellation-lang` DSL (`.cst` files)
+3. Execute pipelines with automatic dependency resolution
+4. Expose pipelines via HTTP API
+
+**Tech Stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
+
+**Issue Triage - Where to Look:**
+
+| Issue Type | Primary Module(s) | Key Files |
+|------------|-------------------|-----------|
+| Type errors, CValue/CType bugs | `core` | `TypeSystem.scala` |
+| Module execution, ModuleBuilder | `runtime` | `ModuleBuilder.scala`, `Runtime.scala` |
+| Parse errors, syntax issues | `lang-parser` | `ConstellationParser.scala` |
+| Type checking, semantic errors | `lang-compiler` | `TypeChecker.scala`, `SemanticAnalysis.scala` |
+| DAG compilation issues | `lang-compiler` | `DagCompiler.scala`, `IRGenerator.scala` |
+| Standard library functions | `lang-stdlib` | `StdLib.scala` |
+| LSP, autocomplete, diagnostics | `lang-lsp` | `ConstellationLanguageServer.scala` |
+| HTTP endpoints, WebSocket | `http-api` | `ConstellationServer.scala`, `ConstellationRoutes.scala` |
+| Example modules (text, data) | `example-app` | `modules/TextModules.scala`, `modules/DataModules.scala` |
+| VSCode extension | `vscode-extension/` | `src/extension.ts`, `src/lspClient.ts` |
+
+**Quick Exploration Commands:**
+
+```bash
+# Find all Scala files in a module
+ls modules/<module-name>/src/main/scala/io/constellation/
+
+# Search for a class/function definition
+grep -r "def functionName\|class ClassName\|object ObjectName" modules/
+
+# Find usages of a type
+grep -r "CType\|CValue\|Module.Uninitialized" modules/
+
+# Run module-specific tests
+make test-core       # Core type system
+make test-compiler   # Parser + compiler
+make test-lsp        # Language server
+```
+
+**Verify Setup Before Coding:**
+
+```bash
+# 1. Ensure you're in a worktree (CRITICAL)
+git rev-parse --git-dir  # Must contain "worktrees/"
+
+# 2. Verify compilation works
+make compile
+
+# 3. Run tests to confirm baseline
+make test
+```
+
+**Constellation-Lang Syntax (for context):**
+
+```constellation
+# Input declarations
+in text: String
+in count: Int
+
+# Module calls (PascalCase, must match ModuleBuilder name)
+cleaned = Trim(text)
+result = Uppercase(cleaned)
+
+# Output declarations
+out result
+```
+
+**Common Patterns You'll See:**
+
+```scala
+// Module definition pattern
+case class MyInput(text: String)
+case class MyOutput(result: String)
+
+val myModule = ModuleBuilder
+  .metadata("MyModule", "Description", 1, 0)
+  .implementationPure[MyInput, MyOutput] { input =>
+    MyOutput(input.text.toUpperCase)
+  }
+  .build
+
+// IO-based module (for side effects)
+.implementation[Input, Output] { input => IO { ... } }
+
+// Registering modules
+modules.traverse(constellation.setModule)  // requires cats.implicits._
+```
+
+**References:**
+- Full architecture details: `llm.md`
+- Language documentation: `docs/constellation-lang/`
+- TODO/roadmap: `TODO.md`
