@@ -47,6 +47,11 @@ object SemanticType {
     def prettyPrint: String = s"Map<${key.prettyPrint}, ${value.prettyPrint}>"
   }
 
+  /** Optional<T> - represents a value that may or may not exist */
+  final case class SOptional(inner: SemanticType) extends SemanticType {
+    def prettyPrint: String = s"Optional<${inner.prettyPrint}>"
+  }
+
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
     case SString => CType.CString
@@ -57,6 +62,7 @@ object SemanticType {
     case SCandidates(elem) => CType.CList(toCType(elem))
     case SList(elem) => CType.CList(toCType(elem))
     case SMap(k, v) => CType.CMap(toCType(k), toCType(v))
+    case SOptional(inner) => CType.COptional(toCType(inner))
   }
 
   /** Convert Constellation CType to SemanticType */
@@ -69,6 +75,7 @@ object SemanticType {
     case CType.CMap(k, v) => SMap(fromCType(k), fromCType(v))
     case CType.CProduct(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
     case CType.CUnion(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
+    case CType.COptional(inner) => SOptional(fromCType(inner))
   }
 }
 

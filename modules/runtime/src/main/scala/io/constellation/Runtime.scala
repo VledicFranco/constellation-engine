@@ -68,6 +68,10 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
       }.map(_.toMap)
     case CValue.CUnion(value, _, tag) =>
       cValueToAny(value).map(v => (tag, v))
+    case CValue.CSome(value, _) =>
+      cValueToAny(value).map(Some(_))
+    case CValue.CNone(_) =>
+      IO.pure(None)
   }
 }
 

@@ -49,6 +49,8 @@ trait CustomJsonCodecs {
       Json.obj("tag" -> "CProduct".asJson, "structure" -> structure.asJson)
     case CType.CUnion(structure) =>
       Json.obj("tag" -> "CUnion".asJson, "structure" -> structure.asJson)
+    case CType.COptional(innerType) =>
+      Json.obj("tag" -> "COptional".asJson, "innerType" -> innerType.asJson)
   }
 
   given ctypeDecoder: Decoder[CType] = Decoder.instance { c =>
@@ -64,6 +66,7 @@ trait CustomJsonCodecs {
       } yield CType.CMap(keysType, valuesType)
       case "CProduct" => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
       case "CUnion" => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
+      case "COptional" => c.downField("innerType").as[CType].map(CType.COptional.apply)
       case other => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
     }
   }

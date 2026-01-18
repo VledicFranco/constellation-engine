@@ -21,6 +21,8 @@ object TypeFormatter {
         s"$name: ${formatCType(typ)}"
       }
       s"(${fieldStrs.mkString(" | ")})"
+    case CType.COptional(inner) =>
+      s"Optional<${formatCType(inner)}>"
   }
 
   /** Format function signature from ModuleNodeSpec */
