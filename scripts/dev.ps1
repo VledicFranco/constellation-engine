@@ -4,7 +4,8 @@
 param(
     [switch]$ServerOnly,
     [switch]$WatchOnly,
-    [switch]$HotReload
+    [switch]$HotReload,
+    [int]$Port = 0  # 0 means auto-detect from directory name or use default 8080
 )
 
 Write-Host "================================================" -ForegroundColor Cyan
@@ -24,19 +25,53 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Determine port: explicit param > directory-based > environment > default
+function Get-ServerPort {
+    param([int]$ExplicitPort)
+
+    if ($ExplicitPort -gt 0) {
+        return $ExplicitPort
+    }
+
+    # Try to detect agent number from directory name (e.g., constellation-agent-2 -> port 8082)
+    $dirName = (Get-Item .).Name
+    if ($dirName -match 'constellation-agent-(\d+)') {
+        $agentNum = [int]$Matches[1]
+        return 8080 + $agentNum
+    }
+
+    # Check environment variable
+    if ($env:CONSTELLATION_PORT) {
+        return [int]$env:CONSTELLATION_PORT
+    }
+
+    # Default port
+    return 8080
+}
+
+$ServerPort = Get-ServerPort -ExplicitPort $Port
+$env:CONSTELLATION_PORT = $ServerPort
+
 function Start-Server {
     param([switch]$HotReload)
 
     Write-Host "Starting Constellation Server..." -ForegroundColor Green
-    Write-Host "  HTTP API: http://localhost:8080" -ForegroundColor Yellow
-    Write-Host "  LSP WebSocket: ws://localhost:8080/lsp" -ForegroundColor Yellow
+    Write-Host "  HTTP API: http://localhost:$ServerPort" -ForegroundColor Yellow
+    Write-Host "  LSP WebSocket: ws://localhost:$ServerPort/lsp" -ForegroundColor Yellow
+    Write-Host "  Port configured via: CONSTELLATION_PORT=$ServerPort" -ForegroundColor Gray
     Write-Host ""
 
     if ($HotReload) {
         Write-Host "Hot-reload enabled - server will restart on code changes" -ForegroundColor Magenta
-        Start-Job -ScriptBlock { sbt "~exampleApp/reStart" } | Out-Null
+        Start-Job -ScriptBlock {
+            $env:CONSTELLATION_PORT = $using:ServerPort
+            sbt "~exampleApp/reStart"
+        } | Out-Null
     } else {
-        Start-Job -ScriptBlock { sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer" } | Out-Null
+        Start-Job -ScriptBlock {
+            $env:CONSTELLATION_PORT = $using:ServerPort
+            sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
+        } | Out-Null
     }
 }
 
