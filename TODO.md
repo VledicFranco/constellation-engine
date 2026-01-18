@@ -73,8 +73,8 @@ This document tracks the current sprint issues and their status. **Agents update
 
 | Status | Issue | Title | Track | Dependencies | Blocked By |
 |--------|-------|-------|-------|--------------|------------|
-| [ ] | #3 | Fix CI pipeline - sbt command not found | Compiler | None | - |
-| [ ] | #4 | Add test coverage for lang-ast module | Compiler | None | - |
+| [x] | #3 | Fix CI pipeline - sbt command not found @agent-1 | Compiler | None | - |
+| [~] | #4 | Add test coverage for lang-ast module @agent-1 | Compiler | None | - |
 | [ ] | #5 | Add test coverage for example-app modules | Compiler | None | - |
 | [ ] | #6 | Fix "Empty message" error logging in WebSocket | VSCode | None | - |
 | [ ] | #7 | Remove redundant imports in LSP server | VSCode | None | - |
@@ -235,7 +235,7 @@ Track merged PRs here for historical reference.
 
 | Issue | Title | Agent | PR | Merged Date |
 |-------|-------|-------|-----|-------------|
-| - | - | - | - | - |
+| #3 | Fix CI pipeline - sbt command not found | agent-1 | #30 | 2026-01-18 |
 
 ---
 
