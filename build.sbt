@@ -111,7 +111,7 @@ lazy val httpApi = (project in file("modules/http-api"))
 
 // Example Application - demonstrates library usage
 lazy val exampleApp = (project in file("modules/example-app"))
-  .dependsOn(runtime, langCompiler, httpApi)
+  .dependsOn(runtime, langCompiler, langStdlib, httpApi)
   .settings(
     name := "constellation-example-app",
     libraryDependencies ++= Seq(

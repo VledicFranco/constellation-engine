@@ -7,6 +7,7 @@ import {
 import * as ws from 'ws';
 import { Duplex } from 'stream';
 import { ScriptRunnerPanel } from './panels/ScriptRunnerPanel';
+import { DagVisualizerPanel } from './panels/DagVisualizerPanel';
 
 let client: LanguageClient | undefined;
 
@@ -159,6 +160,32 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(runScriptCommand);
+
+  // Register DAG visualizer command
+  const dagVisualizerCommand = vscode.commands.registerCommand(
+    'constellation.showDagVisualization',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== 'constellation') {
+        vscode.window.showWarningMessage('Open a Constellation file (.cst) to visualize');
+        return;
+      }
+
+      const uri = editor.document.uri.toString();
+      DagVisualizerPanel.createOrShow(context.extensionUri, client, uri);
+    }
+  );
+
+  context.subscriptions.push(dagVisualizerCommand);
+
+  // Auto-refresh DAG visualizer on document change
+  const documentChangeListener = vscode.workspace.onDidChangeTextDocument((e) => {
+    if (e.document.languageId === 'constellation') {
+      DagVisualizerPanel.refresh(e.document.uri.toString());
+    }
+  });
+
+  context.subscriptions.push(documentChangeListener);
 
   // Start the client
   client.start().catch((error) => {

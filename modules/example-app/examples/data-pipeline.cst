@@ -1,0 +1,30 @@
+# Complex Example: Data Analysis Pipeline
+# Demonstrates a multi-step data processing workflow with branching
+
+in numbers: List<Int>
+in threshold: Int
+in multiplier: Int
+
+# Step 1: Filter - keep only numbers above threshold
+filtered = FilterGreaterThan(numbers, threshold)
+
+# Step 2: Transform - multiply each filtered number
+scaled = MultiplyEach(filtered, multiplier)
+
+# Step 3: Aggregate - calculate statistics on the scaled data
+total = SumList(scaled)
+avg = Average(scaled)
+highest = Max(scaled)
+lowest = Min(scaled)
+
+# Step 4: Format - make the total human-readable
+formattedTotal = FormatNumber(total)
+
+# Outputs - multiple results from the pipeline
+out filtered
+out scaled
+out total
+out avg
+out highest
+out lowest
+out formattedTotal

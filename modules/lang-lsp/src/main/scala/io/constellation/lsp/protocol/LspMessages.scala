@@ -117,6 +117,37 @@ object LspMessages {
     error: Option[String]
   )
 
+  // ========== Custom: Get DAG Structure ==========
+
+  case class GetDagStructureParams(
+    uri: String
+  )
+
+  case class GetDagStructureResult(
+    success: Boolean,
+    dag: Option[DagStructure],
+    error: Option[String]
+  )
+
+  case class DagStructure(
+    modules: Map[String, ModuleNode],
+    data: Map[String, DataNode],
+    inEdges: List[(String, String)],
+    outEdges: List[(String, String)],
+    declaredOutputs: List[String]
+  )
+
+  case class ModuleNode(
+    name: String,
+    consumes: Map[String, String],
+    produces: Map[String, String]
+  )
+
+  case class DataNode(
+    name: String,
+    cType: String
+  )
+
   case class InputField(
     name: String,
     `type`: TypeDescriptor,
@@ -197,6 +228,21 @@ object LspMessages {
 
   given Encoder[GetInputSchemaResult] = deriveEncoder
   given Decoder[GetInputSchemaResult] = deriveDecoder
+
+  given Encoder[GetDagStructureParams] = deriveEncoder
+  given Decoder[GetDagStructureParams] = deriveDecoder
+
+  given Encoder[GetDagStructureResult] = deriveEncoder
+  given Decoder[GetDagStructureResult] = deriveDecoder
+
+  given Encoder[DagStructure] = deriveEncoder
+  given Decoder[DagStructure] = deriveDecoder
+
+  given Encoder[ModuleNode] = deriveEncoder
+  given Decoder[ModuleNode] = deriveDecoder
+
+  given Encoder[DataNode] = deriveEncoder
+  given Decoder[DataNode] = deriveDecoder
 
   given Encoder[RecordField] = deriveEncoder
   given Decoder[RecordField] = deriveDecoder

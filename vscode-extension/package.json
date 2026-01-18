@@ -44,6 +44,11 @@
         "command": "constellation.runScript",
         "title": "Constellation: Run Script",
         "icon": "$(play)"
+      },
+      {
+        "command": "constellation.showDagVisualization",
+        "title": "Constellation: Show DAG Visualization",
+        "icon": "$(type-hierarchy)"
       }
     ],
     "keybindings": [
@@ -51,6 +56,12 @@
         "command": "constellation.runScript",
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
+        "when": "editorLangId == constellation"
+      },
+      {
+        "command": "constellation.showDagVisualization",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
         "when": "editorLangId == constellation"
       }
     ],
@@ -60,11 +71,21 @@
           "command": "constellation.runScript",
           "when": "editorLangId == constellation",
           "group": "navigation"
+        },
+        {
+          "command": "constellation.showDagVisualization",
+          "when": "editorLangId == constellation",
+          "group": "navigation"
         }
       ],
       "editor/context": [
         {
           "command": "constellation.runScript",
+          "when": "editorLangId == constellation",
+          "group": "1_modification"
+        },
+        {
+          "command": "constellation.showDagVisualization",
           "when": "editorLangId == constellation",
           "group": "1_modification"
         }

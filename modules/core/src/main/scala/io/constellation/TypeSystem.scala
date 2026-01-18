@@ -3,6 +3,68 @@ package io.constellation
 import cats.effect.IO
 import cats.implicits.toTraverseOps
 
+/** Constellation Type System
+  *
+  * This module defines the core type system used throughout Constellation Engine.
+  * It provides runtime type representations (CType) and value representations (CValue)
+  * that enable type-safe data flow between modules in a DAG pipeline.
+  *
+  * == Type Hierarchy ==
+  *
+  * {{{
+  * CType (runtime type representation)
+  * ├── CString      - String type
+  * ├── CInt         - Integer type (Long)
+  * ├── CFloat       - Floating point type (Double)
+  * ├── CBoolean     - Boolean type
+  * ├── CList        - Homogeneous list type
+  * ├── CMap         - Key-value map type
+  * ├── CProduct     - Record/struct type (named fields)
+  * └── CUnion       - Tagged union type
+  *
+  * CValue (runtime value representation)
+  * ├── CString      - String value
+  * ├── CInt         - Integer value
+  * ├── CFloat       - Float value
+  * ├── CBoolean     - Boolean value
+  * ├── CList        - List value with element type
+  * ├── CMap         - Map value with key/value types
+  * ├── CProduct     - Record value with named fields
+  * └── CUnion       - Tagged union value
+  * }}}
+  *
+  * == Type Tags ==
+  *
+  * CTypeTag provides compile-time type mapping from Scala types to CType:
+  * {{{
+  * given CTypeTag[String]  -> CType.CString
+  * given CTypeTag[Long]    -> CType.CInt
+  * given CTypeTag[Double]  -> CType.CFloat
+  * given CTypeTag[Boolean] -> CType.CBoolean
+  * given CTypeTag[List[A]] -> CType.CList(A's type)
+  * }}}
+  *
+  * == Injectors and Extractors ==
+  *
+  * CValueInjector converts Scala values to CValue:
+  * {{{
+  * CValueInjector[String].inject("hello") // => CValue.CString("hello")
+  * }}}
+  *
+  * CValueExtractor converts CValue back to Scala types:
+  * {{{
+  * CValueExtractor[String].extract(CValue.CString("hello")) // => Right("hello")
+  * }}}
+  *
+  * @see [[io.constellation.Spec]] for DAG specification types
+  * @see [[io.constellation.ModuleBuilder]] for module definition API
+  */
+
+/** Runtime type representation for Constellation values.
+  *
+  * CType is a sealed trait representing all possible types that can flow
+  * through a Constellation DAG. Every CValue has a corresponding CType.
+  */
 sealed trait CType
 
 object CType {

@@ -1,0 +1,9 @@
+# Simple Example: Text Transformation
+# Demonstrates basic module usage with a single transformation
+
+in message: String
+
+# Transform the message to uppercase
+result = Uppercase(message)
+
+out result

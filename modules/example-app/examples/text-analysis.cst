@@ -1,0 +1,21 @@
+# Text Analysis Pipeline
+# Analyzes text input and produces multiple metrics
+
+in document: String
+
+# Clean the input
+cleaned = Trim(document)
+normalized = Lowercase(cleaned)
+
+# Analyze the text
+words = WordCount(normalized)
+chars = TextLength(normalized)
+
+# Split into lines for further processing
+lines = SplitLines(cleaned)
+
+out cleaned
+out normalized
+out words
+out chars
+out lines

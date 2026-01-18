@@ -8,6 +8,71 @@ import io.circe.Json
 import scala.concurrent.duration.FiniteDuration
 import scala.deriving.Mirror
 
+/** ModuleBuilder - Fluent API for defining Constellation modules.
+  *
+  * ModuleBuilder provides a type-safe, declarative way to create processing
+  * modules that can be composed into DAG pipelines. Each module has:
+  * - Metadata (name, description, version, tags)
+  * - Input/output type signatures (derived from case classes)
+  * - Implementation (pure function or IO-based)
+  *
+  * == Basic Usage ==
+  *
+  * {{{
+  * // 1. Define input/output case classes
+  * case class TextInput(text: String)
+  * case class TextOutput(result: String)
+  *
+  * // 2. Build the module
+  * val uppercase: Module.Uninitialized = ModuleBuilder
+  *   .metadata(
+  *     name = "Uppercase",
+  *     description = "Converts text to uppercase",
+  *     majorVersion = 1,
+  *     minorVersion = 0
+  *   )
+  *   .tags("text", "transform")
+  *   .implementationPure[TextInput, TextOutput] { input =>
+  *     TextOutput(input.text.toUpperCase)
+  *   }
+  *   .build
+  * }}}
+  *
+  * == Implementation Types ==
+  *
+  * '''Pure implementations''' - For side-effect-free transformations:
+  * {{{
+  * .implementationPure[Input, Output] { input => Output(...) }
+  * }}}
+  *
+  * '''IO implementations''' - For effectful operations (HTTP, DB, etc.):
+  * {{{
+  * .implementation[Input, Output] { input =>
+  *   IO {
+  *     // perform side effects
+  *     Output(...)
+  *   }
+  * }
+  * }}}
+  *
+  * == Field Naming Rules ==
+  *
+  * Case class field names map directly to variable names in constellation-lang:
+  * {{{
+  * case class MyInput(text: String, count: Int)
+  *
+  * // In constellation-lang:
+  * result = MyModule(text, count)  // field names must match exactly
+  * }}}
+  *
+  * == Module States ==
+  *
+  * - `Module.Uninitialized` - Module template, not yet registered
+  * - `Module.Initialized` - Module with runtime context, ready for execution
+  *
+  * @see [[io.constellation.Module]] for module type definitions
+  * @see [[io.constellation.Constellation]] for module registration API
+  */
 object ModuleBuilder {
 
   case class SimpleIn[A](in: A)

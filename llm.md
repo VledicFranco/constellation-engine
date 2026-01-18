@@ -389,6 +389,92 @@ io.constellation
 
 ## Development Workflows
 
+### Quick Start (Recommended)
+
+The fastest way to start developing:
+
+```bash
+# One command to start everything
+make dev
+
+# Or with hot-reload (server auto-restarts on code changes)
+make server-rerun &
+make ext-watch
+```
+
+### Makefile Commands
+
+| Command | Description |
+|---------|-------------|
+| `make dev` | Start full dev environment (server + extension watch) |
+| `make server` | Start HTTP/LSP server with ExampleLib |
+| `make server-rerun` | Start server with hot-reload (auto-restart) |
+| `make watch` | Watch Scala sources and recompile |
+| `make ext-watch` | Watch TypeScript and recompile |
+| `make test` | Run all tests |
+| `make compile` | Compile all Scala modules |
+| `make extension` | Compile VSCode extension |
+| `make all` | Compile everything (Scala + TypeScript) |
+| `make clean` | Clean all build artifacts |
+| `make install` | Install all dependencies |
+
+**Module-specific tests:**
+```bash
+make test-core      # Test core module
+make test-compiler  # Test compiler
+make test-lsp       # Test LSP server
+make test-parser    # Test parser
+make test-http      # Test HTTP API
+```
+
+### VSCode Tasks
+
+Press `Ctrl+Shift+P` → "Tasks: Run Task" to access:
+
+| Task | Description |
+|------|-------------|
+| **Compile All** | Compile Scala modules (default build) |
+| **Run Tests** | Run all tests |
+| **Start Server (ExampleLib)** | Start HTTP/LSP server |
+| **Watch Compile** | Watch Scala and recompile on changes |
+| **Watch Extension** | Watch TypeScript and recompile |
+| **Full Dev Setup** | Start server + extension watch in parallel |
+| **Test Core/Compiler/LSP/Parser** | Module-specific tests |
+
+### Development Scripts
+
+Platform-specific startup scripts in `scripts/`:
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\dev.ps1                    # Full dev environment
+.\scripts\dev.ps1 -HotReload         # With auto-restart
+.\scripts\dev.ps1 -ServerOnly        # Server only
+.\scripts\dev.ps1 -WatchOnly         # TypeScript watch only
+```
+
+**Unix/Mac (Bash):**
+```bash
+./scripts/dev.sh                     # Full dev environment
+./scripts/dev.sh --hot-reload        # With auto-restart
+./scripts/dev.sh --server-only       # Server only
+./scripts/dev.sh --watch-only        # TypeScript watch only
+```
+
+### Hot Reload (Server Auto-Restart)
+
+For automatic server restart when Scala code changes:
+
+```bash
+# Using Make
+make server-rerun
+
+# Using SBT directly
+sbt "~exampleApp/reStart"
+```
+
+This uses the sbt-revolver plugin configured in `project/plugins.sbt`.
+
 ### Building the Project
 
 ```bash
@@ -404,7 +490,7 @@ sbt runtime/test
 sbt langCompiler/test
 
 # Run example application
-sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
+sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
 
 # Continuous compilation (watches for changes)
 sbt ~compile
@@ -546,6 +632,29 @@ val fetchUrl: Module.Uninitialized = ModuleBuilder
     }
   }
   .build
+```
+
+### Task: Using ExampleLib (All Functions)
+
+The `ExampleLib` provides a compiler with all standard library and example app functions pre-registered:
+
+**Location:** `modules/example-app/src/main/scala/io/constellation/examples/app/ExampleLib.scala`
+
+```scala
+import io.constellation.examples.app.ExampleLib
+
+// Get compiler with all functions (StdLib + DataModules + TextModules)
+val compiler = ExampleLib.compiler
+
+// Available functions:
+// Data: SumList, Average, Max, Min, FilterGreaterThan, MultiplyEach, Range, FormatNumber
+// Text: Uppercase, Lowercase, Trim, Replace, WordCount, TextLength, Contains, SplitLines, Split
+// StdLib: add, subtract, multiply, divide, concat, upper, lower, etc.
+```
+
+**Running ExampleServer (full function library):**
+```bash
+sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
 ```
 
 ### Task: Add Standard Library Function
@@ -992,15 +1101,63 @@ result = AnotherModule(intermediate)
 out result
 ```
 
+## VSCode Extension Features
+
+The VSCode extension provides a rich editing experience for constellation-lang files with multiple interactive features.
+
+### Keyboard Shortcuts
+
+| Shortcut | Command | Description |
+|----------|---------|-------------|
+| `Ctrl+Shift+R` | Run Script | Execute the current .cst file and show results |
+| `Ctrl+Shift+D` | Show DAG Visualization | Visualize the pipeline as an interactive graph |
+| `Ctrl+Space` | Autocomplete | Show available modules and keywords |
+
+### Script Runner Panel
+
+The Script Runner provides an interactive way to execute constellation-lang scripts:
+
+- **Input Form**: Automatically generates input fields based on declared inputs
+- **Type-aware UI**: Different controls for String, Int, List<T>, Boolean types
+- **Live Results**: Shows execution output with formatted JSON
+- **Error Display**: Compilation and runtime errors with source locations
+
+**Trigger:** `Ctrl+Shift+R` or click the play icon in the editor title bar.
+
+### DAG Visualizer Panel
+
+The DAG Visualizer renders your pipeline as an interactive directed graph:
+
+- **Node Types**:
+  - Data nodes (blue, rounded): Inputs and intermediate values
+  - Module nodes (orange, rectangular): Processing steps
+- **Edges**: Curved arrows showing data flow direction
+- **Interaction**:
+  - Pan by clicking and dragging
+  - Zoom with mouse wheel
+  - Click nodes for details (future feature)
+- **Auto-refresh**: Updates when the source file changes
+
+**Trigger:** `Ctrl+Shift+D` or click the graph icon in the editor title bar.
+
+### LSP Features
+
+| Feature | Description | Trigger |
+|---------|-------------|---------|
+| **Autocomplete** | Module names, keywords, types | `Ctrl+Space` |
+| **Diagnostics** | Real-time compilation errors | Automatic |
+| **Hover Info** | Module documentation and types | Mouse hover |
+| **Go to Definition** | Navigate to module source (planned) | `F12` |
+
 ## Language Server Protocol (LSP) Integration
 
 Constellation Engine includes a full LSP implementation for constellation-lang, enabling IDE features in VSCode and other editors.
 
 ### Quick Start with LSP
 
-**1. Start server with LSP:**
+**1. Start server with LSP (using ExampleLib with all functions):**
 ```bash
-sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
+sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
 ```
 
 **2. Install VSCode extension:**
@@ -1136,5 +1293,13 @@ For complete LSP documentation, see:
 ---
 
 **Last Updated:** 2026-01-17
+
+## Recent Additions (January 2026)
+
+- **DAG Visualizer**: Interactive graph visualization of pipelines (`Ctrl+Shift+D`)
+- **Script Runner**: Execute scripts directly from VSCode with input forms (`Ctrl+Shift+R`)
+- **ExampleLib**: Combined compiler with StdLib + DataModules + TextModules
+- **ExampleServer**: HTTP server with full function library at `modules/example-app/src/main/scala/.../server/`
+- **LSP getDagStructure**: New endpoint for retrieving compiled DAG structure as JSON
 
 **For Questions:** See test files for usage examples, or check `modules/example-app/` for complete working examples.

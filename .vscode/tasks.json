@@ -1,0 +1,147 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Compile All",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["compile"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$sbt",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["test"],
+      "group": "test",
+      "problemMatcher": "$sbt",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Start Server (ExampleLib)",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["exampleApp/runMain io.constellation.examples.app.server.ExampleServer"],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^\\[error\\]\\s+(.*):(\\d+):(\\d+):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[info\\] running",
+          "endsPattern": "^.*Ember-Server service bound"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "Watch Compile",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["~compile"],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^\\[error\\]\\s+(.*):(\\d+):(\\d+):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^\\[info\\] .*compiling",
+          "endsPattern": "^\\[success\\]|^\\[error\\]"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["clean"],
+      "problemMatcher": "$sbt"
+    },
+    {
+      "label": "Compile Extension",
+      "type": "npm",
+      "script": "compile",
+      "path": "vscode-extension/",
+      "problemMatcher": "$tsc",
+      "group": "build"
+    },
+    {
+      "label": "Watch Extension",
+      "type": "npm",
+      "script": "watch",
+      "path": "vscode-extension/",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true
+    },
+    {
+      "label": "Full Dev Setup",
+      "dependsOn": ["Start Server (ExampleLib)", "Watch Extension"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
+      "label": "Test Core",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["core/test"],
+      "group": "test",
+      "problemMatcher": "$sbt"
+    },
+    {
+      "label": "Test Compiler",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["langCompiler/test"],
+      "group": "test",
+      "problemMatcher": "$sbt"
+    },
+    {
+      "label": "Test LSP",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["langLsp/test"],
+      "group": "test",
+      "problemMatcher": "$sbt"
+    },
+    {
+      "label": "Test Parser",
+      "type": "shell",
+      "command": "sbt",
+      "args": ["langParser/test"],
+      "group": "test",
+      "problemMatcher": "$sbt"
+    }
+  ]
+}

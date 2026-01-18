@@ -11,6 +11,7 @@ import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspTypes._
 import io.constellation.lsp.protocol.LspMessages._
+import io.constellation.lsp.protocol.LspMessages.{GetDagStructureParams, GetDagStructureResult, DagStructure, ModuleNode, DataNode}
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
@@ -41,6 +42,9 @@ class ConstellationLanguageServer(
 
       case "constellation/getInputSchema" =>
         handleGetInputSchema(request)
+
+      case "constellation/getDagStructure" =>
+        handleGetDagStructure(request)
 
       case method =>
         IO.pure(Response(
@@ -259,6 +263,105 @@ class ConstellationLanguageServer(
           error = Some(error.message)
         )
     }
+  }
+
+  private def handleGetDagStructure(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[GetDagStructureParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            documentManager.getDocument(params.uri).flatMap {
+              case Some(document) =>
+                IO.pure(getDagStructure(document)).map { dagResult =>
+                  Response(id = request.id, result = Some(dagResult.asJson))
+                }
+              case None =>
+                IO.pure(Response(
+                  id = request.id,
+                  result = Some(GetDagStructureResult(
+                    success = false,
+                    dag = None,
+                    error = Some("Document not found")
+                  ).asJson)
+                ))
+            }
+        }
+    }
+  }
+
+  private def getDagStructure(document: DocumentState): GetDagStructureResult = {
+    val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
+
+    compiler.compile(document.text, dagName) match {
+      case Right(compiled) =>
+        val dagSpec = compiled.dagSpec
+
+        val modules = dagSpec.modules.map { case (uuid, spec) =>
+          uuid.toString -> ModuleNode(
+            name = spec.name,
+            consumes = spec.consumes.map { case (k, v) => k -> cTypeToString(v) },
+            produces = spec.produces.map { case (k, v) => k -> cTypeToString(v) }
+          )
+        }
+
+        val data = dagSpec.data.map { case (uuid, spec) =>
+          uuid.toString -> DataNode(
+            name = spec.name,
+            cType = cTypeToString(spec.cType)
+          )
+        }
+
+        val inEdges = dagSpec.inEdges.toList.map { case (from, to) =>
+          (from.toString, to.toString)
+        }
+
+        val outEdges = dagSpec.outEdges.toList.map { case (from, to) =>
+          (from.toString, to.toString)
+        }
+
+        GetDagStructureResult(
+          success = true,
+          dag = Some(DagStructure(
+            modules = modules,
+            data = data,
+            inEdges = inEdges,
+            outEdges = outEdges,
+            declaredOutputs = dagSpec.declaredOutputs
+          )),
+          error = None
+        )
+
+      case Left(errors) =>
+        GetDagStructureResult(
+          success = false,
+          dag = None,
+          error = Some(errors.map(_.message).mkString("; "))
+        )
+    }
+  }
+
+  private def cTypeToString(cType: io.constellation.CType): String = cType match {
+    case io.constellation.CType.CString => "String"
+    case io.constellation.CType.CInt => "Int"
+    case io.constellation.CType.CFloat => "Float"
+    case io.constellation.CType.CBoolean => "Boolean"
+    case io.constellation.CType.CList(valuesType) => s"List<${cTypeToString(valuesType)}>"
+    case io.constellation.CType.CMap(keysType, valuesType) =>
+      s"Map<${cTypeToString(keysType)}, ${cTypeToString(valuesType)}>"
+    case io.constellation.CType.CProduct(structure) =>
+      s"{ ${structure.map { case (k, v) => s"$k: ${cTypeToString(v)}" }.mkString(", ")} }"
+    case io.constellation.CType.CUnion(structure) =>
+      structure.keys.mkString(" | ")
   }
 
   private def typeExprToDescriptor(typeExpr: TypeExpr): TypeDescriptor = typeExpr match {
