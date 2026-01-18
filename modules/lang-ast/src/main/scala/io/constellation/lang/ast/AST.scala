@@ -177,6 +177,13 @@ enum CompareOp:
   case LtEq    // <=
   case GtEq    // >=
 
+/** Arithmetic operators */
+enum ArithOp:
+  case Add     // +
+  case Sub     // -
+  case Mul     // *
+  case Div     // /
+
 /** Expressions */
 sealed trait Expression
 
@@ -231,6 +238,13 @@ object Expression {
   final case class Compare(
     left: Located[Expression],
     op: CompareOp,
+    right: Located[Expression]
+  ) extends Expression
+
+  /** Arithmetic expression: a + b, x * y, etc. */
+  final case class Arithmetic(
+    left: Located[Expression],
+    op: ArithOp,
     right: Located[Expression]
   ) extends Expression
 }
@@ -288,5 +302,9 @@ object CompileError {
 
   final case class UnsupportedComparison(op: String, leftType: String, rightType: String, span: Option[Span]) extends CompileError {
     def message: String = s"Operator '$op' is not supported for types $leftType and $rightType"
+  }
+
+  final case class UnsupportedArithmetic(op: String, leftType: String, rightType: String, span: Option[Span]) extends CompileError {
+    def message: String = s"Arithmetic operator '$op' is not supported for types $leftType and $rightType"
   }
 }

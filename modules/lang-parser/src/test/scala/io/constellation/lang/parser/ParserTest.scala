@@ -2,6 +2,7 @@ package io.constellation.lang.parser
 
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
+import io.constellation.lang.ast.ArithOp
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -114,7 +115,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     funcCall.args should have size 2
   }
 
-  it should "parse merge expressions" in {
+  it should "parse addition expressions (+ operator)" in {
     val source = """
       in a: { x: Int }
       in b: { y: Int }
@@ -126,7 +127,11 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    assignment.value.value shouldBe a[Expression.Merge]
+    // Parser now produces Arithmetic(Add, ...) for +
+    // TypeChecker will convert to Merge for records or function call for numerics
+    assignment.value.value shouldBe a[Expression.Arithmetic]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Add
   }
 
   it should "parse projection expressions" in {
@@ -515,7 +520,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     innerAccess.source.value shouldBe Expression.VarRef("person")
   }
 
-  it should "parse field access combined with merge" in {
+  it should "parse field access combined with addition" in {
     val source = """
       in a: { x: Int }
       in b: { y: Int }
@@ -527,7 +532,9 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    assignment.value.value shouldBe a[Expression.Merge]
+    assignment.value.value shouldBe a[Expression.Arithmetic]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Add
   }
 
   it should "parse field access after function call" in {
@@ -686,7 +693,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     compare.op shouldBe CompareOp.GtEq
   }
 
-  it should "parse comparison with merge operator respecting precedence" in {
+  it should "parse comparison with addition operator respecting precedence" in {
     // a + b == c + d should parse as (a + b) == (c + d)
     val source = """
       in a: { x: Int }
@@ -703,8 +710,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val assignment = program.declarations(4).asInstanceOf[Declaration.Assignment]
     val compare = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.Eq
-    compare.left.value shouldBe a[Expression.Merge]
-    compare.right.value shouldBe a[Expression.Merge]
+    compare.left.value shouldBe a[Expression.Arithmetic]
+    compare.right.value shouldBe a[Expression.Arithmetic]
   }
 
   it should "parse comparison with literals" in {
@@ -722,5 +729,153 @@ class ParserTest extends AnyFlatSpec with Matchers {
     compare.op shouldBe CompareOp.Eq
     compare.left.value shouldBe a[Expression.VarRef]
     compare.right.value shouldBe Expression.IntLit(42)
+  }
+
+  // Arithmetic operator tests
+
+  it should "parse subtraction (-)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a - b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Arithmetic]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Sub
+  }
+
+  it should "parse multiplication (*)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a * b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Arithmetic]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Mul
+  }
+
+  it should "parse division (/)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a / b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Arithmetic]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Div
+  }
+
+  it should "parse arithmetic with correct precedence (* before +)" in {
+    // a + b * c should parse as a + (b * c)
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      result = a + b * c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Add
+    arith.left.value shouldBe a[Expression.VarRef]  // a
+    arith.right.value shouldBe a[Expression.Arithmetic]  // b * c
+    val mulExpr = arith.right.value.asInstanceOf[Expression.Arithmetic]
+    mulExpr.op shouldBe ArithOp.Mul
+  }
+
+  it should "parse arithmetic with correct precedence (/ before -)" in {
+    // a - b / c should parse as a - (b / c)
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      result = a - b / c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Sub
+    arith.left.value shouldBe a[Expression.VarRef]  // a
+    arith.right.value shouldBe a[Expression.Arithmetic]  // b / c
+    val divExpr = arith.right.value.asInstanceOf[Expression.Arithmetic]
+    divExpr.op shouldBe ArithOp.Div
+  }
+
+  it should "parse chained multiplication with left associativity" in {
+    // a * b * c should parse as (a * b) * c
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      result = a * b * c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Mul
+    arith.left.value shouldBe a[Expression.Arithmetic]  // a * b
+    arith.right.value shouldBe a[Expression.VarRef]  // c
+    val leftMul = arith.left.value.asInstanceOf[Expression.Arithmetic]
+    leftMul.op shouldBe ArithOp.Mul
+  }
+
+  it should "parse complex arithmetic expression" in {
+    // a + b * c - d / e should parse as ((a + (b * c)) - (d / e))
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      in d: Int
+      in e: Int
+      result = a + b * c - d / e
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(5).asInstanceOf[Declaration.Assignment]
+    // The top-level should be subtraction
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Sub
+    // Left side should be a + (b * c)
+    arith.left.value shouldBe a[Expression.Arithmetic]
+    val leftAdd = arith.left.value.asInstanceOf[Expression.Arithmetic]
+    leftAdd.op shouldBe ArithOp.Add
+    // Right side should be d / e
+    arith.right.value shouldBe a[Expression.Arithmetic]
+    val rightDiv = arith.right.value.asInstanceOf[Expression.Arithmetic]
+    rightDiv.op shouldBe ArithOp.Div
   }
 }

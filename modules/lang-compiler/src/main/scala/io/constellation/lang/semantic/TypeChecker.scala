@@ -4,6 +4,7 @@ import cats.data.{ValidatedNel, Validated}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
+import io.constellation.lang.ast.ArithOp
 
 /** Type environment for type checking */
 final case class TypeEnvironment(
@@ -396,6 +397,13 @@ object TypeChecker {
           desugarComparison(l, op, r, span, env)
         }
         .andThen(identity)
+
+    case Expression.Arithmetic(left, op, right) =>
+      (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
+        .mapN { (l, r) =>
+          desugarArithmetic(l, op, r, span, env)
+        }
+        .andThen(identity)
   }
 
   private def checkProjection(
@@ -488,6 +496,70 @@ object TypeChecker {
         case Left(err) =>
           err.invalidNel
       }
+    }
+  }
+
+  /** Desugar arithmetic operator to stdlib function call or merge */
+  private def desugarArithmetic(
+    left: TypedExpression,
+    op: ArithOp,
+    right: TypedExpression,
+    span: Span,
+    env: TypeEnvironment
+  ): TypeResult[TypedExpression] = {
+    // Helper to format operator for error messages
+    def opString(op: ArithOp): String = op match {
+      case ArithOp.Add => "+"
+      case ArithOp.Sub => "-"
+      case ArithOp.Mul => "*"
+      case ArithOp.Div => "/"
+    }
+
+    // Check if a type is numeric
+    def isNumeric(t: SemanticType): Boolean = t match {
+      case SemanticType.SInt | SemanticType.SFloat => true
+      case _ => false
+    }
+
+    // Check if a type is mergeable (record-like: Record, Candidates<Record>)
+    def isMergeable(t: SemanticType): Boolean = t match {
+      case _: SemanticType.SRecord => true
+      case SemanticType.SCandidates(_: SemanticType.SRecord) => true
+      case SemanticType.SCandidates(_) => false // Candidates of non-record not mergeable
+      case _ => false
+    }
+
+    // For Add with mergeable types (records or Candidates<Record>), treat as merge
+    if (op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType)) {
+      return mergeTypes(left.semanticType, right.semanticType, span).map { merged =>
+        TypedExpression.Merge(left, right, merged, span)
+      }
+    }
+
+    // For arithmetic operations, both operands must be numeric
+    if (!isNumeric(left.semanticType) || !isNumeric(right.semanticType)) {
+      return CompileError.UnsupportedArithmetic(
+        opString(op),
+        left.semanticType.prettyPrint,
+        right.semanticType.prettyPrint,
+        Some(span)
+      ).invalidNel
+    }
+
+    // Determine the function name based on operator
+    val funcName: String = op match {
+      case ArithOp.Add => "add"
+      case ArithOp.Sub => "subtract"
+      case ArithOp.Mul => "multiply"
+      case ArithOp.Div => "divide"
+    }
+
+    // Look up the function signature
+    env.functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
+      case Right(sig) =>
+        TypedExpression.FunctionCall(funcName, sig, List(left, right), span).validNel
+      case Left(err) =>
+        err.invalidNel
     }
   }
 }

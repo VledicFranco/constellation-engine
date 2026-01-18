@@ -6,6 +6,7 @@ import cats.parse.Rfc5234.{alpha, digit}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
+import io.constellation.lang.ast.ArithOp
 
 object ConstellationParser {
 
@@ -76,6 +77,15 @@ object ConstellationParser {
   private val compareOp: P[CompareOp] =
     token(eqOp | notEqOp | lteOp | gteOp | ltOp | gtOp)
 
+  // Arithmetic operators
+  private val addOp: P[ArithOp] = P.char('+').as(ArithOp.Add)
+  private val subOp: P[ArithOp] = P.char('-').as(ArithOp.Sub)
+  private val mulOp: P[ArithOp] = P.char('*').as(ArithOp.Mul)
+  private val divOp: P[ArithOp] = P.char('/').as(ArithOp.Div)
+
+  private val addSubOp: P[ArithOp] = token(addOp | subOp)
+  private val mulDivOp: P[ArithOp] = token(mulOp | divOp)
+
   // Qualified names: stdlib.math.add (note: no whitespace around dots)
   private val qualifiedName: P[QualifiedName] =
     (rawIdentifier ~ (dot *> rawIdentifier).rep0).map { case (first, rest) =>
@@ -125,25 +135,38 @@ object ConstellationParser {
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
   // Expressions
-  // Precedence (low to high): compare -> merge -> projection -> primary
+  // Precedence (low to high): compare -> addSub -> mulDiv -> postfix -> primary
   lazy val expression: P[Expression] = P.defer(exprCompare)
 
   // Comparison expressions: a == b, x < y, etc.
   // Note: we don't allow chaining (a < b < c is invalid)
   private lazy val exprCompare: P[Expression] =
-    (withSpan(exprMerge) ~ (compareOp ~ withSpan(exprMerge)).?).map {
+    (withSpan(exprAddSub) ~ (compareOp ~ withSpan(exprAddSub)).?).map {
       case (left, None) => left.value
       case (left, Some((op, right))) =>
         Expression.Compare(left, op, right)
     }
 
-  private lazy val exprMerge: P[Expression] =
-    (withSpan(exprPostfix) ~ (plus *> withSpan(exprPostfix)).rep0).map {
+  // Addition and subtraction (lower precedence than multiplication/division)
+  private lazy val exprAddSub: P[Expression] =
+    (withSpan(exprMulDiv) ~ (addSubOp ~ withSpan(exprMulDiv)).rep0).map {
       case (first, Nil) => first.value
       case (first, rest) =>
-        rest.foldLeft(first.value) { (left, right) =>
-          Expression.Merge(Located(left, first.span), right)
-        }
+        rest.foldLeft((first.value, first.span)) { case ((left, leftSpan), (op, right)) =>
+          val newSpan = Span(leftSpan.start, right.span.end)
+          (Expression.Arithmetic(Located(left, leftSpan), op, right), newSpan)
+        }._1
+    }
+
+  // Multiplication and division (higher precedence than addition/subtraction)
+  private lazy val exprMulDiv: P[Expression] =
+    (withSpan(exprPostfix) ~ (mulDivOp ~ withSpan(exprPostfix)).rep0).map {
+      case (first, Nil) => first.value
+      case (first, rest) =>
+        rest.foldLeft((first.value, first.span)) { case ((left, leftSpan), (op, right)) =>
+          val newSpan = Span(leftSpan.start, right.span.end)
+          (Expression.Arithmetic(Located(left, leftSpan), op, right), newSpan)
+        }._1
     }
 
   /** Postfix operations: projection [...] and field access .field */
