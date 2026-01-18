@@ -35,9 +35,9 @@ object TypeFormatter {
     }
     val paramsStr = paramStrs.mkString(", ")
 
-    // Format return type
-    val returnStr = if (produces.size == 1 && produces.contains("out")) {
-      formatCType(produces("out"))
+    // Format return type - unwrap single-field records for cleaner display
+    val returnStr = if (produces.size == 1) {
+      formatCType(produces.values.head)
     } else {
       formatCType(CType.CProduct(produces))
     }
@@ -57,10 +57,10 @@ object TypeFormatter {
     }
   }
 
-  /** Format return type documentation */
+  /** Format return type documentation - unwrap single-field records for cleaner display */
   def formatReturns(produces: Map[String, CType]): String = {
-    if (produces.size == 1 && produces.contains("out")) {
-      s"`${formatCType(produces("out"))}`"
+    if (produces.size == 1) {
+      s"`${formatCType(produces.values.head)}`"
     } else {
       val fieldLines = produces.toList.sortBy(_._1).map { case (name, ctype) =>
         s"- **$name**: `${formatCType(ctype)}`"
