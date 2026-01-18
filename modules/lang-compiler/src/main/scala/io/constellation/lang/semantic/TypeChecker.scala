@@ -3,6 +3,7 @@ package io.constellation.lang.semantic
 import cats.data.{ValidatedNel, Validated}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
+import io.constellation.lang.ast.CompareOp
 
 /** Type environment for type checking */
 final case class TypeEnvironment(
@@ -388,6 +389,13 @@ object TypeChecker {
 
     case Expression.BoolLit(v) =>
       TypedExpression.Literal(v, SemanticType.SBoolean, span).validNel
+
+    case Expression.Compare(left, op, right) =>
+      (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
+        .mapN { (l, r) =>
+          desugarComparison(l, op, r, span, env)
+        }
+        .andThen(identity)
   }
 
   private def checkProjection(
@@ -404,4 +412,82 @@ object TypeChecker {
 
   private def isAssignable(actual: SemanticType, expected: SemanticType): Boolean =
     actual == expected // Strict equality for now; can extend with subtyping
+
+  /** Desugar comparison operator to stdlib function call */
+  private def desugarComparison(
+    left: TypedExpression,
+    op: CompareOp,
+    right: TypedExpression,
+    span: Span,
+    env: TypeEnvironment
+  ): TypeResult[TypedExpression] = {
+    // Helper to format operator for error messages
+    def opString(op: CompareOp): String = op match {
+      case CompareOp.Eq    => "=="
+      case CompareOp.NotEq => "!="
+      case CompareOp.Lt    => "<"
+      case CompareOp.Gt    => ">"
+      case CompareOp.LtEq  => "<="
+      case CompareOp.GtEq  => ">="
+    }
+
+    // First check that both operands have the same type
+    if (left.semanticType != right.semanticType) {
+      return CompileError.TypeMismatch(
+        left.semanticType.prettyPrint,
+        right.semanticType.prettyPrint,
+        Some(span)
+      ).invalidNel
+    }
+
+    // Determine the function name based on operator and type
+    val funcNameResult: TypeResult[String] = (op, left.semanticType) match {
+      // Equality for Int
+      case (CompareOp.Eq, SemanticType.SInt) => "eq-int".validNel
+      // Equality for String
+      case (CompareOp.Eq, SemanticType.SString) => "eq-string".validNel
+
+      // Ordering comparisons only for Int
+      case (CompareOp.Lt, SemanticType.SInt)  => "lt".validNel
+      case (CompareOp.Gt, SemanticType.SInt)  => "gt".validNel
+      case (CompareOp.LtEq, SemanticType.SInt) => "lte".validNel
+      case (CompareOp.GtEq, SemanticType.SInt) => "gte".validNel
+
+      // NotEq is handled specially - we wrap the eq result in not()
+      case (CompareOp.NotEq, SemanticType.SInt)    => "eq-int".validNel
+      case (CompareOp.NotEq, SemanticType.SString) => "eq-string".validNel
+
+      // Unsupported combinations
+      case _ =>
+        CompileError.UnsupportedComparison(
+          opString(op),
+          left.semanticType.prettyPrint,
+          right.semanticType.prettyPrint,
+          Some(span)
+        ).invalidNel
+    }
+
+    funcNameResult.andThen { funcName =>
+      // Look up the function signature
+      env.functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
+        case Right(sig) =>
+          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), span)
+
+          // For NotEq, wrap in not()
+          if (op == CompareOp.NotEq) {
+            env.functions.lookupInScope(QualifiedName.simple("not"), env.namespaceScope, Some(span)) match {
+              case Right(notSig) =>
+                TypedExpression.FunctionCall("not", notSig, List(funcCall), span).validNel
+              case Left(err) =>
+                err.invalidNel
+            }
+          } else {
+            funcCall.validNel
+          }
+
+        case Left(err) =>
+          err.invalidNel
+      }
+    }
+  }
 }

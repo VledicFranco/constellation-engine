@@ -788,4 +788,207 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SInt
   }
+
+  // Comparison operator tests
+
+  private def comparisonRegistry: FunctionRegistry = {
+    val registry = FunctionRegistry.empty
+    // Int comparison functions
+    registry.register(FunctionSignature(
+      name = "eq-int",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.eq-int",
+      namespace = Some("stdlib.compare")
+    ))
+    registry.register(FunctionSignature(
+      name = "lt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.lt",
+      namespace = Some("stdlib.compare")
+    ))
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt",
+      namespace = Some("stdlib.compare")
+    ))
+    registry.register(FunctionSignature(
+      name = "lte",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.lte",
+      namespace = Some("stdlib.compare")
+    ))
+    registry.register(FunctionSignature(
+      name = "gte",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gte",
+      namespace = Some("stdlib.compare")
+    ))
+    // String comparison
+    registry.register(FunctionSignature(
+      name = "eq-string",
+      params = List("a" -> SemanticType.SString, "b" -> SemanticType.SString),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.eq-string",
+      namespace = Some("stdlib.compare")
+    ))
+    // Boolean not for NotEq
+    registry.register(FunctionSignature(
+      name = "not",
+      params = List("value" -> SemanticType.SBoolean),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.not",
+      namespace = Some("stdlib.bool")
+    ))
+    registry
+  }
+
+  it should "type check equality comparison for Int (==)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a == b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check less than comparison (<)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a < b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check greater than comparison (>)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a > b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check less than or equal comparison (<=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a <= b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check greater than or equal comparison (>=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a >= b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check inequality comparison for Int (!=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a != b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check equality comparison for String (==)" in {
+    val source = """
+      in a: String
+      in b: String
+      result = a == b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check inequality comparison for String (!=)" in {
+    val source = """
+      in a: String
+      in b: String
+      result = a != b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "report error for comparison with mismatched types" in {
+    val source = """
+      in a: Int
+      in b: String
+      result = a == b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error for unsupported comparison (< on String)" in {
+    val source = """
+      in a: String
+      in b: String
+      result = a < b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UnsupportedComparison]) shouldBe true
+  }
+
+  it should "type check comparison with literal" in {
+    val source = """
+      in x: Int
+      result = x == 42
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check comparison in conditional" in {
+    val source = """
+      in x: Int
+      in a: Int
+      in b: Int
+      result = if (x > 0) a else b
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
 }

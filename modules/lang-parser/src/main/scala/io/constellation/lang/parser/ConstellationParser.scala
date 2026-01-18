@@ -5,6 +5,7 @@ import cats.parse.Numbers
 import cats.parse.Rfc5234.{alpha, digit}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
+import io.constellation.lang.ast.CompareOp
 
 object ConstellationParser {
 
@@ -64,6 +65,17 @@ object ConstellationParser {
   private val closeAngle: P[Unit] = token(P.char('>'))
   private val dot: P[Unit] = P.char('.')
 
+  // Comparison operators (order matters: longer operators first)
+  private val eqOp: P[CompareOp] = P.string("==").as(CompareOp.Eq)
+  private val notEqOp: P[CompareOp] = P.string("!=").as(CompareOp.NotEq)
+  private val lteOp: P[CompareOp] = P.string("<=").as(CompareOp.LtEq)
+  private val gteOp: P[CompareOp] = P.string(">=").as(CompareOp.GtEq)
+  private val ltOp: P[CompareOp] = P.string("<").as(CompareOp.Lt)
+  private val gtOp: P[CompareOp] = P.string(">").as(CompareOp.Gt)
+
+  private val compareOp: P[CompareOp] =
+    token(eqOp | notEqOp | lteOp | gteOp | ltOp | gtOp)
+
   // Qualified names: stdlib.math.add (note: no whitespace around dots)
   private val qualifiedName: P[QualifiedName] =
     (rawIdentifier ~ (dot *> rawIdentifier).rep0).map { case (first, rest) =>
@@ -113,7 +125,17 @@ object ConstellationParser {
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
   // Expressions
-  lazy val expression: P[Expression] = P.defer(exprMerge)
+  // Precedence (low to high): compare -> merge -> projection -> primary
+  lazy val expression: P[Expression] = P.defer(exprCompare)
+
+  // Comparison expressions: a == b, x < y, etc.
+  // Note: we don't allow chaining (a < b < c is invalid)
+  private lazy val exprCompare: P[Expression] =
+    (withSpan(exprMerge) ~ (compareOp ~ withSpan(exprMerge)).?).map {
+      case (left, None) => left.value
+      case (left, Some((op, right))) =>
+        Expression.Compare(left, op, right)
+    }
 
   private lazy val exprMerge: P[Expression] =
     (withSpan(exprPostfix) ~ (plus *> withSpan(exprPostfix)).rep0).map {

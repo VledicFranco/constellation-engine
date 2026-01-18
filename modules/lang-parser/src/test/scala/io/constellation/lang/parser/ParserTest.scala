@@ -1,6 +1,7 @@
 package io.constellation.lang.parser
 
 import io.constellation.lang.ast.*
+import io.constellation.lang.ast.CompareOp
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -583,5 +584,143 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val fieldAccess = assignment.value.value.asInstanceOf[Expression.FieldAccess]
     fieldAccess.field.value shouldBe "x"
     fieldAccess.source.value shouldBe a[Expression.Conditional]
+  }
+
+  // Comparison operator tests
+
+  it should "parse equality comparison (==)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a == b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Compare]
+
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Eq
+  }
+
+  it should "parse inequality comparison (!=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a != b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.NotEq
+  }
+
+  it should "parse less than comparison (<)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a < b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Lt
+  }
+
+  it should "parse greater than comparison (>)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a > b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Gt
+  }
+
+  it should "parse less than or equal comparison (<=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a <= b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.LtEq
+  }
+
+  it should "parse greater than or equal comparison (>=)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a >= b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.GtEq
+  }
+
+  it should "parse comparison with merge operator respecting precedence" in {
+    // a + b == c + d should parse as (a + b) == (c + d)
+    val source = """
+      in a: { x: Int }
+      in b: { y: Int }
+      in c: { x: Int }
+      in d: { y: Int }
+      result = a + b == c + d
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(4).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Eq
+    compare.left.value shouldBe a[Expression.Merge]
+    compare.right.value shouldBe a[Expression.Merge]
+  }
+
+  it should "parse comparison with literals" in {
+    val source = """
+      in x: Int
+      result = x == 42
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Eq
+    compare.left.value shouldBe a[Expression.VarRef]
+    compare.right.value shouldBe Expression.IntLit(42)
   }
 }
