@@ -92,6 +92,11 @@ scoverage-report/
 # =============================================================================
 # Multi-Agent Coordination
 # =============================================================================
-# TODO.md is updated by multiple agents and causes frequent merge conflicts
-# Each agent should maintain their own local copy
+# TODO.md causes merge conflicts - use GitHub Issues instead
 TODO.md
+
+# Agent-local progress tracking (each agent has their own)
+PROGRESS.md
+
+# Agent worktree directories (created via git worktree)
+constellation-agent-*/

@@ -152,7 +152,6 @@ When adding a module to example-app:
 
 - Full architecture: See `llm.md`
 - Contributing guide: See `CONTRIBUTING.md`
-- **Sprint backlog & issue tracking: See `TODO.md`** (agents update this directly)
 - Language documentation: See `docs/constellation-lang/`
 
 ---
@@ -160,6 +159,45 @@ When adding a module to example-app:
 ## Multi-Agent Workflow (CRITICAL)
 
 This repository uses multiple Claude agents working in parallel. **Follow these rules strictly to avoid conflicts.**
+
+### Agent-Local Progress Tracking
+
+**IMPORTANT:** Do NOT use shared files (like TODO.md) for tracking progress. This causes merge conflicts.
+
+Each agent maintains their own `PROGRESS.md` file in their worktree root directory. This file is gitignored and never committed.
+
+**Create your PROGRESS.md when starting work:**
+
+```markdown
+# Agent <N> Progress
+
+## Current Work
+- **Issue:** #<NUMBER> - <title>
+- **Branch:** agent-<N>/issue-<NUMBER>-<description>
+- **Status:** In Progress | Blocked | Ready for PR | Complete
+- **Started:** <date>
+
+## Progress Log
+- <timestamp>: Started working on issue
+- <timestamp>: Completed initial investigation
+- <timestamp>: Implementation done, running tests
+- <timestamp>: PR created: #<PR-NUMBER>
+
+## Blockers
+- <any blockers or dependencies>
+
+## Notes
+- <any relevant notes, decisions made, things to remember>
+
+## Follow-up Issues Created
+- #<N> - <title>
+```
+
+**Benefits:**
+- No merge conflicts between agents
+- Each agent has full autonomy over their progress tracking
+- Progress history is preserved locally
+- Can include detailed notes without cluttering shared files
 
 ### Worktree Requirement
 
@@ -437,8 +475,19 @@ Use: mcp__github__list_pull_requests
 
 ### Step 4: Claim the Issue
 
-1. **Update TODO.md** - Mark issue as `[~]` in progress with your agent number
-2. **Comment on GitHub issue** (optional but recommended):
+1. **Update your local progress file** - Create/update `PROGRESS.md` in your worktree root:
+   ```markdown
+   # Agent <N> Progress
+
+   ## Current Work
+   - Issue: #<NUMBER> - <title>
+   - Branch: agent-<N>/issue-<NUMBER>-<desc>
+   - Status: In Progress
+
+   ## Notes
+   - <any notes about your progress>
+   ```
+2. **Comment on GitHub issue** (recommended):
    ```
    Use: mcp__github__add_issue_comment
    Body: "Starting work on this issue. Branch: agent-<N>/issue-<NUMBER>-<desc>"
@@ -608,7 +657,7 @@ Use: mcp__github__issue_write with method="create"
 
 **After creating follow-up issues:**
 1. Reference them in your PR description under a "Follow-up Issues" section
-2. Do NOT add them to TODO.md (they're not part of current sprint until triaged)
+2. Note them in your local PROGRESS.md for your own tracking
 
 **Example PR description section:**
 ```markdown
@@ -628,7 +677,7 @@ Use: mcp__github__issue_write with method="create"
 │ 1. Verify worktree (git rev-parse --git-dir)                │
 │ 2. Check issue is OPEN on GitHub (mcp__github__issue_read)  │
 │ 3. Check no conflicting PRs (mcp__github__list_pull_requests)│
-│ 4. Claim issue in TODO.md ([~] status)                      │
+│ 4. Claim issue (update local PROGRESS.md, comment on GitHub)│
 │ 5. Create feature branch                                     │
 │ 6. Verify build works (make compile && make test)           │
 └─────────────────────────────────────────────────────────────┘
@@ -639,7 +688,7 @@ Use: mcp__github__issue_write with method="create"
 │ • Make small, focused commits                                │
 │ • Run tests frequently                                       │
 │ • Stay within issue scope                                    │
-│ • Update TODO.md if blocked                                  │
+│ • Update local PROGRESS.md with notes                        │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -658,7 +707,7 @@ Use: mcp__github__issue_write with method="create"
 │ 1. Push branch: git push -u origin <branch>                 │
 │ 2. Create PR with detailed description                       │
 │ 3. Ensure PR references issue: "Closes #<N>"                │
-│ 4. Update TODO.md to [x] after PR merges                    │
+│ 4. Update local PROGRESS.md to mark complete                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -759,4 +808,4 @@ modules.traverse(constellation.setModule)  // requires cats.implicits._
 **References:**
 - Full architecture details: `llm.md`
 - Language documentation: `docs/constellation-lang/`
-- TODO/roadmap: `TODO.md`
+- GitHub Issues: Check open issues for current sprint work
