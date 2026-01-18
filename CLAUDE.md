@@ -567,6 +567,56 @@ If during self-review you find issues:
 2. **Document trade-offs** - If you made a deliberate choice, explain why
 3. **Note concerns** - If something feels off but you can't pinpoint it, mention it
 
+### Create Follow-Up Issues
+
+During development and self-review, you will often discover related work that is **out of scope** for the current issue. **Do not expand scope** - instead, create new GitHub issues for follow-up work.
+
+**When to create follow-up issues:**
+- You notice a bug unrelated to your current work
+- You see an opportunity for refactoring that would bloat the PR
+- You discover missing tests in code you didn't write
+- You find documentation that needs updating
+- You identify a feature enhancement while implementing something else
+
+**How to create follow-up issues:**
+
+```
+Use: mcp__github__issue_write with method="create"
+- owner: VledicFranco
+- repo: constellation-engine
+- title: "[P<N>] <Short description>"
+- body: |
+    ## Summary
+    <What needs to be done>
+
+    ## Context
+    Discovered while working on #<current-issue-number>.
+
+    ## Acceptance Criteria
+    - [ ] <Specific criteria>
+
+    ---
+    Created by Agent <N>
+- labels: ["<appropriate-label>"]
+```
+
+**Priority guidelines for new issues:**
+- `P0` - Critical bugs, blocking issues
+- `P1` - Important features, significant bugs
+- `P2` - Medium priority enhancements
+- `P3` - Nice-to-have, low priority
+
+**After creating follow-up issues:**
+1. Reference them in your PR description under a "Follow-up Issues" section
+2. Do NOT add them to TODO.md (they're not part of current sprint until triaged)
+
+**Example PR description section:**
+```markdown
+## Follow-up Issues Created
+- #42 - [P2] Refactor duplicate validation logic
+- #43 - [P3] Add missing edge case tests for parser
+```
+
 ---
 
 ## Complete Agent Workflow Summary
