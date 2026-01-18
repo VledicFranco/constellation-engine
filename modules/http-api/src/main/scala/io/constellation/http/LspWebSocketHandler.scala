@@ -48,6 +48,7 @@ class LspWebSocketHandler(
             // Process incoming messages from client
             val processClientMessages: IO[Unit] =
               Stream.fromQueueUnterminated(clientMessages)
+                .filter(msg => msg.trim.nonEmpty) // Silently ignore empty messages (keep-alive pings)
                 .evalMap { message =>
                   parseMessage(message).flatMap {
                     case Left(request) =>
