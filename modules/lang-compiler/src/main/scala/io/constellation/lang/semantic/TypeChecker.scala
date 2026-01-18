@@ -5,6 +5,7 @@ import cats.syntax.all.*
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
+import io.constellation.lang.ast.BoolOp
 
 /** Type environment for type checking */
 final case class TypeEnvironment(
@@ -96,6 +97,24 @@ object TypedExpression {
   ) extends TypedExpression
 
   final case class Literal(value: Any, semanticType: SemanticType, span: Span) extends TypedExpression
+
+  /** Boolean binary expression: and, or */
+  final case class BoolBinary(
+    left: TypedExpression,
+    op: BoolOp,
+    right: TypedExpression,
+    span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SBoolean
+  }
+
+  /** Boolean negation: not */
+  final case class Not(
+    operand: TypedExpression,
+    span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SBoolean
+  }
 }
 
 /** Type checker for constellation-lang */
@@ -404,6 +423,33 @@ object TypeChecker {
           desugarArithmetic(l, op, r, span, env)
         }
         .andThen(identity)
+
+    case Expression.BoolBinary(left, op, right) =>
+      (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
+        .mapN { (l, r) =>
+          val errors = List(
+            if (l.semanticType != SemanticType.SBoolean)
+              Some(CompileError.TypeMismatch("Boolean", l.semanticType.prettyPrint, Some(left.span)))
+            else None,
+            if (r.semanticType != SemanticType.SBoolean)
+              Some(CompileError.TypeMismatch("Boolean", r.semanticType.prettyPrint, Some(right.span)))
+            else None
+          ).flatten
+
+          if (errors.nonEmpty)
+            errors.head.invalidNel
+          else
+            TypedExpression.BoolBinary(l, op, r, span).validNel
+        }
+        .andThen(identity)
+
+    case Expression.Not(operand) =>
+      checkExpression(operand.value, operand.span, env).andThen { typedOperand =>
+        if (typedOperand.semanticType != SemanticType.SBoolean)
+          CompileError.TypeMismatch("Boolean", typedOperand.semanticType.prettyPrint, Some(operand.span)).invalidNel
+        else
+          TypedExpression.Not(typedOperand, span).validNel
+      }
   }
 
   private def checkProjection(

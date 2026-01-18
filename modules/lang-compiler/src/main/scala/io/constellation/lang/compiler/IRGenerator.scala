@@ -1,5 +1,6 @@
 package io.constellation.lang.compiler
 
+import io.constellation.lang.ast.BoolOp
 import io.constellation.lang.semantic.*
 
 import java.util.UUID
@@ -144,5 +145,23 @@ object IRGenerator {
       val id = UUID.randomUUID()
       val node = IRNode.LiteralNode(id, value, semanticType, Some(span))
       (ctx.addNode(node), id)
+
+    case TypedExpression.BoolBinary(left, op, right, span) =>
+      val (leftCtx, leftId) = generateExpression(left, ctx)
+      val (rightCtx, rightId) = generateExpression(right, leftCtx)
+
+      val id = UUID.randomUUID()
+      val node = op match {
+        case BoolOp.And => IRNode.AndNode(id, leftId, rightId, Some(span))
+        case BoolOp.Or => IRNode.OrNode(id, leftId, rightId, Some(span))
+      }
+      (rightCtx.addNode(node), id)
+
+    case TypedExpression.Not(operand, span) =>
+      val (operandCtx, operandId) = generateExpression(operand, ctx)
+
+      val id = UUID.randomUUID()
+      val node = IRNode.NotNode(id, operandId, Some(span))
+      (operandCtx.addNode(node), id)
   }
 }

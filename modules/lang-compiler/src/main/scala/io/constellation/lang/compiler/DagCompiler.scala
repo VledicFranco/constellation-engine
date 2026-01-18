@@ -91,6 +91,15 @@ object DagCompiler {
 
       case IRNode.LiteralNode(id, value, outputType, _) =>
         processLiteralNode(id, value, outputType)
+
+      case IRNode.AndNode(id, left, right, _) =>
+        processAndNode(id, left, right)
+
+      case IRNode.OrNode(id, left, right, _) =>
+        processOrNode(id, left, right)
+
+      case IRNode.NotNode(id, operand, _) =>
+        processNotNode(id, operand)
     }
 
     private def processModuleCall(
@@ -529,6 +538,243 @@ object DagCompiler {
         case _ =>
           throw new IllegalStateException(s"Cannot access field '$field' on non-record type")
       }
+    }
+
+    private def processAndNode(
+      id: UUID,
+      left: UUID,
+      right: UUID
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val leftDataId = nodeOutputs.getOrElse(left,
+        throw new IllegalStateException(s"Left node $left not found")
+      )
+      val rightDataId = nodeOutputs.getOrElse(right,
+        throw new IllegalStateException(s"Right node $right not found")
+      )
+
+      // Create synthetic AND module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.and-${id.toString.take(8)}"),
+        consumes = Map("left" -> CType.CBoolean, "right" -> CType.CBoolean),
+        produces = Map("out" -> CType.CBoolean)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation with short-circuit evaluation
+      val syntheticModule = createAndModule(spec)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames
+      dataNodes = dataNodes.updatedWith(leftDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
+        case None => None
+      }
+      dataNodes = dataNodes.updatedWith(rightDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"and_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = CType.CBoolean
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    private def processOrNode(
+      id: UUID,
+      left: UUID,
+      right: UUID
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val leftDataId = nodeOutputs.getOrElse(left,
+        throw new IllegalStateException(s"Left node $left not found")
+      )
+      val rightDataId = nodeOutputs.getOrElse(right,
+        throw new IllegalStateException(s"Right node $right not found")
+      )
+
+      // Create synthetic OR module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.or-${id.toString.take(8)}"),
+        consumes = Map("left" -> CType.CBoolean, "right" -> CType.CBoolean),
+        produces = Map("out" -> CType.CBoolean)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation with short-circuit evaluation
+      val syntheticModule = createOrModule(spec)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames
+      dataNodes = dataNodes.updatedWith(leftDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
+        case None => None
+      }
+      dataNodes = dataNodes.updatedWith(rightDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"or_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = CType.CBoolean
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    private def processNotNode(
+      id: UUID,
+      operand: UUID
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val operandDataId = nodeOutputs.getOrElse(operand,
+        throw new IllegalStateException(s"Operand node $operand not found")
+      )
+
+      // Create synthetic NOT module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.not-${id.toString.take(8)}"),
+        consumes = Map("operand" -> CType.CBoolean),
+        produces = Map("out" -> CType.CBoolean)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation
+      val syntheticModule = createNotModule(spec)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames
+      dataNodes = dataNodes.updatedWith(operandDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "operand")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((operandDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"not_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = CType.CBoolean
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    /** Create an AND module with short-circuit evaluation */
+    private def createAndModule(spec: ModuleNodeSpec): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            leftDeferred <- cats.effect.Deferred[IO, Any]
+            rightDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            leftId <- consumesNs.nameId("left")
+            rightId <- consumesNs.nameId("right")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                leftValue <- runtime.getTableData(leftId)
+                // Short-circuit: if left is false, don't evaluate right
+                result <- if (!leftValue.asInstanceOf[Boolean]) {
+                  IO.pure(false)
+                } else {
+                  runtime.getTableData(rightId).map(_.asInstanceOf[Boolean])
+                }
+                _ <- runtime.setTableData(outId, result)
+              } yield ()
+            }
+          )
+        }
+      )
+    }
+
+    /** Create an OR module with short-circuit evaluation */
+    private def createOrModule(spec: ModuleNodeSpec): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            leftDeferred <- cats.effect.Deferred[IO, Any]
+            rightDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            leftId <- consumesNs.nameId("left")
+            rightId <- consumesNs.nameId("right")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                leftValue <- runtime.getTableData(leftId)
+                // Short-circuit: if left is true, don't evaluate right
+                result <- if (leftValue.asInstanceOf[Boolean]) {
+                  IO.pure(true)
+                } else {
+                  runtime.getTableData(rightId).map(_.asInstanceOf[Boolean])
+                }
+                _ <- runtime.setTableData(outId, result)
+              } yield ()
+            }
+          )
+        }
+      )
+    }
+
+    /** Create a NOT module */
+    private def createNotModule(spec: ModuleNodeSpec): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            operandDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            operandId <- consumesNs.nameId("operand")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(operandId -> operandDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                operandValue <- runtime.getTableData(operandId)
+                result = !operandValue.asInstanceOf[Boolean]
+                _ <- runtime.setTableData(outId, result)
+              } yield ()
+            }
+          )
+        }
+      )
     }
 
     /** Create a conditional module */

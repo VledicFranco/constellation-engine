@@ -7,6 +7,7 @@ import cats.syntax.all.*
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
+import io.constellation.lang.ast.BoolOp
 
 object ConstellationParser {
 
@@ -30,9 +31,12 @@ object ConstellationParser {
   private val falseKw: P[Unit] = keyword("false")
   private val useKw: P[Unit] = keyword("use")
   private val asKw: P[Unit] = keyword("as")
+  private val andKw: P[Unit] = keyword("and")
+  private val orKw: P[Unit] = keyword("or")
+  private val notKw: P[Unit] = keyword("not")
 
   // Reserved words
-  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as")
+  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as", "and", "or", "not")
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
   private val identifierStart: P[Char] = alpha | P.charIn("_")
@@ -135,8 +139,36 @@ object ConstellationParser {
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
   // Expressions
-  // Precedence (low to high): compare -> addSub -> mulDiv -> postfix -> primary
-  lazy val expression: P[Expression] = P.defer(exprCompare)
+  // Precedence (low to high): or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
+  lazy val expression: P[Expression] = P.defer(exprOr)
+
+  // Boolean OR expressions: a or b
+  // Left-associative for chaining: a or b or c = (a or b) or c
+  private lazy val exprOr: P[Expression] =
+    (withSpan(exprAnd) ~ (orKw *> withSpan(exprAnd)).rep0).map {
+      case (first, Nil) => first.value
+      case (first, rest) =>
+        rest.foldLeft(first) { (left, right) =>
+          Located(Expression.BoolBinary(left, BoolOp.Or, right), Span(left.span.start, right.span.end))
+        }.value
+    }
+
+  // Boolean AND expressions: a and b
+  // Left-associative for chaining: a and b and c = (a and b) and c
+  private lazy val exprAnd: P[Expression] =
+    (withSpan(exprNot) ~ (andKw *> withSpan(exprNot)).rep0).map {
+      case (first, Nil) => first.value
+      case (first, rest) =>
+        rest.foldLeft(first) { (left, right) =>
+          Located(Expression.BoolBinary(left, BoolOp.And, right), Span(left.span.start, right.span.end))
+        }.value
+    }
+
+  // Boolean NOT expression: not a (unary prefix)
+  private lazy val exprNot: P[Expression] =
+    ((notKw *> P.caret).with1 ~ withSpan(exprNot)).map { case (startCaret, operand) =>
+      Expression.Not(operand)
+    }.backtrack | exprCompare
 
   // Comparison expressions: a == b, x < y, etc.
   // Note: we don't allow chaining (a < b < c is invalid)

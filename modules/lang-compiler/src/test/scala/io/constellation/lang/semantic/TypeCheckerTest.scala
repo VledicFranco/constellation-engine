@@ -992,4 +992,175 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SInt
   }
+
+  // Boolean operator tests
+
+  it should "type check 'and' operator" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = a and b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check 'or' operator" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = a or b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check 'not' operator" in {
+    val source = """
+      in a: Boolean
+      result = not a
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check chained boolean operators" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = a and b or c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check double negation" in {
+    val source = """
+      in a: Boolean
+      result = not not a
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check boolean operators with comparison operators" in {
+    val source = """
+      in x: Int
+      in y: Int
+      in z: Int
+      result = x < y and y < z
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check complex boolean expression with parentheses" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = (a or b) and c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check not with comparison" in {
+    val source = """
+      in x: Int
+      in y: Int
+      result = not x == y
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "report error for 'and' with non-boolean left operand" in {
+    val source = """
+      in a: Int
+      in b: Boolean
+      result = a and b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error for 'and' with non-boolean right operand" in {
+    val source = """
+      in a: Boolean
+      in b: String
+      result = a and b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error for 'or' with non-boolean operands" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = a or b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error for 'not' with non-boolean operand" in {
+    val source = """
+      in a: String
+      result = not a
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "type check boolean operators with boolean literals" in {
+    val source = """
+      in flag: Boolean
+      result = flag and true or false
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check boolean expression in conditional" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in x: Int
+      in y: Int
+      result = if (a and b) x else y
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
 }
