@@ -1,0 +1,22 @@
+# Example showing namespace features in constellation-lang
+
+# Declare inputs
+in a: Int
+in b: Int
+
+# Method 1: Use stdlib.math namespace
+use stdlib.math
+result1 = add(a, b)
+
+# Method 2: Fully qualified name (always works)
+result2 = stdlib.math.multiply(a, b)
+
+# Method 3: Use namespace with alias
+use stdlib.string as str
+in greeting: String
+upper_greeting = str.upper(greeting)
+
+# Outputs
+out result1
+out result2
+out upper_greeting

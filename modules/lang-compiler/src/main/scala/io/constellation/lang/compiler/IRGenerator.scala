@@ -66,6 +66,10 @@ object IRGenerator {
       case TypedDeclaration.OutputDecl(_, _, _) =>
         // Output declarations don't generate IR nodes, they just mark variables as outputs
         ()
+
+      case TypedDeclaration.UseDecl(_, _, _) =>
+        // Use declarations are processed during type checking, no IR generation needed
+        ()
     }
 
     (currentCtx, inputIds)

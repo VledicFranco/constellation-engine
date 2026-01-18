@@ -22,4 +22,11 @@ trait Constellation {
 
   /** Run a DAG directly without storing it */
   def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State]
+
+  /** Run a DAG with pre-resolved modules (from compilation) */
+  def runDagWithModules(
+    dagSpec: DagSpec,
+    inputs: Map[String, CValue],
+    modules: Map[java.util.UUID, Module.Uninitialized]
+  ): IO[Runtime.State]
 }

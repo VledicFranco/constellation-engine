@@ -1,6 +1,7 @@
 package io.constellation.lsp
 
 import io.constellation.lsp.protocol.JsonRpc._
+import io.constellation.lsp.protocol.JsonRpc.RequestId._
 import io.constellation.lsp.protocol.LspTypes._
 import io.circe.syntax._
 import io.circe.Json
@@ -104,7 +105,7 @@ class ResponseTest extends AnyFlatSpec with Matchers {
     )
 
     val response = Response(
-      id = NumericId(42),
+      id = NumberId(42),
       result = Some(hover.asJson)
     )
 

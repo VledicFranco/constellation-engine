@@ -7,6 +7,7 @@ import io.circe.syntax._
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.ast.{Declaration, TypeExpr, Span, SourceFile}
+import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspTypes._
@@ -87,7 +88,7 @@ class ConstellationLanguageServer(
       capabilities = ServerCapabilities(
         textDocumentSync = Some(1), // Full text sync
         completionProvider = Some(CompletionOptions(
-          triggerCharacters = Some(List("(", ",", " "))
+          triggerCharacters = Some(List("(", ",", " ", "."))
         )),
         hoverProvider = Some(true),
         executeCommandProvider = None // Command handled client-side
@@ -469,8 +470,59 @@ class ConstellationLanguageServer(
 
   private def getCompletions(document: DocumentState, position: Position): IO[CompletionList] = {
     val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
+    val lineText = document.getLine(position.line).getOrElse("")
+    val textBeforeCursor = lineText.take(position.character)
 
     constellation.getModules.map { modules =>
+      // Check context: are we after "use " or after a namespace prefix like "stdlib."?
+      val isAfterUse = textBeforeCursor.trim.startsWith("use ")
+      val namespacePrefix = {
+        // Check if we're typing after a dot (e.g., "stdlib." or "stdlib.math.")
+        val dotIdx = textBeforeCursor.lastIndexOf('.')
+        if (dotIdx >= 0) {
+          val beforeDot = textBeforeCursor.take(dotIdx).trim.split("\\s+").last
+          Some(beforeDot)
+        } else None
+      }
+
+      val registry = compiler.functionRegistry
+
+      // Namespace completions (for "use stdlib" context)
+      val namespaceCompletions = if (isAfterUse) {
+        registry.namespaces.toList.map { ns =>
+          CompletionItem(
+            label = ns,
+            kind = Some(CompletionItemKind.Module),
+            detail = Some(s"Namespace: $ns"),
+            documentation = Some(s"Import functions from $ns"),
+            insertText = Some(ns),
+            filterText = Some(ns),
+            sortText = Some(s"0_$ns")  // Sort namespaces first
+          )
+        }
+      } else List.empty
+
+      // Qualified function completions (for "stdlib.math." context)
+      val qualifiedCompletions = namespacePrefix match {
+        case Some(prefix) =>
+          registry.all.filter { sig =>
+            sig.namespace.exists(ns => ns == prefix || ns.startsWith(prefix + "."))
+          }.map { sig =>
+            val paramStr = sig.params.map { case (n, t) => s"$n: ${t.prettyPrint}" }.mkString(", ")
+            CompletionItem(
+              label = sig.name,
+              kind = Some(CompletionItemKind.Function),
+              detail = Some(s"${sig.qualifiedName}($paramStr) -> ${sig.returns.prettyPrint}"),
+              documentation = Some(s"Function in namespace ${sig.namespace.getOrElse("global")}"),
+              insertText = Some(s"${sig.name}()"),
+              filterText = Some(sig.name),
+              sortText = Some(sig.name)
+            )
+          }
+        case None => List.empty
+      }
+
+      // Module completions (functions from constellation.getModules)
       val moduleCompletions = modules.map { module =>
         // Format signature for detail field
         val signature = TypeFormatter.formatSignature(
@@ -507,10 +559,24 @@ class ConstellationLanguageServer(
 
       val keywordCompletions = List(
         CompletionItem("in", Some(CompletionItemKind.Keyword), Some("Input declaration"), None, None, None, None),
-        CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output declaration"), None, None, None, None)
+        CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output declaration"), None, None, None, None),
+        CompletionItem("use", Some(CompletionItemKind.Keyword), Some("Import namespace"), None, Some("use "), None, None),
+        CompletionItem("as", Some(CompletionItemKind.Keyword), Some("Alias for import"), None, None, None, None),
+        CompletionItem("type", Some(CompletionItemKind.Keyword), Some("Type definition"), None, None, None, None),
+        CompletionItem("if", Some(CompletionItemKind.Keyword), Some("Conditional expression"), None, None, None, None),
+        CompletionItem("else", Some(CompletionItemKind.Keyword), Some("Else branch"), None, None, None, None),
+        CompletionItem("true", Some(CompletionItemKind.Keyword), Some("Boolean true"), None, None, None, None),
+        CompletionItem("false", Some(CompletionItemKind.Keyword), Some("Boolean false"), None, None, None, None)
       )
 
-      val allItems = keywordCompletions ++ moduleCompletions.filter(_.label.toLowerCase.contains(wordAtCursor.toLowerCase))
+      // Combine completions based on context
+      val allItems = if (isAfterUse) {
+        namespaceCompletions
+      } else if (namespacePrefix.isDefined) {
+        qualifiedCompletions.toList
+      } else {
+        keywordCompletions ++ moduleCompletions.filter(_.label.toLowerCase.contains(wordAtCursor.toLowerCase))
+      }
 
       CompletionList(
         isIncomplete = false,
@@ -646,8 +712,8 @@ class ConstellationLanguageServer(
         val declaredOutputs = compiled.dagSpec.declaredOutputs
 
         for {
-          _ <- constellation.setDag(dagName, compiled.dagSpec)
-          result <- constellation.runDag(dagName, cvalueInputs).attempt
+          // Use runDagWithModules to pass the pre-resolved synthetic modules directly
+          result <- constellation.runDagWithModules(compiled.dagSpec, cvalueInputs, compiled.syntheticModules).attempt
           endTime = System.currentTimeMillis()
           execResult = result match {
             case Right(state) =>

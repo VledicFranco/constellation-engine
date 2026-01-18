@@ -137,4 +137,38 @@ object ApiModels {
     given Encoder[ErrorResponse] = deriveEncoder
     given Decoder[ErrorResponse] = deriveDecoder
   }
+
+  /** Response listing available namespaces */
+  case class NamespaceListResponse(
+    namespaces: List[String]
+  )
+
+  object NamespaceListResponse {
+    given Encoder[NamespaceListResponse] = deriveEncoder
+    given Decoder[NamespaceListResponse] = deriveDecoder
+  }
+
+  /** Function information for namespace listing */
+  case class FunctionInfo(
+    name: String,
+    qualifiedName: String,
+    params: List[String],
+    returns: String
+  )
+
+  object FunctionInfo {
+    given Encoder[FunctionInfo] = deriveEncoder
+    given Decoder[FunctionInfo] = deriveDecoder
+  }
+
+  /** Response listing functions in a namespace */
+  case class NamespaceFunctionsResponse(
+    namespace: String,
+    functions: List[FunctionInfo]
+  )
+
+  object NamespaceFunctionsResponse {
+    given Encoder[NamespaceFunctionsResponse] = deriveEncoder
+    given Decoder[NamespaceFunctionsResponse] = deriveDecoder
+  }
 }

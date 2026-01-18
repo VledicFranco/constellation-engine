@@ -493,4 +493,245 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isLeft shouldBe true
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedVariable]) shouldBe true
   }
+
+  // Namespace / Qualified Name tests
+
+  it should "compile programs with fully qualified function names" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in a: Int
+      in b: Int
+      result = stdlib.math.add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "fqn-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "compile programs with use declarations" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      use stdlib.math
+      in a: Int
+      in b: Int
+      result = add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "use-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "compile programs with aliased imports" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      use stdlib.math as m
+      in a: Int
+      in b: Int
+      result = m.add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "alias-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "compile programs with multiple namespaces" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    registry.register(FunctionSignature(
+      name = "upper",
+      params = List("value" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "stdlib.upper",
+      namespace = Some("stdlib.string")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      use stdlib.math
+      use stdlib.string as str
+      in a: Int
+      in b: Int
+      in greeting: String
+      sum = add(a, b)
+      upper_greeting = str.upper(greeting)
+      out sum
+    """
+
+    val result = compiler.compile(source, "multi-ns-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 modules: add and upper
+    compiled.dagSpec.modules should have size 2
+  }
+
+  it should "include synthetic modules for namespace functions" in {
+    // Create a real module for testing
+    case class TwoInts(a: Long, b: Long)
+    case class IntOut(out: Long)
+
+    val addModule: Module.Uninitialized = ModuleBuilder
+      .metadata("stdlib.add", "Add two integers", 1, 0)
+      .implementationPure[TwoInts, IntOut](in => IntOut(in.a + in.b))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val modules = Map("stdlib.add" -> addModule)
+    val compiler = LangCompiler(registry, modules)
+
+    val source = """
+      use stdlib.math
+      in a: Int
+      in b: Int
+      result = add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "synth-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // syntheticModules should contain the resolved module
+    compiled.syntheticModules should not be empty
+  }
+
+  it should "report error for undefined namespace" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in a: Int
+      result = nonexistent.namespace.add(a, a)
+      out result
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedNamespace]) shouldBe true
+  }
+
+  it should "report error for ambiguous function call" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "ns1.process",
+      namespace = Some("namespace1")
+    ))
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "ns2.process",
+      namespace = Some("namespace2")
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      use namespace1
+      use namespace2
+      in x: Int
+      result = process(x)
+      out result
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.AmbiguousFunction]) shouldBe true
+  }
+
+  it should "expose function registry for namespace introspection" in {
+    val compiler = LangCompiler.builder
+      .withFunction(FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      ))
+      .withFunction(FunctionSignature(
+        name = "upper",
+        params = List("value" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "stdlib.upper",
+        namespace = Some("stdlib.string")
+      ))
+      .build
+
+    val registry = compiler.functionRegistry
+
+    // Should have both namespaces registered
+    registry.namespaces should contain allOf ("stdlib.math", "stdlib.string")
+
+    // Should be able to lookup by qualified name
+    registry.lookupQualified("stdlib.math.add").isDefined shouldBe true
+    registry.lookupQualified("stdlib.string.upper").isDefined shouldBe true
+  }
 }

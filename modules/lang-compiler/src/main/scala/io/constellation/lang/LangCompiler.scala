@@ -14,6 +14,9 @@ trait LangCompiler {
 
   /** Compile a constellation-lang source to a DagSpec and synthetic modules */
   def compile(source: String, dagName: String): Either[List[CompileError], CompileResult]
+
+  /** Get the function registry for namespace/function introspection */
+  def functionRegistry: FunctionRegistry
 }
 
 object LangCompiler {
@@ -77,6 +80,8 @@ private class LangCompilerImpl(
   registry: FunctionRegistry,
   modules: Map[String, Module.Uninitialized]
 ) extends LangCompiler {
+
+  def functionRegistry: FunctionRegistry = registry
 
   def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] = {
     for {

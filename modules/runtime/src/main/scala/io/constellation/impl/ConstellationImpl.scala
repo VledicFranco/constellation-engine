@@ -56,6 +56,14 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
       context <- Runtime.run(dagSpec, inputs, modules)
     } yield context
   }
+
+  def runDagWithModules(
+    dagSpec: DagSpec,
+    inputs: Map[String, CValue],
+    modules: Map[java.util.UUID, Module.Uninitialized]
+  ): IO[Runtime.State] = {
+    Runtime.run(dagSpec, inputs, modules)
+  }
 }
 
 object ConstellationImpl {

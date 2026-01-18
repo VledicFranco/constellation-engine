@@ -90,7 +90,7 @@ object StdLib {
 
   /** Create a LangCompiler with all standard library functions registered */
   def compiler: LangCompiler = {
-    val builder = registerAll(LangCompilerBuilder())
+    val builder = registerAll(LangCompilerBuilder()).withModules(allModules)
     new StdLibCompiler(builder.build, allModules)
   }
 
@@ -99,6 +99,8 @@ object StdLib {
     underlying: LangCompiler,
     stdModules: Map[String, Module.Uninitialized]
   ) extends LangCompiler {
+    def functionRegistry: FunctionRegistry = underlying.functionRegistry
+
     def compile(source: String, dagName: String) = {
       underlying.compile(source, dagName).map { result =>
         // Include stdlib modules that are referenced by the DAG
@@ -132,7 +134,8 @@ object Identity {
     name = "identity",
     params = List("value" -> SemanticType.SString),
     returns = SemanticType.SString,
-    moduleName = "stdlib.identity"
+    moduleName = "stdlib.identity",
+    namespace = Some("stdlib")
   )
 }
 
@@ -177,10 +180,10 @@ object Const {
     .implementationPure[BoolIn, BoolOut](in => BoolOut(in.value))
     .build
 
-  val intSignature = FunctionSignature("const-int", List("value" -> SemanticType.SInt), SemanticType.SInt, "stdlib.const-int")
-  val floatSignature = FunctionSignature("const-float", List("value" -> SemanticType.SFloat), SemanticType.SFloat, "stdlib.const-float")
-  val stringSignature = FunctionSignature("const-string", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.const-string")
-  val boolSignature = FunctionSignature("const-bool", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.const-bool")
+  val intSignature = FunctionSignature("const-int", List("value" -> SemanticType.SInt), SemanticType.SInt, "stdlib.const-int", Some("stdlib"))
+  val floatSignature = FunctionSignature("const-float", List("value" -> SemanticType.SFloat), SemanticType.SFloat, "stdlib.const-float", Some("stdlib"))
+  val stringSignature = FunctionSignature("const-string", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.const-string", Some("stdlib"))
+  val boolSignature = FunctionSignature("const-bool", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.const-bool", Some("stdlib"))
 }
 
 // =============================================================================
@@ -216,10 +219,10 @@ object ListOps {
     .implementationPure[ListIntIn, BoolOut](in => BoolOut(in.list.isEmpty))
     .build
 
-  val lengthSignature = FunctionSignature("list-length", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-length")
-  val firstSignature = FunctionSignature("list-first", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-first")
-  val lastSignature = FunctionSignature("list-last", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-last")
-  val isEmptySignature = FunctionSignature("list-is-empty", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SBoolean, "stdlib.list-is-empty")
+  val lengthSignature = FunctionSignature("list-length", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-length", Some("stdlib.list"))
+  val firstSignature = FunctionSignature("list-first", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-first", Some("stdlib.list"))
+  val lastSignature = FunctionSignature("list-last", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-last", Some("stdlib.list"))
+  val isEmptySignature = FunctionSignature("list-is-empty", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SBoolean, "stdlib.list-is-empty", Some("stdlib.list"))
 }
 
 // =============================================================================
@@ -270,12 +273,12 @@ object MathOps {
 
   private val twoIntParams = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
 
-  val addSignature = FunctionSignature("add", twoIntParams, SemanticType.SInt, "stdlib.add")
-  val subtractSignature = FunctionSignature("subtract", twoIntParams, SemanticType.SInt, "stdlib.subtract")
-  val multiplySignature = FunctionSignature("multiply", twoIntParams, SemanticType.SInt, "stdlib.multiply")
-  val divideSignature = FunctionSignature("divide", twoIntParams, SemanticType.SInt, "stdlib.divide")
-  val maxSignature = FunctionSignature("max", twoIntParams, SemanticType.SInt, "stdlib.max")
-  val minSignature = FunctionSignature("min", twoIntParams, SemanticType.SInt, "stdlib.min")
+  val addSignature = FunctionSignature("add", twoIntParams, SemanticType.SInt, "stdlib.add", Some("stdlib.math"))
+  val subtractSignature = FunctionSignature("subtract", twoIntParams, SemanticType.SInt, "stdlib.subtract", Some("stdlib.math"))
+  val multiplySignature = FunctionSignature("multiply", twoIntParams, SemanticType.SInt, "stdlib.multiply", Some("stdlib.math"))
+  val divideSignature = FunctionSignature("divide", twoIntParams, SemanticType.SInt, "stdlib.divide", Some("stdlib.math"))
+  val maxSignature = FunctionSignature("max", twoIntParams, SemanticType.SInt, "stdlib.max", Some("stdlib.math"))
+  val minSignature = FunctionSignature("min", twoIntParams, SemanticType.SInt, "stdlib.min", Some("stdlib.math"))
 }
 
 // =============================================================================
@@ -312,10 +315,10 @@ object StringOps {
     .implementationPure[OneString, IntOut](in => IntOut(in.value.length.toLong))
     .build
 
-  val concatSignature = FunctionSignature("concat", List("a" -> SemanticType.SString, "b" -> SemanticType.SString), SemanticType.SString, "stdlib.concat")
-  val upperSignature = FunctionSignature("upper", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.upper")
-  val lowerSignature = FunctionSignature("lower", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.lower")
-  val lengthSignature = FunctionSignature("string-length", List("value" -> SemanticType.SString), SemanticType.SInt, "stdlib.string-length")
+  val concatSignature = FunctionSignature("concat", List("a" -> SemanticType.SString, "b" -> SemanticType.SString), SemanticType.SString, "stdlib.concat", Some("stdlib.string"))
+  val upperSignature = FunctionSignature("upper", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.upper", Some("stdlib.string"))
+  val lowerSignature = FunctionSignature("lower", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.lower", Some("stdlib.string"))
+  val lengthSignature = FunctionSignature("string-length", List("value" -> SemanticType.SString), SemanticType.SInt, "stdlib.string-length", Some("stdlib.string"))
 }
 
 // =============================================================================
@@ -345,9 +348,9 @@ object BoolOps {
     .implementationPure[OneBool, BoolOut](in => BoolOut(!in.value))
     .build
 
-  val andSignature = FunctionSignature("and", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.and")
-  val orSignature = FunctionSignature("or", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.or")
-  val notSignature = FunctionSignature("not", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.not")
+  val andSignature = FunctionSignature("and", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.and", Some("stdlib.bool"))
+  val orSignature = FunctionSignature("or", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.or", Some("stdlib.bool"))
+  val notSignature = FunctionSignature("not", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.not", Some("stdlib.bool"))
 }
 
 // =============================================================================
@@ -398,12 +401,12 @@ object CompareOps {
   private val twoIntParams = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
   private val twoStringParams = List("a" -> SemanticType.SString, "b" -> SemanticType.SString)
 
-  val eqIntSignature = FunctionSignature("eq-int", twoIntParams, SemanticType.SBoolean, "stdlib.eq-int")
-  val eqStringSignature = FunctionSignature("eq-string", twoStringParams, SemanticType.SBoolean, "stdlib.eq-string")
-  val gtSignature = FunctionSignature("gt", twoIntParams, SemanticType.SBoolean, "stdlib.gt")
-  val ltSignature = FunctionSignature("lt", twoIntParams, SemanticType.SBoolean, "stdlib.lt")
-  val gteSignature = FunctionSignature("gte", twoIntParams, SemanticType.SBoolean, "stdlib.gte")
-  val lteSignature = FunctionSignature("lte", twoIntParams, SemanticType.SBoolean, "stdlib.lte")
+  val eqIntSignature = FunctionSignature("eq-int", twoIntParams, SemanticType.SBoolean, "stdlib.eq-int", Some("stdlib.compare"))
+  val eqStringSignature = FunctionSignature("eq-string", twoStringParams, SemanticType.SBoolean, "stdlib.eq-string", Some("stdlib.compare"))
+  val gtSignature = FunctionSignature("gt", twoIntParams, SemanticType.SBoolean, "stdlib.gt", Some("stdlib.compare"))
+  val ltSignature = FunctionSignature("lt", twoIntParams, SemanticType.SBoolean, "stdlib.lt", Some("stdlib.compare"))
+  val gteSignature = FunctionSignature("gte", twoIntParams, SemanticType.SBoolean, "stdlib.gte", Some("stdlib.compare"))
+  val lteSignature = FunctionSignature("lte", twoIntParams, SemanticType.SBoolean, "stdlib.lte", Some("stdlib.compare"))
 }
 
 // =============================================================================
@@ -422,5 +425,5 @@ object DebugOps {
     }
     .build
 
-  val logSignature = FunctionSignature("log", List("message" -> SemanticType.SString), SemanticType.SString, "stdlib.log")
+  val logSignature = FunctionSignature("log", List("message" -> SemanticType.SString), SemanticType.SString, "stdlib.log", Some("stdlib.debug"))
 }

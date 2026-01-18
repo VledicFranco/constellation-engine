@@ -8,13 +8,15 @@ import org.http4s.circe.CirceEntityCodec._
 import io.constellation.{Constellation, CValue}
 import io.constellation.http.ApiModels._
 import io.constellation.lang.LangCompiler
+import io.constellation.lang.semantic.FunctionRegistry
 import io.circe.syntax._
 import io.circe.Json
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
   constellation: Constellation,
-  compiler: LangCompiler
+  compiler: LangCompiler,
+  functionRegistry: FunctionRegistry
 ) {
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -135,8 +137,8 @@ class ConstellationRoutes(
 
                 case Right(cValueInputs) =>
                   for {
-                    // Execute DAG directly (without storing)
-                    execResult <- constellation.runDagSpec(dagSpec, cValueInputs).attempt
+                    // Execute DAG with pre-resolved synthetic modules from compilation
+                    execResult <- constellation.runDagWithModules(dagSpec, cValueInputs, compiled.syntheticModules).attempt
                     response <- execResult match {
                       case Left(error) =>
                         InternalServerError(RunResponse(
@@ -215,6 +217,32 @@ class ConstellationRoutes(
         response <- Ok(ModuleListResponse(moduleInfos))
       } yield response
 
+    // List all available namespaces
+    case GET -> Root / "namespaces" =>
+      val namespaceList = functionRegistry.namespaces.toList.sorted
+      Ok(NamespaceListResponse(namespaceList))
+
+    // List functions in a specific namespace
+    case GET -> Root / "namespaces" / namespace =>
+      val functions = functionRegistry.all
+        .filter(sig => sig.namespace.exists(ns => ns == namespace || ns.startsWith(namespace + ".")))
+        .map { sig =>
+          FunctionInfo(
+            name = sig.name,
+            qualifiedName = sig.qualifiedName,
+            params = sig.params.map { case (name, typ) => s"$name: ${typ.prettyPrint}" },
+            returns = sig.returns.prettyPrint
+          )
+        }
+      if (functions.nonEmpty) {
+        Ok(NamespaceFunctionsResponse(namespace, functions))
+      } else {
+        NotFound(ErrorResponse(
+          error = "NamespaceNotFound",
+          message = s"Namespace '$namespace' not found or has no functions"
+        ))
+      }
+
     // Health check endpoint
     case GET -> Root / "health" =>
       Ok(Json.obj("status" -> Json.fromString("ok")))
@@ -222,6 +250,6 @@ class ConstellationRoutes(
 }
 
 object ConstellationRoutes {
-  def apply(constellation: Constellation, compiler: LangCompiler): ConstellationRoutes =
-    new ConstellationRoutes(constellation, compiler)
+  def apply(constellation: Constellation, compiler: LangCompiler, functionRegistry: FunctionRegistry): ConstellationRoutes =
+    new ConstellationRoutes(constellation, compiler, functionRegistry)
 }

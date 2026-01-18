@@ -82,6 +82,32 @@ object Located {
   // Note: No convenience constructor - force explicit span passing
 }
 
+/** Qualified name for namespace support (e.g., "stdlib.math.add") */
+final case class QualifiedName(parts: List[String]) {
+  /** True if this is a simple name without namespace */
+  def isSimple: Boolean = parts.size == 1
+
+  /** The namespace portion (all parts except the last) */
+  def namespace: Option[String] =
+    if (parts.size > 1) Some(parts.init.mkString(".")) else None
+
+  /** The local name (last part) */
+  def localName: String = parts.last
+
+  /** The fully qualified name */
+  def fullName: String = parts.mkString(".")
+
+  override def toString: String = fullName
+}
+
+object QualifiedName {
+  /** Create a simple (non-qualified) name */
+  def simple(name: String): QualifiedName = QualifiedName(List(name))
+
+  /** Parse a qualified name from a dotted string */
+  def fromString(s: String): QualifiedName = QualifiedName(s.split("\\.").toList)
+}
+
 /** A complete constellation-lang program */
 final case class Program(
   declarations: List[Declaration],
@@ -114,6 +140,12 @@ object Declaration {
   final case class OutputDecl(
     name: Located[String]
   ) extends Declaration
+
+  /** Use declaration: use stdlib.math or use stdlib.math as m */
+  final case class UseDecl(
+    path: Located[QualifiedName],
+    alias: Option[Located[String]]
+  ) extends Declaration
 }
 
 /** Type expressions */
@@ -143,9 +175,9 @@ object Expression {
   /** Variable reference: communications, embeddings */
   final case class VarRef(name: String) extends Expression
 
-  /** Function call: ide-ranker-v2-candidate-embed(communications) */
+  /** Function call: ide-ranker-v2-candidate-embed(communications) or stdlib.math.add(a, b) */
   final case class FunctionCall(
-    name: String,
+    name: QualifiedName,
     args: List[Located[Expression]]
   ) extends Expression
 
@@ -221,5 +253,11 @@ object CompileError {
   }
   final case class IncompatibleMerge(leftType: String, rightType: String, span: Option[Span]) extends CompileError {
     def message: String = s"Cannot merge types: $leftType + $rightType"
+  }
+  final case class UndefinedNamespace(namespace: String, span: Option[Span]) extends CompileError {
+    def message: String = s"Undefined namespace: $namespace"
+  }
+  final case class AmbiguousFunction(name: String, candidates: List[String], span: Option[Span]) extends CompileError {
+    def message: String = s"Ambiguous function '$name'. Candidates: ${candidates.mkString(", ")}"
   }
 }

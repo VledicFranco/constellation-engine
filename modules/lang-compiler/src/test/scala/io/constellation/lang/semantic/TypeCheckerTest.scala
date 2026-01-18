@@ -435,6 +435,194 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     error.span.isDefined shouldBe true
   }
 
+  // Namespace / Qualified Name tests
+
+  it should "type check fully qualified function calls" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      in a: Int
+      in b: Int
+      result = stdlib.math.add(a, b)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check use declaration with wildcard import" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      use stdlib.math
+      in a: Int
+      in b: Int
+      result = add(a, b)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check use declaration with alias" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      use stdlib.math as m
+      in a: Int
+      in b: Int
+      result = m.add(a, b)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check multiple use declarations" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    registry.register(FunctionSignature(
+      name = "upper",
+      params = List("value" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "stdlib.upper",
+      namespace = Some("stdlib.string")
+    ))
+
+    val source = """
+      use stdlib.math
+      use stdlib.string as str
+      in a: Int
+      in b: Int
+      in greeting: String
+      sum = add(a, b)
+      upper_greeting = str.upper(greeting)
+      out sum
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+  }
+
+  it should "report undefined namespace error for unknown namespace" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      in a: Int
+      result = nonexistent.namespace.add(a, a)
+      out result
+    """
+    val result = check(source, registry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedNamespace]) shouldBe true
+  }
+
+  it should "report ambiguous function error when multiple namespaces have same function" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "ns1.process",
+      namespace = Some("namespace1")
+    ))
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "ns2.process",
+      namespace = Some("namespace2")
+    ))
+
+    val source = """
+      use namespace1
+      use namespace2
+      in x: Int
+      result = process(x)
+      out result
+    """
+    val result = check(source, registry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.AmbiguousFunction]) shouldBe true
+  }
+
+  it should "resolve unambiguous function from single wildcard import" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "unique",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "myns.unique",
+      namespace = Some("myns")
+    ))
+
+    val source = """
+      use myns
+      in x: Int
+      result = unique(x)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+  }
+
+  it should "prefer imported function over requiring full qualification" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    // Without import, simple name shouldn't work if namespaces are defined
+    val source = """
+      in a: Int
+      result = add(a, a)
+      out result
+    """
+    // This should work for backwards compatibility when no imports are defined
+    val result = check(source, registry)
+    result.isRight shouldBe true
+  }
+
   // Type merge semantics
 
   it should "right-hand side wins on field conflicts in merge" in {

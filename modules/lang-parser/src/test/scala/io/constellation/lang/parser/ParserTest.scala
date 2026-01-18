@@ -93,7 +93,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     assignment.value.value shouldBe a[Expression.FunctionCall]
 
     val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    funcCall.name shouldBe "compute-something"
+    funcCall.name shouldBe QualifiedName.simple("compute-something")
     funcCall.args should have size 1
   }
 
@@ -381,5 +381,93 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val result = ConstellationParser.parse(source)
     // Should fail because no output is declared
     result.isLeft shouldBe true
+  }
+
+  // Namespace / Qualified Name tests
+
+  it should "parse qualified function names" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = stdlib.math.add(a, b)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name shouldBe QualifiedName(List("stdlib", "math", "add"))
+    funcCall.name.namespace shouldBe Some("stdlib.math")
+    funcCall.name.localName shouldBe "add"
+  }
+
+  it should "parse use declarations without alias" in {
+    val source = """
+      use stdlib.math
+      in a: Int
+      result = add(a, a)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    program.declarations.head shouldBe a[Declaration.UseDecl]
+    val useDecl = program.declarations.head.asInstanceOf[Declaration.UseDecl]
+    useDecl.path.value shouldBe QualifiedName(List("stdlib", "math"))
+    useDecl.alias shouldBe None
+  }
+
+  it should "parse use declarations with alias" in {
+    val source = """
+      use stdlib.math as m
+      in a: Int
+      result = m.add(a, a)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    program.declarations.head shouldBe a[Declaration.UseDecl]
+    val useDecl = program.declarations.head.asInstanceOf[Declaration.UseDecl]
+    useDecl.path.value shouldBe QualifiedName(List("stdlib", "math"))
+    useDecl.alias.map(_.value) shouldBe Some("m")
+  }
+
+  it should "parse multiple use declarations" in {
+    val source = """
+      use stdlib.math
+      use stdlib.string as str
+      in x: Int
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    program.declarations.take(2).foreach(_ shouldBe a[Declaration.UseDecl])
+    val useDecl1 = program.declarations(0).asInstanceOf[Declaration.UseDecl]
+    val useDecl2 = program.declarations(1).asInstanceOf[Declaration.UseDecl]
+    useDecl1.alias shouldBe None
+    useDecl2.alias.map(_.value) shouldBe Some("str")
+  }
+
+  it should "parse aliased function calls" in {
+    val source = """
+      use stdlib.math as m
+      in a: Int
+      result = m.add(a, a)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name shouldBe QualifiedName(List("m", "add"))
   }
 }

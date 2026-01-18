@@ -199,4 +199,126 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     modules.keys should contain ("stdlib.list-length")
     modules.keys should contain ("stdlib.log")
   }
+
+  // Namespace tests
+
+  "StdLib namespaces" should "compile programs with fully qualified names" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      in a: Int
+      in b: Int
+      result = stdlib.math.add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "fqn-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "compile programs with use declarations" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.math
+      in a: Int
+      in b: Int
+      result = add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "use-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile programs with aliased imports" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.math as m
+      in a: Int
+      in b: Int
+      result = m.add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "alias-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile programs with multiple namespace imports" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.math
+      use stdlib.string as str
+      in a: Int
+      in b: Int
+      in greeting: String
+      sum = add(a, b)
+      upper_greeting = str.upper(greeting)
+      out sum
+    """
+
+    val result = compiler.compile(source, "multi-ns-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 modules: add and upper
+    compiled.dagSpec.modules should have size 2
+  }
+
+  it should "include synthetic modules for execution" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.math
+      in a: Int
+      in b: Int
+      result = add(a, b)
+      out result
+    """
+
+    val result = compiler.compile(source, "synth-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // syntheticModules should contain the add module
+    compiled.syntheticModules should not be empty
+  }
+
+  it should "expose function registry with namespaces" in {
+    val compiler = StdLib.compiler
+    val registry = compiler.functionRegistry
+
+    // Should have all stdlib namespaces
+    registry.namespaces should contain ("stdlib.math")
+    registry.namespaces should contain ("stdlib.string")
+    registry.namespaces should contain ("stdlib.bool")
+    registry.namespaces should contain ("stdlib.compare")
+    registry.namespaces should contain ("stdlib.list")
+
+    // Should be able to lookup by qualified name
+    registry.lookupQualified("stdlib.math.add").isDefined shouldBe true
+    registry.lookupQualified("stdlib.string.upper").isDefined shouldBe true
+  }
+
+  it should "have signatures with correct namespace attributes" in {
+    // Math namespace
+    MathOps.addSignature.namespace shouldBe Some("stdlib.math")
+    MathOps.multiplySignature.namespace shouldBe Some("stdlib.math")
+
+    // String namespace
+    StringOps.upperSignature.namespace shouldBe Some("stdlib.string")
+    StringOps.concatSignature.namespace shouldBe Some("stdlib.string")
+
+    // Bool namespace
+    BoolOps.andSignature.namespace shouldBe Some("stdlib.bool")
+
+    // Compare namespace
+    CompareOps.gtSignature.namespace shouldBe Some("stdlib.compare")
+  }
 }

@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
+import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.http.ApiModels._
 import io.circe.Json
 
@@ -17,7 +18,8 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   // Create test constellation and compiler instances
   val constellation = ConstellationImpl.init.unsafeRunSync()
   val compiler = LangCompiler.empty
-  val routes = ConstellationRoutes(constellation, compiler).routes
+  val functionRegistry = FunctionRegistry.empty
+  val routes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
 
   "ConstellationRoutes" should "respond to health check" in {
     val request = Request[IO](Method.GET, uri"/health")
@@ -410,5 +412,84 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     val body = response.as[RunResponse].unsafeRunSync()
     body.success shouldBe true
     body.outputs.get("a") shouldBe Some(Json.fromLong(42))
+  }
+
+  // Namespace endpoint tests
+
+  "Namespace endpoints" should "list all namespaces" in {
+    // Create routes with a populated function registry
+    import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    registry.register(FunctionSignature(
+      name = "upper",
+      params = List("value" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "stdlib.upper",
+      namespace = Some("stdlib.string")
+    ))
+
+    val routesWithNs = ConstellationRoutes(constellation, compiler, registry).routes
+
+    val request = Request[IO](Method.GET, uri"/namespaces")
+    val response = routesWithNs.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[NamespaceListResponse].unsafeRunSync()
+    body.namespaces should contain allOf ("stdlib.math", "stdlib.string")
+  }
+
+  it should "list functions in a specific namespace" in {
+    import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    registry.register(FunctionSignature(
+      name = "multiply",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.multiply",
+      namespace = Some("stdlib.math")
+    ))
+
+    val routesWithNs = ConstellationRoutes(constellation, compiler, registry).routes
+
+    val request = Request[IO](Method.GET, uri"/namespaces/stdlib.math")
+    val response = routesWithNs.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[NamespaceFunctionsResponse].unsafeRunSync()
+    body.namespace shouldBe "stdlib.math"
+    body.functions.map(_.name) should contain allOf ("add", "multiply")
+  }
+
+  it should "return 404 for non-existent namespace" in {
+    val request = Request[IO](Method.GET, uri"/namespaces/nonexistent.namespace")
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.NotFound
+    val body = response.as[ErrorResponse].unsafeRunSync()
+    body.error shouldBe "NamespaceNotFound"
+  }
+
+  it should "return empty namespace list when no functions registered" in {
+    val request = Request[IO](Method.GET, uri"/namespaces")
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[NamespaceListResponse].unsafeRunSync()
+    // The default empty registry has no namespaces
+    body.namespaces shouldBe empty
   }
 }

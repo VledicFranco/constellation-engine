@@ -8,13 +8,20 @@ import io.constellation.lang.ast.*
 final case class TypeEnvironment(
   types: Map[String, SemanticType] = Map.empty,
   variables: Map[String, SemanticType] = Map.empty,
-  functions: FunctionRegistry
+  functions: FunctionRegistry,
+  namespaceScope: NamespaceScope = NamespaceScope.empty
 ) {
   def addType(name: String, typ: SemanticType): TypeEnvironment =
     copy(types = types + (name -> typ))
 
   def addVariable(name: String, typ: SemanticType): TypeEnvironment =
     copy(variables = variables + (name -> typ))
+
+  def addWildcardImport(namespace: String): TypeEnvironment =
+    copy(namespaceScope = namespaceScope.addWildcard(namespace))
+
+  def addAliasedImport(alias: String, namespace: String): TypeEnvironment =
+    copy(namespaceScope = namespaceScope.addAlias(alias, namespace))
 
   def lookupType(name: String): Option[SemanticType] = types.get(name)
   def lookupVariable(name: String): Option[SemanticType] = variables.get(name)
@@ -36,6 +43,7 @@ object TypedDeclaration {
   final case class InputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
   final case class Assignment(name: String, value: TypedExpression, span: Span) extends TypedDeclaration
   final case class OutputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
+  final case class UseDecl(path: String, alias: Option[String], span: Span) extends TypedDeclaration
 }
 
 /** Typed expressions */
@@ -144,6 +152,37 @@ object TypeChecker {
         case None =>
           CompileError.UndefinedVariable(name.value, Some(name.span)).invalidNel
       }
+
+    case Declaration.UseDecl(path, aliasOpt) =>
+      val namespace = path.value.fullName
+      // Verify the namespace exists in the registry
+      val namespaceExists = env.functions.namespaces.exists { ns =>
+        ns == namespace || ns.startsWith(namespace + ".")
+      }
+      if (!namespaceExists) {
+        // Check if any function has this as a prefix
+        val hasPrefix = env.functions.all.exists { sig =>
+          sig.qualifiedName.startsWith(namespace + ".")
+        }
+        if (!hasPrefix) {
+          CompileError.UndefinedNamespace(namespace, Some(path.span)).invalidNel
+        } else {
+          // Namespace exists via function qualifiedNames
+          val newEnv = aliasOpt match {
+            case Some(alias) => env.addAliasedImport(alias.value, namespace)
+            case None => env.addWildcardImport(namespace)
+          }
+          val span = aliasOpt.map(a => Span(path.span.start, a.span.end)).getOrElse(path.span)
+          (newEnv, TypedDeclaration.UseDecl(namespace, aliasOpt.map(_.value), span)).validNel
+        }
+      } else {
+        val newEnv = aliasOpt match {
+          case Some(alias) => env.addAliasedImport(alias.value, namespace)
+          case None => env.addWildcardImport(namespace)
+        }
+        val span = aliasOpt.map(a => Span(path.span.start, a.span.end)).getOrElse(path.span)
+        (newEnv, TypedDeclaration.UseDecl(namespace, aliasOpt.map(_.value), span)).validNel
+      }
   }
 
   private def resolveTypeExpr(
@@ -222,11 +261,11 @@ object TypeChecker {
         .map(TypedExpression.VarRef(name, _, span))
 
     case Expression.FunctionCall(name, args) =>
-      env.functions.lookup(name) match {
-        case Some(sig) =>
+      env.functions.lookupInScope(name, env.namespaceScope, Some(span)) match {
+        case Right(sig) =>
           if (args.size != sig.params.size) {
             CompileError.TypeError(
-              s"Function $name expects ${sig.params.size} arguments, got ${args.size}",
+              s"Function ${name.fullName} expects ${sig.params.size} arguments, got ${args.size}",
               Some(span)
             ).invalidNel
           } else {
@@ -242,11 +281,11 @@ object TypeChecker {
                   ).invalidNel
               }
             }.map { typedArgs =>
-              TypedExpression.FunctionCall(name, sig, typedArgs, span)
+              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
             }
           }
-        case None =>
-          CompileError.UndefinedFunction(name, Some(span)).invalidNel
+        case Left(error) =>
+          error.invalidNel
       }
 
     case Expression.Merge(left, right) =>

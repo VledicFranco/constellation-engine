@@ -262,6 +262,8 @@ object ExampleLib {
     underlying: LangCompiler,
     modules: Map[String, Module.Uninitialized]
   ) extends LangCompiler {
+    def functionRegistry: FunctionRegistry = underlying.functionRegistry
+
     def compile(source: String, dagName: String) = {
       underlying.compile(source, dagName).map { result =>
         // Include modules that are referenced by the DAG

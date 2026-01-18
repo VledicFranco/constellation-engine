@@ -7,6 +7,7 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
+import io.constellation.lang.semantic.FunctionRegistry
 
 /** HTTP server for the Constellation Engine API
   *
@@ -43,20 +44,25 @@ object ConstellationServer {
   class ServerBuilder(
     constellation: Constellation,
     compiler: LangCompiler,
+    functionRegistry: FunctionRegistry = FunctionRegistry.empty,
     config: Config = Config()
   ) {
 
     /** Set the host address */
     def withHost(host: String): ServerBuilder =
-      new ServerBuilder(constellation, compiler, config.copy(host = host))
+      new ServerBuilder(constellation, compiler, functionRegistry, config.copy(host = host))
 
     /** Set the port number */
     def withPort(port: Int): ServerBuilder =
-      new ServerBuilder(constellation, compiler, config.copy(port = port))
+      new ServerBuilder(constellation, compiler, functionRegistry, config.copy(port = port))
+
+    /** Set the function registry for namespace endpoints */
+    def withFunctionRegistry(registry: FunctionRegistry): ServerBuilder =
+      new ServerBuilder(constellation, compiler, registry, config)
 
     /** Build the HTTP server resource */
     def build: Resource[IO, Server] = {
-      val httpRoutes = ConstellationRoutes(constellation, compiler).routes
+      val httpRoutes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
       val lspHandler = LspWebSocketHandler(constellation, compiler)
 
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
@@ -90,5 +96,5 @@ object ConstellationServer {
     * @return A builder for configuring and starting the server
     */
   def builder(constellation: Constellation, compiler: LangCompiler): ServerBuilder =
-    new ServerBuilder(constellation, compiler)
+    new ServerBuilder(constellation, compiler, compiler.functionRegistry)
 }

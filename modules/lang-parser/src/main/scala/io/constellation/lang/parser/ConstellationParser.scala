@@ -26,9 +26,11 @@ object ConstellationParser {
   private val elseKw: P[Unit] = keyword("else")
   private val trueKw: P[Unit] = keyword("true")
   private val falseKw: P[Unit] = keyword("false")
+  private val useKw: P[Unit] = keyword("use")
+  private val asKw: P[Unit] = keyword("as")
 
   // Reserved words
-  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false")
+  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as")
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
   private val identifierStart: P[Char] = alpha | P.charIn("_")
@@ -60,6 +62,19 @@ object ConstellationParser {
   private val closeBracket: P[Unit] = token(P.char(']'))
   private val openAngle: P[Unit] = token(P.char('<'))
   private val closeAngle: P[Unit] = token(P.char('>'))
+  private val dot: P[Unit] = P.char('.')
+
+  // Qualified names: stdlib.math.add (note: no whitespace around dots)
+  private val qualifiedName: P[QualifiedName] =
+    (rawIdentifier ~ (dot *> rawIdentifier).rep0).map { case (first, rest) =>
+      QualifiedName((first :: rest.toList).filterNot(reserved.contains))
+    }.flatMap { qn =>
+      if (qn.parts.isEmpty || qn.parts.exists(reserved.contains)) P.fail
+      else P.pure(qn)
+    }
+
+  private val locatedQualifiedName: P[Located[QualifiedName]] =
+    withSpan(qualifiedName <* ws)
 
   // Span tracking - captures full range (start and end offsets)
   private def withSpan[A](p: P[A]): P[Located[A]] =
@@ -129,7 +144,7 @@ object ConstellationParser {
     identifier.map(Expression.VarRef(_))
 
   private lazy val functionCall: P[Expression.FunctionCall] =
-    (identifier ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen))
+    ((qualifiedName <* ws) ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen))
       .map { case (name, args) =>
         Expression.FunctionCall(name, args.toList)
       }
@@ -176,8 +191,12 @@ object ConstellationParser {
     (outKw *> withSpan(identifier))
       .map { name => Declaration.OutputDecl(name) }
 
+  private val useDecl: P[Declaration.UseDecl] =
+    (useKw *> locatedQualifiedName ~ (asKw *> withSpan(identifier)).?)
+      .map { case (path, alias) => Declaration.UseDecl(path, alias) }
+
   private val declaration: P[Declaration] =
-    typeDef.backtrack | inputDecl.backtrack | outputDecl.backtrack | assignment
+    typeDef.backtrack | inputDecl.backtrack | outputDecl.backtrack | useDecl.backtrack | assignment
 
   // Full program: sequence of declarations with at least one output declaration
   val program: Parser0[Program] =
