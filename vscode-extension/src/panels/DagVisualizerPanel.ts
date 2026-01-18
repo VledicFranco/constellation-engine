@@ -1,5 +1,14 @@
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
+import {
+  createWebviewPanel,
+  disposePanel,
+  getBaseStyles,
+  wrapHtml,
+  getHeaderHtml,
+  getFileNameFromUri,
+  PanelState
+} from '../utils/webviewUtils';
 
 interface DagStructure {
   modules: { [uuid: string]: ModuleNode };
@@ -30,43 +39,32 @@ export class DagVisualizerPanel {
   public static currentPanel: DagVisualizerPanel | undefined;
   public static readonly viewType = 'constellationDagVisualizer';
 
-  private readonly _panel: vscode.WebviewPanel;
-  private readonly _extensionUri: vscode.Uri;
-  private _client: LanguageClient | undefined;
-  private _currentUri: string | undefined;
-  private _disposables: vscode.Disposable[] = [];
+  private readonly _state: PanelState;
 
   public static createOrShow(
     extensionUri: vscode.Uri,
     client: LanguageClient | undefined,
     documentUri: string
   ) {
-    const column = vscode.ViewColumn.Beside;
-
     if (DagVisualizerPanel.currentPanel) {
-      DagVisualizerPanel.currentPanel._panel.reveal(column);
-      DagVisualizerPanel.currentPanel._client = client;
-      DagVisualizerPanel.currentPanel._currentUri = documentUri;
+      DagVisualizerPanel.currentPanel._state.panel.reveal(vscode.ViewColumn.Beside);
+      DagVisualizerPanel.currentPanel._state.client = client;
+      DagVisualizerPanel.currentPanel._state.currentUri = documentUri;
       DagVisualizerPanel.currentPanel._refreshDag();
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      DagVisualizerPanel.viewType,
-      'DAG Visualizer',
-      column,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'src', 'webview')]
-      }
-    );
+    const panel = createWebviewPanel({
+      viewType: DagVisualizerPanel.viewType,
+      title: 'DAG Visualizer',
+      extensionUri
+    });
 
     DagVisualizerPanel.currentPanel = new DagVisualizerPanel(panel, extensionUri, client, documentUri);
   }
 
   public static refresh(documentUri: string) {
-    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._currentUri === documentUri) {
+    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
       DagVisualizerPanel.currentPanel._refreshDag();
     }
   }
@@ -77,16 +75,19 @@ export class DagVisualizerPanel {
     client: LanguageClient | undefined,
     documentUri: string
   ) {
-    this._panel = panel;
-    this._extensionUri = extensionUri;
-    this._client = client;
-    this._currentUri = documentUri;
+    this._state = {
+      panel,
+      extensionUri,
+      client,
+      currentUri: documentUri,
+      disposables: []
+    };
 
     this._update();
 
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._state.panel.onDidDispose(() => this.dispose(), null, this._state.disposables);
 
-    this._panel.webview.onDidReceiveMessage(
+    this._state.panel.webview.onDidReceiveMessage(
       async (message) => {
         switch (message.command) {
           case 'ready':
@@ -102,42 +103,42 @@ export class DagVisualizerPanel {
         }
       },
       null,
-      this._disposables
+      this._state.disposables
     );
   }
 
   private async _refreshDag() {
-    if (!this._client || !this._currentUri) {
-      this._panel.webview.postMessage({
+    if (!this._state.client || !this._state.currentUri) {
+      this._state.panel.webview.postMessage({
         type: 'error',
         message: 'Language server not connected'
       });
       return;
     }
 
-    this._panel.webview.postMessage({ type: 'loading', loading: true });
+    this._state.panel.webview.postMessage({ type: 'loading', loading: true });
 
     try {
-      const result = await this._client.sendRequest<GetDagStructureResult>(
+      const result = await this._state.client.sendRequest<GetDagStructureResult>(
         'constellation/getDagStructure',
-        { uri: this._currentUri }
+        { uri: this._state.currentUri }
       );
 
       if (result.success && result.dag) {
-        const fileName = this._currentUri.split('/').pop() || 'script.cst';
-        this._panel.webview.postMessage({
+        const fileName = getFileNameFromUri(this._state.currentUri);
+        this._state.panel.webview.postMessage({
           type: 'dagData',
           dag: result.dag,
           fileName: fileName
         });
       } else {
-        this._panel.webview.postMessage({
+        this._state.panel.webview.postMessage({
           type: 'error',
           message: result.error || 'Failed to get DAG structure'
         });
       }
     } catch (error: any) {
-      this._panel.webview.postMessage({
+      this._state.panel.webview.postMessage({
         type: 'error',
         message: error.message || 'Failed to get DAG structure'
       });
@@ -146,242 +147,150 @@ export class DagVisualizerPanel {
 
   public dispose() {
     DagVisualizerPanel.currentPanel = undefined;
-
-    this._panel.dispose();
-
-    while (this._disposables.length) {
-      const disposable = this._disposables.pop();
-      if (disposable) {
-        disposable.dispose();
-      }
-    }
+    disposePanel(this._state);
   }
 
   private _update() {
-    this._panel.webview.html = this._getHtmlContent();
+    this._state.panel.webview.html = this._getHtmlContent();
   }
 
   private _getHtmlContent(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-  <title>DAG Visualizer</title>
-  <style>
-${this._getCssContent()}
-  </style>
-</head>
-<body>
-  <header class="header">
-    <div class="header-left">
-      <span class="header-icon">&#9670;</span>
-      <div class="header-content">
-        <h1>DAG Visualizer</h1>
-        <div class="file-name" id="fileName">Loading...</div>
-      </div>
-    </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="refreshBtn" title="Refresh">&#8635;</button>
-    </div>
-  </header>
-
-  <div class="container" id="container">
-    <div class="loading-container" id="loadingContainer">
-      <div class="spinner"></div>
-      <div style="margin-top: 8px; font-size: 12px;">Loading DAG...</div>
-    </div>
-    <svg id="dagSvg" class="dag-svg"></svg>
-  </div>
-
-  <div class="error-container" id="errorContainer" style="display: none;">
-    <div class="error-box" id="errorMessage"></div>
-  </div>
-
-  <script>
-${this._getJsContent()}
-  </script>
-</body>
-</html>`;
-  }
-
-  private _getCssContent(): string {
-    return `
-    :root {
-      --spacing-xs: 4px;
-      --spacing-sm: 8px;
-      --spacing-md: 12px;
-      --spacing-lg: 16px;
-      --radius-sm: 4px;
-      --radius-md: 6px;
-
+    const additionalVars = `
       --node-data-border: var(--vscode-charts-blue, #3794ff);
       --node-module-border: var(--vscode-charts-orange, #d18616);
       --edge-color: var(--vscode-charts-yellow, #cca700);
-    }
+    `;
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    const styles = getBaseStyles(additionalVars) + this._getCustomStyles();
 
-    body {
-      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-      font-size: var(--vscode-font-size, 13px);
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
-      line-height: 1.5;
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    const headerHtml = getHeaderHtml({
+      icon: '◆',
+      title: 'DAG Visualizer',
+      fileNameId: 'fileName',
+      actions: '<button class="icon-btn" id="refreshBtn" title="Refresh">↻</button>'
+    });
 
-    .header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: var(--spacing-md) var(--spacing-lg);
-      border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
-      flex-shrink: 0;
-    }
+    const body = `
+      ${headerHtml}
 
-    .header-left { display: flex; align-items: center; gap: var(--spacing-sm); }
-    .header-icon { font-size: 20px; opacity: 0.9; }
-    .header-content h1 { font-size: 14px; font-weight: 600; margin: 0; }
-    .file-name {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 2px;
-      font-family: var(--vscode-editor-font-family, monospace);
-    }
+      <div class="container" id="container">
+        <div class="loading-container" id="loadingContainer">
+          <div class="spinner"></div>
+          <div style="margin-top: 8px; font-size: 12px;">Loading DAG...</div>
+        </div>
+        <svg id="dagSvg" class="dag-svg"></svg>
+      </div>
 
-    .header-actions { display: flex; gap: var(--spacing-xs); }
+      <div class="error-container" id="errorContainer" style="display: none;">
+        <div class="error-box" id="errorMessage"></div>
+      </div>
+    `;
 
-    .icon-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-sm);
-      color: var(--vscode-foreground);
-      cursor: pointer;
-      opacity: 0.7;
-      font-size: 16px;
-    }
-    .icon-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31)); }
+    return wrapHtml({
+      title: 'DAG Visualizer',
+      styles,
+      body,
+      scripts: this._getScriptContent()
+    });
+  }
 
-    .container {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
+  private _getCustomStyles(): string {
+    return `
+      body {
+        overflow: hidden;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
 
-    .dag-svg {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
+      .header { flex-shrink: 0; }
 
-    .loading-container {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      color: var(--vscode-descriptionForeground);
-    }
+      .container {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
 
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 2px solid currentColor;
-      border-radius: 50%;
-      border-top-color: transparent;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+      .dag-svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
 
-    .error-container {
-      padding: var(--spacing-lg);
-    }
+      .loading-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
 
-    .error-box {
-      background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
-      border: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
-      border-left: 3px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
-      border-radius: var(--radius-md);
-      padding: var(--spacing-lg);
-      color: var(--vscode-errorForeground, #f14c4c);
-      font-size: 13px;
-    }
+      .error-container {
+        padding: var(--spacing-lg);
+      }
 
-    .dag-node {
-      cursor: pointer;
-    }
+      .dag-node {
+        cursor: pointer;
+      }
 
-    .dag-node rect, .dag-node ellipse {
-      fill: var(--vscode-editor-background);
-      stroke-width: 2;
-      transition: stroke-width 0.15s ease;
-    }
+      .dag-node rect, .dag-node ellipse {
+        fill: var(--vscode-editor-background);
+        stroke-width: 2;
+        transition: stroke-width 0.15s ease;
+      }
 
-    .dag-node:hover rect, .dag-node:hover ellipse {
-      stroke-width: 3;
-    }
+      .dag-node:hover rect, .dag-node:hover ellipse {
+        stroke-width: 3;
+      }
 
-    .dag-node-data rect {
-      stroke: var(--node-data-border);
-      rx: 8;
-      ry: 8;
-    }
+      .dag-node-data rect {
+        stroke: var(--node-data-border);
+        rx: 8;
+        ry: 8;
+      }
 
-    .dag-node-module rect {
-      stroke: var(--node-module-border);
-    }
+      .dag-node-module rect {
+        stroke: var(--node-module-border);
+      }
 
-    .dag-node text {
-      fill: var(--vscode-foreground);
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 12px;
-      text-anchor: middle;
-      dominant-baseline: middle;
-      pointer-events: none;
-    }
+      .dag-node text {
+        fill: var(--vscode-foreground);
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 12px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+      }
 
-    .dag-node .node-type {
-      font-size: 10px;
-      fill: var(--vscode-descriptionForeground);
-    }
+      .dag-node .node-type {
+        font-size: 10px;
+        fill: var(--vscode-descriptionForeground);
+      }
 
-    .dag-edge path {
-      fill: none;
-      stroke: var(--edge-color);
-      stroke-width: 1.5;
-      opacity: 0.6;
-      transition: opacity 0.15s ease, stroke-width 0.15s ease;
-    }
+      .dag-edge path {
+        fill: none;
+        stroke: var(--edge-color);
+        stroke-width: 1.5;
+        opacity: 0.6;
+        transition: opacity 0.15s ease, stroke-width 0.15s ease;
+      }
 
-    .dag-edge:hover path {
-      opacity: 1;
-      stroke-width: 2.5;
-    }
+      .dag-edge:hover path {
+        opacity: 1;
+        stroke-width: 2.5;
+      }
 
-    .dag-edge polygon {
-      fill: var(--edge-color);
-      opacity: 0.6;
-    }
+      .dag-edge polygon {
+        fill: var(--edge-color);
+        opacity: 0.6;
+      }
 
-    .dag-edge:hover polygon {
-      opacity: 1;
-    }
+      .dag-edge:hover polygon {
+        opacity: 1;
+      }
     `;
   }
 
-  private _getJsContent(): string {
+  private _getScriptContent(): string {
     return `
 (function() {
   var vscode = acquireVsCodeApi();
