@@ -12,10 +12,15 @@ Forget time to market, we aim for minimal time to experiment!
 * Hotdeploy static modules.
 * Test your modules with replayed logged values.
 
+## Expressiveness
+* Orchestration Algebra (conditional execution, retry semantics and failure tolerance, constellation-lang level caching, contellation-lang level batch management)
+* Data Manipulation Algebra (type algebra with performance in mind)
+
 ## Performance
 * Concurrency by default, everything that can fire does fire, DAGs give safety and orchestration performance.
 * Compile to metals, with performant ML and data manipulation algorithms.
 * Data Structures made for massive prossesing.
+* Fine control over batching.
 * Native batching
 * Native caching
 
