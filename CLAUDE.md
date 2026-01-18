@@ -143,10 +143,9 @@ When adding a module to example-app:
 
 ## Common Pitfalls to Avoid
 
-1. **Don't use `ConstellationImpl.create`** - Use `ConstellationImpl.init`
-2. **Don't forget `cats.implicits._`** - Required for `.traverse`
-3. **Don't mismatch field names** - Case class fields must match constellation-lang variable names
-4. **Don't skip testing** - Run `make test` before committing
+1. **Don't forget `cats.implicits._`** - Required for `.traverse`
+2. **Don't mismatch field names** - Case class fields must match constellation-lang variable names
+3. **Don't skip testing** - Run `make test` before committing
 
 ## Documentation
 
@@ -681,13 +680,13 @@ A type-safe, composable ML orchestration framework for Scala 3. Users:
 | Type errors, CValue/CType bugs | `core` | `TypeSystem.scala` |
 | Module execution, ModuleBuilder | `runtime` | `ModuleBuilder.scala`, `Runtime.scala` |
 | Parse errors, syntax issues | `lang-parser` | `ConstellationParser.scala` |
-| Type checking, semantic errors | `lang-compiler` | `TypeChecker.scala`, `SemanticAnalysis.scala` |
+| Type checking, semantic errors | `lang-compiler` | `TypeChecker.scala`, `SemanticType.scala` |
 | DAG compilation issues | `lang-compiler` | `DagCompiler.scala`, `IRGenerator.scala` |
 | Standard library functions | `lang-stdlib` | `StdLib.scala` |
 | LSP, autocomplete, diagnostics | `lang-lsp` | `ConstellationLanguageServer.scala` |
 | HTTP endpoints, WebSocket | `http-api` | `ConstellationServer.scala`, `ConstellationRoutes.scala` |
 | Example modules (text, data) | `example-app` | `modules/TextModules.scala`, `modules/DataModules.scala` |
-| VSCode extension | `vscode-extension/` | `src/extension.ts`, `src/lspClient.ts` |
+| VSCode extension | `vscode-extension/` | `src/extension.ts`, `src/panels/*.ts` |
 
 **Quick Exploration Commands:**
 
@@ -707,18 +706,7 @@ make test-compiler   # Parser + compiler
 make test-lsp        # Language server
 ```
 
-**Verify Setup Before Coding:**
-
-```bash
-# 1. Ensure you're in a worktree (CRITICAL)
-git rev-parse --git-dir  # Must contain "worktrees/"
-
-# 2. Verify compilation works
-make compile
-
-# 3. Run tests to confirm baseline
-make test
-```
+**Verify Setup Before Coding:** See [Agent Startup Checklist](#agent-startup-checklist-critical) above.
 
 **Constellation-Lang Syntax (for context):**
 
