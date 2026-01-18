@@ -387,7 +387,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeError]) shouldBe true
   }
 
-  it should "report incompatible merge error" in {
+  it should "report unsupported arithmetic error for incompatible types" in {
     val source = """
       in a: Int
       in b: String
@@ -396,7 +396,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.IncompatibleMerge]) shouldBe true
+    // + with non-numeric/non-record types produces UnsupportedArithmetic
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
   }
 
   it should "report conditional with non-boolean condition error" in {
