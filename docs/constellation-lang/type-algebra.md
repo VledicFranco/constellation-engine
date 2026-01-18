@@ -42,6 +42,15 @@ in items: Candidates<{ id: String }>
 result = context + items  # Candidates<{ userId: Int, id: String }>
 ```
 
+## Record Projection
+
+Select a subset of fields from a record using `{}` syntax:
+
+```
+record = {a: Int, b: Int, c: Int}
+record{a,c}  # {a: Int, c: Int}
+```
+
 ## Incompatible Merges
 
 Merging incompatible types produces a compile error:

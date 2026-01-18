@@ -149,25 +149,16 @@ Source Code
 ## Project Structure
 
 ```
-src/main/scala/io/constellation/
-├── api/                        # Core runtime
-│   ├── Spec.scala              # DagSpec, ModuleNodeSpec, DataNodeSpec
-│   ├── Runtime.scala           # DAG execution engine
-│   ├── TypeSystem.scala        # CType, CValue type system
-│   └── ModuleBuilder.scala     # Fluent module construction
-│
-└── lang/                       # constellation-lang compiler
-    ├── ast/AST.scala           # Syntax tree with positions
-    ├── parser/                 # cats-parse parser
-    ├── semantic/               # Types and type checker
-    │   ├── SemanticType.scala  # Internal type representation
-    │   └── TypeChecker.scala   # Type validation
-    ├── compiler/               # Code generation
-    │   ├── IR.scala            # Intermediate representation
-    │   ├── IRGenerator.scala   # AST to IR
-    │   └── DagCompiler.scala   # IR to DagSpec
-    └── runtime/
-        └── LangCompiler.scala  # Main compiler interface
+modules/
+├── core/                       # Core type system (CType, CValue)
+├── runtime/                    # DAG execution engine, ModuleBuilder
+├── lang-ast/                   # AST definitions with positions
+├── lang-parser/                # cats-parse based parser
+├── lang-compiler/              # Type checker, IR, DAG compiler
+├── lang-stdlib/                # Standard library functions
+├── lang-lsp/                   # Language Server Protocol
+├── http-api/                   # HTTP server and WebSocket LSP
+└── example-app/                # Example application
 ```
 
 ## Building
@@ -203,7 +194,7 @@ sbt "testOnly io.constellation.lang.runtime.LangCompilerTest"
 See the [docs](docs/) directory for detailed documentation:
 
 - [Documentation Index](docs/README.md)
-- [constellation-lang Reference](docs/constellation-lang.md)
+- [constellation-lang Reference](docs/constellation-lang/README.md)
 - [Standard Library](docs/stdlib.md)
 - [Architecture Guide](docs/architecture.md)
 - [API Guide](docs/api-guide.md)
