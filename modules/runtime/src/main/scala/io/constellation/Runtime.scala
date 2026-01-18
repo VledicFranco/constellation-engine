@@ -54,14 +54,14 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
     case CValue.CString(value)    => IO.pure(value)
     case CValue.CBoolean(value)   => IO.pure(value)
     case CValue.CFloat(value)     => IO.pure(value)
-    case CValue.CList(values, _)  => values.traverse(cValueToAny).map(_.toVector)
+    case CValue.CList(values, _)  => values.toList.traverse(cValueToAny)
     case CValue.CMap(pairs, _, _) =>
-      pairs.traverse { case (k, v) =>
+      pairs.toList.traverse { case (k, v) =>
         for {
           kAny <- cValueToAny(k)
           vAny <- cValueToAny(v)
         } yield (kAny, vAny)
-      }.map(_.toVector)
+      }
     case CValue.CProduct(fields, _) =>
       fields.toList.traverse { case (name, value) =>
         cValueToAny(value).map(name -> _)
