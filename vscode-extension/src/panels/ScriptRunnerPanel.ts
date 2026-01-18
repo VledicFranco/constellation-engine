@@ -33,16 +33,29 @@ interface RecordField {
   type: TypeDescriptor;
 }
 
+interface ErrorInfo {
+  category: 'syntax' | 'type' | 'reference' | 'runtime';
+  message: string;
+  line?: number;
+  column?: number;
+  endLine?: number;
+  endColumn?: number;
+  codeContext?: string;
+  suggestion?: string;
+}
+
 interface GetInputSchemaResult {
   success: boolean;
   inputs?: InputField[];
   error?: string;
+  errors?: ErrorInfo[];
 }
 
 interface ExecutePipelineResult {
   success: boolean;
   outputs?: { [key: string]: any };
   error?: string;
+  errors?: ErrorInfo[];
   executionTimeMs?: number;
 }
 
@@ -106,6 +119,9 @@ export class ScriptRunnerPanel {
           case 'execute':
             await this._executePipeline(message.inputs);
             break;
+          case 'navigateToError':
+            await this._navigateToError(message.line, message.column);
+            break;
         }
       },
       null,
@@ -144,7 +160,8 @@ export class ScriptRunnerPanel {
         console.log('[ScriptRunner] Schema error:', result.error);
         this._state.panel.webview.postMessage({
           type: 'schemaError',
-          error: result.error || 'Failed to get input schema'
+          error: result.error || 'Failed to get input schema',
+          errors: result.errors
         });
       }
     } catch (error: any) {
@@ -186,7 +203,8 @@ export class ScriptRunnerPanel {
       } else {
         this._state.panel.webview.postMessage({
           type: 'executeError',
-          error: result.error || 'Execution failed'
+          error: result.error || 'Execution failed',
+          errors: result.errors
         });
       }
     } catch (error: any) {
@@ -194,6 +212,29 @@ export class ScriptRunnerPanel {
         type: 'executeError',
         error: error.message || 'Execution failed'
       });
+    }
+  }
+
+  private async _navigateToError(line: number, column: number) {
+    if (!this._state.currentUri) {
+      return;
+    }
+
+    try {
+      // Convert file:// URI to vscode.Uri
+      const documentUri = vscode.Uri.parse(this._state.currentUri);
+      const document = await vscode.workspace.openTextDocument(documentUri);
+      const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+
+      // Create position (0-based in VSCode)
+      const position = new vscode.Position(line - 1, column - 1);
+      const selection = new vscode.Selection(position, position);
+
+      // Move cursor and reveal the line
+      editor.selection = selection;
+      editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+    } catch (error) {
+      console.error('[ScriptRunner] Failed to navigate to error:', error);
     }
   }
 
@@ -389,6 +430,100 @@ export class ScriptRunnerPanel {
       }
       .record-field { margin-bottom: var(--spacing-md); }
       .record-field:last-child { margin-bottom: 0; }
+
+      /* Structured Error Display Styles */
+      .error-container {
+        background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
+        border: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
+        border-left: 4px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+
+      .error-header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-md) var(--spacing-lg);
+        background: rgba(241, 76, 76, 0.15);
+        border-bottom: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
+      }
+
+      .error-icon {
+        font-size: 16px;
+        color: var(--vscode-errorForeground, #f14c4c);
+      }
+
+      .error-category {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 2px 8px;
+        border-radius: 3px;
+        background: var(--vscode-badge-background, rgba(77, 77, 77, 0.7));
+        color: var(--vscode-badge-foreground, #fff);
+      }
+      .error-category.syntax { background: #d73a4a; }
+      .error-category.type { background: #0366d6; }
+      .error-category.reference { background: #6f42c1; }
+      .error-category.runtime { background: #e36209; }
+
+      .error-location {
+        font-size: 12px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        color: var(--vscode-descriptionForeground);
+        margin-left: auto;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 3px;
+        transition: background 0.15s;
+      }
+      .error-location:hover {
+        background: rgba(255, 255, 255, 0.1);
+        text-decoration: underline;
+      }
+
+      .error-body {
+        padding: var(--spacing-lg);
+      }
+
+      .error-message {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--vscode-foreground);
+        margin-bottom: var(--spacing-md);
+      }
+
+      .error-code-context {
+        background: var(--vscode-textCodeBlock-background, rgba(10, 10, 10, 0.4));
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 12px;
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre;
+        margin-bottom: var(--spacing-md);
+      }
+
+      .error-suggestion {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        background: rgba(79, 193, 255, 0.1);
+        border: 1px solid rgba(79, 193, 255, 0.3);
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        color: var(--vscode-textLink-foreground, #3794ff);
+      }
+
+      .error-suggestion-icon {
+        flex-shrink: 0;
+        margin-top: 2px;
+      }
     `;
   }
 
@@ -426,7 +561,11 @@ export class ScriptRunnerPanel {
       renderInputs(currentSchema);
       runBtn.disabled = false;
     } else if (message.type === 'schemaError') {
-      inputsCard.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
+      if (message.errors && message.errors.length > 0) {
+        inputsCard.innerHTML = renderStructuredErrors(message.errors);
+      } else {
+        inputsCard.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
+      }
       runBtn.disabled = true;
     } else if (message.type === 'executing') {
       isExecuting = true;
@@ -445,7 +584,11 @@ export class ScriptRunnerPanel {
       runBtn.innerHTML = '<span>▶</span><span>Run Script</span>';
       outputSection.classList.add('visible');
       executionTime.textContent = '';
-      outputContainer.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
+      if (message.errors && message.errors.length > 0) {
+        outputContainer.innerHTML = renderStructuredErrors(message.errors);
+      } else {
+        outputContainer.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
+      }
     }
   });
 
@@ -639,6 +782,73 @@ export class ScriptRunnerPanel {
     var lastPart = parts[parts.length - 1];
     current[lastPart] = value;
   }
+
+  function renderStructuredErrors(errors) {
+    var html = '';
+    for (var i = 0; i < errors.length; i++) {
+      html += renderSingleError(errors[i]);
+    }
+    return html;
+  }
+
+  function renderSingleError(error) {
+    var categoryLabels = {
+      'syntax': 'Syntax Error',
+      'type': 'Type Error',
+      'reference': 'Reference Error',
+      'runtime': 'Runtime Error'
+    };
+
+    var categoryLabel = categoryLabels[error.category] || 'Error';
+    var locationText = '';
+    if (error.line) {
+      locationText = 'Line ' + error.line;
+      if (error.column) {
+        locationText += ':' + error.column;
+      }
+    }
+
+    var html = '<div class="error-container">';
+
+    // Error header with category badge and location
+    html += '<div class="error-header">';
+    html += '<span class="error-icon">✕</span>';
+    html += '<span class="error-category ' + escapeHtml(error.category) + '">' + escapeHtml(categoryLabel) + '</span>';
+    if (locationText) {
+      html += '<span class="error-location" data-line="' + error.line + '" data-column="' + (error.column || 1) + '" onclick="navigateToError(this)">' + escapeHtml(locationText) + '</span>';
+    }
+    html += '</div>';
+
+    // Error body with message, code context, and suggestion
+    html += '<div class="error-body">';
+    html += '<div class="error-message">' + escapeHtml(error.message) + '</div>';
+
+    if (error.codeContext) {
+      html += '<div class="error-code-context">' + escapeHtml(error.codeContext) + '</div>';
+    }
+
+    if (error.suggestion) {
+      html += '<div class="error-suggestion">';
+      html += '<span class="error-suggestion-icon">💡</span>';
+      html += '<span>' + escapeHtml(error.suggestion) + '</span>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    html += '</div>';
+
+    return html;
+  }
+
+  window.navigateToError = function(element) {
+    var line = parseInt(element.getAttribute('data-line'), 10);
+    var column = parseInt(element.getAttribute('data-column'), 10) || 1;
+    vscode.postMessage({
+      command: 'navigateToError',
+      line: line,
+      column: column
+    });
+  };
 
   vscode.postMessage({ command: 'ready' });
 })();

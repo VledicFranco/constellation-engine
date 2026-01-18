@@ -6,7 +6,7 @@ import io.circe._
 import io.circe.syntax._
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.ast.{Declaration, TypeExpr, Span, SourceFile}
+import io.constellation.lang.ast.{CompileError, Declaration, TypeExpr, Span, SourceFile}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
@@ -254,13 +254,17 @@ class ConstellationLanguageServer(
         GetInputSchemaResult(
           success = true,
           inputs = Some(inputFields),
-          error = None
+          error = None,
+          errors = None
         )
       case Left(error) =>
+        val sourceFile = document.sourceFile
+        val errorInfo = compileErrorToErrorInfo(error, sourceFile)
         GetInputSchemaResult(
           success = false,
           inputs = None,
-          error = Some(error.message)
+          error = Some(error.message),
+          errors = Some(List(errorInfo))
         )
     }
   }
@@ -698,6 +702,7 @@ class ConstellationLanguageServer(
 
     // Generate unique DAG name from URI
     val dagName = s"lsp-${document.uri.hashCode.abs}"
+    val sourceFile = document.sourceFile
 
     compiler.compile(document.text, dagName) match {
       case Right(compiled) =>
@@ -730,23 +735,28 @@ class ConstellationLanguageServer(
                 success = true,
                 outputs = Some(outputJson),
                 error = None,
+                errors = None,
                 executionTimeMs = Some(endTime - startTime)
               )
             case Left(error) =>
+              val errorInfo = runtimeErrorToErrorInfo(error)
               ExecutePipelineResult(
                 success = false,
                 outputs = None,
                 error = Some(error.getMessage),
+                errors = Some(List(errorInfo)),
                 executionTimeMs = Some(endTime - startTime)
               )
           }
         } yield execResult
 
       case Left(errors) =>
+        val errorInfos = errors.map(e => compileErrorToErrorInfo(e, sourceFile))
         IO.pure(ExecutePipelineResult(
           success = false,
           outputs = None,
-          error = Some(errors.map(_.message).mkString("; "))
+          error = Some(errors.map(_.message).mkString("; ")),
+          errors = Some(errorInfos)
         ))
     }
   }
@@ -790,6 +800,129 @@ class ConstellationLanguageServer(
       })
       case CUnion(value, _, tag) => Json.obj("tag" -> Json.fromString(tag), "value" -> cvalueToJson(value))
     }
+  }
+
+  /** Convert CompileError to structured ErrorInfo for the extension */
+  private def compileErrorToErrorInfo(error: CompileError, sourceFile: SourceFile): ErrorInfo = {
+    val category = error match {
+      case _: CompileError.ParseError => ErrorCategory.Syntax
+      case _: CompileError.TypeError | _: CompileError.TypeMismatch | _: CompileError.IncompatibleMerge => ErrorCategory.Type
+      case _: CompileError.UndefinedVariable | _: CompileError.UndefinedType |
+           _: CompileError.UndefinedFunction | _: CompileError.UndefinedNamespace |
+           _: CompileError.AmbiguousFunction | _: CompileError.InvalidProjection |
+           _: CompileError.InvalidFieldAccess => ErrorCategory.Reference
+      case _: CompileError.UnsupportedComparison => ErrorCategory.Type
+    }
+
+    val (line, column, endLine, endColumn, codeContext) = error.span match {
+      case Some(span) =>
+        val (startLC, endLC) = sourceFile.spanToLineCol(span)
+        val context = buildCodeContext(sourceFile, startLC.line, startLC.col, span.length)
+        (Some(startLC.line), Some(startLC.col), Some(endLC.line), Some(endLC.col), Some(context))
+      case None =>
+        (None, None, None, None, None)
+    }
+
+    // Generate suggestions for certain error types
+    val suggestion = error match {
+      case e: CompileError.UndefinedFunction =>
+        findSimilarFunction(e.name).map(s => s"Did you mean: $s?")
+      case e: CompileError.UndefinedVariable =>
+        None // Could add variable suggestions if needed
+      case e: CompileError.InvalidProjection =>
+        if (e.availableFields.nonEmpty) Some(s"Available fields: ${e.availableFields.mkString(", ")}")
+        else None
+      case e: CompileError.InvalidFieldAccess =>
+        if (e.availableFields.nonEmpty) Some(s"Available fields: ${e.availableFields.mkString(", ")}")
+        else None
+      case _ => None
+    }
+
+    ErrorInfo(
+      category = category,
+      message = error.message,
+      line = line,
+      column = column,
+      endLine = endLine,
+      endColumn = endColumn,
+      codeContext = codeContext,
+      suggestion = suggestion
+    )
+  }
+
+  /** Build a code context snippet showing the error location */
+  private def buildCodeContext(sourceFile: SourceFile, errorLine: Int, errorCol: Int, spanLength: Int): String = {
+    val sb = new StringBuilder()
+    val lines = sourceFile.content.split("\n", -1) // -1 to preserve trailing empty strings
+
+    // Show 1 line before if available
+    if (errorLine > 1 && errorLine - 2 < lines.length) {
+      sb.append(f"  ${errorLine - 1}%3d │ ${lines(errorLine - 2)}\n")
+    }
+
+    // Show the error line
+    if (errorLine - 1 < lines.length) {
+      val errorLineContent = lines(errorLine - 1)
+      sb.append(f"  $errorLine%3d │ $errorLineContent\n")
+
+      // Add the caret line pointing to the error
+      val caretPadding = " " * (errorCol - 1)
+      val carets = "^" * (spanLength max 1)
+      sb.append(f"      │ $caretPadding$carets\n")
+    }
+
+    // Show 1 line after if available
+    if (errorLine < lines.length) {
+      sb.append(f"  ${errorLine + 1}%3d │ ${lines(errorLine)}")
+    }
+
+    sb.toString()
+  }
+
+  /** Find a function name similar to the given name (for suggestions) */
+  private def findSimilarFunction(name: String): Option[String] = {
+    // Get all registered function names
+    val allFunctions = compiler.functionRegistry.all.map(_.name)
+
+    // Find functions with small edit distance
+    val candidates = allFunctions.filter { fn =>
+      levenshteinDistance(name.toLowerCase, fn.toLowerCase) <= 2
+    }
+
+    candidates.headOption
+  }
+
+  /** Calculate Levenshtein distance between two strings */
+  private def levenshteinDistance(s1: String, s2: String): Int = {
+    val m = s1.length
+    val n = s2.length
+    val dp = Array.ofDim[Int](m + 1, n + 1)
+
+    for (i <- 0 to m) dp(i)(0) = i
+    for (j <- 0 to n) dp(0)(j) = j
+
+    for (i <- 1 to m; j <- 1 to n) {
+      val cost = if (s1(i - 1) == s2(j - 1)) 0 else 1
+      dp(i)(j) = Math.min(
+        Math.min(dp(i - 1)(j) + 1, dp(i)(j - 1) + 1),
+        dp(i - 1)(j - 1) + cost
+      )
+    }
+    dp(m)(n)
+  }
+
+  /** Convert a runtime exception to ErrorInfo */
+  private def runtimeErrorToErrorInfo(error: Throwable): ErrorInfo = {
+    ErrorInfo(
+      category = ErrorCategory.Runtime,
+      message = error.getMessage,
+      line = None,
+      column = None,
+      endLine = None,
+      endColumn = None,
+      codeContext = None,
+      suggestion = None
+    )
   }
 }
 
