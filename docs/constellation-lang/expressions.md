@@ -25,6 +25,81 @@ embeddings = ide-ranker-v2-embed(communications)
 scores = compute-relevance-score(query, documents)
 ```
 
+## Arithmetic Expressions
+
+Perform arithmetic operations on numeric values:
+
+```
+in a: Int
+in b: Int
+
+sum = a + b        # Addition
+diff = a - b       # Subtraction
+product = a * b    # Multiplication
+quotient = a / b   # Division
+```
+
+Arithmetic operators work with `Int` and `Float` types:
+
+```
+in x: Float
+in y: Float
+
+result = x * y + 1.5
+```
+
+**Operator Precedence:**
+- `*` and `/` have higher precedence than `+` and `-`
+- Use parentheses to control evaluation order: `(a + b) * c`
+
+## Comparison Expressions
+
+Compare values and produce Boolean results:
+
+```
+in a: Int
+in b: Int
+
+isEqual = a == b       # Equality
+isNotEqual = a != b    # Inequality
+isGreater = a > b      # Greater than
+isLess = a < b         # Less than
+isGte = a >= b         # Greater than or equal
+isLte = a <= b         # Less than or equal
+```
+
+Comparisons work with numeric types and return `Boolean`:
+
+```
+in score: Int
+in threshold: Int
+
+passed = score >= threshold
+result = if (passed) score else 0
+```
+
+## Field Access Expressions
+
+Access individual fields from a record using dot notation:
+
+```
+in user: { id: Int, name: String, email: String }
+
+userId = user.id        # Type: Int
+userName = user.name    # Type: String
+```
+
+Field access works on `Candidates` element-wise:
+
+```
+in items: Candidates<{ id: String, score: Float }>
+
+ids = items.id          # Type: Candidates<String>
+scores = items.score    # Type: Candidates<Float>
+```
+
+**Note:** Field access (`.field`) extracts a single field's value, while projection (`[field1, field2]`) creates a new record with selected fields.
+
 ## Merge Expressions
 
 Combine record types using `+`:

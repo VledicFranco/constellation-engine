@@ -56,7 +56,7 @@ sbt test       # Run all tests
 
 | Document | Description |
 |----------|-------------|
-| [constellation-lang Guide](constellation-lang.md) | Complete language reference for the DSL |
+| [constellation-lang Guide](constellation-lang/README.md) | Complete language reference for the DSL |
 | [Standard Library](stdlib.md) | Built-in functions for common operations |
 | [Architecture](architecture.md) | Technical architecture and design decisions |
 | [API Guide](api-guide.md) | Programmatic API usage and module creation |
@@ -119,16 +119,22 @@ result match {
 ## Project Structure
 
 ```
-src/main/scala/io/constellation/
-├── api/                    # Core runtime API
-│   ├── Spec.scala          # DAG specifications
-│   ├── Runtime.scala       # Execution engine
-│   ├── TypeSystem.scala    # CType/CValue types
-│   └── ModuleBuilder.scala # Module construction
-└── lang/                   # constellation-lang compiler
-    ├── ast/                # Abstract syntax tree
-    ├── parser/             # cats-parse based parser
-    ├── semantic/           # Type checking
-    ├── compiler/           # IR and DAG compilation
-    └── runtime/            # Compiler interface
+modules/
+├── core/                   # Core type system
+│   └── src/.../TypeSystem.scala
+├── runtime/                # Runtime API
+│   └── src/.../ModuleBuilder.scala, Runtime.scala, Spec.scala
+├── lang-ast/               # AST definitions
+├── lang-parser/            # cats-parse based parser
+│   └── src/.../ConstellationParser.scala
+├── lang-compiler/          # Type checking, IR, DAG compilation
+│   └── src/.../TypeChecker.scala, IRGenerator.scala, DagCompiler.scala
+├── lang-stdlib/            # Standard library functions
+│   └── src/.../StdLib.scala
+├── lang-lsp/               # Language Server Protocol
+│   └── src/.../ConstellationLanguageServer.scala
+├── http-api/               # HTTP server and routes
+│   └── src/.../ConstellationServer.scala
+└── example-app/            # Example application
+    └── src/.../ExampleLib.scala
 ```

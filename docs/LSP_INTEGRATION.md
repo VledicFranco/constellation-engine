@@ -34,7 +34,8 @@ The LSP server runs inside your HTTP API server, accessible via WebSocket at `/l
 Start your Constellation application with HTTP API and LSP support:
 
 ```bash
-sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
+make server
+# Or: sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
 ```
 
 This starts the server on `http://localhost:8080` with LSP at `ws://localhost:8080/lsp`.

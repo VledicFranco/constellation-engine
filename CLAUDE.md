@@ -151,7 +151,7 @@ When adding a module to example-app:
 
 - Full architecture: See `llm.md`
 - Contributing guide: See `CONTRIBUTING.md`
-- **Sprint backlog & issue tracking: See `TODO.md`** (agents update this directly)
+- **Issue tracking: Use GitHub Issues** (agents track work via issues and PRs)
 - Language documentation: See `docs/constellation-lang/`
 
 ---
@@ -519,8 +519,7 @@ Use: mcp__github__list_pull_requests
 
 ### Step 5: Claim the Issue
 
-1. **Update TODO.md** - Mark issue as `[~]` in progress with your agent number
-2. **Comment on GitHub issue** (optional but recommended):
+1. **Comment on GitHub issue** to claim it:
    ```
    Use: mcp__github__add_issue_comment
    Body: "Starting work on this issue. Branch: agent-<N>/issue-<NUMBER>-<desc>"
@@ -712,7 +711,7 @@ Use: mcp__github__issue_write with method="create"
 │ 2. Change to worktree (cd ../constellation-agent-<N>)       │
 │ 3. Verify issue is OPEN on GitHub (mcp__github__issue_read) │
 │ 4. Check no conflicting PRs (mcp__github__list_pull_requests)│
-│ 5. Claim issue in TODO.md ([~] status)                      │
+│ 5. Claim issue (comment on GitHub issue)                    │
 │ 6. Create feature branch                                     │
 │ 7. Verify build works (make compile && make test)           │
 └─────────────────────────────────────────────────────────────┘
@@ -723,7 +722,7 @@ Use: mcp__github__issue_write with method="create"
 │ • Make small, focused commits                                │
 │ • Run tests frequently                                       │
 │ • Stay within issue scope                                    │
-│ • Update TODO.md if blocked                                  │
+│ • Comment on issue if blocked                                │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -742,7 +741,7 @@ Use: mcp__github__issue_write with method="create"
 │ 1. Push branch: git push -u origin <branch>                 │
 │ 2. Create PR with detailed description                       │
 │ 3. Ensure PR references issue: "Closes #<N>"                │
-│ 4. Update TODO.md to [x] after PR merges                    │
+│ 4. Issue closes automatically when PR merges                │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -832,4 +831,4 @@ modules.traverse(constellation.setModule)  // requires cats.implicits._
 **References:**
 - Full architecture details: `llm.md`
 - Language documentation: `docs/constellation-lang/`
-- TODO/roadmap: `TODO.md`
+- Issue tracking: GitHub Issues
