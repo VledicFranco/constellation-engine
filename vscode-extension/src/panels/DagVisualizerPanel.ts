@@ -91,6 +91,9 @@ export class DagVisualizerPanel {
       async (message) => {
         switch (message.command) {
           case 'ready':
+            // Send saved layout direction preference
+            const savedDirection = vscode.workspace.getConfiguration('constellation').get<string>('dagLayoutDirection', 'TB');
+            this._state.panel.webview.postMessage({ type: 'setLayoutDirection', direction: savedDirection });
             await this._refreshDag();
             break;
           case 'refresh':
@@ -99,6 +102,14 @@ export class DagVisualizerPanel {
           case 'nodeClick':
             // Future: handle node click for details panel
             console.log('Node clicked:', message.nodeId, message.nodeType);
+            break;
+          case 'setLayoutDirection':
+            // Persist layout direction preference
+            vscode.workspace.getConfiguration('constellation').update(
+              'dagLayoutDirection',
+              message.direction,
+              vscode.ConfigurationTarget.Global
+            );
             break;
         }
       },
@@ -167,7 +178,13 @@ export class DagVisualizerPanel {
       icon: '◆',
       title: 'DAG Visualizer',
       fileNameId: 'fileName',
-      actions: '<button class="icon-btn" id="refreshBtn" title="Refresh">↻</button>'
+      actions: `
+        <div class="layout-toggle">
+          <button class="toggle-btn active" id="tbBtn" title="Top to Bottom">↓ TB</button>
+          <button class="toggle-btn" id="lrBtn" title="Left to Right">→ LR</button>
+        </div>
+        <button class="icon-btn" id="refreshBtn" title="Refresh">↻</button>
+      `
     });
 
     const body = `
@@ -204,6 +221,41 @@ export class DagVisualizerPanel {
       }
 
       .header { flex-shrink: 0; }
+
+      .layout-toggle {
+        display: flex;
+        gap: 2px;
+        background: var(--vscode-input-background, rgba(60, 60, 60, 0.5));
+        border-radius: var(--radius-sm);
+        padding: 2px;
+      }
+
+      .toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        background: transparent;
+        border: none;
+        border-radius: 3px;
+        color: var(--vscode-foreground);
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 11px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+      }
+
+      .toggle-btn:hover {
+        opacity: 0.9;
+        background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+      }
+
+      .toggle-btn.active {
+        opacity: 1;
+        background: var(--vscode-button-background, #0e639c);
+        color: var(--vscode-button-foreground, #fff);
+      }
 
       .container {
         flex: 1;
@@ -302,8 +354,11 @@ export class DagVisualizerPanel {
   var errorMessage = document.getElementById('errorMessage');
   var fileNameEl = document.getElementById('fileName');
   var refreshBtn = document.getElementById('refreshBtn');
+  var tbBtn = document.getElementById('tbBtn');
+  var lrBtn = document.getElementById('lrBtn');
 
   var currentDag = null;
+  var layoutDirection = 'TB'; // 'TB' = top-to-bottom, 'LR' = left-to-right
   var viewBox = { x: 0, y: 0, width: 800, height: 600 };
   var isPanning = false;
   var startPan = { x: 0, y: 0 };
@@ -312,6 +367,28 @@ export class DagVisualizerPanel {
   refreshBtn.onclick = function() {
     vscode.postMessage({ command: 'refresh' });
   };
+
+  tbBtn.onclick = function() {
+    if (layoutDirection !== 'TB') {
+      setLayoutDirection('TB');
+    }
+  };
+
+  lrBtn.onclick = function() {
+    if (layoutDirection !== 'LR') {
+      setLayoutDirection('LR');
+    }
+  };
+
+  function setLayoutDirection(direction) {
+    layoutDirection = direction;
+    tbBtn.classList.toggle('active', direction === 'TB');
+    lrBtn.classList.toggle('active', direction === 'LR');
+    vscode.postMessage({ command: 'setLayoutDirection', direction: direction });
+    if (currentDag) {
+      renderDag(currentDag);
+    }
+  }
 
   window.addEventListener('message', function(event) {
     var message = event.data;
@@ -329,6 +406,11 @@ export class DagVisualizerPanel {
       loadingContainer.style.display = 'none';
       errorContainer.style.display = 'block';
       errorMessage.textContent = message.message;
+    } else if (message.type === 'setLayoutDirection') {
+      // Apply saved layout direction preference
+      layoutDirection = message.direction || 'TB';
+      tbBtn.classList.toggle('active', layoutDirection === 'TB');
+      lrBtn.classList.toggle('active', layoutDirection === 'LR');
     }
   });
 
@@ -424,31 +506,50 @@ export class DagVisualizerPanel {
       layers.push(layer);
     }
 
-    // Position nodes
+    // Position nodes based on layout direction
     var padding = 40;
     var layerGap = 100;
     var nodeGap = 30;
-    var y = padding;
 
-    layers.forEach(function(layer) {
-      var totalWidth = layer.reduce(function(sum, id) {
-        return sum + nodes[id].width;
-      }, 0) + (layer.length - 1) * nodeGap;
+    if (layoutDirection === 'TB') {
+      // Top-to-bottom: layers are horizontal rows
+      var y = padding;
 
+      layers.forEach(function(layer) {
+        var x = padding;
+
+        layer.forEach(function(id) {
+          var node = nodes[id];
+          node.x = x + node.width / 2;
+          node.y = y + node.height / 2;
+          x += node.width + nodeGap;
+        });
+
+        var maxHeight = Math.max.apply(null, layer.map(function(id) {
+          return nodes[id].height;
+        }));
+        y += maxHeight + layerGap;
+      });
+    } else {
+      // Left-to-right: layers are vertical columns
       var x = padding;
 
-      layer.forEach(function(id) {
-        var node = nodes[id];
-        node.x = x + node.width / 2;
-        node.y = y + node.height / 2;
-        x += node.width + nodeGap;
-      });
+      layers.forEach(function(layer) {
+        var y = padding;
 
-      var maxHeight = Math.max.apply(null, layer.map(function(id) {
-        return nodes[id].height;
-      }));
-      y += maxHeight + layerGap;
-    });
+        layer.forEach(function(id) {
+          var node = nodes[id];
+          node.x = x + node.width / 2;
+          node.y = y + node.height / 2;
+          y += node.height + nodeGap;
+        });
+
+        var maxWidth = Math.max.apply(null, layer.map(function(id) {
+          return nodes[id].width;
+        }));
+        x += maxWidth + layerGap;
+      });
+    }
 
     // Calculate bounds
     var allNodes = Object.values(nodes);
@@ -503,15 +604,29 @@ export class DagVisualizerPanel {
 
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
-      // Calculate edge path with curve
-      var startY = fromNode.y + fromNode.height / 2;
-      var endY = toNode.y - toNode.height / 2;
-      var midY = (startY + endY) / 2;
+      // Calculate edge path with curve based on layout direction
+      var d;
+      if (layoutDirection === 'TB') {
+        // Top-to-bottom: edges go vertically
+        var startY = fromNode.y + fromNode.height / 2;
+        var endY = toNode.y - toNode.height / 2;
+        var midY = (startY + endY) / 2;
 
-      var d = 'M ' + fromNode.x + ' ' + startY +
-              ' C ' + fromNode.x + ' ' + midY +
-              ', ' + toNode.x + ' ' + midY +
-              ', ' + toNode.x + ' ' + endY;
+        d = 'M ' + fromNode.x + ' ' + startY +
+            ' C ' + fromNode.x + ' ' + midY +
+            ', ' + toNode.x + ' ' + midY +
+            ', ' + toNode.x + ' ' + endY;
+      } else {
+        // Left-to-right: edges go horizontally
+        var startX = fromNode.x + fromNode.width / 2;
+        var endX = toNode.x - toNode.width / 2;
+        var midX = (startX + endX) / 2;
+
+        d = 'M ' + startX + ' ' + fromNode.y +
+            ' C ' + midX + ' ' + fromNode.y +
+            ', ' + midX + ' ' + toNode.y +
+            ', ' + endX + ' ' + toNode.y;
+      }
 
       path.setAttribute('d', d);
       path.setAttribute('marker-end', 'url(#arrowhead)');
