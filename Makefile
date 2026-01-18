@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all
+.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean
 
 # Default target
 help:
@@ -36,6 +36,13 @@ help:
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
+	@echo ""
+	@echo "MCP Server:"
+	@echo "  make mcp-install - Install MCP server dependencies"
+	@echo "  make mcp-build   - Build MCP server"
+	@echo "  make mcp-test    - Run MCP server tests"
+	@echo "  make mcp-start   - Start MCP server"
+	@echo "  make mcp-clean   - Clean MCP server build"
 
 # =============================================================================
 # Quick Start
@@ -185,3 +192,33 @@ info:
 	@echo "Scala version: 3.3.1"
 	@echo "SBT version: 1.9.7"
 	@sbt "show version"
+
+# =============================================================================
+# MCP Server
+# =============================================================================
+
+# Install MCP server dependencies
+mcp-install:
+	@echo "Installing MCP server dependencies..."
+	cd mcp-server && npm install
+
+# Build MCP server
+mcp-build: mcp-install
+	@echo "Building MCP server..."
+	cd mcp-server && npm run build
+
+# Run MCP server tests
+mcp-test: mcp-build
+	@echo "Running MCP server tests..."
+	cd mcp-server && npm test
+
+# Start MCP server (for testing)
+mcp-start: mcp-build
+	@echo "Starting MCP server..."
+	cd mcp-server && npm start
+
+# Clean MCP server build
+mcp-clean:
+	@echo "Cleaning MCP server..."
+	cd mcp-server && npm run clean 2>/dev/null || true
+	rm -rf mcp-server/node_modules mcp-server/dist
