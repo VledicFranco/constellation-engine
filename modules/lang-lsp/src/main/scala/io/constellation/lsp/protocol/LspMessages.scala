@@ -91,6 +91,27 @@ object LspMessages {
     position: Position
   )
 
+  // ========== Structured Error Information ==========
+
+  /** Error category for classification */
+  enum ErrorCategory:
+    case Syntax      // Parser failures
+    case Type        // Type mismatches, unknown types
+    case Reference   // Undefined variables, unknown modules
+    case Runtime     // Execution failures, module exceptions
+
+  /** Structured error information with source location and context */
+  case class ErrorInfo(
+    category: ErrorCategory,
+    message: String,
+    line: Option[Int] = None,          // 1-based line number
+    column: Option[Int] = None,        // 1-based column number
+    endLine: Option[Int] = None,       // End line for range highlighting
+    endColumn: Option[Int] = None,     // End column for range highlighting
+    codeContext: Option[String] = None, // Code snippet showing error location
+    suggestion: Option[String] = None   // Suggested fix (e.g., "Did you mean: Uppercase?")
+  )
+
   // ========== Custom: Execute Pipeline ==========
 
   case class ExecutePipelineParams(
@@ -101,7 +122,8 @@ object LspMessages {
   case class ExecutePipelineResult(
     success: Boolean,
     outputs: Option[Map[String, Json]],
-    error: Option[String],
+    error: Option[String],                  // Simple error message (kept for backwards compat)
+    errors: Option[List[ErrorInfo]] = None, // Structured errors with context
     executionTimeMs: Option[Long] = None
   )
 
@@ -114,7 +136,8 @@ object LspMessages {
   case class GetInputSchemaResult(
     success: Boolean,
     inputs: Option[List[InputField]],
-    error: Option[String]
+    error: Option[String],                  // Simple error message (kept for backwards compat)
+    errors: Option[List[ErrorInfo]] = None  // Structured errors with context
   )
 
   // ========== Custom: Get DAG Structure ==========
@@ -216,6 +239,24 @@ object LspMessages {
 
   given Encoder[HoverParams] = deriveEncoder
   given Decoder[HoverParams] = deriveDecoder
+
+  given Encoder[ErrorCategory] = Encoder.encodeString.contramap {
+    case ErrorCategory.Syntax => "syntax"
+    case ErrorCategory.Type => "type"
+    case ErrorCategory.Reference => "reference"
+    case ErrorCategory.Runtime => "runtime"
+  }
+
+  given Decoder[ErrorCategory] = Decoder.decodeString.emap {
+    case "syntax" => Right(ErrorCategory.Syntax)
+    case "type" => Right(ErrorCategory.Type)
+    case "reference" => Right(ErrorCategory.Reference)
+    case "runtime" => Right(ErrorCategory.Runtime)
+    case other => Left(s"Unknown error category: $other")
+  }
+
+  given Encoder[ErrorInfo] = deriveEncoder
+  given Decoder[ErrorInfo] = deriveDecoder
 
   given Encoder[ExecutePipelineParams] = deriveEncoder
   given Decoder[ExecutePipelineParams] = deriveDecoder
