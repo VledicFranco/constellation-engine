@@ -12,7 +12,6 @@ import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspTypes._
 import io.constellation.lsp.protocol.LspMessages._
-import io.constellation.lsp.protocol.LspMessages.{GetDagStructureParams, GetDagStructureResult, DagStructure, ModuleNode, DataNode}
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
