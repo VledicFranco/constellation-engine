@@ -82,6 +82,37 @@ object IRNode {
     outputType: SemanticType,
     debugSpan: Option[Span] = None
   ) extends IRNode
+
+  /** Boolean AND node with short-circuit evaluation.
+    * If left is false, right is not evaluated. */
+  final case class AndNode(
+    id: UUID,
+    left: UUID,
+    right: UUID,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SBoolean
+  }
+
+  /** Boolean OR node with short-circuit evaluation.
+    * If left is true, right is not evaluated. */
+  final case class OrNode(
+    id: UUID,
+    left: UUID,
+    right: UUID,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SBoolean
+  }
+
+  /** Boolean NOT node */
+  final case class NotNode(
+    id: UUID,
+    operand: UUID,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SBoolean
+  }
 }
 
 /** The complete IR program representing a constellation-lang program */
@@ -101,6 +132,9 @@ final case class IRProgram(
     case Some(IRNode.FieldAccessNode(_, source, _, _, _)) => Set(source)
     case Some(IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _)) => Set(cond, thenBr, elseBr)
     case Some(IRNode.LiteralNode(_, _, _, _)) => Set.empty
+    case Some(IRNode.AndNode(_, left, right, _)) => Set(left, right)
+    case Some(IRNode.OrNode(_, left, right, _)) => Set(left, right)
+    case Some(IRNode.NotNode(_, operand, _)) => Set(operand)
     case None => Set.empty
   }
 

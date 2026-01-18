@@ -184,6 +184,11 @@ enum ArithOp:
   case Mul     // *
   case Div     // /
 
+/** Boolean operators */
+enum BoolOp:
+  case And     // and
+  case Or      // or
+
 /** Expressions */
 sealed trait Expression
 
@@ -246,6 +251,18 @@ object Expression {
     left: Located[Expression],
     op: ArithOp,
     right: Located[Expression]
+  ) extends Expression
+
+  /** Boolean binary expression: a and b, a or b */
+  final case class BoolBinary(
+    left: Located[Expression],
+    op: BoolOp,
+    right: Located[Expression]
+  ) extends Expression
+
+  /** Boolean negation: not a */
+  final case class Not(
+    operand: Located[Expression]
   ) extends Expression
 }
 

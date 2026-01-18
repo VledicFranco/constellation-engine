@@ -3,6 +3,7 @@ package io.constellation.lang.parser
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
+import io.constellation.lang.ast.BoolOp
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -877,5 +878,206 @@ class ParserTest extends AnyFlatSpec with Matchers {
     arith.right.value shouldBe a[Expression.Arithmetic]
     val rightDiv = arith.right.value.asInstanceOf[Expression.Arithmetic]
     rightDiv.op shouldBe ArithOp.Div
+  }
+
+  // Boolean operator tests
+
+  it should "parse 'and' operator" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = a and b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.BoolBinary]
+
+    val boolBinary = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.And
+  }
+
+  it should "parse 'or' operator" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = a or b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.BoolBinary]
+
+    val boolBinary = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.Or
+  }
+
+  it should "parse 'not' operator" in {
+    val source = """
+      in a: Boolean
+      result = not a
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Not]
+  }
+
+  it should "parse chained 'and' operators (left-associative)" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = a and b and c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    // (a and b) and c
+    val outer = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    outer.op shouldBe BoolOp.And
+    outer.left.value shouldBe a[Expression.BoolBinary]
+  }
+
+  it should "parse chained 'or' operators (left-associative)" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = a or b or c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    // (a or b) or c
+    val outer = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    outer.op shouldBe BoolOp.Or
+    outer.left.value shouldBe a[Expression.BoolBinary]
+  }
+
+  it should "parse 'or' with lower precedence than 'and'" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = a or b and c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    // a or (b and c)
+    val outer = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    outer.op shouldBe BoolOp.Or
+    outer.right.value shouldBe a[Expression.BoolBinary]
+    val inner = outer.right.value.asInstanceOf[Expression.BoolBinary]
+    inner.op shouldBe BoolOp.And
+  }
+
+  it should "parse 'not' with higher precedence than 'and'" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = not a and b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    // (not a) and b
+    val boolBinary = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.And
+    boolBinary.left.value shouldBe a[Expression.Not]
+  }
+
+  it should "parse double negation 'not not'" in {
+    val source = """
+      in a: Boolean
+      result = not not a
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val outer = assignment.value.value.asInstanceOf[Expression.Not]
+    outer.operand.value shouldBe a[Expression.Not]
+  }
+
+  it should "parse boolean operators with comparison operators" in {
+    val source = """
+      in x: Int
+      in y: Int
+      in z: Int
+      result = x < y and y < z
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    // (x < y) and (y < z)
+    val boolBinary = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.And
+    boolBinary.left.value shouldBe a[Expression.Compare]
+    boolBinary.right.value shouldBe a[Expression.Compare]
+  }
+
+  it should "parse complex boolean expression with parentheses" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = (a or b) and c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val boolBinary = assignment.value.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.And
+    boolBinary.left.value shouldBe a[Expression.BoolBinary]
+    val inner = boolBinary.left.value.asInstanceOf[Expression.BoolBinary]
+    inner.op shouldBe BoolOp.Or
+  }
+
+  it should "parse not with comparison" in {
+    val source = """
+      in x: Int
+      in y: Int
+      result = not x == y
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    // not (x == y)
+    val notExpr = assignment.value.value.asInstanceOf[Expression.Not]
+    notExpr.operand.value shouldBe a[Expression.Compare]
   }
 }

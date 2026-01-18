@@ -53,6 +53,89 @@ in items: Candidates<{ id: String, score: Float, metadata: String }>
 result = items[id, score]  # Type: Candidates<{ id: String, score: Float }>
 ```
 
+## Comparison Expressions
+
+Compare values using comparison operators:
+
+```
+in x: Int
+in y: Int
+isEqual = x == y     # Equality
+isNotEqual = x != y  # Inequality
+isLess = x < y       # Less than
+isGreater = x > y    # Greater than
+isLessEq = x <= y    # Less than or equal
+isGreaterEq = x >= y # Greater than or equal
+out isEqual
+```
+
+All comparison operators return `Boolean`.
+
+**Supported comparisons:**
+
+| Operator | Types | Description |
+|----------|-------|-------------|
+| `==` | Int, String | Equality |
+| `!=` | Int, String | Inequality |
+| `<` | Int | Less than |
+| `>` | Int | Greater than |
+| `<=` | Int | Less than or equal |
+| `>=` | Int | Greater than or equal |
+
+## Boolean Expressions
+
+Combine boolean values using logical operators:
+
+```
+in isActive: Boolean
+in hasPermission: Boolean
+in score: Float
+
+# Logical AND - both must be true
+canAccess = isActive and hasPermission
+
+# Logical OR - at least one must be true
+isEligible = hasPermission or score >= 0.9
+
+# Logical NOT - negates the value
+isBlocked = not isActive
+
+out canAccess
+```
+
+**Operator precedence (lowest to highest):**
+
+1. `or` - Logical OR
+2. `and` - Logical AND
+3. `not` - Logical NOT
+4. Comparison operators (`==`, `!=`, `<`, `>`, `<=`, `>=`)
+5. Merge operator (`+`)
+
+**Short-circuit evaluation:**
+
+Boolean operators use short-circuit evaluation:
+- `a and b`: If `a` is false, `b` is not evaluated
+- `a or b`: If `a` is true, `b` is not evaluated
+
+This is important when `b` involves expensive operations:
+
+```
+# If hasCache is true, expensiveComputation is never called
+result = hasCache or expensiveComputation(data)
+```
+
+**Complex expressions:**
+
+Use parentheses to control evaluation order:
+
+```
+# Without parentheses: a or (b and c)
+result1 = a or b and c
+
+# With parentheses: (a or b) and c
+result2 = (a or b) and c
+```
+
 ## Conditional Expressions
 
 ```
