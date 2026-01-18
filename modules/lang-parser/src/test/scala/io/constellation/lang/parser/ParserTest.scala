@@ -470,4 +470,118 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName(List("m", "add"))
   }
+
+  // Field access tests
+
+  it should "parse simple field access" in {
+    val source = """
+      in user: { name: String, age: Int }
+      result = user.name
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.FieldAccess]
+
+    val fieldAccess = assignment.value.value.asInstanceOf[Expression.FieldAccess]
+    fieldAccess.source.value shouldBe Expression.VarRef("user")
+    fieldAccess.field.value shouldBe "name"
+  }
+
+  it should "parse chained field access" in {
+    val source = """
+      in person: { address: { city: String } }
+      result = person.address.city
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.FieldAccess]
+
+    // person.address.city should be FieldAccess(FieldAccess(person, address), city)
+    val outerAccess = assignment.value.value.asInstanceOf[Expression.FieldAccess]
+    outerAccess.field.value shouldBe "city"
+    outerAccess.source.value shouldBe a[Expression.FieldAccess]
+
+    val innerAccess = outerAccess.source.value.asInstanceOf[Expression.FieldAccess]
+    innerAccess.field.value shouldBe "address"
+    innerAccess.source.value shouldBe Expression.VarRef("person")
+  }
+
+  it should "parse field access combined with merge" in {
+    val source = """
+      in a: { x: Int }
+      in b: { y: Int }
+      result = a.x + b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Merge]
+  }
+
+  it should "parse field access after function call" in {
+    val source = """
+      in x: Int
+      result = compute(x).value
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.FieldAccess]
+
+    val fieldAccess = assignment.value.value.asInstanceOf[Expression.FieldAccess]
+    fieldAccess.field.value shouldBe "value"
+    fieldAccess.source.value shouldBe a[Expression.FunctionCall]
+  }
+
+  it should "parse field access combined with projection" in {
+    val source = """
+      in data: { records: { id: Int, name: String } }
+      result = data.records[id]
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    // The result should be Projection(FieldAccess(data, records), [id])
+    assignment.value.value shouldBe a[Expression.Projection]
+
+    val projection = assignment.value.value.asInstanceOf[Expression.Projection]
+    projection.fields shouldBe List("id")
+    projection.source.value shouldBe a[Expression.FieldAccess]
+  }
+
+  it should "parse field access on parenthesized expression" in {
+    val source = """
+      in a: { x: Int }
+      in b: { x: Int }
+      result = (if (true) a else b).x
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.FieldAccess]
+
+    val fieldAccess = assignment.value.value.asInstanceOf[Expression.FieldAccess]
+    fieldAccess.field.value shouldBe "x"
+    fieldAccess.source.value shouldBe a[Expression.Conditional]
+  }
 }

@@ -124,6 +124,13 @@ object IRGenerator {
       val node = IRNode.ProjectNode(id, sourceId, fields, semanticType, Some(span))
       (sourceCtx.addNode(node), id)
 
+    case TypedExpression.FieldAccess(source, field, semanticType, span) =>
+      val (sourceCtx, sourceId) = generateExpression(source, ctx)
+
+      val id = UUID.randomUUID()
+      val node = IRNode.FieldAccessNode(id, sourceId, field, semanticType, Some(span))
+      (sourceCtx.addNode(node), id)
+
     case TypedExpression.Conditional(cond, thenBr, elseBr, semanticType, span) =>
       val (condCtx, condId) = generateExpression(cond, ctx)
       val (thenCtx, thenId) = generateExpression(thenBr, condCtx)

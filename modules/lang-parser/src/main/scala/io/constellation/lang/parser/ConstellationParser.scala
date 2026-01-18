@@ -116,7 +116,7 @@ object ConstellationParser {
   lazy val expression: P[Expression] = P.defer(exprMerge)
 
   private lazy val exprMerge: P[Expression] =
-    (withSpan(exprProjection) ~ (plus *> withSpan(exprProjection)).rep0).map {
+    (withSpan(exprPostfix) ~ (plus *> withSpan(exprPostfix)).rep0).map {
       case (first, Nil) => first.value
       case (first, rest) =>
         rest.foldLeft(first.value) { (left, right) =>
@@ -124,15 +124,33 @@ object ConstellationParser {
         }
     }
 
-  private lazy val exprProjection: P[Expression] =
-    (withSpan(exprPrimary) ~ projection.?).map {
-      case (locExpr, None) => locExpr.value
-      case (locExpr, Some(fields)) =>
-        Expression.Projection(locExpr, fields)
+  /** Postfix operations: projection [...] and field access .field */
+  private lazy val exprPostfix: P[Expression] =
+    (withSpan(exprPrimary) ~ postfixOp.rep0).map {
+      case (locExpr, ops) =>
+        ops.foldLeft((locExpr.value, locExpr.span)) { case ((expr, span), op) =>
+          op match {
+            case Left(fields) =>
+              (Expression.Projection(Located(expr, span), fields), span)
+            case Right(field) =>
+              val newSpan = Span(span.start, field.span.end)
+              (Expression.FieldAccess(Located(expr, span), field), newSpan)
+          }
+        }._1
     }
 
-  private val projection: P[List[String]] =
+  // Either[List[String], Located[String]] - Left is projection, Right is field access
+  private lazy val postfixOp: P[Either[List[String], Located[String]]] =
+    projection.map(Left(_)) | fieldAccess.map(Right(_))
+
+  private lazy val projection: P[List[String]] =
     openBracket *> identifier.repSep(comma).map(_.toList) <* closeBracket
+
+  private lazy val fieldAccess: P[Located[String]] =
+    token(dot) *> withSpan(rawIdentifier <* ws).flatMap { loc =>
+      if (reserved.contains(loc.value)) P.fail
+      else P.pure(loc)
+    }
 
   private lazy val exprPrimary: P[Expression] =
     conditional.backtrack | functionCall.backtrack | literal | varRef | parenExpr

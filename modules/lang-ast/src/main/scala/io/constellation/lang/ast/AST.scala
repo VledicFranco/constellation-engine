@@ -193,6 +193,12 @@ object Expression {
     fields: List[String]
   ) extends Expression
 
+  /** Field access: user.name (returns the field value directly, not wrapped in a record) */
+  final case class FieldAccess(
+    source: Located[Expression],
+    field: Located[String]
+  ) extends Expression
+
   /** Conditional: if (cond) expr else expr */
   final case class Conditional(
     condition: Located[Expression],
@@ -250,6 +256,9 @@ object CompileError {
   }
   final case class InvalidProjection(field: String, availableFields: List[String], span: Option[Span]) extends CompileError {
     def message: String = s"Invalid projection: field '$field' not found. Available: ${availableFields.mkString(", ")}"
+  }
+  final case class InvalidFieldAccess(field: String, availableFields: List[String], span: Option[Span]) extends CompileError {
+    def message: String = s"Invalid field access: field '$field' not found. Available: ${availableFields.mkString(", ")}"
   }
   final case class IncompatibleMerge(leftType: String, rightType: String, span: Option[Span]) extends CompileError {
     def message: String = s"Cannot merge types: $leftType + $rightType"
