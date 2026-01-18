@@ -88,3 +88,10 @@ scoverage-report/
 *.swo
 *~
 .claude/settings.local.json
+
+# =============================================================================
+# Multi-Agent Coordination
+# =============================================================================
+# TODO.md is updated by multiple agents and causes frequent merge conflicts
+# Each agent should maintain their own local copy
+TODO.md
