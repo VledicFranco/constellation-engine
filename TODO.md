@@ -7,9 +7,10 @@ This document tracks potential improvements, refactors, missing tests, and featu
 1. [Code Cleanups](#code-cleanups)
 2. [Refactoring Opportunities](#refactoring-opportunities)
 3. [Missing Tests](#missing-tests)
-4. [Feature Ideas](#feature-ideas)
-5. [Documentation Improvements](#documentation-improvements)
-6. [Technical Debt](#technical-debt)
+4. [constellation-lang Missing Features](#constellation-lang-missing-features)
+5. [Feature Ideas](#feature-ideas)
+6. [Documentation Improvements](#documentation-improvements)
+7. [Technical Debt](#technical-debt)
 
 ---
 
@@ -153,6 +154,127 @@ This document tracks potential improvements, refactors, missing tests, and featu
 - [ ] **Property-based tests**
   - Use ScalaCheck for parser round-trip tests
   - Use ScalaCheck for type system invariants
+
+---
+
+## constellation-lang Missing Features
+
+Language features documented or proposed but not yet implemented in the compiler.
+
+### Operators (Core)
+
+- [ ] **Field access operator (`.`)**
+  - Syntax: `record.fieldName`
+  - Currently only projections (`record[field1, field2]`) are supported
+  - Needed for: accessing individual fields, nested record access
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Comparison operators**
+  - Syntax: `==`, `!=`, `<`, `>`, `<=`, `>=`
+  - Return type: `Boolean`
+  - Needed for: conditional guards, filtering, predicates
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`, `IRGenerator.scala`
+
+- [ ] **Boolean operators**
+  - Syntax: `and`, `or`, `not`
+  - Short-circuit evaluation semantics
+  - Needed for: compound conditions, orchestration guards
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Arithmetic operators**
+  - Syntax: `+`, `-`, `*`, `/` for numeric types
+  - Currently `+` only means merge for records
+  - Needed for: numeric computations, scoring adjustments
+  - Files: `ConstellationParser.scala` (disambiguate from merge), `TypeChecker.scala`
+
+### Orchestration (Proposed in orchestration-algebra.md)
+
+- [ ] **Guard expressions (`when`)**
+  - Syntax: `result = expression when condition`
+  - Returns `Optional<T>` when condition may be false
+  - Needed for: conditional execution, feature flags, early termination
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`, `IRGenerator.scala`
+
+- [ ] **Optional<T> type**
+  - Wrapper type for values that may be absent
+  - Semantics: `Some(v)` or `None`
+  - Needed for: guard expressions, safe field access, coalesce
+  - Files: `SemanticType.scala`, `TypeChecker.scala`, `CType` in core
+
+- [ ] **Coalesce operator (`??`)**
+  - Syntax: `optional_expr ?? fallback_expr`
+  - Returns first non-None value
+  - Needed for: fallback chains, default values
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Optional chaining (`?.`)**
+  - Syntax: `optional_value?.field`
+  - Safe field access that propagates None
+  - Needed for: safe nested access on optional values
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Branch expression**
+  - Syntax: `branch { cond1 -> expr1, cond2 -> expr2, otherwise -> default }`
+  - Multi-way conditional with exhaustiveness checking
+  - Needed for: model selection, tiered processing
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Aggregate predicates (`all`, `any`)**
+  - Syntax: `all(collection, predicate)`, `any(collection, predicate)`
+  - Boolean aggregation over collections
+  - Needed for: validation gates, conditional processing
+  - Files: Built-in functions or special forms in parser
+
+### Type System Enhancements
+
+- [ ] **Union types**
+  - Syntax: `Type1 | Type2`
+  - Needed for: variant returns, error handling
+  - Files: `AST.scala` (TypeExpr), `SemanticType.scala`, `TypeChecker.scala`
+
+- [ ] **Nullable types shorthand**
+  - Syntax: `Type?` as shorthand for `Optional<Type>`
+  - Needed for: ergonomic optional declarations
+  - Files: `ConstellationParser.scala`, `AST.scala`
+
+- [ ] **Type aliases with parameters**
+  - Syntax: `type Result<T> = { value: T, error: String }`
+  - Needed for: generic type definitions
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+### Expression Enhancements
+
+- [ ] **String interpolation**
+  - Syntax: `"Hello, ${name}!"`
+  - Needed for: dynamic string construction
+  - Files: `ConstellationParser.scala`, `AST.scala`
+
+- [ ] **List literals**
+  - Syntax: `[1, 2, 3]` or `["a", "b", "c"]`
+  - Needed for: inline list construction
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Record literals**
+  - Syntax: `{ field1: value1, field2: value2 }`
+  - Needed for: inline record construction
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+- [ ] **Let bindings in expressions**
+  - Syntax: `let x = expr1 in expr2`
+  - Needed for: local bindings within expressions
+  - Files: `ConstellationParser.scala`, `AST.scala`, `TypeChecker.scala`
+
+### Runtime Features
+
+- [ ] **Lambda expressions**
+  - Syntax: `(x) => x.field` or `(a, b) => a + b`
+  - Needed for: `all`/`any` predicates, map/filter operations
+  - Files: All compiler stages, runtime support
+
+- [ ] **Pipeline operator**
+  - Syntax: `input |> transform1 |> transform2`
+  - Needed for: cleaner chaining of transformations
+  - Files: `ConstellationParser.scala`, `AST.scala` (desugars to nested calls)
 
 ---
 
@@ -338,10 +460,13 @@ This document tracks potential improvements, refactors, missing tests, and featu
 |----------|----------|-------|
 | **P0** | Tests | ExampleLib tests, AST tests |
 | **P0** | Cleanup | Empty message logging, redundant imports |
+| **P1** | Language | Field access (`.`), comparison operators, boolean operators |
 | **P1** | Feature | DAG export, layout toggle |
 | **P1** | Refactor | Extract webview base class |
+| **P2** | Language | Guard expressions (`when`), Optional<T> type, coalesce (`??`) |
 | **P2** | Feature | Execution highlighting, step-through |
 | **P2** | Docs | Getting started tutorial |
+| **P3** | Language | Branch expressions, lambdas, union types |
 | **P3** | Feature | Visual DAG editor, debugging |
 | **P3** | Tech Debt | CI/CD, code coverage |
 
@@ -358,4 +483,4 @@ When working on items from this list:
 
 ---
 
-**Last Updated:** 2026-01-17
+**Last Updated:** 2026-01-18
