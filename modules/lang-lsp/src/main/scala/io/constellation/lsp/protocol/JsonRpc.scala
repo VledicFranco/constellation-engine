@@ -81,7 +81,28 @@ object JsonRpc {
   given Encoder[Request] = deriveEncoder
   given Decoder[Request] = deriveDecoder
 
-  given Encoder[Response] = deriveEncoder
+  /** Custom encoder for Response that follows JSON-RPC 2.0 spec:
+    * - On success: include result, omit error
+    * - On error: include error, omit result
+    */
+  given Encoder[Response] = Encoder.instance { response =>
+    val baseFields = List(
+      "jsonrpc" -> Json.fromString(response.jsonrpc),
+      "id" -> response.id.asJson
+    )
+
+    val responseFields = response.error match {
+      case Some(err) =>
+        // Error response: include error, omit result
+        baseFields :+ ("error" -> err.asJson)
+      case None =>
+        // Success response: include result (even if null), omit error
+        baseFields :+ ("result" -> response.result.getOrElse(Json.Null))
+    }
+
+    Json.obj(responseFields: _*)
+  }
+
   given Decoder[Response] = deriveDecoder
 
   given Encoder[Notification] = deriveEncoder
