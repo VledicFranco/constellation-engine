@@ -76,7 +76,7 @@ This document tracks the current sprint issues and their status. **Agents update
 | [ ] | #3 | Fix CI pipeline - sbt command not found | Compiler | None | - |
 | [ ] | #4 | Add test coverage for lang-ast module | Compiler | None | - |
 | [ ] | #5 | Add test coverage for example-app modules | Compiler | None | - |
-| [ ] | #6 | Fix "Empty message" error logging in WebSocket | VSCode | None | - |
+| [~] | #6 | Fix "Empty message" error logging in WebSocket @agent-3 | VSCode | None | - |
 | [ ] | #7 | Remove redundant imports in LSP server | VSCode | None | - |
 
 ### P1 - High Priority (Target Completion)
