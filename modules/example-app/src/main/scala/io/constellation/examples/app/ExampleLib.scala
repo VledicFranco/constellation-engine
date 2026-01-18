@@ -250,10 +250,11 @@ object ExampleLib {
 
   /** Create a compiler with StdLib + ExampleLib functions */
   def compiler: LangCompiler = {
-    // Start with StdLib, then add ExampleLib
-    val builder = registerAll(StdLib.registerAll(LangCompilerBuilder()))
+    // Start with StdLib, then add ExampleLib signatures, then add modules
     val combinedModules = StdLib.allModules ++ allModules
-    new ExampleLibCompiler(builder.build, combinedModules)
+    val builder = registerAll(StdLib.registerAll(LangCompilerBuilder()))
+      .withModules(combinedModules)  // Make modules available to DagCompiler
+    builder.build
   }
 
   /** Compiler wrapper that includes both stdlib and example modules */

@@ -18,7 +18,12 @@ class ModuleRegistryImpl(refMap: Ref[IO, Map[String, Module.Uninitialized]]) ext
     for {
       store <- refMap.get
       loaded = dagSpec.modules.toList
-        .map { case (uuid, spec) => store.get(spec.name).map(uuid -> _) }
+        .map { case (uuid, spec) =>
+          // Try exact name first, then try stripping dag name prefix (e.g., "test.Uppercase" -> "Uppercase")
+          val exactMatch = store.get(spec.name)
+          val strippedMatch = spec.name.split('.').lastOption.flatMap(store.get)
+          exactMatch.orElse(strippedMatch).map(uuid -> _)
+        }
         .collect { case Some(f) => f }
         .toMap
     } yield loaded

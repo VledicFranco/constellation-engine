@@ -60,6 +60,14 @@ final case class LangCompilerBuilder(
     copy(modules = modules + (module.spec.name -> module))
   }
 
+  /** Register multiple modules for DagCompiler to access at compile time.
+    * This is separate from signatures - use withFunction for type checking,
+    * and withModules to make the actual Module.Uninitialized available.
+    */
+  def withModules(newModules: Map[String, Module.Uninitialized]): LangCompilerBuilder = {
+    copy(modules = modules ++ newModules)
+  }
+
   /** Build the LangCompiler */
   def build: LangCompiler = new LangCompilerImpl(registry, modules)
 }

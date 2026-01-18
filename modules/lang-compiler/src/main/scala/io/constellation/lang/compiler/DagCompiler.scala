@@ -100,8 +100,8 @@ object DagCompiler {
       val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
-      // Look up the registered module
-      registeredModules.get(moduleName) match {
+      // Look up the registered module and get output field name
+      val outputFieldName = registeredModules.get(moduleName) match {
         case Some(uninitModule) =>
           // Use the module's spec
           val spec = uninitModule.spec.copy(
@@ -109,6 +109,8 @@ object DagCompiler {
           )
           moduleNodes = moduleNodes + (moduleId -> spec)
           syntheticModules = syntheticModules + (moduleId -> uninitModule)
+          // Get the output field name from the module's produces map
+          uninitModule.spec.produces.keys.headOption.getOrElse("out")
 
         case None =>
           // Create a placeholder module spec (for testing or when module is provided at runtime)
@@ -119,21 +121,27 @@ object DagCompiler {
             produces = Map("out" -> cType)
           )
           moduleNodes = moduleNodes + (moduleId -> spec)
+          "out"
       }
 
-      // Connect input data nodes to the module
-      inputs.foreach { case (_, inputNodeId) =>
+      // Connect input data nodes to the module and update nicknames
+      inputs.foreach { case (paramName, inputNodeId) =>
         val inputDataId = nodeOutputs.getOrElse(inputNodeId,
           throw new IllegalStateException(s"Input node $inputNodeId not found")
         )
         inEdges = inEdges + ((inputDataId, moduleId))
+        // Update the data node's nicknames to include this module's parameter name
+        dataNodes = dataNodes.updatedWith(inputDataId) {
+          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> paramName)))
+          case None => None
+        }
       }
 
-      // Create output data node
+      // Create output data node using the module's actual output field name
       val cType = SemanticType.toCType(outputType)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = languageName + "_output",
-        nicknames = Map(moduleId -> "out"),
+        nicknames = Map(moduleId -> outputFieldName),
         cType = cType
       ))
       outEdges = outEdges + ((moduleId, outputDataId))
