@@ -76,7 +76,7 @@ This document tracks the current sprint issues and their status. **Agents update
 | [x] | #3 | Fix CI pipeline - sbt command not found @agent-1 | Compiler | None | - |
 | [~] | #4 | Add test coverage for lang-ast module @agent-1 | Compiler | None | - |
 | [ ] | #5 | Add test coverage for example-app modules | Compiler | None | - |
-| [~] | #6 | Fix "Empty message" error logging in WebSocket @agent-3 | VSCode | None | - |
+| [x] | #6 | Fix "Empty message" error logging in WebSocket @agent-3 | VSCode | None | - |
 | [ ] | #7 | Remove redundant imports in LSP server | VSCode | None | - |
 
 ### P1 - High Priority (Target Completion)
@@ -89,7 +89,7 @@ This document tracks the current sprint issues and their status. **Agents update
 | [ ] | #11 | Implement arithmetic operators | Compiler | None | - |
 | [ ] | #12 | DAG Visualizer: Add layout direction toggle | VSCode | #14 (soft) | - |
 | [ ] | #13 | DAG Visualizer: Export as PNG/SVG | VSCode | #14 (soft) | - |
-| [ ] | #14 | Refactor: Extract common webview patterns | VSCode | None | - |
+| [~] | #14 | Refactor: Extract common webview patterns @agent-3 | VSCode | None | - |
 
 ### P2 - Medium Priority
 
@@ -236,6 +236,7 @@ Track merged PRs here for historical reference.
 | Issue | Title | Agent | PR | Merged Date |
 |-------|-------|-------|-----|-------------|
 | #3 | Fix CI pipeline - sbt command not found | agent-1 | #30 | 2026-01-18 |
+| #6 | Fix "Empty message" error logging in WebSocket | agent-3 | #33 | 2026-01-18 |
 
 ---
 
