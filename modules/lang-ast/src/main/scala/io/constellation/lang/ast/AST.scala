@@ -168,6 +168,15 @@ object TypeExpr {
   final case class TypeMerge(left: TypeExpr, right: TypeExpr) extends TypeExpr
 }
 
+/** Comparison operators */
+enum CompareOp:
+  case Eq      // ==
+  case NotEq   // !=
+  case Lt      // <
+  case Gt      // >
+  case LtEq    // <=
+  case GtEq    // >=
+
 /** Expressions */
 sealed trait Expression
 
@@ -217,6 +226,13 @@ object Expression {
 
   /** Boolean literal: true, false */
   final case class BoolLit(value: Boolean) extends Expression
+
+  /** Comparison expression: a == b, x < y, etc. */
+  final case class Compare(
+    left: Located[Expression],
+    op: CompareOp,
+    right: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */
@@ -268,5 +284,9 @@ object CompileError {
   }
   final case class AmbiguousFunction(name: String, candidates: List[String], span: Option[Span]) extends CompileError {
     def message: String = s"Ambiguous function '$name'. Candidates: ${candidates.mkString(", ")}"
+  }
+
+  final case class UnsupportedComparison(op: String, leftType: String, rightType: String, span: Option[Span]) extends CompileError {
+    def message: String = s"Operator '$op' is not supported for types $leftType and $rightType"
   }
 }
