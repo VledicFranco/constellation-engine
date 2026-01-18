@@ -87,9 +87,9 @@ This document tracks the current sprint issues and their status. **Agents update
 | [ ] | #9 | Implement comparison operators | Compiler | None | - |
 | [ ] | #10 | Implement boolean operators (`and`, `or`, `not`) | Compiler | None | - |
 | [ ] | #11 | Implement arithmetic operators | Compiler | None | - |
-| [ ] | #12 | DAG Visualizer: Add layout direction toggle | VSCode | #14 (soft) | - |
+| [~] | #12 | DAG Visualizer: Add layout direction toggle @agent-3 | VSCode | #14 (soft) | - |
 | [ ] | #13 | DAG Visualizer: Export as PNG/SVG | VSCode | #14 (soft) | - |
-| [ ] | #14 | Refactor: Extract common webview patterns | VSCode | None | - |
+| [~] | #14 | Refactor: Extract common webview patterns @agent-3 | VSCode | None | - |
 
 ### P2 - Medium Priority
 

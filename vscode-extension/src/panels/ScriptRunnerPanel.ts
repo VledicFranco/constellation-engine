@@ -1,5 +1,16 @@
 import * as vscode from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
+import {
+  createWebviewPanel,
+  disposePanel,
+  getBaseStyles,
+  wrapHtml,
+  getHeaderHtml,
+  getFileNameFromUri,
+  CSS_INPUTS,
+  JS_UTILS,
+  PanelState
+} from '../utils/webviewUtils';
 
 interface InputField {
   name: string;
@@ -39,37 +50,26 @@ export class ScriptRunnerPanel {
   public static currentPanel: ScriptRunnerPanel | undefined;
   public static readonly viewType = 'constellationScriptRunner';
 
-  private readonly _panel: vscode.WebviewPanel;
-  private readonly _extensionUri: vscode.Uri;
-  private _client: LanguageClient | undefined;
-  private _currentUri: string | undefined;
-  private _disposables: vscode.Disposable[] = [];
+  private readonly _state: PanelState;
 
   public static createOrShow(
     extensionUri: vscode.Uri,
     client: LanguageClient | undefined,
     documentUri: string
   ) {
-    const column = vscode.ViewColumn.Beside;
-
     if (ScriptRunnerPanel.currentPanel) {
-      ScriptRunnerPanel.currentPanel._panel.reveal(column);
-      ScriptRunnerPanel.currentPanel._client = client;
-      ScriptRunnerPanel.currentPanel._currentUri = documentUri;
+      ScriptRunnerPanel.currentPanel._state.panel.reveal(vscode.ViewColumn.Beside);
+      ScriptRunnerPanel.currentPanel._state.client = client;
+      ScriptRunnerPanel.currentPanel._state.currentUri = documentUri;
       ScriptRunnerPanel.currentPanel._refreshSchema();
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      ScriptRunnerPanel.viewType,
-      'Script Runner',
-      column,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'src', 'webview')]
-      }
-    );
+    const panel = createWebviewPanel({
+      viewType: ScriptRunnerPanel.viewType,
+      title: 'Script Runner',
+      extensionUri
+    });
 
     ScriptRunnerPanel.currentPanel = new ScriptRunnerPanel(panel, extensionUri, client, documentUri);
   }
@@ -80,16 +80,19 @@ export class ScriptRunnerPanel {
     client: LanguageClient | undefined,
     documentUri: string
   ) {
-    this._panel = panel;
-    this._extensionUri = extensionUri;
-    this._client = client;
-    this._currentUri = documentUri;
+    this._state = {
+      panel,
+      extensionUri,
+      client,
+      currentUri: documentUri,
+      disposables: []
+    };
 
     this._update();
 
-    this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+    this._state.panel.onDidDispose(() => this.dispose(), null, this._state.disposables);
 
-    this._panel.webview.onDidReceiveMessage(
+    this._state.panel.webview.onDidReceiveMessage(
       async (message) => {
         console.log('[ScriptRunner] Received message from webview:', message.command);
         switch (message.command) {
@@ -106,15 +109,15 @@ export class ScriptRunnerPanel {
         }
       },
       null,
-      this._disposables
+      this._state.disposables
     );
   }
 
   private async _refreshSchema() {
-    console.log('[ScriptRunner] _refreshSchema called, uri:', this._currentUri);
-    if (!this._client || !this._currentUri) {
+    console.log('[ScriptRunner] _refreshSchema called, uri:', this._state.currentUri);
+    if (!this._state.client || !this._state.currentUri) {
       console.log('[ScriptRunner] No client or URI');
-      this._panel.webview.postMessage({
+      this._state.panel.webview.postMessage({
         type: 'schemaError',
         error: 'Language server not connected'
       });
@@ -123,30 +126,30 @@ export class ScriptRunnerPanel {
 
     try {
       console.log('[ScriptRunner] Sending getInputSchema request...');
-      const result = await this._client.sendRequest<GetInputSchemaResult>(
+      const result = await this._state.client.sendRequest<GetInputSchemaResult>(
         'constellation/getInputSchema',
-        { uri: this._currentUri }
+        { uri: this._state.currentUri }
       );
       console.log('[ScriptRunner] Got result:', JSON.stringify(result));
 
       if (result.success && result.inputs) {
-        const fileName = this._currentUri.split('/').pop() || 'script.cst';
+        const fileName = getFileNameFromUri(this._state.currentUri);
         console.log('[ScriptRunner] Posting schema to webview, inputs:', result.inputs.length);
-        this._panel.webview.postMessage({
+        this._state.panel.webview.postMessage({
           type: 'schema',
           inputs: result.inputs,
           fileName: fileName
         });
       } else {
         console.log('[ScriptRunner] Schema error:', result.error);
-        this._panel.webview.postMessage({
+        this._state.panel.webview.postMessage({
           type: 'schemaError',
           error: result.error || 'Failed to get input schema'
         });
       }
     } catch (error: any) {
       console.log('[ScriptRunner] Exception:', error);
-      this._panel.webview.postMessage({
+      this._state.panel.webview.postMessage({
         type: 'schemaError',
         error: error.message || 'Failed to get input schema'
       });
@@ -154,40 +157,40 @@ export class ScriptRunnerPanel {
   }
 
   private async _executePipeline(inputs: { [key: string]: any }) {
-    if (!this._client || !this._currentUri) {
-      this._panel.webview.postMessage({
+    if (!this._state.client || !this._state.currentUri) {
+      this._state.panel.webview.postMessage({
         type: 'executeError',
         error: 'Language server not connected'
       });
       return;
     }
 
-    this._panel.webview.postMessage({ type: 'executing' });
+    this._state.panel.webview.postMessage({ type: 'executing' });
 
     const startTime = Date.now();
 
     try {
-      const result = await this._client.sendRequest<ExecutePipelineResult>(
+      const result = await this._state.client.sendRequest<ExecutePipelineResult>(
         'constellation/executePipeline',
-        { uri: this._currentUri, inputs }
+        { uri: this._state.currentUri, inputs }
       );
 
       const executionTime = Date.now() - startTime;
 
       if (result.success) {
-        this._panel.webview.postMessage({
+        this._state.panel.webview.postMessage({
           type: 'executeResult',
           outputs: result.outputs || {},
           executionTimeMs: result.executionTimeMs || executionTime
         });
       } else {
-        this._panel.webview.postMessage({
+        this._state.panel.webview.postMessage({
           type: 'executeError',
           error: result.error || 'Execution failed'
         });
       }
     } catch (error: any) {
-      this._panel.webview.postMessage({
+      this._state.panel.webview.postMessage({
         type: 'executeError',
         error: error.message || 'Execution failed'
       });
@@ -196,315 +199,201 @@ export class ScriptRunnerPanel {
 
   public dispose() {
     ScriptRunnerPanel.currentPanel = undefined;
-
-    this._panel.dispose();
-
-    while (this._disposables.length) {
-      const disposable = this._disposables.pop();
-      if (disposable) {
-        disposable.dispose();
-      }
-    }
+    disposePanel(this._state);
   }
 
   private _update() {
-    this._panel.webview.html = this._getHtmlContent();
+    this._state.panel.webview.html = this._getHtmlContent();
   }
 
   private _getHtmlContent(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-  <title>Script Runner</title>
-  <style>
-    :root {
-      --spacing-xs: 4px;
-      --spacing-sm: 8px;
-      --spacing-md: 12px;
-      --spacing-lg: 16px;
-      --spacing-xl: 20px;
-      --radius-sm: 4px;
-      --radius-md: 6px;
-    }
+    const styles = getBaseStyles() + CSS_INPUTS + this._getCustomStyles();
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    const headerHtml = getHeaderHtml({
+      icon: '▶',
+      title: 'Script Runner',
+      fileNameId: 'fileName',
+      actions: '<button class="icon-btn" id="refreshBtn" title="Refresh Schema">↻</button>'
+    });
 
-    body {
-      font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-      font-size: var(--vscode-font-size, 13px);
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
-      line-height: 1.5;
-      padding: var(--spacing-lg);
-    }
+    const body = `
+      ${headerHtml}
 
-    .header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding-bottom: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
-      border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
-    }
+      <section class="content-section">
+        <div class="section-title">Inputs</div>
+        <div class="inputs-card" id="inputsCard">
+          <div class="loading-container">
+            <div class="spinner"></div>
+            <div style="margin-top: 8px; font-size: 12px;">Loading schema...</div>
+          </div>
+        </div>
+      </section>
 
-    .header-left { display: flex; align-items: center; gap: var(--spacing-sm); }
-    .header-icon { font-size: 20px; opacity: 0.9; }
-    .header-content h1 { font-size: 14px; font-weight: 600; margin: 0; }
-    .file-name {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-top: 2px;
-      font-family: var(--vscode-editor-font-family, monospace);
-    }
+      <button class="primary-btn run-btn" id="runBtn" disabled>
+        <span>▶</span>
+        <span>Run Script</span>
+      </button>
 
-    .refresh-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-sm);
-      color: var(--vscode-foreground);
-      cursor: pointer;
-      opacity: 0.7;
-      font-size: 16px;
-    }
-    .refresh-btn:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31)); }
+      <section class="output-section" id="outputSection">
+        <div class="output-header">
+          <div class="section-title">Output</div>
+          <span class="execution-time" id="executionTime"></span>
+        </div>
+        <div id="outputContainer"></div>
+      </section>
+    `;
 
-    .section-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: var(--spacing-md);
-    }
+    return wrapHtml({
+      title: 'Script Runner',
+      styles,
+      body,
+      scripts: JS_UTILS + this._getScriptContent()
+    });
+  }
 
-    .inputs-card {
-      background: var(--vscode-input-background);
-      border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
-      border-radius: var(--radius-md);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-    }
+  private _getCustomStyles(): string {
+    return `
+      body { padding: var(--spacing-lg); }
 
-    .input-group { margin-bottom: var(--spacing-lg); }
-    .input-group:last-child { margin-bottom: 0; }
+      .content-section { margin-bottom: var(--spacing-lg); }
 
-    .input-label {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin-bottom: var(--spacing-sm);
-    }
-    .input-name { font-weight: 500; }
-    .type-badge {
-      font-size: 11px;
-      font-family: var(--vscode-editor-font-family, monospace);
-      color: var(--vscode-textLink-foreground, #3794ff);
-      background: rgba(55, 148, 255, 0.15);
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: var(--spacing-md);
+      }
 
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: var(--spacing-sm) var(--spacing-md);
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
-      border-radius: var(--radius-sm);
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 13px;
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--vscode-focusBorder, #007fd4);
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder, #007fd4);
-    }
+      .inputs-card {
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+      }
 
-    .checkbox-wrapper {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      cursor: pointer;
-      padding: var(--spacing-sm) 0;
-    }
-    .checkbox-wrapper input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
-    }
+      .input-group { margin-bottom: var(--spacing-lg); }
+      .input-group:last-child { margin-bottom: 0; }
 
-    .run-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: var(--spacing-sm);
-      width: 100%;
-      padding: var(--spacing-md) var(--spacing-lg);
-      background: var(--vscode-button-background, #0e639c);
-      color: var(--vscode-button-foreground, #fff);
-      border: none;
-      border-radius: var(--radius-sm);
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      margin-bottom: var(--spacing-xl);
-    }
-    .run-btn:hover:not(:disabled) { background: var(--vscode-button-hoverBackground, #1177bb); }
-    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .input-label {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: var(--spacing-sm);
+      }
+      .input-name { font-weight: 500; }
+      .type-badge {
+        font-size: 11px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        color: var(--vscode-textLink-foreground, #3794ff);
+        background: rgba(55, 148, 255, 0.15);
+        padding: 2px 6px;
+        border-radius: 3px;
+      }
 
-    .output-section { display: none; }
-    .output-section.visible { display: block; }
+      .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        cursor: pointer;
+        padding: var(--spacing-sm) 0;
+      }
+      .checkbox-wrapper input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
 
-    .output-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: var(--spacing-md);
-    }
-    .execution-time {
-      font-size: 11px;
-      font-family: var(--vscode-editor-font-family, monospace);
-      color: var(--vscode-descriptionForeground);
-      background: var(--vscode-badge-background, rgba(77, 77, 77, 0.7));
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
+      .run-btn {
+        width: 100%;
+        margin-bottom: var(--spacing-xl);
+      }
 
-    .output-box {
-      background: var(--vscode-textCodeBlock-background, rgba(10, 10, 10, 0.4));
-      border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
-      border-radius: var(--radius-md);
-      padding: var(--spacing-lg);
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 12px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .output-box.success { border-left: 3px solid var(--vscode-terminal-ansiGreen, #4ec9b0); }
+      .output-section { display: none; }
+      .output-section.visible { display: block; }
 
-    .error-box {
-      background: var(--vscode-inputValidation-errorBackground, rgba(255, 0, 0, 0.1));
-      border: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
-      border-left: 3px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
-      border-radius: var(--radius-md);
-      padding: var(--spacing-lg);
-      color: var(--vscode-errorForeground, #f14c4c);
-      font-size: 13px;
-    }
+      .output-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--spacing-md);
+      }
+      .execution-time {
+        font-size: 11px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        color: var(--vscode-descriptionForeground);
+        background: var(--vscode-badge-background, rgba(77, 77, 77, 0.7));
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
 
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--spacing-xl);
-      color: var(--vscode-descriptionForeground);
-    }
+      .output-box {
+        background: var(--vscode-textCodeBlock-background, rgba(10, 10, 10, 0.4));
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+      .output-box.success { border-left: 3px solid var(--vscode-terminal-ansiGreen, #4ec9b0); }
 
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid currentColor;
-      border-radius: 50%;
-      border-top-color: transparent;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+      .no-inputs {
+        color: var(--vscode-descriptionForeground);
+        font-style: italic;
+        text-align: center;
+        padding: var(--spacing-lg);
+      }
 
-    .no-inputs {
-      color: var(--vscode-descriptionForeground);
-      font-style: italic;
-      text-align: center;
-      padding: var(--spacing-lg);
-    }
+      .list-container {
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        background: rgba(0, 0, 0, 0.1);
+      }
+      .list-items { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+      .list-item { display: flex; gap: var(--spacing-sm); align-items: center; }
+      .list-item input { flex: 1; }
+      .list-item .remove-btn {
+        width: 24px;
+        height: 24px;
+        background: transparent;
+        border: none;
+        color: var(--vscode-errorForeground, #f14c4c);
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 14px;
+      }
+      .list-item .remove-btn:hover { opacity: 1; }
+      .add-item-btn {
+        margin-top: var(--spacing-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: transparent;
+        border: none;
+        color: var(--vscode-textLink-foreground, #3794ff);
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .add-item-btn:hover { text-decoration: underline; }
 
-    .list-container {
-      border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
-      border-radius: var(--radius-sm);
-      padding: var(--spacing-md);
-      background: rgba(0, 0, 0, 0.1);
-    }
-    .list-items { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-    .list-item { display: flex; gap: var(--spacing-sm); align-items: center; }
-    .list-item input { flex: 1; }
-    .list-item .remove-btn {
-      width: 24px;
-      height: 24px;
-      background: transparent;
-      border: none;
-      color: var(--vscode-errorForeground, #f14c4c);
-      cursor: pointer;
-      opacity: 0.6;
-      font-size: 14px;
-    }
-    .list-item .remove-btn:hover { opacity: 1; }
-    .add-item-btn {
-      margin-top: var(--spacing-sm);
-      padding: var(--spacing-xs) var(--spacing-sm);
-      background: transparent;
-      border: none;
-      color: var(--vscode-textLink-foreground, #3794ff);
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .add-item-btn:hover { text-decoration: underline; }
+      .record-container {
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        background: rgba(0, 0, 0, 0.1);
+        margin-top: var(--spacing-xs);
+      }
+      .record-field { margin-bottom: var(--spacing-md); }
+      .record-field:last-child { margin-bottom: 0; }
+    `;
+  }
 
-    .record-container {
-      border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
-      border-radius: var(--radius-sm);
-      padding: var(--spacing-md);
-      background: rgba(0, 0, 0, 0.1);
-      margin-top: var(--spacing-xs);
-    }
-    .record-field { margin-bottom: var(--spacing-md); }
-    .record-field:last-child { margin-bottom: 0; }
-  </style>
-</head>
-<body>
-  <header class="header">
-    <div class="header-left">
-      <span class="header-icon">▶</span>
-      <div class="header-content">
-        <h1>Script Runner</h1>
-        <div class="file-name" id="fileName">Loading...</div>
-      </div>
-    </div>
-    <button class="refresh-btn" id="refreshBtn" title="Refresh Schema">↻</button>
-  </header>
-
-  <section>
-    <div class="section-title">Inputs</div>
-    <div class="inputs-card" id="inputsCard">
-      <div class="loading-container">
-        <div class="spinner"></div>
-        <div style="margin-top: 8px; font-size: 12px;">Loading schema...</div>
-      </div>
-    </div>
-  </section>
-
-  <button class="run-btn" id="runBtn" disabled>
-    <span>▶</span>
-    <span>Run Script</span>
-  </button>
-
-  <section class="output-section" id="outputSection">
-    <div class="output-header">
-      <div class="section-title">Output</div>
-      <span class="execution-time" id="executionTime"></span>
-    </div>
-    <div id="outputContainer"></div>
-  </section>
-
-  <script>
+  private _getScriptContent(): string {
+    return `
 (function() {
   var vscode = acquireVsCodeApi();
   var currentSchema = [];
@@ -733,7 +622,6 @@ export class ScriptRunnerPanel {
   }
 
   function setNestedValue(obj, path, value) {
-    // Use string methods instead of regex to avoid template literal escaping issues
     var parts = path.split('[').join('.').split(']').join('').split('.');
     var current = obj;
 
@@ -752,16 +640,8 @@ export class ScriptRunnerPanel {
     current[lastPart] = value;
   }
 
-  function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
   vscode.postMessage({ command: 'ready' });
 })();
-  </script>
-</body>
-</html>`;
+    `;
   }
 }
