@@ -147,6 +147,14 @@ object JsonCValueConverter {
             }
           case None => Left(fieldError(path, s"expected Object with 'tag' and 'value', got ${jsonTypeName(json)}"))
         }
+
+      case CType.COptional(innerType) =>
+        // null or missing field is None, otherwise convert inner value
+        if (json.isNull) {
+          Right(CValue.CNone(innerType))
+        } else {
+          jsonToCValue(json, innerType, path).map(v => CValue.CSome(v, innerType))
+        }
     }
   }
 
@@ -190,6 +198,9 @@ object JsonCValueConverter {
         "tag" -> Json.fromString(tag),
         "value" -> cValueToJson(value)
       )
+
+    case CValue.CSome(value, _) => cValueToJson(value)
+    case CValue.CNone(_) => Json.Null
   }
 
   /** Build field path for error reporting */

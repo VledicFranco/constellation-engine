@@ -331,4 +331,55 @@ class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
 
     roundTripped shouldBe Right(original)
   }
+
+  // Optional type tests
+
+  it should "convert JSON null to CValue.CNone" in {
+    val json = Json.Null
+    val result = JsonCValueConverter.jsonToCValue(json, CType.COptional(CType.CString))
+
+    result shouldBe Right(CValue.CNone(CType.CString))
+  }
+
+  it should "convert JSON value to CValue.CSome" in {
+    val json = Json.fromString("hello")
+    val result = JsonCValueConverter.jsonToCValue(json, CType.COptional(CType.CString))
+
+    result shouldBe Right(CValue.CSome(CValue.CString("hello"), CType.CString))
+  }
+
+  it should "convert nested JSON value to CValue.CSome with complex inner type" in {
+    val json = Json.fromValues(List(Json.fromLong(1), Json.fromLong(2), Json.fromLong(3)))
+    val result = JsonCValueConverter.jsonToCValue(json, CType.COptional(CType.CList(CType.CInt)))
+
+    result shouldBe Right(CValue.CSome(
+      CValue.CList(Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)), CType.CInt),
+      CType.CList(CType.CInt)
+    ))
+  }
+
+  it should "convert CValue.CSome to JSON value" in {
+    val cValue = CValue.CSome(CValue.CString("hello"), CType.CString)
+    val json = JsonCValueConverter.cValueToJson(cValue)
+
+    json shouldBe Json.fromString("hello")
+  }
+
+  it should "convert CValue.CNone to JSON null" in {
+    val cValue = CValue.CNone(CType.CInt)
+    val json = JsonCValueConverter.cValueToJson(cValue)
+
+    json shouldBe Json.Null
+  }
+
+  it should "round-trip Optional values through JSON" in {
+    val someValue = CValue.CSome(CValue.CInt(42), CType.CInt)
+    val noneValue = CValue.CNone(CType.CString)
+
+    val someJson = JsonCValueConverter.cValueToJson(someValue)
+    val noneJson = JsonCValueConverter.cValueToJson(noneValue)
+
+    JsonCValueConverter.jsonToCValue(someJson, CType.COptional(CType.CInt)) shouldBe Right(someValue)
+    JsonCValueConverter.jsonToCValue(noneJson, CType.COptional(CType.CString)) shouldBe Right(noneValue)
+  }
 }

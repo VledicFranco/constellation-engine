@@ -246,6 +246,8 @@ object TypeChecker {
         case "Map" if params.size == 2 =>
           (resolveTypeExpr(params(0), span, env), resolveTypeExpr(params(1), span, env))
             .mapN(SemanticType.SMap(_, _))
+        case "Optional" if params.size == 1 =>
+          resolveTypeExpr(params.head, span, env).map(SemanticType.SOptional(_))
         case _ =>
           CompileError.UndefinedType(s"$name<...>", Some(span)).invalidNel
       }

@@ -25,6 +25,13 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     summon[CTypeTag[Map[Long, Vector[String]]]].cType shouldBe CType.CMap(CType.CInt, CType.CList(CType.CString))
   }
 
+  it should "provide correct CType for optionals" in {
+    summon[CTypeTag[Option[String]]].cType shouldBe CType.COptional(CType.CString)
+    summon[CTypeTag[Option[Long]]].cType shouldBe CType.COptional(CType.CInt)
+    summon[CTypeTag[Option[Vector[Boolean]]]].cType shouldBe CType.COptional(CType.CList(CType.CBoolean))
+    summon[CTypeTag[Option[Option[String]]]].cType shouldBe CType.COptional(CType.COptional(CType.CString))
+  }
+
   "CValueInjector" should "inject primitive values correctly" in {
     summon[CValueInjector[String]].inject("hello") shouldBe CValue.CString("hello")
     summon[CValueInjector[Long]].inject(42L) shouldBe CValue.CInt(42L)
@@ -61,6 +68,18 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "inject Some values correctly" in {
+    val result = summon[CValueInjector[Option[String]]].inject(Some("hello"))
+    result shouldBe CValue.CSome(CValue.CString("hello"), CType.CString)
+    result.ctype shouldBe CType.COptional(CType.CString)
+  }
+
+  it should "inject None values correctly" in {
+    val result = summon[CValueInjector[Option[Long]]].inject(None)
+    result shouldBe CValue.CNone(CType.CInt)
+    result.ctype shouldBe CType.COptional(CType.CInt)
+  }
+
   "CValueExtractor" should "extract primitive values correctly" in {
     summon[CValueExtractor[String]].extract(CValue.CString("hello")).unsafeRunSync() shouldBe "hello"
     summon[CValueExtractor[Long]].extract(CValue.CInt(42L)).unsafeRunSync() shouldBe 42L
@@ -90,6 +109,18 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     result shouldBe Map("x" -> 1L)
   }
 
+  it should "extract Some values correctly" in {
+    val cValue = CValue.CSome(CValue.CString("hello"), CType.CString)
+    val result = summon[CValueExtractor[Option[String]]].extract(cValue).unsafeRunSync()
+    result shouldBe Some("hello")
+  }
+
+  it should "extract None values correctly" in {
+    val cValue = CValue.CNone(CType.CInt)
+    val result = summon[CValueExtractor[Option[Long]]].extract(cValue).unsafeRunSync()
+    result shouldBe None
+  }
+
   it should "fail with descriptive error on type mismatch" in {
     val result = summon[CValueExtractor[String]].extract(CValue.CInt(42L)).attempt.unsafeRunSync()
     result.isLeft shouldBe true
@@ -103,6 +134,8 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     CValue.CBoolean(true).ctype shouldBe CType.CBoolean
     CValue.CList(Vector.empty, CType.CString).ctype shouldBe CType.CList(CType.CString)
     CValue.CMap(Vector.empty, CType.CString, CType.CInt).ctype shouldBe CType.CMap(CType.CString, CType.CInt)
+    CValue.CSome(CValue.CString("test"), CType.CString).ctype shouldBe CType.COptional(CType.CString)
+    CValue.CNone(CType.CInt).ctype shouldBe CType.COptional(CType.CInt)
   }
 
   "Roundtrip" should "inject and extract values correctly" in {
@@ -116,5 +149,8 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     roundtrip(Vector(1L, 2L, 3L)) shouldBe Vector(1L, 2L, 3L)
     roundtrip(List("a", "b", "c")) shouldBe List("a", "b", "c")
     roundtrip(Map("x" -> 1L, "y" -> 2L)) shouldBe Map("x" -> 1L, "y" -> 2L)
+    roundtrip(Some("hello"): Option[String]) shouldBe Some("hello")
+    roundtrip(None: Option[Long]) shouldBe None
+    roundtrip(Some(Vector(1L, 2L)): Option[Vector[Long]]) shouldBe Some(Vector(1L, 2L))
   }
 }

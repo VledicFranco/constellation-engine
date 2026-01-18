@@ -76,6 +76,8 @@ object CType {
   final case class CMap(keysType: CType, valuesType: CType) extends CType
   final case class CProduct(structure: Map[String, CType]) extends CType
   final case class CUnion(structure: Map[String, CType]) extends CType
+  /** Optional type - represents a value that may or may not exist */
+  final case class COptional(innerType: CType) extends CType
 }
 
 sealed trait CValue {
@@ -106,6 +108,16 @@ object CValue {
   }
   final case class CUnion(value: CValue, structure: Map[String, CType], tag: String) extends CValue {
     override def ctype: CType = CType.CUnion(structure)
+  }
+
+  /** Some value - present Optional value */
+  final case class CSome(value: CValue, innerType: CType) extends CValue {
+    override def ctype: CType = CType.COptional(innerType)
+  }
+
+  /** None value - absent Optional value */
+  final case class CNone(innerType: CType) extends CValue {
+    override def ctype: CType = CType.COptional(innerType)
   }
 }
 
@@ -140,6 +152,9 @@ object CTypeTag {
 
   given mapTag[A, B](using keyInjector: CTypeTag[A], valueInjector: CTypeTag[B]): CTypeTag[Map[A, B]] =
     of[Map[A, B]](CType.CMap(keyInjector.cType, valueInjector.cType))
+
+  given optionTag[A](using innerTag: CTypeTag[A]): CTypeTag[Option[A]] =
+    of[Option[A]](CType.COptional(innerTag.cType))
 }
 
 trait CValueExtractor[A] {
@@ -201,6 +216,13 @@ object CValueExtractor {
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CMap, but got $other"))
   }
+
+  given optionExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[Option[A]] = {
+    case CValue.CSome(value, _) => extractor.extract(value).map(Some(_))
+    case CValue.CNone(_) => IO.pure(None)
+    case other =>
+      IO.raiseError(new RuntimeException(s"Expected CValue.CSome or CValue.CNone, but got $other"))
+  }
 }
 
 trait CValueInjector[A] {
@@ -242,4 +264,13 @@ object CValueInjector {
         keyTypeTag.cType,
         valueTypeTag.cType
       )
+
+  given optionInjector[A](using
+    injector: CValueInjector[A],
+    typeTag: CTypeTag[A]
+  ): CValueInjector[Option[A]] =
+    (value: Option[A]) => value match {
+      case Some(v) => CValue.CSome(injector.inject(v), typeTag.cType)
+      case None => CValue.CNone(typeTag.cType)
+    }
 }

@@ -366,6 +366,8 @@ class ConstellationLanguageServer(
       s"{ ${structure.map { case (k, v) => s"$k: ${cTypeToString(v)}" }.mkString(", ")} }"
     case io.constellation.CType.CUnion(structure) =>
       structure.keys.mkString(" | ")
+    case io.constellation.CType.COptional(innerType) =>
+      s"Optional<${cTypeToString(innerType)}>"
   }
 
   private def typeExprToDescriptor(typeExpr: TypeExpr): TypeDescriptor = typeExpr match {
@@ -799,6 +801,8 @@ class ConstellationLanguageServer(
         k.asInstanceOf[CString].value -> cvalueToJson(v)
       })
       case CUnion(value, _, tag) => Json.obj("tag" -> Json.fromString(tag), "value" -> cvalueToJson(value))
+      case CSome(value, _) => cvalueToJson(value)
+      case CNone(_) => Json.Null
     }
   }
 
