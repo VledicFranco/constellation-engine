@@ -12,13 +12,16 @@ import io.constellation.http.ConstellationServer
   * This server demonstrates how to start a Constellation HTTP API server
   * with all available modules including DataModules and TextModules.
   *
+  * The server port can be configured via the CONSTELLATION_PORT environment variable.
+  * Default port is 8080. For multi-agent setups, use: 8080 + agent_number
+  *
   * Once started, you can:
   * - Compile constellation-lang programs: POST /compile
   * - Execute compiled DAGs: POST /execute
   * - List available DAGs: GET /dags
   * - List available modules: GET /modules
   * - Check server health: GET /health
-  * - Connect via WebSocket LSP: ws://localhost:8080/lsp
+  * - Connect via WebSocket LSP: ws://localhost:{port}/lsp
   */
 object ExampleServer extends IOApp.Simple {
 
@@ -35,12 +38,13 @@ object ExampleServer extends IOApp.Simple {
       // Create compiler with standard library + example app functions
       compiler = ExampleLib.compiler
 
-      // Start the HTTP server
-      _ <- IO.println("Constellation HTTP API server started at http://0.0.0.0:8080")
+      // Start the HTTP server (port from CONSTELLATION_PORT env var, defaults to 8080)
+      port = ConstellationServer.DefaultPort
+      _ <- IO.println(s"Constellation HTTP API server started at http://0.0.0.0:$port")
+      _ <- IO.println(s"  LSP WebSocket available at ws://localhost:$port/lsp")
       _ <- ConstellationServer
         .builder(constellation, compiler)
         .withHost("0.0.0.0")
-        .withPort(8080)
         .run
     } yield ()
   }

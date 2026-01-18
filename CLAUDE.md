@@ -25,9 +25,22 @@ This file contains actionable rules that Claude must follow when working on this
 
 ## Server Endpoints
 
-- HTTP API: `http://localhost:8080`
-- LSP WebSocket: `ws://localhost:8080/lsp`
+- HTTP API: `http://localhost:{port}` (default: 8080)
+- LSP WebSocket: `ws://localhost:{port}/lsp`
 - Health check: `GET /health`
+
+**Port Configuration:**
+The server port is configurable via the `CONSTELLATION_PORT` environment variable.
+For multi-agent setups, each agent uses a unique port based on their agent number:
+
+| Agent | Port | Environment Variable |
+|-------|------|---------------------|
+| Main repo | 8080 | (default) |
+| Agent 1 | 8081 | `CONSTELLATION_PORT=8081` |
+| Agent 2 | 8082 | `CONSTELLATION_PORT=8082` |
+| Agent N | 8080+N | `CONSTELLATION_PORT=808N` |
+
+The `scripts/dev.ps1` script auto-detects the agent number from the directory name.
 
 ## Code Conventions
 
@@ -384,6 +397,41 @@ Assigned Issue: #<number> - <title>
 ```
 
 This helps the user track which agent is doing what.
+
+### Running Test Servers (Multi-Agent)
+
+Each agent can run their own server instance for testing without port conflicts.
+
+**Automatic port detection:**
+```powershell
+# In your worktree (e.g., constellation-agent-2), simply run:
+.\scripts\dev.ps1 -ServerOnly
+
+# The script auto-detects agent number from directory name:
+# constellation-agent-1 → port 8081
+# constellation-agent-2 → port 8082
+# etc.
+```
+
+**Manual port override:**
+```powershell
+# Explicit port
+.\scripts\dev.ps1 -ServerOnly -Port 8085
+
+# Or via environment variable
+$env:CONSTELLATION_PORT = 8085
+.\scripts\dev.ps1 -ServerOnly
+```
+
+**Accessing your agent's server:**
+```bash
+# Replace {port} with your agent's port
+curl http://localhost:{port}/health
+curl http://localhost:{port}/modules
+```
+
+**VSCode Extension:**
+When testing the VSCode extension, update the LSP port in `vscode-extension/.vscode/settings.json` or configure it per-agent.
 
 ---
 

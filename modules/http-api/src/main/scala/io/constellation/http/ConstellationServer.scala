@@ -34,10 +34,13 @@ import io.constellation.lang.semantic.FunctionRegistry
   */
 object ConstellationServer {
 
+  /** Default port, can be overridden via CONSTELLATION_PORT environment variable */
+  val DefaultPort: Int = sys.env.get("CONSTELLATION_PORT").flatMap(_.toIntOption).getOrElse(8080)
+
   /** Configuration for the HTTP server */
   case class Config(
     host: String = "0.0.0.0",
-    port: Int = 8080
+    port: Int = DefaultPort
   )
 
   /** Builder for creating a Constellation HTTP server */
