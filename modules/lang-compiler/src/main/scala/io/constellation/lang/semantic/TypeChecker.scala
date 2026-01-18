@@ -78,6 +78,13 @@ object TypedExpression {
     span: Span
   ) extends TypedExpression
 
+  final case class FieldAccess(
+    source: TypedExpression,
+    field: String,
+    semanticType: SemanticType,
+    span: Span
+  ) extends TypedExpression
+
   final case class Conditional(
     condition: TypedExpression,
     thenBranch: TypedExpression,
@@ -318,6 +325,39 @@ object TypeChecker {
           case other =>
             CompileError.TypeError(
               s"Projection requires a record type, got ${other.prettyPrint}",
+              Some(span)
+            ).invalidNel
+        }
+      }
+
+    case Expression.FieldAccess(source, field) =>
+      checkExpression(source.value, source.span, env).andThen { typedSource =>
+        typedSource.semanticType match {
+          case SemanticType.SRecord(availableFields) =>
+            availableFields.get(field.value) match {
+              case Some(fieldType) =>
+                TypedExpression.FieldAccess(typedSource, field.value, fieldType, span).validNel
+              case None =>
+                CompileError.InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span)).invalidNel
+            }
+
+          case SemanticType.SCandidates(SemanticType.SRecord(availableFields)) =>
+            availableFields.get(field.value) match {
+              case Some(fieldType) =>
+                // Field access on Candidates returns Candidates of the field type
+                TypedExpression.FieldAccess(
+                  typedSource,
+                  field.value,
+                  SemanticType.SCandidates(fieldType),
+                  span
+                ).validNel
+              case None =>
+                CompileError.InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span)).invalidNel
+            }
+
+          case other =>
+            CompileError.TypeError(
+              s"Field access requires a record type, got ${other.prettyPrint}",
               Some(span)
             ).invalidNel
         }

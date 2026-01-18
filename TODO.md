@@ -83,7 +83,7 @@ This document tracks the current sprint issues and their status. **Agents update
 
 | Status | Issue | Title | Track | Dependencies | Blocked By |
 |--------|-------|-------|-------|--------------|------------|
-| [ ] | #8 | Implement field access operator (`.`) | Compiler | None | - |
+| [~] | #8 | Implement field access operator (`.`) @agent-1 | Compiler | None | - |
 | [ ] | #9 | Implement comparison operators | Compiler | None | - |
 | [ ] | #10 | Implement boolean operators (`and`, `or`, `not`) | Compiler | None | - |
 | [ ] | #11 | Implement arithmetic operators | Compiler | None | - |

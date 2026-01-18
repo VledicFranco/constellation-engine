@@ -56,6 +56,15 @@ object IRNode {
     debugSpan: Option[Span] = None
   ) extends IRNode
 
+  /** A field access node extracting a single field value from a record */
+  final case class FieldAccessNode(
+    id: UUID,
+    source: UUID,
+    field: String,
+    outputType: SemanticType,
+    debugSpan: Option[Span] = None
+  ) extends IRNode
+
   /** A conditional node for if/else expressions */
   final case class ConditionalNode(
     id: UUID,
@@ -89,6 +98,7 @@ final case class IRProgram(
     case Some(IRNode.ModuleCall(_, _, _, inputs, _, _)) => inputs.values.toSet
     case Some(IRNode.MergeNode(_, left, right, _, _)) => Set(left, right)
     case Some(IRNode.ProjectNode(_, source, _, _, _)) => Set(source)
+    case Some(IRNode.FieldAccessNode(_, source, _, _, _)) => Set(source)
     case Some(IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _)) => Set(cond, thenBr, elseBr)
     case Some(IRNode.LiteralNode(_, _, _, _)) => Set.empty
     case None => Set.empty

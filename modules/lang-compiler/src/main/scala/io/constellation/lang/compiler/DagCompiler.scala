@@ -83,6 +83,9 @@ object DagCompiler {
       case IRNode.ProjectNode(id, source, fields, outputType, _) =>
         processProjectNode(id, source, fields, outputType)
 
+      case IRNode.FieldAccessNode(id, source, field, outputType, _) =>
+        processFieldAccessNode(id, source, field, outputType)
+
       case IRNode.ConditionalNode(id, condition, thenBranch, elseBranch, outputType, _) =>
         processConditionalNode(id, condition, thenBranch, elseBranch, outputType)
 
@@ -243,6 +246,53 @@ object DagCompiler {
       // Create output data node
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"project_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = outputCType
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    private def processFieldAccessNode(
+      id: UUID,
+      source: UUID,
+      field: String,
+      outputType: SemanticType
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val sourceDataId = nodeOutputs.getOrElse(source,
+        throw new IllegalStateException(s"Source node $source not found")
+      )
+
+      val sourceCType = dataNodes(sourceDataId).cType
+      val outputCType = SemanticType.toCType(outputType)
+
+      // Create synthetic field access module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.field-${id.toString.take(8)}"),
+        consumes = Map("source" -> sourceCType),
+        produces = Map("out" -> outputCType)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation
+      val syntheticModule = createFieldAccessModule(spec, field, sourceCType, outputCType)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames for input data node
+      dataNodes = dataNodes.updatedWith(sourceDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "source")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((sourceDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"field_${id.toString.take(8)}_output",
         nicknames = Map(moduleId -> "out"),
         cType = outputCType
       ))
@@ -432,6 +482,52 @@ object DagCompiler {
           list.map(elem => projectFields(elem, fields, elemType))
 
         case _ => value
+      }
+    }
+
+    /** Create a field access module that extracts a single field value */
+    private def createFieldAccessModule(
+      spec: ModuleNodeSpec,
+      field: String,
+      sourceCType: CType,
+      outputCType: CType
+    ): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            sourceDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            sourceId <- consumesNs.nameId("source")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(sourceId -> sourceDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                sourceValue <- runtime.getTableData(sourceId)
+                fieldValue = accessField(sourceValue, field, sourceCType)
+                _ <- runtime.setTableData(outId, fieldValue)
+              } yield ()
+            }
+          )
+        }
+      )
+    }
+
+    /** Access a single field from a value */
+    private def accessField(value: Any, field: String, cType: CType): Any = {
+      (value, cType) match {
+        case (map: Map[String, ?] @unchecked, CType.CProduct(_)) =>
+          map.getOrElse(field, throw new IllegalStateException(s"Field '$field' not found"))
+
+        case (list: List[?] @unchecked, CType.CList(elemType)) =>
+          list.map(elem => accessField(elem, field, elemType))
+
+        case _ =>
+          throw new IllegalStateException(s"Cannot access field '$field' on non-record type")
       }
     }
 

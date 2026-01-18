@@ -692,4 +692,100 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     outputType.fields("id") shouldBe SemanticType.SInt
     outputType.fields("name") shouldBe SemanticType.SString
   }
+
+  // Field access tests
+
+  it should "type check simple field access" in {
+    val source = """
+      in user: { name: String, age: Int }
+      result = user.name
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check chained field access" in {
+    val source = """
+      in person: { address: { city: String, zip: String } }
+      result = person.address.city
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check field access returning record type" in {
+    val source = """
+      in person: { name: String, address: { city: String } }
+      result = person.address
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 1
+    outputType.fields("city") shouldBe SemanticType.SString
+  }
+
+  it should "type check field access on Candidates (returns Candidates of field type)" in {
+    val source = """
+      type User = { name: String, score: Float }
+      in users: Candidates<User>
+      result = users.score
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SCandidates(SemanticType.SFloat)
+  }
+
+  it should "report invalid field access error for non-existent field" in {
+    val source = """
+      in data: { id: Int, name: String }
+      result = data.nonexistent
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.InvalidFieldAccess]) shouldBe true
+  }
+
+  it should "report error for field access on non-record type" in {
+    val source = """
+      in x: Int
+      result = x.field
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeError]) shouldBe true
+  }
+
+  it should "report invalid field access error for Candidates with non-existent field" in {
+    val source = """
+      type User = { name: String }
+      in users: Candidates<User>
+      result = users.nonexistent
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.InvalidFieldAccess]) shouldBe true
+  }
+
+  it should "type check field access combined with other operations" in {
+    val source = """
+      in a: { x: Int }
+      in b: { y: Int }
+      merged = a + b
+      result = merged.x
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
 }
