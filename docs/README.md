@@ -60,6 +60,13 @@ sbt test       # Run all tests
 | [Standard Library](stdlib.md) | Built-in functions for common operations |
 | [Architecture](architecture.md) | Technical architecture and design decisions |
 | [API Guide](api-guide.md) | Programmatic API usage and module creation |
+| [LSP Integration](LSP_INTEGRATION.md) | Language Server Protocol setup and features |
+
+### Development
+
+| Document | Description |
+|----------|-------------|
+| [MCP Server](dev/mcp-server.md) | MCP server for multi-agent development workflows |
 
 ## Quick Example
 
