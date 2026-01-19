@@ -697,6 +697,56 @@ export class DagVisualizerPanel {
     return value.substring(0, maxLen - 3) + '...';
   }
 
+  // Simplify node labels by stripping common prefixes and truncating
+  function simplifyLabel(name, maxLen) {
+    if (!name) return '';
+
+    var simplified = name;
+
+    // Strip common prefixes:
+    // - UUID-like prefixes (e.g., "abc123_varName" -> "varName")
+    // - Namespace prefixes (e.g., "module.submodule.Name" -> "Name")
+
+    // Remove UUID-like prefix (alphanumeric followed by underscore)
+    var uuidMatch = simplified.match(/^[a-f0-9]{8,}_(.+)$/i);
+    if (uuidMatch) {
+      simplified = uuidMatch[1];
+    }
+
+    // If name has dots (namespace), take the last part
+    if (simplified.includes('.')) {
+      var parts = simplified.split('.');
+      simplified = parts[parts.length - 1];
+    }
+
+    // Truncate if too long
+    if (simplified.length > maxLen) {
+      return simplified.substring(0, maxLen - 1) + '…';
+    }
+
+    return simplified;
+  }
+
+  // Build tooltip text for a node
+  function buildTooltip(node) {
+    var lines = [];
+    lines.push(node.name);
+
+    if (node.role) {
+      lines.push('Role: ' + node.role);
+    }
+
+    if (node.type === 'data' && node.cType) {
+      lines.push('Type: ' + node.cType);
+    }
+
+    if (node.type === 'module') {
+      lines.push('Operation');
+    }
+
+    return lines.join('\\n');
+  }
+
   // Create hexagon points for output nodes
   function createHexagonPoints(width, height) {
     var inset = 12; // How much the left/right points are inset
@@ -1210,22 +1260,32 @@ export class DagVisualizerPanel {
         nodeGroup.appendChild(rect);
       }
 
-      // Add node label text
+      // Add tooltip (SVG title element)
+      var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      titleEl.textContent = buildTooltip(node);
+      nodeGroup.appendChild(titleEl);
+
+      // Add node label text (simplified)
+      var maxLabelLen = 18; // Max characters for label
+      var displayName = simplifyLabel(node.name, maxLabelLen);
+
       var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', node.width / 2);
       var textY = node.height / 2;
       if (node.type === 'module') textY = node.height / 2 + 4; // Adjust for header
       text.setAttribute('y', textY);
-      text.textContent = node.name;
+      text.textContent = displayName;
       nodeGroup.appendChild(text);
 
-      // Add type info for data nodes
+      // Add type info for data nodes (simplified if needed)
       if (node.type === 'data' && node.cType) {
         var typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         typeText.setAttribute('class', 'node-type');
         typeText.setAttribute('x', node.width / 2);
         typeText.setAttribute('y', textY + 12);
-        typeText.textContent = node.cType;
+        // Simplify type name if it has generics or is too long
+        var displayType = simplifyLabel(node.cType, 20);
+        typeText.textContent = displayType;
         nodeGroup.appendChild(typeText);
       }
 
