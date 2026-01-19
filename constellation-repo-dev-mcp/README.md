@@ -47,7 +47,7 @@ Add to your Claude Desktop configuration (`claude_desktop_config.json`):
   "mcpServers": {
     "constellation-engine": {
       "command": "node",
-      "args": ["C:/Users/YOUR_USERNAME/Repositories/constellation-engine/mcp-server/dist/index.js"],
+      "args": ["C:/Users/YOUR_USERNAME/Repositories/constellation-engine/constellation-repo-dev-mcp/dist/index.js"],
       "cwd": "C:/Users/YOUR_USERNAME/Repositories/constellation-engine"
     }
   }
@@ -61,7 +61,7 @@ Add to your Claude Desktop configuration (`claude_desktop_config.json`):
   "mcpServers": {
     "constellation-engine": {
       "command": "node",
-      "args": ["/path/to/constellation-engine/mcp-server/dist/index.js"],
+      "args": ["/path/to/constellation-engine/constellation-repo-dev-mcp/dist/index.js"],
       "cwd": "/path/to/constellation-engine"
     }
   }

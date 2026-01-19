@@ -54,7 +54,7 @@ The MCP server provides structured output, result caching, and better integratio
 - You need interactive output (watching logs in real-time)
 - Running the development server (`make dev`, `make server`)
 
-**Documentation:** See `docs/dev/mcp-server.md` for complete tool reference.
+**Documentation:** See `docs/dev/constellation-repo-dev-mcp.md` for complete tool reference.
 
 ## Server Endpoints
 

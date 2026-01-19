@@ -43,8 +43,8 @@ yarn-debug.log*
 yarn-error.log*
 
 # MCP Server
-mcp-server/dist/
-mcp-server/node_modules/
+constellation-repo-dev-mcp/dist/
+constellation-repo-dev-mcp/node_modules/
 .mcp-cache/
 
 # =============================================================================

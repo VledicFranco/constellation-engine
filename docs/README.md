@@ -66,7 +66,7 @@ sbt test       # Run all tests
 
 | Document | Description |
 |----------|-------------|
-| [MCP Server](dev/mcp-server.md) | MCP server for multi-agent development workflows |
+| [MCP Server](dev/constellation-repo-dev-mcp.md) | MCP server for multi-agent development workflows |
 
 ## Quick Example
 

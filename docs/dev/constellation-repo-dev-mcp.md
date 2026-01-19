@@ -28,7 +28,7 @@ make mcp-test      # Run tests
 Or directly:
 
 ```bash
-cd mcp-server
+cd constellation-repo-dev-mcp
 npm install
 npm run build
 npm test
@@ -47,7 +47,7 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "constellation-engine": {
       "command": "node",
-      "args": ["C:/Users/YOUR_USERNAME/Repositories/constellation-engine/mcp-server/dist/index.js"],
+      "args": ["C:/Users/YOUR_USERNAME/Repositories/constellation-engine/constellation-repo-dev-mcp/dist/index.js"],
       "cwd": "C:/Users/YOUR_USERNAME/Repositories/constellation-engine"
     }
   }
@@ -61,7 +61,7 @@ Add to your Claude Desktop configuration file:
   "mcpServers": {
     "constellation-engine": {
       "command": "node",
-      "args": ["/path/to/constellation-engine/mcp-server/dist/index.js"],
+      "args": ["/path/to/constellation-engine/constellation-repo-dev-mcp/dist/index.js"],
       "cwd": "/path/to/constellation-engine"
     }
   }
@@ -361,7 +361,7 @@ lang-stdlib  │    lang-lsp
 ### Watch Mode
 
 ```bash
-cd mcp-server
+cd constellation-repo-dev-mcp
 npm run dev  # Watches for changes and recompiles
 ```
 

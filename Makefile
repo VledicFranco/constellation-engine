@@ -200,25 +200,25 @@ info:
 # Install MCP server dependencies
 mcp-install:
 	@echo "Installing MCP server dependencies..."
-	cd mcp-server && npm install
+	cd constellation-repo-dev-mcp && npm install
 
 # Build MCP server
 mcp-build: mcp-install
 	@echo "Building MCP server..."
-	cd mcp-server && npm run build
+	cd constellation-repo-dev-mcp && npm run build
 
 # Run MCP server tests
 mcp-test: mcp-build
 	@echo "Running MCP server tests..."
-	cd mcp-server && npm test
+	cd constellation-repo-dev-mcp && npm test
 
 # Start MCP server (for testing)
 mcp-start: mcp-build
 	@echo "Starting MCP server..."
-	cd mcp-server && npm start
+	cd constellation-repo-dev-mcp && npm start
 
 # Clean MCP server build
 mcp-clean:
 	@echo "Cleaning MCP server..."
-	cd mcp-server && npm run clean 2>/dev/null || true
-	rm -rf mcp-server/node_modules mcp-server/dist
+	cd constellation-repo-dev-mcp && npm run clean 2>/dev/null || true
+	rm -rf constellation-repo-dev-mcp/node_modules constellation-repo-dev-mcp/dist
