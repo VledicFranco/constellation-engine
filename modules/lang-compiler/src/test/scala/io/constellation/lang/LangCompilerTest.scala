@@ -923,4 +923,238 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     )
     mergeDataNodes should have size 2
   }
+
+  // Branch expression tests
+
+  it should "compile a simple branch expression" in {
+    val registry = FunctionRegistry.empty
+    // Register comparison functions needed by the compiler
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "gt"
+    ))
+    registry.register(FunctionSignature(
+      name = "lt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "lt"
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in score: Int
+      in high: Int
+      in low: Int
+      in mediumResult: Int
+      result = branch {
+        score > high -> high,
+        score < low -> low,
+        otherwise -> mediumResult
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a synthetic branch module
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+  }
+
+  it should "compile a branch expression with single case" in {
+    val compiler = LangCompiler.empty
+
+    // Simplified source with minimal whitespace
+    val source = "in flag: Boolean\nin a: Int\nin b: Int\nresult = branch { flag -> a, otherwise -> b }\nout result"
+
+    val result = compiler.compile(source, "branch-single-dag")
+    result.left.foreach { errors => println(s"DEBUG ERRORS: $errors") }
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+  }
+
+  it should "compile a branch expression with only otherwise" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      result = branch {
+        otherwise -> x
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-only-otherwise-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+  }
+
+  it should "compile a branch expression with string results" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in cond1: Boolean
+      in cond2: Boolean
+      result = branch {
+        cond1 -> "first",
+        cond2 -> "second",
+        otherwise -> "default"
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-string-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+  }
+
+  it should "report error when branch condition is not Boolean" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Int
+      in a: Int
+      in b: Int
+      result = branch {
+        x -> a,
+        otherwise -> b
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error when branch expressions have different types" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in flag: Boolean
+      result = branch {
+        flag -> 42,
+        otherwise -> "hello"
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error when otherwise type doesn't match branch types" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in flag: Boolean
+      result = branch {
+        flag -> 42,
+        otherwise -> 3.14
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "compile branch with record results" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in flag: Boolean
+      in a: { x: Int }
+      in b: { x: Int }
+      result = branch {
+        flag -> a,
+        otherwise -> b
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-record-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.CProduct(fields) =>
+        fields.keys should contain ("x")
+      case other => fail(s"Expected CProduct, got $other")
+    }
+  }
+
+  it should "compile nested branch expressions" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in outer: Boolean
+      in inner: Boolean
+      in a: Int
+      in b: Int
+      in c: Int
+      result = branch {
+        outer -> branch {
+          inner -> a,
+          otherwise -> b
+        },
+        otherwise -> c
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "nested-branch-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 branch modules
+    val branchModules = compiled.dagSpec.modules.values.filter(_.name.contains("branch"))
+    branchModules should have size 2
+  }
+
+  it should "compile branch with boolean operators in conditions" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in x: Int
+      in y: Int
+      in z: Int
+      result = branch {
+        a and b -> x,
+        a or b -> y,
+        otherwise -> z
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-bool-ops-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    // AND and OR operations use inline transforms on data nodes (not separate modules)
+    compiled.dagSpec.data.values.exists(_.name.contains("and")) shouldBe true
+    compiled.dagSpec.data.values.exists(_.name.contains("or")) shouldBe true
+  }
 }

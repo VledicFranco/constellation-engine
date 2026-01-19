@@ -179,5 +179,20 @@ object IRGenerator {
       val id = UUID.randomUUID()
       val node = IRNode.CoalesceNode(id, leftId, rightId, resultType, Some(span))
       (rightCtx.addNode(node), id)
+
+    case TypedExpression.Branch(cases, otherwise, semanticType, span) =>
+      // Generate IR for all conditions and expressions
+      val (casesCtx, caseIds) = cases.foldLeft((ctx, List.empty[(UUID, UUID)])) {
+        case ((currentCtx, ids), (cond, expr)) =>
+          val (condCtx, condId) = generateExpression(cond, currentCtx)
+          val (exprCtx, exprId) = generateExpression(expr, condCtx)
+          (exprCtx, ids :+ (condId, exprId))
+      }
+
+      val (otherwiseCtx, otherwiseId) = generateExpression(otherwise, casesCtx)
+
+      val id = UUID.randomUUID()
+      val node = IRNode.BranchNode(id, caseIds, otherwiseId, semanticType, Some(span))
+      (otherwiseCtx.addNode(node), id)
   }
 }

@@ -35,9 +35,11 @@ object ConstellationParser {
   private val orKw: P[Unit] = keyword("or")
   private val notKw: P[Unit] = keyword("not")
   private val whenKw: P[Unit] = keyword("when")
+  private val branchKw: P[Unit] = keyword("branch")
+  private val otherwiseKw: P[Unit] = keyword("otherwise")
 
   // Reserved words
-  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as", "and", "or", "not", "when")
+  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as", "and", "or", "not", "when", "branch", "otherwise")
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
   private val identifierStart: P[Char] = alpha | P.charIn("_")
@@ -70,6 +72,7 @@ object ConstellationParser {
   private val openAngle: P[Unit] = token(P.char('<'))
   private val closeAngle: P[Unit] = token(P.char('>'))
   private val dot: P[Unit] = P.char('.')
+  private val arrow: P[Unit] = token(P.string("->"))
 
   // Comparison operators (order matters: longer operators first)
   private val eqOp: P[CompareOp] = P.string("==").as(CompareOp.Eq)
@@ -83,8 +86,9 @@ object ConstellationParser {
     token(eqOp | notEqOp | lteOp | gteOp | ltOp | gtOp)
 
   // Arithmetic operators
+  // Note: subOp must not match '-' when followed by '>' (which is the arrow ->)
   private val addOp: P[ArithOp] = P.char('+').as(ArithOp.Add)
-  private val subOp: P[ArithOp] = P.char('-').as(ArithOp.Sub)
+  private val subOp: P[ArithOp] = (P.char('-') <* P.not(P.char('>'))).backtrack.as(ArithOp.Sub)
   private val mulOp: P[ArithOp] = P.char('*').as(ArithOp.Mul)
   private val divOp: P[ArithOp] = P.char('/').as(ArithOp.Div)
 
@@ -259,7 +263,7 @@ object ConstellationParser {
     }
 
   private lazy val exprPrimary: P[Expression] =
-    conditional.backtrack | functionCall.backtrack | literal | varRef | parenExpr
+    conditional.backtrack | branchExpr | functionCall.backtrack | literal | varRef.backtrack | parenExpr
 
   private lazy val parenExpr: P[Expression] =
     openParen *> expression <* closeParen
@@ -278,6 +282,47 @@ object ConstellationParser {
       .map { case ((cond, thenBr), elseBr) =>
         Expression.Conditional(cond, thenBr, elseBr)
       }
+
+  /** Branch expression: multi-way conditional
+    * branch {
+    *   condition1 -> expression1,
+    *   condition2 -> expression2,
+    *   otherwise -> defaultExpression
+    * }
+    */
+  private lazy val branchCase: P[(Located[Expression], Located[Expression])] =
+    (withSpan(P.defer(expression)) ~ (arrow *> withSpan(P.defer(expression))))
+
+  private lazy val otherwiseCase: P[Located[Expression]] =
+    otherwiseKw *> arrow *> withSpan(P.defer(expression))
+
+  // Branch item: either a condition -> value case or the otherwise clause
+  // Try branchCase first (with backtrack), then otherwiseCase
+  private lazy val branchItem: P[Either[(Located[Expression], Located[Expression]), Located[Expression]]] =
+    branchCase.map(Left(_)).backtrack | otherwiseCase.map(Right(_))
+
+  // Manual comma-separated parsing: first item, then zero or more (comma, item)
+  private lazy val branchItems: P[List[Either[(Located[Expression], Located[Expression]), Located[Expression]]]] =
+    branchItem.flatMap { first =>
+      (comma *> branchItem).backtrack.rep0.map { rest =>
+        first :: rest.toList
+      }
+    }
+
+  private lazy val branchExpr: P[Expression.Branch] =
+    (branchKw *> openBrace *> branchItems <* closeBrace).flatMap { items =>
+      // Validate: all items except the last must be Left (cases), last must be Right (otherwise)
+      items.lastOption match {
+        case Some(Right(otherwise)) =>
+          val cases = items.init.collect { case Left(c) => c }
+          if (cases.length == items.length - 1)
+            P.pure(Expression.Branch(cases, otherwise))
+          else
+            P.failWith("Branch cases must come before the otherwise clause")
+        case _ =>
+          P.failWith("Branch must have an otherwise clause as the last item")
+      }
+    }
 
   // Literals
   private val stringLit: P[Expression.StringLit] =

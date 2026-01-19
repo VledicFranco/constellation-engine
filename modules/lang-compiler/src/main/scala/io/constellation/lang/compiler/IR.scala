@@ -141,6 +141,20 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = resultType
   }
+
+  /** Branch node for multi-way conditional.
+    * Evaluates conditions in order, returns first matching expression.
+    * If no condition matches, returns the otherwise expression.
+    */
+  final case class BranchNode(
+    id: UUID,
+    cases: List[(UUID, UUID)],  // (condition ID, expression ID) pairs
+    otherwise: UUID,
+    resultType: SemanticType,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = resultType
+  }
 }
 
 /** The complete IR program representing a constellation-lang program */
@@ -165,6 +179,8 @@ final case class IRProgram(
     case Some(IRNode.NotNode(_, operand, _)) => Set(operand)
     case Some(IRNode.GuardNode(_, expr, condition, _, _)) => Set(expr, condition)
     case Some(IRNode.CoalesceNode(_, left, right, _, _)) => Set(left, right)
+    case Some(IRNode.BranchNode(_, cases, otherwise, _, _)) =>
+      cases.flatMap { case (cond, expr) => Set(cond, expr) }.toSet + otherwise
     case None => Set.empty
   }
 
