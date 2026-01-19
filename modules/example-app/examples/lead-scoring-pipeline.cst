@@ -1,0 +1,238 @@
+# Lead Scoring Pipeline - Comprehensive ML Example
+# ================================================
+# Demonstrates ALL constellation-lang features for a realistic B2B lead scoring use case.
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1.  Comments (#)                    - This header and inline comments throughout
+# 2.  Type definitions (type X = {})  - CompanyInfo, EngagementData record types
+# 3.  Record types with fields        - { name: String, employeeCount: Int, ... }
+# 4.  Input declarations (in x: T)    - company, engagement, industryKeywords, etc.
+# 5.  Output declarations (out x)     - Multiple outputs at the end
+# 6.  Variable assignments            - descriptionText = Trim(...)
+# 7.  Function/module calls           - Trim(...), Lowercase(...), Contains(...)
+# 8.  Arithmetic operators            - +, -, *, / for numeric calculations
+# 9.  Comparison operators            - >, <, >=, <=, ==, != for conditions
+# 10. Boolean operators               - and, or, not for logic expressions
+# 11. Conditional expressions         - if (cond) x else y with nesting
+# 12. Field access (.)                - company.name, engagement.description
+# 13. Use declarations                - use stdlib.math, use stdlib.string as str
+# 14. Aliased namespace imports       - str.lower(...) using alias
+# 15. Fully qualified calls           - stdlib.string.upper(...)
+# 16. Literals                        - String ("..."), Int (100, 0), Boolean
+# 17. Type references                 - in company: CompanyInfo
+# 18. Nested conditionals             - if (...) 100 else if (...) 70 else 30
+#
+# ML USE CASE: B2B Lead Scoring
+# This pipeline takes lead data and scores prospects based on:
+# - Company size (employee count)
+# - Revenue potential
+# - Engagement signals from text analysis
+# - Industry fit keyword matching
+
+# =============================================================================
+# Type Definitions - Define structured data types for our lead records
+# =============================================================================
+
+type CompanyInfo = {
+  name: String,
+  industry: String,
+  employeeCount: Int,
+  annualRevenue: Int
+}
+
+type EngagementData = {
+  websiteVisits: Int,
+  emailOpens: Int,
+  contentDownloads: Int,
+  description: String
+}
+
+# =============================================================================
+# Namespace Imports - Use standard library functions with aliases
+# =============================================================================
+
+use stdlib.math
+use stdlib.string as str
+use stdlib.compare
+
+# =============================================================================
+# Input Declarations - Define pipeline inputs with types
+# =============================================================================
+
+in company: CompanyInfo
+in engagement: EngagementData
+in industryKeywords: String
+in minScoreThreshold: Int
+in scoreMultiplier: Int
+
+# =============================================================================
+# Feature Extraction - Text analysis using existing modules
+# =============================================================================
+
+# Analyze the company description for engagement signals
+descriptionText = Trim(engagement.description)
+normalizedDesc = Lowercase(descriptionText)
+descWordCount = WordCount(normalizedDesc)
+descLength = TextLength(normalizedDesc)
+
+# Check if description contains target industry keywords
+keywordsLower = str.lower(industryKeywords)
+hasIndustryMatch = Contains(normalizedDesc, keywordsLower)
+
+# =============================================================================
+# Numeric Feature Scoring - Using arithmetic and comparison operators
+# =============================================================================
+
+# Score based on company size (employees)
+# Small: <50, Medium: 50-500, Large: >500
+isLargeCompany = company.employeeCount > 500
+isMediumCompany = company.employeeCount >= 50 and company.employeeCount <= 500
+isSmallCompany = company.employeeCount < 50
+
+# Conditional scoring based on company size (using if-else expressions)
+companySizeScore = if (isLargeCompany) 100 else if (isMediumCompany) 70 else 30
+
+# Revenue scoring using arithmetic operators
+# Score = revenue / 10000 (simplified linear scoring)
+revenueBase = company.annualRevenue / 10000
+revenueScore = if (revenueBase > 100) 100 else revenueBase
+
+# =============================================================================
+# Engagement Scoring - Combining multiple signals
+# =============================================================================
+
+# Calculate total engagement from activities
+totalEngagement = engagement.websiteVisits + engagement.emailOpens + engagement.contentDownloads
+
+# Scale engagement by multiplier (using multiplication operator)
+scaledEngagement = totalEngagement * scoreMultiplier
+
+# Engagement quality score based on content interactions
+hasHighEngagement = totalEngagement > 10
+hasMediumEngagement = totalEngagement >= 5 and totalEngagement <= 10
+engagementScore = if (hasHighEngagement) 100 else if (hasMediumEngagement) 60 else 20
+
+# =============================================================================
+# Text Quality Scoring - Description analysis
+# =============================================================================
+
+# Score based on description quality (longer, more detailed = higher score)
+hasDetailedDescription = descWordCount > 50 and descLength > 200
+hasModerateDescription = descWordCount >= 20 and descWordCount <= 50
+textQualityScore = if (hasDetailedDescription) 100 else if (hasModerateDescription) 60 else 25
+
+# =============================================================================
+# Boolean Logic - Qualification criteria using and, or, not
+# =============================================================================
+
+# Lead qualifies if meets revenue threshold AND has engagement
+meetsRevenueThreshold = revenueScore >= 50
+meetsEngagementThreshold = engagementScore >= 60
+isQualified = meetsRevenueThreshold and meetsEngagementThreshold
+
+# High priority if large company OR has industry match with high engagement
+isHighPriority = isLargeCompany or (hasIndustryMatch and hasHighEngagement)
+
+# Disqualified if small company with no engagement
+isDisqualified = isSmallCompany and not hasHighEngagement and not hasMediumEngagement
+
+# =============================================================================
+# Final Score Calculation - Weighted combination
+# =============================================================================
+
+# Calculate weighted total score using arithmetic
+# Company size: 25%, Revenue: 30%, Engagement: 25%, Text quality: 20%
+weightedCompanyScore = companySizeScore / 4
+weightedRevenueScore = revenueScore * 3 / 10
+weightedEngagementScore = engagementScore / 4
+weightedTextScore = textQualityScore / 5
+
+# Total score before adjustments
+rawTotalScore = weightedCompanyScore + weightedRevenueScore + weightedEngagementScore + weightedTextScore
+
+# Apply bonus for industry match (using conditional and arithmetic)
+industryBonus = if (hasIndustryMatch) 15 else 0
+adjustedScore = rawTotalScore + industryBonus
+
+# Cap score at 100 using conditional
+finalScore = if (adjustedScore > 100) 100 else adjustedScore
+
+# =============================================================================
+# Score Classification - Using nested conditionals
+# =============================================================================
+
+# Classify lead based on final score
+isHotLead = finalScore >= 80
+isWarmLead = finalScore >= 50 and finalScore < 80
+isColdLead = finalScore < 50
+
+# Determine if score meets minimum threshold (using comparison operators)
+meetsMinimum = finalScore >= minScoreThreshold
+scoreDifference = finalScore - minScoreThreshold
+isAboveThreshold = scoreDifference > 0
+isBelowThreshold = scoreDifference < 0
+isAtThreshold = scoreDifference == 0
+
+# =============================================================================
+# Output Formatting - Prepare results for downstream systems
+# =============================================================================
+
+# Format company name for display
+displayName = Uppercase(company.name)
+
+# Format the final score with thousands separator (for large scores in real scenarios)
+formattedTotal = FormatNumber(finalScore)
+
+# Generate industry using fully qualified namespace call
+normalizedIndustry = stdlib.string.upper(company.industry)
+
+# Use stdlib.math functions for additional calculations (direct call after 'use stdlib.math')
+doubleScore = add(finalScore, finalScore)
+halfScore = divide(finalScore, 2)
+
+# =============================================================================
+# Multiple Outputs - Return all relevant scoring data
+# =============================================================================
+
+# Lead identification
+out displayName
+out normalizedIndustry
+
+# Individual component scores
+out companySizeScore
+out revenueScore
+out engagementScore
+out textQualityScore
+
+# Engagement metrics
+out totalEngagement
+out scaledEngagement
+out descWordCount
+
+# Boolean flags for classification
+out hasIndustryMatch
+out isQualified
+out isHighPriority
+out isDisqualified
+
+# Final scoring
+out rawTotalScore
+out industryBonus
+out finalScore
+out formattedTotal
+
+# Lead temperature classification
+out isHotLead
+out isWarmLead
+out isColdLead
+
+# Threshold comparison
+out meetsMinimum
+out scoreDifference
+out isAboveThreshold
+out isBelowThreshold
+out isAtThreshold
+
+# Additional calculated values
+out doubleScore
+out halfScore

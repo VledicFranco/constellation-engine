@@ -326,6 +326,20 @@ object TypeChecker {
       (resolveTypeExpr(left, span, env), resolveTypeExpr(right, span, env))
         .mapN((l, r) => mergeTypes(l, r, span))
         .andThen(identity)
+
+    case TypeExpr.Union(members) =>
+      members
+        .traverse(m => resolveTypeExpr(m, span, env))
+        .map { resolvedMembers =>
+          // Flatten nested unions and collect into a set
+          val flattened = resolvedMembers.flatMap {
+            case SemanticType.SUnion(innerMembers) => innerMembers.toList
+            case other                             => List(other)
+          }.toSet
+          // If only one member after flattening, return it directly
+          if flattened.size == 1 then flattened.head
+          else SemanticType.SUnion(flattened)
+        }
   }
 
   /** Type algebra: merge two types */

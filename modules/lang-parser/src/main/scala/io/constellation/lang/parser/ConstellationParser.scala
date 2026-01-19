@@ -79,6 +79,7 @@ object ConstellationParser {
   private val colon: P[Unit]        = token(P.char(':'))
   private val comma: P[Unit]        = token(P.char(','))
   private val plus: P[Unit]         = token(P.char('+'))
+  private val pipe: P[Unit]         = token(P.char('|'))
   private val openBrace: P[Unit]    = token(P.char('{'))
   private val closeBrace: P[Unit]   = token(P.char('}'))
   private val openParen: P[Unit]    = token(P.char('('))
@@ -133,8 +134,17 @@ object ConstellationParser {
     }
 
   // Type expressions
-  lazy val typeExpr: P[TypeExpr] = P.defer(typeExprMerge)
+  // Precedence (low to high): union (|) -> merge (+) -> primary
+  lazy val typeExpr: P[TypeExpr] = P.defer(typeExprUnion)
 
+  // Union types: A | B | C
+  private lazy val typeExprUnion: P[TypeExpr] =
+    (typeExprMerge ~ (pipe *> typeExprMerge).rep0).map { case (first, rest) =>
+      if rest.isEmpty then first
+      else TypeExpr.Union((first :: rest.toList))
+    }
+
+  // Type merge: A + B (record field merge)
   private lazy val typeExprMerge: P[TypeExpr] =
     (typeExprPrimary ~ (plus *> typeExprPrimary).rep0).map { case (first, rest) =>
       rest.foldLeft(first)(TypeExpr.TypeMerge(_, _))
