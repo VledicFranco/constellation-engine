@@ -168,15 +168,6 @@ object TypedExpression {
       span: Span
   ) extends TypedExpression
 
-  /** String interpolation expression: s"Hello, ${name}!" */
-  final case class StringInterpolation(
-    parts: List[String],
-    expressions: List[TypedExpression],
-    span: Span
-  ) extends TypedExpression {
-    def semanticType: SemanticType = SemanticType.SString
-  }
-
   /** Lambda expression: (x, y) => x + y
     * A function literal with typed parameters and a body.
     */
@@ -664,12 +655,6 @@ object TypeChecker {
           else TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
         }
         .andThen(identity)
-
-    case Expression.StringInterpolation(parts, expressions) =>
-      // Type check all expressions - they can be any type (will be converted to string at runtime)
-      expressions.traverse(e => checkExpression(e.value, e.span, env)).map { typedExprs =>
-        TypedExpression.StringInterpolation(parts, typedExprs, span)
-      }
 
     case Expression.Lambda(params, body) =>
       // Lambda expressions can only be type-checked in the context of a function call

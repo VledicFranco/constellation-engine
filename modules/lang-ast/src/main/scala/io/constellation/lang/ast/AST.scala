@@ -304,15 +304,6 @@ object Expression {
       otherwise: Located[Expression]
   ) extends Expression
 
-  /** String interpolation: s"Hello, ${name}!"
-    * parts.length == expressions.length + 1
-    * Example: s"Hello, ${name}!" has parts ["Hello, ", "!"] and expressions [name]
-    */
-  final case class StringInterpolation(
-    parts: List[String],
-    expressions: List[Located[Expression]]
-  ) extends Expression
-
   /** Lambda parameter */
   final case class LambdaParam(
     name: Located[String],
