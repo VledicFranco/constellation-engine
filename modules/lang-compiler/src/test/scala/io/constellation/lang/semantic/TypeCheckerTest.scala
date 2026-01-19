@@ -150,6 +150,61 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     elementType.fields should have size 2
   }
 
+  it should "type check projection with curly brace syntax" in {
+    val source = """
+      in data: { id: Int, name: String, email: String }
+      result = data{id, name}
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 2
+    outputType.fields.keys should contain allOf ("id", "name")
+    outputType.fields.keys should not contain "email"
+  }
+
+  it should "type check single field projection with curly braces" in {
+    val source = """
+      in data: { id: Int, name: String }
+      result = data{id}
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 1
+    outputType.fields("id") shouldBe SemanticType.SInt
+  }
+
+  it should "type check curly brace projection on Candidates" in {
+    val source = """
+      type Item = { id: Int, name: String, extra: String }
+      in items: Candidates<Item>
+      result = items{id, name}
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 2
+    elementType.fields.keys should contain allOf ("id", "name")
+  }
+
+  it should "report error for unknown field in curly brace projection" in {
+    val source = """
+      in data: { id: Int, name: String }
+      result = data{id, unknown}
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
   it should "type check conditional expressions" in {
     val source = """
       in flag: Boolean

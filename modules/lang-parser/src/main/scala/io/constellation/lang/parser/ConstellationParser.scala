@@ -203,7 +203,7 @@ object ConstellationParser {
         }._1
     }
 
-  /** Postfix operations: projection [...] and field access .field */
+  /** Postfix operations: projection [...] or {...} and field access .field */
   private lazy val exprPostfix: P[Expression] =
     (withSpan(exprPrimary) ~ postfixOp.rep0).map {
       case (locExpr, ops) =>
@@ -222,8 +222,15 @@ object ConstellationParser {
   private lazy val postfixOp: P[Either[List[String], Located[String]]] =
     projection.map(Left(_)) | fieldAccess.map(Right(_))
 
+  // Projection supports both [...] and {...} syntax
   private lazy val projection: P[List[String]] =
+    bracketProjection | braceProjection
+
+  private lazy val bracketProjection: P[List[String]] =
     openBracket *> identifier.repSep(comma).map(_.toList) <* closeBracket
+
+  private lazy val braceProjection: P[List[String]] =
+    openBrace *> identifier.repSep(comma).map(_.toList) <* closeBrace
 
   private lazy val fieldAccess: P[Located[String]] =
     token(dot) *> withSpan(rawIdentifier <* ws).flatMap { loc =>

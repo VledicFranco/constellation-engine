@@ -152,6 +152,88 @@ class ParserTest extends AnyFlatSpec with Matchers {
     projection.fields shouldBe List("id", "name")
   }
 
+  it should "parse projection expressions with curly brace syntax" in {
+    val source = """
+      in data: { id: Int, name: String, email: String }
+      result = data{id, name}
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Projection]
+
+    val projection = assignment.value.value.asInstanceOf[Expression.Projection]
+    projection.fields shouldBe List("id", "name")
+  }
+
+  it should "parse single field projection with curly braces" in {
+    val source = """
+      in data: { id: Int, name: String }
+      result = data{id}
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+
+    val program = result.toOption.get
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val projection = assignment.value.value.asInstanceOf[Expression.Projection]
+    projection.fields shouldBe List("id")
+  }
+
+  it should "parse curly brace projection combined with field access" in {
+    val source = """
+      in data: { records: { id: Int, name: String } }
+      result = data.records{id}
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    // The result should be Projection(FieldAccess(data, records), {id})
+    assignment.value.value shouldBe a[Expression.Projection]
+
+    val projection = assignment.value.value.asInstanceOf[Expression.Projection]
+    projection.fields shouldBe List("id")
+    projection.source.value shouldBe a[Expression.FieldAccess]
+  }
+
+  it should "parse complex expressions with merge and curly brace projection" in {
+    val source = """
+      in a: { x: Int, y: Int }
+      in b: { z: Int }
+      result = a{x} + b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+  }
+
+  it should "parse both bracket and brace projection in same program" in {
+    val source = """
+      in data: { id: Int, name: String, email: String }
+      r1 = data[id, name]
+      r2 = data{name, email}
+      out r1
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment1 = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val projection1 = assignment1.value.value.asInstanceOf[Expression.Projection]
+    projection1.fields shouldBe List("id", "name")
+
+    val assignment2 = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val projection2 = assignment2.value.value.asInstanceOf[Expression.Projection]
+    projection2.fields shouldBe List("name", "email")
+  }
+
   it should "parse complex expressions with merge and projection" in {
     val source = """
       in a: { x: Int, y: Int }
