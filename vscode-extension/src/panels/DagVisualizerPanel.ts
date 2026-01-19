@@ -69,6 +69,47 @@ export class DagVisualizerPanel {
     }
   }
 
+  /** Notify the DAG visualizer that execution has started */
+  public static notifyExecutionStart(documentUri: string) {
+    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
+      DagVisualizerPanel.currentPanel._state.panel.webview.postMessage({
+        type: 'executionStart'
+      });
+    }
+  }
+
+  /** Notify the DAG visualizer that execution has completed */
+  public static notifyExecutionComplete(documentUri: string, success: boolean) {
+    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
+      DagVisualizerPanel.currentPanel._state.panel.webview.postMessage({
+        type: 'executionComplete',
+        success
+      });
+    }
+  }
+
+  /** Update a single node's execution state */
+  public static notifyNodeUpdate(documentUri: string, nodeId: string, state: string, valuePreview?: string) {
+    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
+      DagVisualizerPanel.currentPanel._state.panel.webview.postMessage({
+        type: 'executionUpdate',
+        nodeId,
+        state,
+        valuePreview
+      });
+    }
+  }
+
+  /** Batch update multiple nodes' execution states */
+  public static notifyBatchUpdate(documentUri: string, updates: Array<{nodeId: string, state: string, valuePreview?: string}>) {
+    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
+      DagVisualizerPanel.currentPanel._state.panel.webview.postMessage({
+        type: 'executionBatchUpdate',
+        updates
+      });
+    }
+  }
+
   private constructor(
     panel: vscode.WebviewPanel,
     extensionUri: vscode.Uri,
@@ -170,6 +211,10 @@ export class DagVisualizerPanel {
       --node-data-border: var(--vscode-charts-blue, #3794ff);
       --node-module-border: var(--vscode-charts-orange, #d18616);
       --edge-color: var(--vscode-charts-yellow, #cca700);
+      --state-pending: var(--vscode-editorGutter-commentRangeForeground, #6e7681);
+      --state-running: var(--vscode-charts-blue, #3794ff);
+      --state-completed: var(--vscode-charts-green, #3fb950);
+      --state-failed: var(--vscode-charts-red, #f85149);
     `;
 
     const styles = getBaseStyles(additionalVars) + this._getCustomStyles();
@@ -190,6 +235,7 @@ export class DagVisualizerPanel {
             <button class="export-option" id="exportSvgBtn">Export as SVG</button>
           </div>
         </div>
+        <button class="icon-btn" id="resetBtn" title="Reset execution state">⟲</button>
         <button class="icon-btn" id="refreshBtn" title="Refresh">↻</button>
       `
     });
@@ -392,6 +438,57 @@ export class DagVisualizerPanel {
       .dag-edge:hover polygon {
         opacity: 1;
       }
+
+      /* Execution state styles */
+      .dag-node.state-pending rect {
+        stroke: var(--state-pending) !important;
+        opacity: 0.6;
+      }
+
+      .dag-node.state-running rect {
+        stroke: var(--state-running) !important;
+        stroke-width: 3;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+
+      .dag-node.state-completed rect {
+        stroke: var(--state-completed) !important;
+      }
+
+      .dag-node.state-failed rect {
+        stroke: var(--state-failed) !important;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* State indicator icon */
+      .dag-node .state-icon {
+        font-size: 14px;
+        dominant-baseline: middle;
+        text-anchor: end;
+      }
+
+      .dag-node.state-completed .state-icon {
+        fill: var(--state-completed);
+      }
+
+      .dag-node.state-failed .state-icon {
+        fill: var(--state-failed);
+      }
+
+      .dag-node.state-running .state-icon {
+        fill: var(--state-running);
+      }
+
+      /* Value preview tooltip */
+      .value-preview {
+        font-size: 9px;
+        fill: var(--vscode-descriptionForeground);
+        opacity: 0.8;
+      }
     `;
   }
 
@@ -413,9 +510,11 @@ export class DagVisualizerPanel {
   var exportMenu = document.getElementById('exportMenu');
   var exportPngBtn = document.getElementById('exportPngBtn');
   var exportSvgBtn = document.getElementById('exportSvgBtn');
+  var resetBtn = document.getElementById('resetBtn');
 
   var currentDag = null;
   var currentFileName = 'dag';
+  var executionStates = {}; // nodeId -> { state: 'pending'|'running'|'completed'|'failed', valuePreview?: string }
   var layoutDirection = 'TB'; // 'TB' = top-to-bottom, 'LR' = left-to-right
   var viewBox = { x: 0, y: 0, width: 800, height: 600 };
   var isPanning = false;
@@ -460,6 +559,91 @@ export class DagVisualizerPanel {
     exportMenu.classList.remove('show');
     exportAsSvg();
   };
+
+  resetBtn.onclick = function() {
+    resetExecutionStates();
+  };
+
+  function resetExecutionStates() {
+    executionStates = {};
+    if (currentDag) {
+      renderDag(currentDag);
+    }
+  }
+
+  function setNodeExecutionState(nodeId, state, valuePreview) {
+    executionStates[nodeId] = { state: state, valuePreview: valuePreview };
+    updateNodeAppearance(nodeId);
+  }
+
+  function setAllNodesState(state) {
+    if (!currentDag) return;
+    var allNodeIds = Object.keys(currentDag.modules || {}).concat(Object.keys(currentDag.data || {}));
+    allNodeIds.forEach(function(nodeId) {
+      executionStates[nodeId] = { state: state };
+    });
+    if (currentDag) {
+      renderDag(currentDag);
+    }
+  }
+
+  function updateNodeAppearance(nodeId) {
+    var nodeGroup = document.querySelector('[data-node-id="' + nodeId + '"]');
+    if (!nodeGroup) return;
+
+    // Remove existing state classes
+    nodeGroup.classList.remove('state-pending', 'state-running', 'state-completed', 'state-failed');
+
+    var stateInfo = executionStates[nodeId];
+    if (stateInfo && stateInfo.state) {
+      nodeGroup.classList.add('state-' + stateInfo.state);
+
+      // Update or add state icon
+      var existingIcon = nodeGroup.querySelector('.state-icon');
+      if (existingIcon) {
+        existingIcon.remove();
+      }
+
+      var icon = '';
+      if (stateInfo.state === 'completed') icon = '✓';
+      else if (stateInfo.state === 'failed') icon = '✗';
+      else if (stateInfo.state === 'running') icon = '⟳';
+
+      if (icon) {
+        var iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        iconText.setAttribute('class', 'state-icon');
+        iconText.setAttribute('x', '12');
+        iconText.setAttribute('y', '14');
+        iconText.textContent = icon;
+        nodeGroup.appendChild(iconText);
+      }
+
+      // Update value preview if available
+      var existingPreview = nodeGroup.querySelector('.value-preview');
+      if (existingPreview) {
+        existingPreview.remove();
+      }
+
+      if (stateInfo.valuePreview && stateInfo.state === 'completed') {
+        var rect = nodeGroup.querySelector('rect');
+        var width = rect ? parseFloat(rect.getAttribute('width')) : 160;
+        var height = rect ? parseFloat(rect.getAttribute('height')) : 40;
+
+        var previewText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        previewText.setAttribute('class', 'value-preview');
+        previewText.setAttribute('x', width / 2);
+        previewText.setAttribute('y', height - 6);
+        previewText.textContent = truncateValue(stateInfo.valuePreview, 20);
+        nodeGroup.appendChild(previewText);
+      }
+    }
+  }
+
+  function truncateValue(value, maxLen) {
+    if (!value) return '';
+    if (value.length <= maxLen) return value;
+    return value.substring(0, maxLen - 3) + '...';
+  }
 
   function exportAsSvg() {
     // Clone the SVG to avoid modifying the displayed one
@@ -557,6 +741,10 @@ export class DagVisualizerPanel {
     var dataBorder = styles.getPropertyValue('--node-data-border') || '#3794ff';
     var moduleBorder = styles.getPropertyValue('--node-module-border') || '#d18616';
     var edgeColor = styles.getPropertyValue('--edge-color') || '#cca700';
+    var statePending = styles.getPropertyValue('--state-pending') || '#6e7681';
+    var stateRunning = styles.getPropertyValue('--state-running') || '#3794ff';
+    var stateCompleted = styles.getPropertyValue('--state-completed') || '#3fb950';
+    var stateFailed = styles.getPropertyValue('--state-failed') || '#f85149';
 
     return '\\n' +
       '.dag-node rect { fill: ' + editorBg + '; stroke-width: 2; }\\n' +
@@ -565,7 +753,15 @@ export class DagVisualizerPanel {
       '.dag-node text { fill: ' + foreground + '; font-family: monospace; font-size: 12px; text-anchor: middle; dominant-baseline: middle; }\\n' +
       '.dag-node .node-type { font-size: 10px; fill: ' + descForeground + '; }\\n' +
       '.dag-edge path { fill: none; stroke: ' + edgeColor + '; stroke-width: 1.5; opacity: 0.8; }\\n' +
-      '.dag-edge polygon { fill: ' + edgeColor + '; opacity: 0.8; }\\n';
+      '.dag-edge polygon { fill: ' + edgeColor + '; opacity: 0.8; }\\n' +
+      '.dag-node.state-pending rect { stroke: ' + statePending + '; opacity: 0.6; }\\n' +
+      '.dag-node.state-running rect { stroke: ' + stateRunning + '; stroke-width: 3; }\\n' +
+      '.dag-node.state-completed rect { stroke: ' + stateCompleted + '; }\\n' +
+      '.dag-node.state-failed rect { stroke: ' + stateFailed + '; }\\n' +
+      '.dag-node .state-icon { font-size: 14px; }\\n' +
+      '.dag-node.state-completed .state-icon { fill: ' + stateCompleted + '; }\\n' +
+      '.dag-node.state-failed .state-icon { fill: ' + stateFailed + '; }\\n' +
+      '.value-preview { font-size: 9px; fill: ' + descForeground + '; opacity: 0.8; }\\n';
   }
 
   function setLayoutDirection(direction) {
@@ -600,6 +796,37 @@ export class DagVisualizerPanel {
       layoutDirection = message.direction || 'TB';
       tbBtn.classList.toggle('active', layoutDirection === 'TB');
       lrBtn.classList.toggle('active', layoutDirection === 'LR');
+    } else if (message.type === 'executionUpdate') {
+      // Single node execution state update
+      setNodeExecutionState(message.nodeId, message.state, message.valuePreview);
+    } else if (message.type === 'executionBatchUpdate') {
+      // Batch update for multiple nodes
+      if (message.updates && Array.isArray(message.updates)) {
+        message.updates.forEach(function(update) {
+          executionStates[update.nodeId] = { state: update.state, valuePreview: update.valuePreview };
+        });
+        if (currentDag) {
+          renderDag(currentDag);
+        }
+      }
+    } else if (message.type === 'executionStart') {
+      // Mark all nodes as pending when execution starts
+      setAllNodesState('pending');
+    } else if (message.type === 'executionComplete') {
+      // Mark all nodes based on success/failure
+      if (message.success) {
+        setAllNodesState('completed');
+      } else {
+        // Mark non-completed nodes as failed
+        Object.keys(executionStates).forEach(function(nodeId) {
+          if (executionStates[nodeId].state !== 'completed') {
+            executionStates[nodeId].state = 'failed';
+          }
+        });
+        if (currentDag) {
+          renderDag(currentDag);
+        }
+      }
     }
   });
 
@@ -832,7 +1059,9 @@ export class DagVisualizerPanel {
     Object.keys(layout.nodes).forEach(function(id) {
       var node = layout.nodes[id];
       var nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      nodeGroup.setAttribute('class', 'dag-node dag-node-' + node.type);
+      var stateClass = executionStates[id] ? ' state-' + executionStates[id].state : '';
+      nodeGroup.setAttribute('class', 'dag-node dag-node-' + node.type + stateClass);
+      nodeGroup.setAttribute('data-node-id', id);
       nodeGroup.setAttribute('transform', 'translate(' + (node.x - node.width/2) + ',' + (node.y - node.height/2) + ')');
 
       var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
@@ -853,6 +1082,34 @@ export class DagVisualizerPanel {
         typeText.setAttribute('y', node.height / 2 + 14);
         typeText.textContent = node.cType;
         nodeGroup.appendChild(typeText);
+      }
+
+      // Add execution state icon if present
+      var stateInfo = executionStates[id];
+      if (stateInfo && stateInfo.state) {
+        var icon = '';
+        if (stateInfo.state === 'completed') icon = '✓';
+        else if (stateInfo.state === 'failed') icon = '✗';
+        else if (stateInfo.state === 'running') icon = '⟳';
+
+        if (icon) {
+          var iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          iconText.setAttribute('class', 'state-icon');
+          iconText.setAttribute('x', '12');
+          iconText.setAttribute('y', '14');
+          iconText.textContent = icon;
+          nodeGroup.appendChild(iconText);
+        }
+
+        // Add value preview if available
+        if (stateInfo.valuePreview && stateInfo.state === 'completed') {
+          var previewText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          previewText.setAttribute('class', 'value-preview');
+          previewText.setAttribute('x', node.width / 2);
+          previewText.setAttribute('y', node.height - 6);
+          previewText.textContent = truncateValue(stateInfo.valuePreview, 20);
+          nodeGroup.appendChild(previewText);
+        }
       }
 
       nodeGroup.onclick = function() {

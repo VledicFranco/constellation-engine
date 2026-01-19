@@ -11,6 +11,7 @@ import {
   JS_UTILS,
   PanelState
 } from '../utils/webviewUtils';
+import { DagVisualizerPanel } from './DagVisualizerPanel';
 
 interface InputField {
   name: string;
@@ -184,6 +185,9 @@ export class ScriptRunnerPanel {
 
     this._state.panel.webview.postMessage({ type: 'executing' });
 
+    // Notify DAG visualizer that execution is starting
+    DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
+
     const startTime = Date.now();
 
     try {
@@ -195,12 +199,18 @@ export class ScriptRunnerPanel {
       const executionTime = Date.now() - startTime;
 
       if (result.success) {
+        // Notify DAG visualizer of successful completion
+        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
+
         this._state.panel.webview.postMessage({
           type: 'executeResult',
           outputs: result.outputs || {},
           executionTimeMs: result.executionTimeMs || executionTime
         });
       } else {
+        // Notify DAG visualizer of failure
+        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+
         this._state.panel.webview.postMessage({
           type: 'executeError',
           error: result.error || 'Execution failed',
@@ -208,6 +218,9 @@ export class ScriptRunnerPanel {
         });
       }
     } catch (error: any) {
+      // Notify DAG visualizer of failure
+      DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+
       this._state.panel.webview.postMessage({
         type: 'executeError',
         error: error.message || 'Execution failed'

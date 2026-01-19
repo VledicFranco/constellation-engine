@@ -177,6 +177,32 @@ object LspMessages {
     line: Int
   )
 
+  // ========== Custom: DAG Execution Updates ==========
+
+  /** Execution state for a node in the DAG */
+  enum ExecutionState:
+    case Pending    // Not yet executed
+    case Running    // Currently executing
+    case Completed  // Successfully executed
+    case Failed     // Execution failed
+
+  /** Update about a node's execution state */
+  case class DagExecutionUpdateParams(
+    uri: String,                           // Document URI
+    nodeId: String,                        // Node UUID
+    state: ExecutionState,                 // Current state
+    valuePreview: Option[String] = None,   // Short preview of output value
+    valueFull: Option[Json] = None,        // Full output value as JSON
+    durationMs: Option[Long] = None,       // Execution time if completed
+    error: Option[String] = None           // Error message if failed
+  )
+
+  /** Batch update for all nodes (e.g., when execution starts or completes) */
+  case class DagExecutionBatchUpdateParams(
+    uri: String,
+    updates: List[DagExecutionUpdateParams]
+  )
+
   sealed trait TypeDescriptor
 
   object TypeDescriptor {
@@ -339,4 +365,25 @@ object LspMessages {
 
   given Encoder[InputField] = deriveEncoder
   given Decoder[InputField] = deriveDecoder
+
+  given Encoder[ExecutionState] = Encoder.encodeString.contramap {
+    case ExecutionState.Pending => "pending"
+    case ExecutionState.Running => "running"
+    case ExecutionState.Completed => "completed"
+    case ExecutionState.Failed => "failed"
+  }
+
+  given Decoder[ExecutionState] = Decoder.decodeString.emap {
+    case "pending" => Right(ExecutionState.Pending)
+    case "running" => Right(ExecutionState.Running)
+    case "completed" => Right(ExecutionState.Completed)
+    case "failed" => Right(ExecutionState.Failed)
+    case other => Left(s"Unknown execution state: $other")
+  }
+
+  given Encoder[DagExecutionUpdateParams] = deriveEncoder
+  given Decoder[DagExecutionUpdateParams] = deriveDecoder
+
+  given Encoder[DagExecutionBatchUpdateParams] = deriveEncoder
+  given Decoder[DagExecutionBatchUpdateParams] = deriveDecoder
 }
