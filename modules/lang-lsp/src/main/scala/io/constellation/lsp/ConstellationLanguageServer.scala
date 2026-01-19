@@ -1,32 +1,33 @@
 package io.constellation.lsp
 
 import cats.effect.IO
-import cats.implicits._
-import io.circe._
-import io.circe.syntax._
-import io.constellation.{Constellation, CValue, Module, SteppedExecution}
+import cats.implicits.*
+import io.circe.*
+import io.circe.syntax.*
+import io.constellation.{CValue, Constellation, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.ast.{CompileError, Declaration, TypeExpr, Span, SourceFile}
+import io.constellation.lang.ast.{CompileError, Declaration, SourceFile, Span, TypeExpr}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lsp.protocol.JsonRpc._
-import io.constellation.lsp.protocol.LspTypes._
-import io.constellation.lsp.protocol.LspMessages._
+import io.constellation.lsp.protocol.JsonRpc.*
+import io.constellation.lsp.protocol.LspTypes.*
+import io.constellation.lsp.protocol.LspMessages.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
-  constellation: Constellation,
-  compiler: LangCompiler,
-  documentManager: DocumentManager,
-  debugSessionManager: DebugSessionManager,
-  publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
+    constellation: Constellation,
+    compiler: LangCompiler,
+    documentManager: DocumentManager,
+    debugSessionManager: DebugSessionManager,
+    publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
 ) {
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
 
   /** Handle LSP request */
-  def handleRequest(request: Request): IO[Response] = {
+  def handleRequest(request: Request): IO[Response] =
     request.method match {
       case "initialize" =>
         handleInitialize(request)
@@ -63,18 +64,21 @@ class ConstellationLanguageServer(
         handleStepStop(request)
 
       case method =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(
-            code = ErrorCodes.MethodNotFound,
-            message = s"Method not found: $method"
-          ))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(
+              ResponseError(
+                code = ErrorCodes.MethodNotFound,
+                message = s"Method not found: $method"
+              )
+            )
+          )
+        )
     }
-  }
 
   /** Handle LSP notification (no response) */
-  def handleNotification(notification: Notification): IO[Unit] = {
+  def handleNotification(notification: Notification): IO[Unit] =
     notification.method match {
       case "initialized" =>
         IO.unit // Client finished initialization
@@ -94,7 +98,6 @@ class ConstellationLanguageServer(
       case _ =>
         IO.unit // Ignore unknown notifications
     }
-  }
 
   // ========== Request Handlers ==========
 
@@ -102,34 +105,44 @@ class ConstellationLanguageServer(
     val result = InitializeResult(
       capabilities = ServerCapabilities(
         textDocumentSync = Some(1), // Full text sync
-        completionProvider = Some(CompletionOptions(
-          triggerCharacters = Some(List("(", ",", " ", "."))
-        )),
+        completionProvider = Some(
+          CompletionOptions(
+            triggerCharacters = Some(List("(", ",", " ", "."))
+          )
+        ),
         hoverProvider = Some(true),
         executeCommandProvider = None // Command handled client-side
       )
     )
 
-    IO.pure(Response(
-      id = request.id,
-      result = Some(result.asJson)
-    ))
+    IO.pure(
+      Response(
+        id = request.id,
+        result = Some(result.asJson)
+      )
+    )
   }
 
-  private def handleCompletion(request: Request): IO[Response] = {
+  private def handleCompletion(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[CompletionParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             documentManager.getDocument(params.textDocument.uri).flatMap {
               case Some(document) =>
@@ -137,16 +150,17 @@ class ConstellationLanguageServer(
                   Response(id = request.id, result = Some(completions.asJson))
                 }
               case None =>
-                IO.pure(Response(
-                  id = request.id,
-                  result = Some(CompletionList(isIncomplete = false, items = List.empty).asJson)
-                ))
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(CompletionList(isIncomplete = false, items = List.empty).asJson)
+                  )
+                )
             }
         }
     }
-  }
 
-  private def handleHover(request: Request): IO[Response] = {
+  private def handleHover(request: Request): IO[Response] =
     request.params match {
       case None =>
         for {
@@ -162,11 +176,15 @@ class ConstellationLanguageServer(
               _ <- logger.debug(s"Hover params decode error: ${decodeError.message}")
             } yield Response(
               id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+              error = Some(
+                ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+              )
             )
           case Right(params) =>
             for {
-              _ <- logger.debug(s"Hover request for uri: ${params.textDocument.uri}, position: ${params.position}")
+              _ <- logger.debug(
+                s"Hover request for uri: ${params.textDocument.uri}, position: ${params.position}"
+              )
               maybeDoc <- documentManager.getDocument(params.textDocument.uri)
               response <- maybeDoc match {
                 case Some(document) =>
@@ -183,22 +201,27 @@ class ConstellationLanguageServer(
             } yield response
         }
     }
-  }
 
-  private def handleExecutePipeline(request: Request): IO[Response] = {
+  private def handleExecutePipeline(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[ExecutePipelineParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             documentManager.getDocument(params.uri).flatMap {
               case Some(document) =>
@@ -206,33 +229,42 @@ class ConstellationLanguageServer(
                   Response(id = request.id, result = Some(execResult.asJson))
                 }
               case None =>
-                IO.pure(Response(
-                  id = request.id,
-                  result = Some(ExecutePipelineResult(
-                    success = false,
-                    outputs = None,
-                    error = Some("Document not found")
-                  ).asJson)
-                ))
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(
+                      ExecutePipelineResult(
+                        success = false,
+                        outputs = None,
+                        error = Some("Document not found")
+                      ).asJson
+                    )
+                  )
+                )
             }
         }
     }
-  }
 
-  private def handleGetInputSchema(request: Request): IO[Response] = {
+  private def handleGetInputSchema(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[GetInputSchemaParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             documentManager.getDocument(params.uri).flatMap {
               case Some(document) =>
@@ -240,20 +272,23 @@ class ConstellationLanguageServer(
                   Response(id = request.id, result = Some(schemaResult.asJson))
                 }
               case None =>
-                IO.pure(Response(
-                  id = request.id,
-                  result = Some(GetInputSchemaResult(
-                    success = false,
-                    inputs = None,
-                    error = Some("Document not found")
-                  ).asJson)
-                ))
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(
+                      GetInputSchemaResult(
+                        success = false,
+                        inputs = None,
+                        error = Some("Document not found")
+                      ).asJson
+                    )
+                  )
+                )
             }
         }
     }
-  }
 
-  private def getInputSchema(document: DocumentState): GetInputSchemaResult = {
+  private def getInputSchema(document: DocumentState): GetInputSchemaResult =
     ConstellationParser.parse(document.text) match {
       case Right(program) =>
         val sourceFile = document.sourceFile
@@ -274,7 +309,7 @@ class ConstellationLanguageServer(
         )
       case Left(error) =>
         val sourceFile = document.sourceFile
-        val errorInfo = compileErrorToErrorInfo(error, sourceFile)
+        val errorInfo  = compileErrorToErrorInfo(error, sourceFile)
         GetInputSchemaResult(
           success = false,
           inputs = None,
@@ -282,22 +317,27 @@ class ConstellationLanguageServer(
           errors = Some(List(errorInfo))
         )
     }
-  }
 
-  private def handleGetDagStructure(request: Request): IO[Response] = {
+  private def handleGetDagStructure(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[GetDagStructureParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             documentManager.getDocument(params.uri).flatMap {
               case Some(document) =>
@@ -305,18 +345,21 @@ class ConstellationLanguageServer(
                   Response(id = request.id, result = Some(dagResult.asJson))
                 }
               case None =>
-                IO.pure(Response(
-                  id = request.id,
-                  result = Some(GetDagStructureResult(
-                    success = false,
-                    dag = None,
-                    error = Some("Document not found")
-                  ).asJson)
-                ))
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(
+                      GetDagStructureResult(
+                        success = false,
+                        dag = None,
+                        error = Some("Document not found")
+                      ).asJson
+                    )
+                  )
+                )
             }
         }
     }
-  }
 
   private def getDagStructure(document: DocumentState): GetDagStructureResult = {
     val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
@@ -350,13 +393,15 @@ class ConstellationLanguageServer(
 
         GetDagStructureResult(
           success = true,
-          dag = Some(DagStructure(
-            modules = modules,
-            data = data,
-            inEdges = inEdges,
-            outEdges = outEdges,
-            declaredOutputs = dagSpec.declaredOutputs
-          )),
+          dag = Some(
+            DagStructure(
+              modules = modules,
+              data = data,
+              inEdges = inEdges,
+              outEdges = outEdges,
+              declaredOutputs = dagSpec.declaredOutputs
+            )
+          ),
           error = None
         )
 
@@ -370,10 +415,10 @@ class ConstellationLanguageServer(
   }
 
   private def cTypeToString(cType: io.constellation.CType): String = cType match {
-    case io.constellation.CType.CString => "String"
-    case io.constellation.CType.CInt => "Int"
-    case io.constellation.CType.CFloat => "Float"
-    case io.constellation.CType.CBoolean => "Boolean"
+    case io.constellation.CType.CString           => "String"
+    case io.constellation.CType.CInt              => "Int"
+    case io.constellation.CType.CFloat            => "Float"
+    case io.constellation.CType.CBoolean          => "Boolean"
     case io.constellation.CType.CList(valuesType) => s"List<${cTypeToString(valuesType)}>"
     case io.constellation.CType.CMap(keysType, valuesType) =>
       s"Map<${cTypeToString(keysType)}, ${cTypeToString(valuesType)}>"
@@ -421,29 +466,37 @@ class ConstellationLanguageServer(
           TypeDescriptor.RecordType(leftFields ++ rightFields)
         case (leftDesc, rightDesc) =>
           // Fallback: create a pseudo-record with _left and _right
-          TypeDescriptor.RecordType(List(
-            RecordField("_merged_left", leftDesc),
-            RecordField("_merged_right", rightDesc)
-          ))
+          TypeDescriptor.RecordType(
+            List(
+              RecordField("_merged_left", leftDesc),
+              RecordField("_merged_right", rightDesc)
+            )
+          )
       }
   }
 
   // ========== Step-through Execution Handlers ==========
 
-  private def handleStepStart(request: Request): IO[Response] = {
+  private def handleStepStart(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[StepStartParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             documentManager.getDocument(params.uri).flatMap {
               case Some(document) =>
@@ -451,88 +504,109 @@ class ConstellationLanguageServer(
                   Response(id = request.id, result = Some(result.asJson))
                 }
               case None =>
-                IO.pure(Response(
-                  id = request.id,
-                  result = Some(StepStartResult(
-                    success = false,
-                    sessionId = None,
-                    totalBatches = None,
-                    initialState = None,
-                    error = Some("Document not found")
-                  ).asJson)
-                ))
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(
+                      StepStartResult(
+                        success = false,
+                        sessionId = None,
+                        totalBatches = None,
+                        initialState = None,
+                        error = Some("Document not found")
+                      ).asJson
+                    )
+                  )
+                )
             }
         }
     }
-  }
 
-  private def handleStepNext(request: Request): IO[Response] = {
+  private def handleStepNext(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[StepNextParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             stepNext(params.sessionId).map { result =>
               Response(id = request.id, result = Some(result.asJson))
             }
         }
     }
-  }
 
-  private def handleStepContinue(request: Request): IO[Response] = {
+  private def handleStepContinue(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[StepContinueParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             stepContinue(params.sessionId).map { result =>
               Response(id = request.id, result = Some(result.asJson))
             }
         }
     }
-  }
 
-  private def handleStepStop(request: Request): IO[Response] = {
+  private def handleStepStop(request: Request): IO[Response] =
     request.params match {
       case None =>
-        IO.pure(Response(
-          id = request.id,
-          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
-        ))
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
       case Some(json) =>
         json.as[StepStopParams] match {
           case Left(decodeError) =>
-            IO.pure(Response(
-              id = request.id,
-              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
-            ))
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
           case Right(params) =>
             debugSessionManager.stopSession(params.sessionId).map { success =>
               Response(id = request.id, result = Some(StepStopResult(success).asJson))
             }
         }
     }
-  }
 
-  private def startStepExecution(document: DocumentState, inputs: Map[String, Json]): IO[StepStartResult] = {
+  private def startStepExecution(
+      document: DocumentState,
+      inputs: Map[String, Json]
+  ): IO[StepStartResult] = {
     val dagName = s"lsp-step-${document.uri.hashCode.abs}"
 
     compiler.compile(document.text, dagName) match {
@@ -543,19 +617,22 @@ class ConstellationLanguageServer(
 
         // Build module map from compiled DAG
         // First, merge synthetic modules with registered modules looked up by name
-        val moduleMapIO: IO[Map[java.util.UUID, Module.Uninitialized]] = compiled.dagSpec.modules.toList.traverse {
-          case (uuid, spec) =>
-            // First check if this is a synthetic module (keyed by uuid)
-            compiled.syntheticModules.get(uuid) match {
-              case Some(mod) => IO.pure(uuid -> mod)
-              case None =>
-                // Otherwise look up by name from constellation's registered modules
-                constellation.getModuleByName(spec.name).flatMap {
-                  case Some(mod) => IO.pure(uuid -> mod)
-                  case None => IO.raiseError(new RuntimeException(s"Module ${spec.name} not found"))
-                }
+        val moduleMapIO: IO[Map[java.util.UUID, Module.Uninitialized]] =
+          compiled.dagSpec.modules.toList
+            .traverse { case (uuid, spec) =>
+              // First check if this is a synthetic module (keyed by uuid)
+              compiled.syntheticModules.get(uuid) match {
+                case Some(mod) => IO.pure(uuid -> mod)
+                case None      =>
+                  // Otherwise look up by name from constellation's registered modules
+                  constellation.getModuleByName(spec.name).flatMap {
+                    case Some(mod) => IO.pure(uuid -> mod)
+                    case None =>
+                      IO.raiseError(new RuntimeException(s"Module ${spec.name} not found"))
+                  }
+              }
             }
-        }.map(_.toMap)
+            .map(_.toMap)
 
         (for {
           moduleMap <- moduleMapIO
@@ -582,78 +659,84 @@ class ConstellationLanguageServer(
         }
 
       case Left(errors) =>
-        IO.pure(StepStartResult(
-          success = false,
-          sessionId = None,
-          totalBatches = None,
-          initialState = None,
-          error = Some(errors.map(_.message).mkString("; "))
-        ))
+        IO.pure(
+          StepStartResult(
+            success = false,
+            sessionId = None,
+            totalBatches = None,
+            initialState = None,
+            error = Some(errors.map(_.message).mkString("; "))
+          )
+        )
     }
   }
 
-  private def stepNext(sessionId: String): IO[StepNextResult] = {
-    debugSessionManager.stepNext(sessionId).map {
-      case Some((session, isComplete)) =>
-        StepNextResult(
-          success = true,
-          state = Some(buildStepState(session)),
-          isComplete = isComplete,
-          error = None
-        )
-      case None =>
+  private def stepNext(sessionId: String): IO[StepNextResult] =
+    debugSessionManager
+      .stepNext(sessionId)
+      .map {
+        case Some((session, isComplete)) =>
+          StepNextResult(
+            success = true,
+            state = Some(buildStepState(session)),
+            isComplete = isComplete,
+            error = None
+          )
+        case None =>
+          StepNextResult(
+            success = false,
+            state = None,
+            isComplete = false,
+            error = Some("Session not found")
+          )
+      }
+      .handleError { error =>
         StepNextResult(
           success = false,
           state = None,
           isComplete = false,
-          error = Some("Session not found")
+          error = Some(error.getMessage)
         )
-    }.handleError { error =>
-      StepNextResult(
-        success = false,
-        state = None,
-        isComplete = false,
-        error = Some(error.getMessage)
-      )
-    }
-  }
+      }
 
-  private def stepContinue(sessionId: String): IO[StepContinueResult] = {
-    debugSessionManager.stepContinue(sessionId).map {
-      case Some(session) =>
-        val outputs = SteppedExecution.getOutputs(session)
-        val outputsJson = outputs.map { case (name, value) => name -> cvalueToJson(value) }
-        val executionTime = System.currentTimeMillis() - session.startTime
+  private def stepContinue(sessionId: String): IO[StepContinueResult] =
+    debugSessionManager
+      .stepContinue(sessionId)
+      .map {
+        case Some(session) =>
+          val outputs       = SteppedExecution.getOutputs(session)
+          val outputsJson   = outputs.map { case (name, value) => name -> cvalueToJson(value) }
+          val executionTime = System.currentTimeMillis() - session.startTime
 
-        StepContinueResult(
-          success = true,
-          state = Some(buildStepState(session)),
-          outputs = Some(outputsJson),
-          executionTimeMs = Some(executionTime),
-          error = None
-        )
-      case None =>
+          StepContinueResult(
+            success = true,
+            state = Some(buildStepState(session)),
+            outputs = Some(outputsJson),
+            executionTimeMs = Some(executionTime),
+            error = None
+          )
+        case None =>
+          StepContinueResult(
+            success = false,
+            state = None,
+            outputs = None,
+            executionTimeMs = None,
+            error = Some("Session not found")
+          )
+      }
+      .handleError { error =>
         StepContinueResult(
           success = false,
           state = None,
           outputs = None,
           executionTimeMs = None,
-          error = Some("Session not found")
+          error = Some(error.getMessage)
         )
-    }.handleError { error =>
-      StepContinueResult(
-        success = false,
-        state = None,
-        outputs = None,
-        executionTimeMs = None,
-        error = Some(error.getMessage)
-      )
-    }
-  }
+      }
 
   private def buildStepState(session: SteppedExecution.SessionState): StepState = {
     val dagSpec = session.dagSpec
-    val currentBatch = if (session.currentBatchIndex < session.batches.length) {
+    val currentBatch = if session.currentBatchIndex < session.batches.length then {
       session.batches(session.currentBatchIndex)
     } else {
       session.batches.lastOption.getOrElse(
@@ -665,17 +748,18 @@ class ConstellationLanguageServer(
       case (nodeId, SteppedExecution.NodeState.Completed(value, durationMs)) =>
         val (nodeName, nodeType) = dagSpec.modules.get(nodeId) match {
           case Some(spec) => (spec.name, "module")
-          case None => dagSpec.data.get(nodeId) match {
-            case Some(spec) => (spec.name, "data")
-            case None => (nodeId.toString.take(8), "unknown")
-          }
+          case None =>
+            dagSpec.data.get(nodeId) match {
+              case Some(spec) => (spec.name, "data")
+              case None       => (nodeId.toString.take(8), "unknown")
+            }
         }
         CompletedNode(
           nodeId = nodeId.toString,
           nodeName = nodeName,
           nodeType = nodeType,
           valuePreview = SteppedExecution.valuePreview(value),
-          durationMs = if (durationMs > 0) Some(durationMs) else None
+          durationMs = if durationMs > 0 then Some(durationMs) else None
         )
     }.toList
 
@@ -699,9 +783,11 @@ class ConstellationLanguageServer(
       params <- IO.fromEither(
         notification.params
           .toRight(new Exception("Missing params"))
-          .flatMap(_.as[DidOpenTextDocumentParams].left.map(e =>
-            new Exception(s"Invalid params: ${e.message}")
-          ))
+          .flatMap(
+            _.as[DidOpenTextDocumentParams].left.map(e =>
+              new Exception(s"Invalid params: ${e.message}")
+            )
+          )
       )
       _ <- documentManager.openDocument(
         uri = params.textDocument.uri,
@@ -718,9 +804,11 @@ class ConstellationLanguageServer(
       params <- IO.fromEither(
         notification.params
           .toRight(new Exception("Missing params"))
-          .flatMap(_.as[DidChangeTextDocumentParams].left.map(e =>
-            new Exception(s"Invalid params: ${e.message}")
-          ))
+          .flatMap(
+            _.as[DidChangeTextDocumentParams].left.map(e =>
+              new Exception(s"Invalid params: ${e.message}")
+            )
+          )
       )
       _ <- params.contentChanges.headOption match {
         case Some(change) =>
@@ -740,9 +828,11 @@ class ConstellationLanguageServer(
       params <- IO.fromEither(
         notification.params
           .toRight(new Exception("Missing params"))
-          .flatMap(_.as[DidCloseTextDocumentParams].left.map(e =>
-            new Exception(s"Invalid params: ${e.message}")
-          ))
+          .flatMap(
+            _.as[DidCloseTextDocumentParams].left.map(e =>
+              new Exception(s"Invalid params: ${e.message}")
+            )
+          )
       )
       _ <- documentManager.closeDocument(params.textDocument.uri)
       // Clear diagnostics
@@ -753,8 +843,8 @@ class ConstellationLanguageServer(
   // ========== Language Features ==========
 
   private def getCompletions(document: DocumentState, position: Position): IO[CompletionList] = {
-    val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
-    val lineText = document.getLine(position.line).getOrElse("")
+    val wordAtCursor     = document.getWordAtPosition(position).getOrElse("")
+    val lineText         = document.getLine(position.line).getOrElse("")
     val textBeforeCursor = lineText.take(position.character)
 
     constellation.getModules.map { modules =>
@@ -763,7 +853,7 @@ class ConstellationLanguageServer(
       val namespacePrefix = {
         // Check if we're typing after a dot (e.g., "stdlib." or "stdlib.math.")
         val dotIdx = textBeforeCursor.lastIndexOf('.')
-        if (dotIdx >= 0) {
+        if dotIdx >= 0 then {
           val beforeDot = textBeforeCursor.take(dotIdx).trim.split("\\s+").last
           Some(beforeDot)
         } else None
@@ -772,7 +862,7 @@ class ConstellationLanguageServer(
       val registry = compiler.functionRegistry
 
       // Namespace completions (for "use stdlib" context)
-      val namespaceCompletions = if (isAfterUse) {
+      val namespaceCompletions = if isAfterUse then {
         registry.namespaces.toList.map { ns =>
           CompletionItem(
             label = ns,
@@ -781,7 +871,7 @@ class ConstellationLanguageServer(
             documentation = Some(s"Import functions from $ns"),
             insertText = Some(ns),
             filterText = Some(ns),
-            sortText = Some(s"0_$ns")  // Sort namespaces first
+            sortText = Some(s"0_$ns") // Sort namespaces first
           )
         }
       } else List.empty
@@ -789,20 +879,23 @@ class ConstellationLanguageServer(
       // Qualified function completions (for "stdlib.math." context)
       val qualifiedCompletions = namespacePrefix match {
         case Some(prefix) =>
-          registry.all.filter { sig =>
-            sig.namespace.exists(ns => ns == prefix || ns.startsWith(prefix + "."))
-          }.map { sig =>
-            val paramStr = sig.params.map { case (n, t) => s"$n: ${t.prettyPrint}" }.mkString(", ")
-            CompletionItem(
-              label = sig.name,
-              kind = Some(CompletionItemKind.Function),
-              detail = Some(s"${sig.qualifiedName}($paramStr) -> ${sig.returns.prettyPrint}"),
-              documentation = Some(s"Function in namespace ${sig.namespace.getOrElse("global")}"),
-              insertText = Some(s"${sig.name}()"),
-              filterText = Some(sig.name),
-              sortText = Some(sig.name)
-            )
-          }
+          registry.all
+            .filter { sig =>
+              sig.namespace.exists(ns => ns == prefix || ns.startsWith(prefix + "."))
+            }
+            .map { sig =>
+              val paramStr =
+                sig.params.map { case (n, t) => s"$n: ${t.prettyPrint}" }.mkString(", ")
+              CompletionItem(
+                label = sig.name,
+                kind = Some(CompletionItemKind.Function),
+                detail = Some(s"${sig.qualifiedName}($paramStr) -> ${sig.returns.prettyPrint}"),
+                documentation = Some(s"Function in namespace ${sig.namespace.getOrElse("global")}"),
+                insertText = Some(s"${sig.name}()"),
+                filterText = Some(sig.name),
+                sortText = Some(sig.name)
+              )
+            }
         case None => List.empty
       }
 
@@ -816,8 +909,8 @@ class ConstellationLanguageServer(
         )
 
         // Enhanced documentation with type info
-        val enhancedDoc = if (module.consumes.nonEmpty || module.produces.nonEmpty) {
-          val paramsDoc = TypeFormatter.formatParameters(module.consumes)
+        val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
+          val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
           val returnsDoc = TypeFormatter.formatReturns(module.produces)
           s"""${module.metadata.description}
              |
@@ -842,24 +935,98 @@ class ConstellationLanguageServer(
       }
 
       val keywordCompletions = List(
-        CompletionItem("in", Some(CompletionItemKind.Keyword), Some("Input declaration"), None, None, None, None),
-        CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output declaration"), None, None, None, None),
-        CompletionItem("use", Some(CompletionItemKind.Keyword), Some("Import namespace"), None, Some("use "), None, None),
-        CompletionItem("as", Some(CompletionItemKind.Keyword), Some("Alias for import"), None, None, None, None),
-        CompletionItem("type", Some(CompletionItemKind.Keyword), Some("Type definition"), None, None, None, None),
-        CompletionItem("if", Some(CompletionItemKind.Keyword), Some("Conditional expression"), None, None, None, None),
-        CompletionItem("else", Some(CompletionItemKind.Keyword), Some("Else branch"), None, None, None, None),
-        CompletionItem("true", Some(CompletionItemKind.Keyword), Some("Boolean true"), None, None, None, None),
-        CompletionItem("false", Some(CompletionItemKind.Keyword), Some("Boolean false"), None, None, None, None)
+        CompletionItem(
+          "in",
+          Some(CompletionItemKind.Keyword),
+          Some("Input declaration"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "out",
+          Some(CompletionItemKind.Keyword),
+          Some("Output declaration"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "use",
+          Some(CompletionItemKind.Keyword),
+          Some("Import namespace"),
+          None,
+          Some("use "),
+          None,
+          None
+        ),
+        CompletionItem(
+          "as",
+          Some(CompletionItemKind.Keyword),
+          Some("Alias for import"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "type",
+          Some(CompletionItemKind.Keyword),
+          Some("Type definition"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "if",
+          Some(CompletionItemKind.Keyword),
+          Some("Conditional expression"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "else",
+          Some(CompletionItemKind.Keyword),
+          Some("Else branch"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "true",
+          Some(CompletionItemKind.Keyword),
+          Some("Boolean true"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "false",
+          Some(CompletionItemKind.Keyword),
+          Some("Boolean false"),
+          None,
+          None,
+          None,
+          None
+        )
       )
 
       // Combine completions based on context
-      val allItems = if (isAfterUse) {
+      val allItems = if isAfterUse then {
         namespaceCompletions
-      } else if (namespacePrefix.isDefined) {
+      } else if namespacePrefix.isDefined then {
         qualifiedCompletions.toList
       } else {
-        keywordCompletions ++ moduleCompletions.filter(_.label.toLowerCase.contains(wordAtCursor.toLowerCase))
+        keywordCompletions ++ moduleCompletions.filter(
+          _.label.toLowerCase.contains(wordAtCursor.toLowerCase)
+        )
       }
 
       CompletionList(
@@ -873,9 +1040,9 @@ class ConstellationLanguageServer(
     val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
 
     for {
-      _ <- logger.trace(s"Hover word at cursor: '$wordAtCursor'")
+      _       <- logger.trace(s"Hover word at cursor: '$wordAtCursor'")
       modules <- constellation.getModules
-      _ <- logger.trace(s"Hover total modules: ${modules.size}, looking for: '$wordAtCursor'")
+      _       <- logger.trace(s"Hover total modules: ${modules.size}, looking for: '$wordAtCursor'")
 
       matchingModule = modules.find(_.name == wordAtCursor)
       _ <- logger.trace(s"Hover found module: ${matchingModule.isDefined}")
@@ -883,7 +1050,8 @@ class ConstellationLanguageServer(
       result <- matchingModule match {
         case Some(module) =>
           for {
-            _ <- logger.trace(s"Hover module: ${module.name}, consumes: ${module.consumes.keys.mkString(", ")}, produces: ${module.produces.keys.mkString(", ")}")
+            _ <- logger.trace(s"Hover module: ${module.name}, consumes: ${module.consumes.keys
+                .mkString(", ")}, produces: ${module.produces.keys.mkString(", ")}")
             signature = TypeFormatter.formatSignature(
               module.name,
               module.consumes,
@@ -903,9 +1071,12 @@ class ConstellationLanguageServer(
     } yield result
   }
 
-  private def constructHoverContent(module: io.constellation.ModuleNodeSpec, signature: String): Hover = {
+  private def constructHoverContent(
+      module: io.constellation.ModuleNodeSpec,
+      signature: String
+  ): Hover = {
     // Format parameters section
-    val paramsSection = if (module.consumes.nonEmpty) {
+    val paramsSection = if module.consumes.nonEmpty then {
       s"""
          |### Parameters
          |${TypeFormatter.formatParameters(module.consumes)}
@@ -922,7 +1093,7 @@ class ConstellationLanguageServer(
 
     // Use metadata.description for consistency with completion
     // Handle tags safely in case they're empty
-    val tagsString = if (module.tags.nonEmpty) module.tags.mkString(", ") else "none"
+    val tagsString = if module.tags.nonEmpty then module.tags.mkString(", ") else "none"
 
     val markdown = s"""### `$signature`
                       |
@@ -938,7 +1109,7 @@ class ConstellationLanguageServer(
     )
   }
 
-  private def validateDocument(uri: String): IO[Unit] = {
+  private def validateDocument(uri: String): IO[Unit] =
     documentManager.getDocument(uri).flatMap {
       case Some(document) =>
         compiler.compile(document.text, "validation") match {
@@ -954,7 +1125,7 @@ class ConstellationLanguageServer(
 
                 Diagnostic(
                   range = Range(
-                    start = Position(startLC.line - 1, startLC.col - 1),  // LSP uses 0-based
+                    start = Position(startLC.line - 1, startLC.col - 1), // LSP uses 0-based
                     end = Position(endLC.line - 1, endLC.col - 1)
                   ),
                   severity = Some(DiagnosticSeverity.Error),
@@ -970,13 +1141,15 @@ class ConstellationLanguageServer(
       case None =>
         IO.unit
     }
-  }
 
-  private def executePipeline(document: DocumentState, inputs: Map[String, Json]): IO[ExecutePipelineResult] = {
+  private def executePipeline(
+      document: DocumentState,
+      inputs: Map[String, Json]
+  ): IO[ExecutePipelineResult] = {
     import io.constellation.CValue
 
     // Generate unique DAG name from URI
-    val dagName = s"lsp-${document.uri.hashCode.abs}"
+    val dagName    = s"lsp-${document.uri.hashCode.abs}"
     val sourceFile = document.sourceFile
 
     compiler.compile(document.text, dagName) match {
@@ -992,7 +1165,9 @@ class ConstellationLanguageServer(
 
         for {
           // Use runDagWithModules to pass the pre-resolved synthetic modules directly
-          result <- constellation.runDagWithModules(compiled.dagSpec, cvalueInputs, compiled.syntheticModules).attempt
+          result <- constellation
+            .runDagWithModules(compiled.dagSpec, cvalueInputs, compiled.syntheticModules)
+            .attempt
           endTime = System.currentTimeMillis()
           execResult = result match {
             case Right(state) =>
@@ -1027,17 +1202,19 @@ class ConstellationLanguageServer(
 
       case Left(errors) =>
         val errorInfos = errors.map(e => compileErrorToErrorInfo(e, sourceFile))
-        IO.pure(ExecutePipelineResult(
-          success = false,
-          outputs = None,
-          error = Some(errors.map(_.message).mkString("; ")),
-          errors = Some(errorInfos)
-        ))
+        IO.pure(
+          ExecutePipelineResult(
+            success = false,
+            outputs = None,
+            error = Some(errors.map(_.message).mkString("; ")),
+            errors = Some(errorInfos)
+          )
+        )
     }
   }
 
   private def jsonToCValue(json: Json): Option[io.constellation.CValue] = {
-    import io.constellation.CValue._
+    import io.constellation.CValue.*
     json.fold(
       jsonNull = None,
       jsonBoolean = b => Some(CBoolean(b)),
@@ -1045,7 +1222,7 @@ class ConstellationLanguageServer(
       jsonString = s => Some(CString(s)),
       jsonArray = arr => {
         val values = arr.flatMap(jsonToCValue).toVector
-        if (values.nonEmpty) {
+        if values.nonEmpty then {
           Some(CList(values, values.head.ctype))
         } else {
           Some(CList(Vector.empty, io.constellation.CType.CString)) // Default to string list
@@ -1062,20 +1239,23 @@ class ConstellationLanguageServer(
   }
 
   private def cvalueToJson(cvalue: io.constellation.CValue): Json = {
-    import io.constellation.CValue._
+    import io.constellation.CValue.*
     cvalue match {
-      case CString(v) => Json.fromString(v)
-      case CInt(v) => Json.fromLong(v)
-      case CFloat(v) => Json.fromDoubleOrNull(v)
-      case CBoolean(v) => Json.fromBoolean(v)
+      case CString(v)       => Json.fromString(v)
+      case CInt(v)          => Json.fromLong(v)
+      case CFloat(v)        => Json.fromDoubleOrNull(v)
+      case CBoolean(v)      => Json.fromBoolean(v)
       case CList(values, _) => Json.fromValues(values.map(cvalueToJson))
-      case CProduct(fields, _) => Json.fromFields(fields.map { case (k, v) => k -> cvalueToJson(v) })
-      case CMap(pairs, _, _) => Json.fromFields(pairs.map { case (k, v) =>
-        k.asInstanceOf[CString].value -> cvalueToJson(v)
-      })
-      case CUnion(value, _, tag) => Json.obj("tag" -> Json.fromString(tag), "value" -> cvalueToJson(value))
+      case CProduct(fields, _) =>
+        Json.fromFields(fields.map { case (k, v) => k -> cvalueToJson(v) })
+      case CMap(pairs, _, _) =>
+        Json.fromFields(pairs.map { case (k, v) =>
+          k.asInstanceOf[CString].value -> cvalueToJson(v)
+        })
+      case CUnion(value, _, tag) =>
+        Json.obj("tag" -> Json.fromString(tag), "value" -> cvalueToJson(value))
       case CSome(value, _) => cvalueToJson(value)
-      case CNone(_) => Json.Null
+      case CNone(_)        => Json.Null
     }
   }
 
@@ -1083,18 +1263,21 @@ class ConstellationLanguageServer(
   private def compileErrorToErrorInfo(error: CompileError, sourceFile: SourceFile): ErrorInfo = {
     val category = error match {
       case _: CompileError.ParseError => ErrorCategory.Syntax
-      case _: CompileError.TypeError | _: CompileError.TypeMismatch | _: CompileError.IncompatibleMerge => ErrorCategory.Type
+      case _: CompileError.TypeError | _: CompileError.TypeMismatch |
+          _: CompileError.IncompatibleMerge =>
+        ErrorCategory.Type
       case _: CompileError.UndefinedVariable | _: CompileError.UndefinedType |
-           _: CompileError.UndefinedFunction | _: CompileError.UndefinedNamespace |
-           _: CompileError.AmbiguousFunction | _: CompileError.InvalidProjection |
-           _: CompileError.InvalidFieldAccess => ErrorCategory.Reference
+          _: CompileError.UndefinedFunction | _: CompileError.UndefinedNamespace |
+          _: CompileError.AmbiguousFunction | _: CompileError.InvalidProjection |
+          _: CompileError.InvalidFieldAccess =>
+        ErrorCategory.Reference
       case _: CompileError.UnsupportedComparison => ErrorCategory.Type
     }
 
     val (line, column, endLine, endColumn, codeContext) = error.span match {
       case Some(span) =>
         val (startLC, endLC) = sourceFile.spanToLineCol(span)
-        val context = buildCodeContext(sourceFile, startLC.line, startLC.col, span.length)
+        val context          = buildCodeContext(sourceFile, startLC.line, startLC.col, span.length)
         (Some(startLC.line), Some(startLC.col), Some(endLC.line), Some(endLC.col), Some(context))
       case None =>
         (None, None, None, None, None)
@@ -1107,10 +1290,12 @@ class ConstellationLanguageServer(
       case e: CompileError.UndefinedVariable =>
         None // Could add variable suggestions if needed
       case e: CompileError.InvalidProjection =>
-        if (e.availableFields.nonEmpty) Some(s"Available fields: ${e.availableFields.mkString(", ")}")
+        if e.availableFields.nonEmpty then
+          Some(s"Available fields: ${e.availableFields.mkString(", ")}")
         else None
       case e: CompileError.InvalidFieldAccess =>
-        if (e.availableFields.nonEmpty) Some(s"Available fields: ${e.availableFields.mkString(", ")}")
+        if e.availableFields.nonEmpty then
+          Some(s"Available fields: ${e.availableFields.mkString(", ")}")
         else None
       case _ => None
     }
@@ -1128,28 +1313,33 @@ class ConstellationLanguageServer(
   }
 
   /** Build a code context snippet showing the error location */
-  private def buildCodeContext(sourceFile: SourceFile, errorLine: Int, errorCol: Int, spanLength: Int): String = {
-    val sb = new StringBuilder()
+  private def buildCodeContext(
+      sourceFile: SourceFile,
+      errorLine: Int,
+      errorCol: Int,
+      spanLength: Int
+  ): String = {
+    val sb    = new StringBuilder()
     val lines = sourceFile.content.split("\n", -1) // -1 to preserve trailing empty strings
 
     // Show 1 line before if available
-    if (errorLine > 1 && errorLine - 2 < lines.length) {
+    if errorLine > 1 && errorLine - 2 < lines.length then {
       sb.append(f"  ${errorLine - 1}%3d │ ${lines(errorLine - 2)}\n")
     }
 
     // Show the error line
-    if (errorLine - 1 < lines.length) {
+    if errorLine - 1 < lines.length then {
       val errorLineContent = lines(errorLine - 1)
       sb.append(f"  $errorLine%3d │ $errorLineContent\n")
 
       // Add the caret line pointing to the error
       val caretPadding = " " * (errorCol - 1)
-      val carets = "^" * (spanLength max 1)
+      val carets       = "^" * (spanLength max 1)
       sb.append(f"      │ $caretPadding$carets\n")
     }
 
     // Show 1 line after if available
-    if (errorLine < lines.length) {
+    if errorLine < lines.length then {
       sb.append(f"  ${errorLine + 1}%3d │ ${lines(errorLine)}")
     }
 
@@ -1171,15 +1361,18 @@ class ConstellationLanguageServer(
 
   /** Calculate Levenshtein distance between two strings */
   private def levenshteinDistance(s1: String, s2: String): Int = {
-    val m = s1.length
-    val n = s2.length
+    val m  = s1.length
+    val n  = s2.length
     val dp = Array.ofDim[Int](m + 1, n + 1)
 
-    for (i <- 0 to m) dp(i)(0) = i
-    for (j <- 0 to n) dp(0)(j) = j
+    for i <- 0 to m do dp(i)(0) = i
+    for j <- 0 to n do dp(0)(j) = j
 
-    for (i <- 1 to m; j <- 1 to n) {
-      val cost = if (s1(i - 1) == s2(j - 1)) 0 else 1
+    for
+      i <- 1 to m
+      j <- 1 to n
+    do {
+      val cost = if s1(i - 1) == s2(j - 1) then 0 else 1
       dp(i)(j) = Math.min(
         Math.min(dp(i - 1)(j) + 1, dp(i)(j - 1) + 1),
         dp(i - 1)(j - 1) + cost
@@ -1189,7 +1382,7 @@ class ConstellationLanguageServer(
   }
 
   /** Convert a runtime exception to ErrorInfo */
-  private def runtimeErrorToErrorInfo(error: Throwable): ErrorInfo = {
+  private def runtimeErrorToErrorInfo(error: Throwable): ErrorInfo =
     ErrorInfo(
       category = ErrorCategory.Runtime,
       message = error.getMessage,
@@ -1200,17 +1393,22 @@ class ConstellationLanguageServer(
       codeContext = None,
       suggestion = None
     )
-  }
 }
 
 object ConstellationLanguageServer {
   def create(
-    constellation: Constellation,
-    compiler: LangCompiler,
-    publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
+      constellation: Constellation,
+      compiler: LangCompiler,
+      publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
   ): IO[ConstellationLanguageServer] =
     for {
-      docManager <- DocumentManager.create
+      docManager   <- DocumentManager.create
       debugManager <- DebugSessionManager.create
-    } yield new ConstellationLanguageServer(constellation, compiler, docManager, debugManager, publishDiagnostics)
+    } yield new ConstellationLanguageServer(
+      constellation,
+      compiler,
+      docManager,
+      debugManager,
+      publishDiagnostics
+    )
 }

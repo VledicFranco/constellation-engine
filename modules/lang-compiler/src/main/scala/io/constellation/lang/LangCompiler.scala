@@ -23,8 +23,8 @@ object LangCompiler {
 
   /** Create a new LangCompiler with the given function registry and module map */
   def apply(
-    registry: FunctionRegistry,
-    modules: Map[String, Module.Uninitialized]
+      registry: FunctionRegistry,
+      modules: Map[String, Module.Uninitialized]
   ): LangCompiler = new LangCompilerImpl(registry, modules)
 
   /** Create an empty LangCompiler (no registered functions or modules) */
@@ -36,8 +36,8 @@ object LangCompiler {
 
 /** Builder for LangCompiler with fluent API */
 final case class LangCompilerBuilder(
-  private val registry: FunctionRegistry = FunctionRegistry.empty,
-  private val modules: Map[String, Module.Uninitialized] = Map.empty
+    private val registry: FunctionRegistry = FunctionRegistry.empty,
+    private val modules: Map[String, Module.Uninitialized] = Map.empty
 ) {
 
   /** Register a function signature for type checking */
@@ -48,10 +48,10 @@ final case class LangCompilerBuilder(
 
   /** Register a module with its signature */
   def withModule(
-    languageName: String,
-    module: Module.Uninitialized,
-    params: List[(String, SemanticType)],
-    returns: SemanticType
+      languageName: String,
+      module: Module.Uninitialized,
+      params: List[(String, SemanticType)],
+      returns: SemanticType
   ): LangCompilerBuilder = {
     val sig = FunctionSignature(
       name = languageName,
@@ -63,13 +63,12 @@ final case class LangCompilerBuilder(
     copy(modules = modules + (module.spec.name -> module))
   }
 
-  /** Register multiple modules for DagCompiler to access at compile time.
-    * This is separate from signatures - use withFunction for type checking,
-    * and withModules to make the actual Module.Uninitialized available.
+  /** Register multiple modules for DagCompiler to access at compile time. This is separate from
+    * signatures - use withFunction for type checking, and withModules to make the actual
+    * Module.Uninitialized available.
     */
-  def withModules(newModules: Map[String, Module.Uninitialized]): LangCompilerBuilder = {
+  def withModules(newModules: Map[String, Module.Uninitialized]): LangCompilerBuilder =
     copy(modules = modules ++ newModules)
-  }
 
   /** Build the LangCompiler */
   def build: LangCompiler = new LangCompilerImpl(registry, modules)
@@ -77,13 +76,13 @@ final case class LangCompilerBuilder(
 
 /** Implementation of LangCompiler */
 private class LangCompilerImpl(
-  registry: FunctionRegistry,
-  modules: Map[String, Module.Uninitialized]
+    registry: FunctionRegistry,
+    modules: Map[String, Module.Uninitialized]
 ) extends LangCompiler {
 
   def functionRegistry: FunctionRegistry = registry
 
-  def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] = {
+  def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] =
     for {
       // Phase 1: Parse
       program <- ConstellationParser.parse(source).left.map(List(_))
@@ -97,7 +96,6 @@ private class LangCompilerImpl(
       // Phase 4: Compile to DagSpec
       result = DagCompiler.compile(irProgram, dagName, modules)
     } yield result
-  }
 }
 
 /** Utilities for registering modules with the compiler */
@@ -105,36 +103,33 @@ object ModuleBridge {
 
   /** Create a function signature from a module spec */
   def signatureFromModule(
-    languageName: String,
-    module: Module.Uninitialized,
-    params: List[(String, SemanticType)],
-    returns: SemanticType
-  ): FunctionSignature = {
+      languageName: String,
+      module: Module.Uninitialized,
+      params: List[(String, SemanticType)],
+      returns: SemanticType
+  ): FunctionSignature =
     FunctionSignature(
       name = languageName,
       params = params,
       returns = returns,
       moduleName = module.spec.name
     )
-  }
 
   /** Convert CType to SemanticType for module integration */
-  def ctypeToSemanticType(ctype: CType): SemanticType = {
+  def ctypeToSemanticType(ctype: CType): SemanticType =
     SemanticType.fromCType(ctype)
-  }
 
   /** Extract input parameter types from a module spec */
-  def extractParams(module: Module.Uninitialized): List[(String, SemanticType)] = {
+  def extractParams(module: Module.Uninitialized): List[(String, SemanticType)] =
     module.spec.consumes.map { case (name, ctype) =>
       name -> SemanticType.fromCType(ctype)
     }.toList
-  }
 
   /** Extract output type from a module spec (assumes single output named "out") */
-  def extractReturns(module: Module.Uninitialized): SemanticType = {
+  def extractReturns(module: Module.Uninitialized): SemanticType =
     module.spec.produces.get("out") match {
       case Some(ctype) => SemanticType.fromCType(ctype)
-      case None =>
+      case None        =>
         // If no "out", create a record from all produces
         SemanticType.SRecord(
           module.spec.produces.map { case (name, ctype) =>
@@ -142,5 +137,4 @@ object ModuleBridge {
           }
         )
     }
-  }
 }

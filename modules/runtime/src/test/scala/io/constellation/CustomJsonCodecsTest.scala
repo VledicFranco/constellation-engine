@@ -10,7 +10,7 @@ import scala.concurrent.duration.*
 class CustomJsonCodecsTest extends AnyFlatSpec with Matchers {
 
   "CustomJsonCodecs" should "encode/decode Module Status generically" in {
-    val status: Module.Status = Module.Status.Timed(100.millis)
+    val status: Module.Status  = Module.Status.Timed(100.millis)
     val status2: Module.Status = Module.Status.Fired(200.millis, Some(Map("key" -> "value".asJson)))
     val status4: Module.Status = Module.Status.Unfired
 

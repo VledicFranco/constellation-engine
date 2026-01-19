@@ -1,22 +1,22 @@
 package io.constellation.http
 
 import cats.effect.IO
-import cats.implicits._
+import cats.implicits.*
 import org.http4s.HttpRoutes
-import org.http4s.dsl.io._
-import org.http4s.circe.CirceEntityCodec._
-import io.constellation.{Constellation, CValue}
-import io.constellation.http.ApiModels._
+import org.http4s.dsl.io.*
+import org.http4s.circe.CirceEntityCodec.*
+import io.constellation.{CValue, Constellation}
+import io.constellation.http.ApiModels.*
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.circe.syntax._
+import io.circe.syntax.*
 import io.circe.Json
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
-  constellation: Constellation,
-  compiler: LangCompiler,
-  functionRegistry: FunctionRegistry
+    constellation: Constellation,
+    compiler: LangCompiler,
+    functionRegistry: FunctionRegistry
 ) {
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -29,16 +29,20 @@ class ConstellationRoutes(
         response <- result match {
           case Right(compiled) =>
             constellation.setDag(compileReq.dagName, compiled.dagSpec).flatMap { _ =>
-              Ok(CompileResponse(
-                success = true,
-                dagName = Some(compileReq.dagName)
-              ))
+              Ok(
+                CompileResponse(
+                  success = true,
+                  dagName = Some(compileReq.dagName)
+                )
+              )
             }
           case Left(errors) =>
-            BadRequest(CompileResponse(
-              success = false,
-              errors = errors.map(_.message)
-            ))
+            BadRequest(
+              CompileResponse(
+                success = false,
+                errors = errors.map(_.message)
+              )
+            )
         }
       } yield response
 
@@ -46,7 +50,7 @@ class ConstellationRoutes(
     case req @ POST -> Root / "execute" =>
       (for {
         execReq <- req.as[ExecuteRequest]
-        dagOpt <- constellation.getDag(execReq.dagName)
+        dagOpt  <- constellation.getDag(execReq.dagName)
 
         response <- dagOpt match {
           case Some(dagSpec) =>
@@ -55,10 +59,12 @@ class ConstellationRoutes(
               convertResult <- ExecutionHelper.convertInputs(execReq.inputs, dagSpec).attempt
               response <- convertResult match {
                 case Left(error) =>
-                  BadRequest(ExecuteResponse(
-                    success = false,
-                    error = Some(s"Input error: ${error.getMessage}")
-                  ))
+                  BadRequest(
+                    ExecuteResponse(
+                      success = false,
+                      error = Some(s"Input error: ${error.getMessage}")
+                    )
+                  )
 
                 case Right(cValueInputs) =>
                   for {
@@ -66,10 +72,12 @@ class ConstellationRoutes(
                     execResult <- constellation.runDag(execReq.dagName, cValueInputs).attempt
                     response <- execResult match {
                       case Left(error) =>
-                        InternalServerError(ExecuteResponse(
-                          success = false,
-                          error = Some(s"Execution failed: ${error.getMessage}")
-                        ))
+                        InternalServerError(
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Execution failed: ${error.getMessage}")
+                          )
+                        )
 
                       case Right(state) =>
                         for {
@@ -77,17 +85,21 @@ class ConstellationRoutes(
                           outputResult <- ExecutionHelper.extractOutputs(state).attempt
                           response <- outputResult match {
                             case Left(error) =>
-                              InternalServerError(ExecuteResponse(
-                                success = false,
-                                error = Some(s"Output error: ${error.getMessage}")
-                              ))
+                              InternalServerError(
+                                ExecuteResponse(
+                                  success = false,
+                                  error = Some(s"Output error: ${error.getMessage}")
+                                )
+                              )
 
                             case Right(outputs) =>
-                              Ok(ExecuteResponse(
-                                success = true,
-                                outputs = outputs,
-                                error = None
-                              ))
+                              Ok(
+                                ExecuteResponse(
+                                  success = true,
+                                  outputs = outputs,
+                                  error = None
+                                )
+                              )
                           }
                         } yield response
                     }
@@ -96,16 +108,20 @@ class ConstellationRoutes(
             } yield response
 
           case None =>
-            NotFound(ErrorResponse(
-              error = "DagNotFound",
-              message = s"DAG '${execReq.dagName}' not found"
-            ))
+            NotFound(
+              ErrorResponse(
+                error = "DagNotFound",
+                message = s"DAG '${execReq.dagName}' not found"
+              )
+            )
         }
       } yield response).handleErrorWith { error =>
-        InternalServerError(ExecuteResponse(
-          success = false,
-          error = Some(s"Unexpected error: ${error.getMessage}")
-        ))
+        InternalServerError(
+          ExecuteResponse(
+            success = false,
+            error = Some(s"Unexpected error: ${error.getMessage}")
+          )
+        )
       }
 
     // Compile and run a script in one step (without storing the DAG)
@@ -118,10 +134,12 @@ class ConstellationRoutes(
 
         response <- compileResult match {
           case Left(errors) =>
-            BadRequest(RunResponse(
-              success = false,
-              compilationErrors = errors.map(_.message)
-            ))
+            BadRequest(
+              RunResponse(
+                success = false,
+                compilationErrors = errors.map(_.message)
+              )
+            )
 
           case Right(compiled) =>
             val dagSpec = compiled.dagSpec
@@ -130,21 +148,27 @@ class ConstellationRoutes(
               convertResult <- ExecutionHelper.convertInputs(runReq.inputs, dagSpec).attempt
               response <- convertResult match {
                 case Left(error) =>
-                  BadRequest(RunResponse(
-                    success = false,
-                    error = Some(s"Input error: ${error.getMessage}")
-                  ))
+                  BadRequest(
+                    RunResponse(
+                      success = false,
+                      error = Some(s"Input error: ${error.getMessage}")
+                    )
+                  )
 
                 case Right(cValueInputs) =>
                   for {
                     // Execute DAG with pre-resolved synthetic modules from compilation
-                    execResult <- constellation.runDagWithModules(dagSpec, cValueInputs, compiled.syntheticModules).attempt
+                    execResult <- constellation
+                      .runDagWithModules(dagSpec, cValueInputs, compiled.syntheticModules)
+                      .attempt
                     response <- execResult match {
                       case Left(error) =>
-                        InternalServerError(RunResponse(
-                          success = false,
-                          error = Some(s"Execution failed: ${error.getMessage}")
-                        ))
+                        InternalServerError(
+                          RunResponse(
+                            success = false,
+                            error = Some(s"Execution failed: ${error.getMessage}")
+                          )
+                        )
 
                       case Right(state) =>
                         for {
@@ -152,16 +176,20 @@ class ConstellationRoutes(
                           outputResult <- ExecutionHelper.extractOutputs(state).attempt
                           response <- outputResult match {
                             case Left(error) =>
-                              InternalServerError(RunResponse(
-                                success = false,
-                                error = Some(s"Output error: ${error.getMessage}")
-                              ))
+                              InternalServerError(
+                                RunResponse(
+                                  success = false,
+                                  error = Some(s"Output error: ${error.getMessage}")
+                                )
+                              )
 
                             case Right(outputs) =>
-                              Ok(RunResponse(
-                                success = true,
-                                outputs = outputs
-                              ))
+                              Ok(
+                                RunResponse(
+                                  success = true,
+                                  outputs = outputs
+                                )
+                              )
                           }
                         } yield response
                     }
@@ -170,16 +198,18 @@ class ConstellationRoutes(
             } yield response
         }
       } yield response).handleErrorWith { error =>
-        InternalServerError(RunResponse(
-          success = false,
-          error = Some(s"Unexpected error: ${error.getMessage}")
-        ))
+        InternalServerError(
+          RunResponse(
+            success = false,
+            error = Some(s"Unexpected error: ${error.getMessage}")
+          )
+        )
       }
 
     // List all available DAGs
     case GET -> Root / "dags" =>
       for {
-        dags <- constellation.listDags
+        dags     <- constellation.listDags
         response <- Ok(DagListResponse(dags))
       } yield response
 
@@ -189,15 +219,19 @@ class ConstellationRoutes(
         dagOpt <- constellation.getDag(dagName)
         response <- dagOpt match {
           case Some(dagSpec) =>
-            Ok(DagResponse(
-              name = dagName,
-              metadata = dagSpec.metadata
-            ))
+            Ok(
+              DagResponse(
+                name = dagName,
+                metadata = dagSpec.metadata
+              )
+            )
           case None =>
-            NotFound(ErrorResponse(
-              error = "DagNotFound",
-              message = s"DAG '$dagName' not found"
-            ))
+            NotFound(
+              ErrorResponse(
+                error = "DagNotFound",
+                message = s"DAG '$dagName' not found"
+              )
+            )
         }
       } yield response
 
@@ -225,7 +259,9 @@ class ConstellationRoutes(
     // List functions in a specific namespace
     case GET -> Root / "namespaces" / namespace =>
       val functions = functionRegistry.all
-        .filter(sig => sig.namespace.exists(ns => ns == namespace || ns.startsWith(namespace + ".")))
+        .filter(sig =>
+          sig.namespace.exists(ns => ns == namespace || ns.startsWith(namespace + "."))
+        )
         .map { sig =>
           FunctionInfo(
             name = sig.name,
@@ -234,13 +270,15 @@ class ConstellationRoutes(
             returns = sig.returns.prettyPrint
           )
         }
-      if (functions.nonEmpty) {
+      if functions.nonEmpty then {
         Ok(NamespaceFunctionsResponse(namespace, functions))
       } else {
-        NotFound(ErrorResponse(
-          error = "NamespaceNotFound",
-          message = s"Namespace '$namespace' not found or has no functions"
-        ))
+        NotFound(
+          ErrorResponse(
+            error = "NamespaceNotFound",
+            message = s"Namespace '$namespace' not found or has no functions"
+          )
+        )
       }
 
     // Health check endpoint
@@ -250,6 +288,10 @@ class ConstellationRoutes(
 }
 
 object ConstellationRoutes {
-  def apply(constellation: Constellation, compiler: LangCompiler, functionRegistry: FunctionRegistry): ConstellationRoutes =
+  def apply(
+      constellation: Constellation,
+      compiler: LangCompiler,
+      functionRegistry: FunctionRegistry
+  ): ConstellationRoutes =
     new ConstellationRoutes(constellation, compiler, functionRegistry)
 }

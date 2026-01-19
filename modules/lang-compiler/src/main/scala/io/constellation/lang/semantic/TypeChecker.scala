@@ -1,6 +1,6 @@
 package io.constellation.lang.semantic
 
-import cats.data.{ValidatedNel, Validated}
+import cats.data.{Validated, ValidatedNel}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
@@ -9,10 +9,10 @@ import io.constellation.lang.ast.BoolOp
 
 /** Type environment for type checking */
 final case class TypeEnvironment(
-  types: Map[String, SemanticType] = Map.empty,
-  variables: Map[String, SemanticType] = Map.empty,
-  functions: FunctionRegistry,
-  namespaceScope: NamespaceScope = NamespaceScope.empty
+    types: Map[String, SemanticType] = Map.empty,
+    variables: Map[String, SemanticType] = Map.empty,
+    functions: FunctionRegistry,
+    namespaceScope: NamespaceScope = NamespaceScope.empty
 ) {
   def addType(name: String, typ: SemanticType): TypeEnvironment =
     copy(types = types + (name -> typ))
@@ -26,14 +26,14 @@ final case class TypeEnvironment(
   def addAliasedImport(alias: String, namespace: String): TypeEnvironment =
     copy(namespaceScope = namespaceScope.addAlias(alias, namespace))
 
-  def lookupType(name: String): Option[SemanticType] = types.get(name)
+  def lookupType(name: String): Option[SemanticType]     = types.get(name)
   def lookupVariable(name: String): Option[SemanticType] = variables.get(name)
 }
 
 /** Typed program after type checking */
 final case class TypedProgram(
-  declarations: List[TypedDeclaration],
-  outputs: List[(String, SemanticType, Span)]  // (name, type, span) for each declared output
+    declarations: List[TypedDeclaration],
+    outputs: List[(String, SemanticType, Span)] // (name, type, span) for each declared output
 )
 
 /** Typed declarations */
@@ -42,10 +42,14 @@ sealed trait TypedDeclaration {
 }
 
 object TypedDeclaration {
-  final case class TypeDef(name: String, definition: SemanticType, span: Span) extends TypedDeclaration
-  final case class InputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
-  final case class Assignment(name: String, value: TypedExpression, span: Span) extends TypedDeclaration
-  final case class OutputDecl(name: String, semanticType: SemanticType, span: Span) extends TypedDeclaration
+  final case class TypeDef(name: String, definition: SemanticType, span: Span)
+      extends TypedDeclaration
+  final case class InputDecl(name: String, semanticType: SemanticType, span: Span)
+      extends TypedDeclaration
+  final case class Assignment(name: String, value: TypedExpression, span: Span)
+      extends TypedDeclaration
+  final case class OutputDecl(name: String, semanticType: SemanticType, span: Span)
+      extends TypedDeclaration
   final case class UseDecl(path: String, alias: Option[String], span: Span) extends TypedDeclaration
 }
 
@@ -56,102 +60,101 @@ sealed trait TypedExpression {
 }
 
 object TypedExpression {
-  final case class VarRef(name: String, semanticType: SemanticType, span: Span) extends TypedExpression
+  final case class VarRef(name: String, semanticType: SemanticType, span: Span)
+      extends TypedExpression
 
   final case class FunctionCall(
-    name: String,
-    signature: FunctionSignature,
-    args: List[TypedExpression],
-    span: Span
+      name: String,
+      signature: FunctionSignature,
+      args: List[TypedExpression],
+      span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = signature.returns
   }
 
   final case class Merge(
-    left: TypedExpression,
-    right: TypedExpression,
-    semanticType: SemanticType,
-    span: Span
+      left: TypedExpression,
+      right: TypedExpression,
+      semanticType: SemanticType,
+      span: Span
   ) extends TypedExpression
 
   final case class Projection(
-    source: TypedExpression,
-    fields: List[String],
-    semanticType: SemanticType,
-    span: Span
+      source: TypedExpression,
+      fields: List[String],
+      semanticType: SemanticType,
+      span: Span
   ) extends TypedExpression
 
   final case class FieldAccess(
-    source: TypedExpression,
-    field: String,
-    semanticType: SemanticType,
-    span: Span
+      source: TypedExpression,
+      field: String,
+      semanticType: SemanticType,
+      span: Span
   ) extends TypedExpression
 
   final case class Conditional(
-    condition: TypedExpression,
-    thenBranch: TypedExpression,
-    elseBranch: TypedExpression,
-    semanticType: SemanticType,
-    span: Span
+      condition: TypedExpression,
+      thenBranch: TypedExpression,
+      elseBranch: TypedExpression,
+      semanticType: SemanticType,
+      span: Span
   ) extends TypedExpression
 
-  final case class Literal(value: Any, semanticType: SemanticType, span: Span) extends TypedExpression
+  final case class Literal(value: Any, semanticType: SemanticType, span: Span)
+      extends TypedExpression
 
   /** Boolean binary expression: and, or */
   final case class BoolBinary(
-    left: TypedExpression,
-    op: BoolOp,
-    right: TypedExpression,
-    span: Span
+      left: TypedExpression,
+      op: BoolOp,
+      right: TypedExpression,
+      span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = SemanticType.SBoolean
   }
 
   /** Boolean negation: not */
   final case class Not(
-    operand: TypedExpression,
-    span: Span
+      operand: TypedExpression,
+      span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = SemanticType.SBoolean
   }
 
-  /** Guard expression: expr when condition
-    * Returns Optional<T> where T is the type of expr.
-    * If condition is true, returns Some(expr), else returns None.
+  /** Guard expression: expr when condition Returns Optional<T> where T is the type of expr. If
+    * condition is true, returns Some(expr), else returns None.
     */
   final case class Guard(
-    expr: TypedExpression,
-    condition: TypedExpression,
-    span: Span
+      expr: TypedExpression,
+      condition: TypedExpression,
+      span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = SemanticType.SOptional(expr.semanticType)
   }
 
-  /** Coalesce expression: optional ?? fallback
-    * If left is Some(v), returns v. If None, returns right.
-    * Return type depends on right operand:
-    * - Optional<T> ?? T -> T
-    * - Optional<T> ?? Optional<T> -> Optional<T>
+  /** Coalesce expression: optional ?? fallback If left is Some(v), returns v. If None, returns
+    * right. Return type depends on right operand:
+    *   - Optional<T> ?? T -> T
+    *   - Optional<T> ?? Optional<T> -> Optional<T>
     */
   final case class Coalesce(
-    left: TypedExpression,
-    right: TypedExpression,
-    span: Span,
-    resultType: SemanticType
+      left: TypedExpression,
+      right: TypedExpression,
+      span: Span,
+      resultType: SemanticType
   ) extends TypedExpression {
     def semanticType: SemanticType = resultType
   }
 
-  /** Branch expression: multi-way conditional
-    * Evaluates conditions in order, returns first matching expression.
-    * 'otherwise' provides the default case.
+  /** Branch expression: multi-way conditional Evaluates conditions in order, returns first matching
+    * expression. 'otherwise' provides the default case.
     */
   final case class Branch(
-    cases: List[(TypedExpression, TypedExpression)],  // condition -> expression pairs
-    otherwise: TypedExpression,
-    semanticType: SemanticType,
-    span: Span
+      cases: List[(TypedExpression, TypedExpression)], // condition -> expression pairs
+      otherwise: TypedExpression,
+      semanticType: SemanticType,
+      span: Span
   ) extends TypedExpression
 }
 
@@ -161,7 +164,10 @@ object TypeChecker {
   type TypeResult[A] = ValidatedNel[CompileError, A]
 
   /** Type check a program */
-  def check(program: Program, functions: FunctionRegistry): Either[List[CompileError], TypedProgram] = {
+  def check(
+      program: Program,
+      functions: FunctionRegistry
+  ): Either[List[CompileError], TypedProgram] = {
     val initialEnv = TypeEnvironment(functions = functions)
 
     val result = program.declarations
@@ -185,28 +191,28 @@ object TypeChecker {
   }
 
   private def checkDeclaration(
-    decl: Declaration,
-    env: TypeEnvironment
+      decl: Declaration,
+      env: TypeEnvironment
   ): TypeResult[(TypeEnvironment, TypedDeclaration)] = decl match {
 
     case Declaration.TypeDef(name, defn) =>
       resolveTypeExpr(defn.value, defn.span, env).map { semType =>
         val newEnv = env.addType(name.value, semType)
-        val span = Span(name.span.start, defn.span.end)
+        val span   = Span(name.span.start, defn.span.end)
         (newEnv, TypedDeclaration.TypeDef(name.value, semType, span))
       }
 
     case Declaration.InputDecl(name, typeExpr) =>
       resolveTypeExpr(typeExpr.value, typeExpr.span, env).map { semType =>
         val newEnv = env.addVariable(name.value, semType)
-        val span = Span(name.span.start, typeExpr.span.end)
+        val span   = Span(name.span.start, typeExpr.span.end)
         (newEnv, TypedDeclaration.InputDecl(name.value, semType, span))
       }
 
     case Declaration.Assignment(target, value) =>
       checkExpression(value.value, value.span, env).map { typedExpr =>
         val newEnv = env.addVariable(target.value, typedExpr.semanticType)
-        val span = Span(target.span.start, value.span.end)
+        val span   = Span(target.span.start, value.span.end)
         (newEnv, TypedDeclaration.Assignment(target.value, typedExpr, span))
       }
 
@@ -225,18 +231,18 @@ object TypeChecker {
       val namespaceExists = env.functions.namespaces.exists { ns =>
         ns == namespace || ns.startsWith(namespace + ".")
       }
-      if (!namespaceExists) {
+      if !namespaceExists then {
         // Check if any function has this as a prefix
         val hasPrefix = env.functions.all.exists { sig =>
           sig.qualifiedName.startsWith(namespace + ".")
         }
-        if (!hasPrefix) {
+        if !hasPrefix then {
           CompileError.UndefinedNamespace(namespace, Some(path.span)).invalidNel
         } else {
           // Namespace exists via function qualifiedNames
           val newEnv = aliasOpt match {
             case Some(alias) => env.addAliasedImport(alias.value, namespace)
-            case None => env.addWildcardImport(namespace)
+            case None        => env.addWildcardImport(namespace)
           }
           val span = aliasOpt.map(a => Span(path.span.start, a.span.end)).getOrElse(path.span)
           (newEnv, TypedDeclaration.UseDecl(namespace, aliasOpt.map(_.value), span)).validNel
@@ -244,7 +250,7 @@ object TypeChecker {
       } else {
         val newEnv = aliasOpt match {
           case Some(alias) => env.addAliasedImport(alias.value, namespace)
-          case None => env.addWildcardImport(namespace)
+          case None        => env.addWildcardImport(namespace)
         }
         val span = aliasOpt.map(a => Span(path.span.start, a.span.end)).getOrElse(path.span)
         (newEnv, TypedDeclaration.UseDecl(namespace, aliasOpt.map(_.value), span)).validNel
@@ -252,28 +258,33 @@ object TypeChecker {
   }
 
   private def resolveTypeExpr(
-    typeExpr: TypeExpr,
-    span: Span,
-    env: TypeEnvironment
+      typeExpr: TypeExpr,
+      span: Span,
+      env: TypeEnvironment
   ): TypeResult[SemanticType] = typeExpr match {
 
-    case TypeExpr.Primitive(name) => name match {
-      case "String" => SemanticType.SString.validNel
-      case "Int" => SemanticType.SInt.validNel
-      case "Float" => SemanticType.SFloat.validNel
-      case "Boolean" => SemanticType.SBoolean.validNel
-      case other => CompileError.UndefinedType(other, Some(span)).invalidNel
-    }
+    case TypeExpr.Primitive(name) =>
+      name match {
+        case "String"  => SemanticType.SString.validNel
+        case "Int"     => SemanticType.SInt.validNel
+        case "Float"   => SemanticType.SFloat.validNel
+        case "Boolean" => SemanticType.SBoolean.validNel
+        case other     => CompileError.UndefinedType(other, Some(span)).invalidNel
+      }
 
     case TypeExpr.TypeRef(name) =>
-      env.lookupType(name).toValidNel(
-        CompileError.UndefinedType(name, Some(span))
-      )
+      env
+        .lookupType(name)
+        .toValidNel(
+          CompileError.UndefinedType(name, Some(span))
+        )
 
     case TypeExpr.Record(fields) =>
-      fields.traverse { case (name, typ) =>
-        resolveTypeExpr(typ, span, env).map(name -> _)
-      }.map(fs => SemanticType.SRecord(fs.toMap))
+      fields
+        .traverse { case (name, typ) =>
+          resolveTypeExpr(typ, span, env).map(name -> _)
+        }
+        .map(fs => SemanticType.SRecord(fs.toMap))
 
     case TypeExpr.Parameterized(name, params) =>
       name match {
@@ -303,8 +314,10 @@ object TypeChecker {
         // Right-hand side wins on conflicts
         SemanticType.SRecord(lFields ++ rFields).validNel
 
-      case (SemanticType.SCandidates(SemanticType.SRecord(lFields)),
-            SemanticType.SCandidates(SemanticType.SRecord(rFields))) =>
+      case (
+            SemanticType.SCandidates(SemanticType.SRecord(lFields)),
+            SemanticType.SCandidates(SemanticType.SRecord(rFields))
+          ) =>
         SemanticType.SCandidates(SemanticType.SRecord(lFields ++ rFields)).validNel
 
       case (SemanticType.SCandidates(lElem), rRec: SemanticType.SRecord) =>
@@ -318,39 +331,46 @@ object TypeChecker {
     }
 
   private def checkExpression(
-    expr: Expression,
-    span: Span,
-    env: TypeEnvironment
+      expr: Expression,
+      span: Span,
+      env: TypeEnvironment
   ): TypeResult[TypedExpression] = expr match {
 
     case Expression.VarRef(name) =>
-      env.lookupVariable(name)
+      env
+        .lookupVariable(name)
         .toValidNel(CompileError.UndefinedVariable(name, Some(span)))
         .map(TypedExpression.VarRef(name, _, span))
 
     case Expression.FunctionCall(name, args) =>
       env.functions.lookupInScope(name, env.namespaceScope, Some(span)) match {
         case Right(sig) =>
-          if (args.size != sig.params.size) {
-            CompileError.TypeError(
-              s"Function ${name.fullName} expects ${sig.params.size} arguments, got ${args.size}",
-              Some(span)
-            ).invalidNel
+          if args.size != sig.params.size then {
+            CompileError
+              .TypeError(
+                s"Function ${name.fullName} expects ${sig.params.size} arguments, got ${args.size}",
+                Some(span)
+              )
+              .invalidNel
           } else {
-            args.zip(sig.params).traverse { case (argExpr, (paramName, paramType)) =>
-              checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
-                if (isAssignable(typedArg.semanticType, paramType))
-                  typedArg.validNel
-                else
-                  CompileError.TypeMismatch(
-                    paramType.prettyPrint,
-                    typedArg.semanticType.prettyPrint,
-                    Some(argExpr.span)
-                  ).invalidNel
+            args
+              .zip(sig.params)
+              .traverse { case (argExpr, (paramName, paramType)) =>
+                checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
+                  if isAssignable(typedArg.semanticType, paramType) then typedArg.validNel
+                  else
+                    CompileError
+                      .TypeMismatch(
+                        paramType.prettyPrint,
+                        typedArg.semanticType.prettyPrint,
+                        Some(argExpr.span)
+                      )
+                      .invalidNel
+                }
               }
-            }.map { typedArgs =>
-              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
-            }
+              .map { typedArgs =>
+                TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
+              }
           }
         case Left(error) =>
           error.invalidNel
@@ -370,7 +390,12 @@ object TypeChecker {
         typedSource.semanticType match {
           case SemanticType.SRecord(availableFields) =>
             checkProjection(fields, availableFields, span).map { projectedFields =>
-              TypedExpression.Projection(typedSource, fields, SemanticType.SRecord(projectedFields), span)
+              TypedExpression.Projection(
+                typedSource,
+                fields,
+                SemanticType.SRecord(projectedFields),
+                span
+              )
             }
 
           case SemanticType.SCandidates(SemanticType.SRecord(availableFields)) =>
@@ -384,10 +409,12 @@ object TypeChecker {
             }
 
           case other =>
-            CompileError.TypeError(
-              s"Projection requires a record type, got ${other.prettyPrint}",
-              Some(span)
-            ).invalidNel
+            CompileError
+              .TypeError(
+                s"Projection requires a record type, got ${other.prettyPrint}",
+                Some(span)
+              )
+              .invalidNel
         }
       }
 
@@ -399,28 +426,36 @@ object TypeChecker {
               case Some(fieldType) =>
                 TypedExpression.FieldAccess(typedSource, field.value, fieldType, span).validNel
               case None =>
-                CompileError.InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span)).invalidNel
+                CompileError
+                  .InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span))
+                  .invalidNel
             }
 
           case SemanticType.SCandidates(SemanticType.SRecord(availableFields)) =>
             availableFields.get(field.value) match {
               case Some(fieldType) =>
                 // Field access on Candidates returns Candidates of the field type
-                TypedExpression.FieldAccess(
-                  typedSource,
-                  field.value,
-                  SemanticType.SCandidates(fieldType),
-                  span
-                ).validNel
+                TypedExpression
+                  .FieldAccess(
+                    typedSource,
+                    field.value,
+                    SemanticType.SCandidates(fieldType),
+                    span
+                  )
+                  .validNel
               case None =>
-                CompileError.InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span)).invalidNel
+                CompileError
+                  .InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span))
+                  .invalidNel
             }
 
           case other =>
-            CompileError.TypeError(
-              s"Field access requires a record type, got ${other.prettyPrint}",
-              Some(span)
-            ).invalidNel
+            CompileError
+              .TypeError(
+                s"Field access requires a record type, got ${other.prettyPrint}",
+                Some(span)
+              )
+              .invalidNel
         }
       }
 
@@ -430,12 +465,15 @@ object TypeChecker {
         checkExpression(thenBr.value, thenBr.span, env),
         checkExpression(elseBr.value, elseBr.span, env)
       ).mapN { (c, t, e) =>
-        if (c.semanticType != SemanticType.SBoolean)
-          CompileError.TypeMismatch("Boolean", c.semanticType.prettyPrint, Some(cond.span)).invalidNel
-        else if (t.semanticType != e.semanticType)
-          CompileError.TypeMismatch(t.semanticType.prettyPrint, e.semanticType.prettyPrint, Some(elseBr.span)).invalidNel
-        else
-          TypedExpression.Conditional(c, t, e, t.semanticType, span).validNel
+        if c.semanticType != SemanticType.SBoolean then
+          CompileError
+            .TypeMismatch("Boolean", c.semanticType.prettyPrint, Some(cond.span))
+            .invalidNel
+        else if t.semanticType != e.semanticType then
+          CompileError
+            .TypeMismatch(t.semanticType.prettyPrint, e.semanticType.prettyPrint, Some(elseBr.span))
+            .invalidNel
+        else TypedExpression.Conditional(c, t, e, t.semanticType, span).validNel
       }.andThen(identity)
 
     case Expression.StringLit(v) =>
@@ -468,36 +506,47 @@ object TypeChecker {
       (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
         .mapN { (l, r) =>
           val errors = List(
-            if (l.semanticType != SemanticType.SBoolean)
-              Some(CompileError.TypeMismatch("Boolean", l.semanticType.prettyPrint, Some(left.span)))
+            if l.semanticType != SemanticType.SBoolean then
+              Some(
+                CompileError.TypeMismatch("Boolean", l.semanticType.prettyPrint, Some(left.span))
+              )
             else None,
-            if (r.semanticType != SemanticType.SBoolean)
-              Some(CompileError.TypeMismatch("Boolean", r.semanticType.prettyPrint, Some(right.span)))
+            if r.semanticType != SemanticType.SBoolean then
+              Some(
+                CompileError.TypeMismatch("Boolean", r.semanticType.prettyPrint, Some(right.span))
+              )
             else None
           ).flatten
 
-          if (errors.nonEmpty)
-            errors.head.invalidNel
-          else
-            TypedExpression.BoolBinary(l, op, r, span).validNel
+          if errors.nonEmpty then errors.head.invalidNel
+          else TypedExpression.BoolBinary(l, op, r, span).validNel
         }
         .andThen(identity)
 
     case Expression.Not(operand) =>
       checkExpression(operand.value, operand.span, env).andThen { typedOperand =>
-        if (typedOperand.semanticType != SemanticType.SBoolean)
-          CompileError.TypeMismatch("Boolean", typedOperand.semanticType.prettyPrint, Some(operand.span)).invalidNel
-        else
-          TypedExpression.Not(typedOperand, span).validNel
+        if typedOperand.semanticType != SemanticType.SBoolean then
+          CompileError
+            .TypeMismatch("Boolean", typedOperand.semanticType.prettyPrint, Some(operand.span))
+            .invalidNel
+        else TypedExpression.Not(typedOperand, span).validNel
       }
 
     case Expression.Guard(expr, condition) =>
-      (checkExpression(expr.value, expr.span, env), checkExpression(condition.value, condition.span, env))
+      (
+        checkExpression(expr.value, expr.span, env),
+        checkExpression(condition.value, condition.span, env)
+      )
         .mapN { (typedExpr, typedCondition) =>
-          if (typedCondition.semanticType != SemanticType.SBoolean)
-            CompileError.TypeMismatch("Boolean", typedCondition.semanticType.prettyPrint, Some(condition.span)).invalidNel
-          else
-            TypedExpression.Guard(typedExpr, typedCondition, span).validNel
+          if typedCondition.semanticType != SemanticType.SBoolean then
+            CompileError
+              .TypeMismatch(
+                "Boolean",
+                typedCondition.semanticType.prettyPrint,
+                Some(condition.span)
+              )
+              .invalidNel
+          else TypedExpression.Guard(typedExpr, typedCondition, span).validNel
         }
         .andThen(identity)
 
@@ -508,20 +557,27 @@ object TypeChecker {
             case SemanticType.SOptional(innerType) =>
               val rightType = typedRight.semanticType
               // First check: Optional<T> ?? T -> T (even if T is Optional)
-              if (innerType == rightType)
+              if innerType == rightType then
                 TypedExpression.Coalesce(typedLeft, typedRight, span, rightType).validNel
               // Second check: Optional<T> ?? Optional<T> -> Optional<T> (when inner types match)
-              else rightType match {
-                case SemanticType.SOptional(rightInner) if innerType == rightInner =>
-                  TypedExpression.Coalesce(typedLeft, typedRight, span, SemanticType.SOptional(innerType)).validNel
-                case _ =>
-                  CompileError.TypeMismatch(innerType.prettyPrint, rightType.prettyPrint, Some(right.span)).invalidNel
-              }
+              else
+                rightType match {
+                  case SemanticType.SOptional(rightInner) if innerType == rightInner =>
+                    TypedExpression
+                      .Coalesce(typedLeft, typedRight, span, SemanticType.SOptional(innerType))
+                      .validNel
+                  case _ =>
+                    CompileError
+                      .TypeMismatch(innerType.prettyPrint, rightType.prettyPrint, Some(right.span))
+                      .invalidNel
+                }
             case other =>
-              CompileError.TypeError(
-                s"Left side of ?? must be Optional, got ${other.prettyPrint}",
-                Some(left.span)
-              ).invalidNel
+              CompileError
+                .TypeError(
+                  s"Left side of ?? must be Optional, got ${other.prettyPrint}",
+                  Some(left.span)
+                )
+                .invalidNel
           }
         }
         .andThen(identity)
@@ -532,57 +588,65 @@ object TypeChecker {
         (checkExpression(cond.value, cond.span, env), checkExpression(expr.value, expr.span, env))
           .mapN { (typedCond, typedExpr) =>
             // Verify condition is Boolean
-            if (typedCond.semanticType != SemanticType.SBoolean)
-              CompileError.TypeMismatch("Boolean", typedCond.semanticType.prettyPrint, Some(cond.span)).invalidNel
-            else
-              (typedCond, typedExpr).validNel
+            if typedCond.semanticType != SemanticType.SBoolean then
+              CompileError
+                .TypeMismatch("Boolean", typedCond.semanticType.prettyPrint, Some(cond.span))
+                .invalidNel
+            else (typedCond, typedExpr).validNel
           }
           .andThen(identity)
       }
 
       val otherwiseResult = checkExpression(otherwise.value, otherwise.span, env)
 
-      (casesResult, otherwiseResult).mapN { (typedCases, typedOtherwise) =>
-        // All expressions (cases + otherwise) must have the same type
-        val allExprs = typedCases.map(_._2) :+ typedOtherwise
-        val firstType = allExprs.head.semanticType
+      (casesResult, otherwiseResult)
+        .mapN { (typedCases, typedOtherwise) =>
+          // All expressions (cases + otherwise) must have the same type
+          val allExprs  = typedCases.map(_._2) :+ typedOtherwise
+          val firstType = allExprs.head.semanticType
 
-        val typeErrors = allExprs.zipWithIndex.drop(1).flatMap { case (expr, idx) =>
-          if (expr.semanticType != firstType)
-            Some(CompileError.TypeMismatch(firstType.prettyPrint, expr.semanticType.prettyPrint, Some(expr.span)))
-          else
-            None
+          val typeErrors = allExprs.zipWithIndex.drop(1).flatMap { case (expr, idx) =>
+            if expr.semanticType != firstType then
+              Some(
+                CompileError.TypeMismatch(
+                  firstType.prettyPrint,
+                  expr.semanticType.prettyPrint,
+                  Some(expr.span)
+                )
+              )
+            else None
+          }
+
+          if typeErrors.nonEmpty then typeErrors.head.invalidNel
+          else TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
         }
-
-        if (typeErrors.nonEmpty)
-          typeErrors.head.invalidNel
-        else
-          TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
-      }.andThen(identity)
+        .andThen(identity)
   }
 
   private def checkProjection(
-    requested: List[String],
-    available: Map[String, SemanticType],
-    span: Span
-  ): TypeResult[Map[String, SemanticType]] = {
-    requested.traverse { field =>
-      available.get(field)
-        .toValidNel(CompileError.InvalidProjection(field, available.keys.toList, Some(span)))
-        .map(field -> _)
-    }.map(_.toMap)
-  }
+      requested: List[String],
+      available: Map[String, SemanticType],
+      span: Span
+  ): TypeResult[Map[String, SemanticType]] =
+    requested
+      .traverse { field =>
+        available
+          .get(field)
+          .toValidNel(CompileError.InvalidProjection(field, available.keys.toList, Some(span)))
+          .map(field -> _)
+      }
+      .map(_.toMap)
 
   private def isAssignable(actual: SemanticType, expected: SemanticType): Boolean =
     actual == expected // Strict equality for now; can extend with subtyping
 
   /** Desugar comparison operator to stdlib function call */
   private def desugarComparison(
-    left: TypedExpression,
-    op: CompareOp,
-    right: TypedExpression,
-    span: Span,
-    env: TypeEnvironment
+      left: TypedExpression,
+      op: CompareOp,
+      right: TypedExpression,
+      span: Span,
+      env: TypeEnvironment
   ): TypeResult[TypedExpression] = {
     // Helper to format operator for error messages
     def opString(op: CompareOp): String = op match {
@@ -595,12 +659,14 @@ object TypeChecker {
     }
 
     // First check that both operands have the same type
-    if (left.semanticType != right.semanticType) {
-      return CompileError.TypeMismatch(
-        left.semanticType.prettyPrint,
-        right.semanticType.prettyPrint,
-        Some(span)
-      ).invalidNel
+    if left.semanticType != right.semanticType then {
+      return CompileError
+        .TypeMismatch(
+          left.semanticType.prettyPrint,
+          right.semanticType.prettyPrint,
+          Some(span)
+        )
+        .invalidNel
     }
 
     // Determine the function name based on operator and type
@@ -611,8 +677,8 @@ object TypeChecker {
       case (CompareOp.Eq, SemanticType.SString) => "eq-string".validNel
 
       // Ordering comparisons only for Int
-      case (CompareOp.Lt, SemanticType.SInt)  => "lt".validNel
-      case (CompareOp.Gt, SemanticType.SInt)  => "gt".validNel
+      case (CompareOp.Lt, SemanticType.SInt)   => "lt".validNel
+      case (CompareOp.Gt, SemanticType.SInt)   => "gt".validNel
       case (CompareOp.LtEq, SemanticType.SInt) => "lte".validNel
       case (CompareOp.GtEq, SemanticType.SInt) => "gte".validNel
 
@@ -622,23 +688,33 @@ object TypeChecker {
 
       // Unsupported combinations
       case _ =>
-        CompileError.UnsupportedComparison(
-          opString(op),
-          left.semanticType.prettyPrint,
-          right.semanticType.prettyPrint,
-          Some(span)
-        ).invalidNel
+        CompileError
+          .UnsupportedComparison(
+            opString(op),
+            left.semanticType.prettyPrint,
+            right.semanticType.prettyPrint,
+            Some(span)
+          )
+          .invalidNel
     }
 
     funcNameResult.andThen { funcName =>
       // Look up the function signature
-      env.functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
+      env.functions.lookupInScope(
+        QualifiedName.simple(funcName),
+        env.namespaceScope,
+        Some(span)
+      ) match {
         case Right(sig) =>
           val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), span)
 
           // For NotEq, wrap in not()
-          if (op == CompareOp.NotEq) {
-            env.functions.lookupInScope(QualifiedName.simple("not"), env.namespaceScope, Some(span)) match {
+          if op == CompareOp.NotEq then {
+            env.functions.lookupInScope(
+              QualifiedName.simple("not"),
+              env.namespaceScope,
+              Some(span)
+            ) match {
               case Right(notSig) =>
                 TypedExpression.FunctionCall("not", notSig, List(funcCall), span).validNel
               case Left(err) =>
@@ -656,11 +732,11 @@ object TypeChecker {
 
   /** Desugar arithmetic operator to stdlib function call or merge */
   private def desugarArithmetic(
-    left: TypedExpression,
-    op: ArithOp,
-    right: TypedExpression,
-    span: Span,
-    env: TypeEnvironment
+      left: TypedExpression,
+      op: ArithOp,
+      right: TypedExpression,
+      span: Span,
+      env: TypeEnvironment
   ): TypeResult[TypedExpression] = {
     // Helper to format operator for error messages
     def opString(op: ArithOp): String = op match {
@@ -673,32 +749,34 @@ object TypeChecker {
     // Check if a type is numeric
     def isNumeric(t: SemanticType): Boolean = t match {
       case SemanticType.SInt | SemanticType.SFloat => true
-      case _ => false
+      case _                                       => false
     }
 
     // Check if a type is mergeable (record-like: Record, Candidates<Record>)
     def isMergeable(t: SemanticType): Boolean = t match {
-      case _: SemanticType.SRecord => true
+      case _: SemanticType.SRecord                           => true
       case SemanticType.SCandidates(_: SemanticType.SRecord) => true
       case SemanticType.SCandidates(_) => false // Candidates of non-record not mergeable
-      case _ => false
+      case _                           => false
     }
 
     // For Add with mergeable types (records or Candidates<Record>), treat as merge
-    if (op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType)) {
+    if op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType) then {
       return mergeTypes(left.semanticType, right.semanticType, span).map { merged =>
         TypedExpression.Merge(left, right, merged, span)
       }
     }
 
     // For arithmetic operations, both operands must be numeric
-    if (!isNumeric(left.semanticType) || !isNumeric(right.semanticType)) {
-      return CompileError.UnsupportedArithmetic(
-        opString(op),
-        left.semanticType.prettyPrint,
-        right.semanticType.prettyPrint,
-        Some(span)
-      ).invalidNel
+    if !isNumeric(left.semanticType) || !isNumeric(right.semanticType) then {
+      return CompileError
+        .UnsupportedArithmetic(
+          opString(op),
+          left.semanticType.prettyPrint,
+          right.semanticType.prettyPrint,
+          Some(span)
+        )
+        .invalidNel
     }
 
     // Determine the function name based on operator
@@ -710,7 +788,11 @@ object TypeChecker {
     }
 
     // Look up the function signature
-    env.functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
+    env.functions.lookupInScope(
+      QualifiedName.simple(funcName),
+      env.namespaceScope,
+      Some(span)
+    ) match {
       case Right(sig) =>
         TypedExpression.FunctionCall(funcName, sig, List(left, right), span).validNel
       case Left(err) =>

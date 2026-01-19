@@ -37,14 +37,18 @@ trait CustomJsonCodecs {
 
   // CType codecs with tagged union format
   given ctypeEncoder: Encoder[CType] = Encoder.instance {
-    case CType.CString => Json.obj("tag" -> "CString".asJson)
-    case CType.CInt => Json.obj("tag" -> "CInt".asJson)
-    case CType.CFloat => Json.obj("tag" -> "CFloat".asJson)
+    case CType.CString  => Json.obj("tag" -> "CString".asJson)
+    case CType.CInt     => Json.obj("tag" -> "CInt".asJson)
+    case CType.CFloat   => Json.obj("tag" -> "CFloat".asJson)
     case CType.CBoolean => Json.obj("tag" -> "CBoolean".asJson)
     case CType.CList(valuesType) =>
       Json.obj("tag" -> "CList".asJson, "valuesType" -> valuesType.asJson)
     case CType.CMap(keysType, valuesType) =>
-      Json.obj("tag" -> "CMap".asJson, "keysType" -> keysType.asJson, "valuesType" -> valuesType.asJson)
+      Json.obj(
+        "tag"        -> "CMap".asJson,
+        "keysType"   -> keysType.asJson,
+        "valuesType" -> valuesType.asJson
+      )
     case CType.CProduct(structure) =>
       Json.obj("tag" -> "CProduct".asJson, "structure" -> structure.asJson)
     case CType.CUnion(structure) =>
@@ -55,19 +59,20 @@ trait CustomJsonCodecs {
 
   given ctypeDecoder: Decoder[CType] = Decoder.instance { c =>
     c.downField("tag").as[String].flatMap {
-      case "CString" => Right(CType.CString)
-      case "CInt" => Right(CType.CInt)
-      case "CFloat" => Right(CType.CFloat)
+      case "CString"  => Right(CType.CString)
+      case "CInt"     => Right(CType.CInt)
+      case "CFloat"   => Right(CType.CFloat)
       case "CBoolean" => Right(CType.CBoolean)
-      case "CList" => c.downField("valuesType").as[CType].map(CType.CList.apply)
-      case "CMap" => for {
-        keysType <- c.downField("keysType").as[CType]
-        valuesType <- c.downField("valuesType").as[CType]
-      } yield CType.CMap(keysType, valuesType)
-      case "CProduct" => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
-      case "CUnion" => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
+      case "CList"    => c.downField("valuesType").as[CType].map(CType.CList.apply)
+      case "CMap" =>
+        for {
+          keysType   <- c.downField("keysType").as[CType]
+          valuesType <- c.downField("valuesType").as[CType]
+        } yield CType.CMap(keysType, valuesType)
+      case "CProduct"  => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
+      case "CUnion"    => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
       case "COptional" => c.downField("innerType").as[CType].map(CType.COptional.apply)
-      case other => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
+      case other       => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
     }
   }
 
@@ -77,7 +82,7 @@ trait CustomJsonCodecs {
       Json.obj("tag" -> "Unfired".asJson)
     case Module.Status.Fired(latency, context) =>
       Json.obj(
-        "tag" -> "Fired".asJson,
+        "tag"     -> "Fired".asJson,
         "latency" -> latency.asJson,
         "context" -> context.asJson
       )
@@ -90,10 +95,11 @@ trait CustomJsonCodecs {
   given moduleStatusDecoder: Decoder[Module.Status] = Decoder.instance { c =>
     c.downField("tag").as[String].flatMap {
       case "Unfired" => Right(Module.Status.Unfired)
-      case "Fired" => for {
-        latency <- c.downField("latency").as[FiniteDuration]
-        context <- c.downField("context").as[Option[Map[String, Json]]]
-      } yield Module.Status.Fired(latency, context)
+      case "Fired" =>
+        for {
+          latency <- c.downField("latency").as[FiniteDuration]
+          context <- c.downField("context").as[Option[Map[String, Json]]]
+        } yield Module.Status.Fired(latency, context)
       case "Timed" =>
         c.downField("latency").as[FiniteDuration].map(Module.Status.Timed.apply)
       case "Failed" =>

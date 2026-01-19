@@ -17,19 +17,28 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
   it should "provide correct CType for collections" in {
     summon[CTypeTag[Vector[String]]].cType shouldBe CType.CList(CType.CString)
     summon[CTypeTag[List[Long]]].cType shouldBe CType.CList(CType.CInt)
-    summon[CTypeTag[Vector[Vector[Boolean]]]].cType shouldBe CType.CList(CType.CList(CType.CBoolean))
+    summon[CTypeTag[Vector[Vector[Boolean]]]].cType shouldBe CType.CList(
+      CType.CList(CType.CBoolean)
+    )
   }
 
   it should "provide correct CType for maps" in {
     summon[CTypeTag[Map[String, Long]]].cType shouldBe CType.CMap(CType.CString, CType.CInt)
-    summon[CTypeTag[Map[Long, Vector[String]]]].cType shouldBe CType.CMap(CType.CInt, CType.CList(CType.CString))
+    summon[CTypeTag[Map[Long, Vector[String]]]].cType shouldBe CType.CMap(
+      CType.CInt,
+      CType.CList(CType.CString)
+    )
   }
 
   it should "provide correct CType for optionals" in {
     summon[CTypeTag[Option[String]]].cType shouldBe CType.COptional(CType.CString)
     summon[CTypeTag[Option[Long]]].cType shouldBe CType.COptional(CType.CInt)
-    summon[CTypeTag[Option[Vector[Boolean]]]].cType shouldBe CType.COptional(CType.CList(CType.CBoolean))
-    summon[CTypeTag[Option[Option[String]]]].cType shouldBe CType.COptional(CType.COptional(CType.CString))
+    summon[CTypeTag[Option[Vector[Boolean]]]].cType shouldBe CType.COptional(
+      CType.CList(CType.CBoolean)
+    )
+    summon[CTypeTag[Option[Option[String]]]].cType shouldBe CType.COptional(
+      CType.COptional(CType.CString)
+    )
   }
 
   "CValueInjector" should "inject primitive values correctly" in {
@@ -81,7 +90,9 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
   }
 
   "CValueExtractor" should "extract primitive values correctly" in {
-    summon[CValueExtractor[String]].extract(CValue.CString("hello")).unsafeRunSync() shouldBe "hello"
+    summon[CValueExtractor[String]]
+      .extract(CValue.CString("hello"))
+      .unsafeRunSync() shouldBe "hello"
     summon[CValueExtractor[Long]].extract(CValue.CInt(42L)).unsafeRunSync() shouldBe 42L
     summon[CValueExtractor[Double]].extract(CValue.CFloat(3.14)).unsafeRunSync() shouldBe 3.14
     summon[CValueExtractor[Boolean]].extract(CValue.CBoolean(false)).unsafeRunSync() shouldBe false
@@ -133,13 +144,21 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     CValue.CFloat(1.0).ctype shouldBe CType.CFloat
     CValue.CBoolean(true).ctype shouldBe CType.CBoolean
     CValue.CList(Vector.empty, CType.CString).ctype shouldBe CType.CList(CType.CString)
-    CValue.CMap(Vector.empty, CType.CString, CType.CInt).ctype shouldBe CType.CMap(CType.CString, CType.CInt)
-    CValue.CSome(CValue.CString("test"), CType.CString).ctype shouldBe CType.COptional(CType.CString)
+    CValue.CMap(Vector.empty, CType.CString, CType.CInt).ctype shouldBe CType.CMap(
+      CType.CString,
+      CType.CInt
+    )
+    CValue.CSome(CValue.CString("test"), CType.CString).ctype shouldBe CType.COptional(
+      CType.CString
+    )
     CValue.CNone(CType.CInt).ctype shouldBe CType.COptional(CType.CInt)
   }
 
   "Roundtrip" should "inject and extract values correctly" in {
-    def roundtrip[A](value: A)(using injector: CValueInjector[A], extractor: CValueExtractor[A]): A =
+    def roundtrip[A](value: A)(using
+        injector: CValueInjector[A],
+        extractor: CValueExtractor[A]
+    ): A =
       extractor.extract(injector.inject(value)).unsafeRunSync()
 
     roundtrip("hello") shouldBe "hello"

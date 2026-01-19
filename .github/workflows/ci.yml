@@ -24,6 +24,9 @@ jobs:
       - name: Compile
         run: sbt compile
 
+      - name: Check formatting
+        run: sbt scalafmtCheckAll
+
       - name: Run tests with coverage
         run: sbt coverage test coverageReport coverageAggregate
 

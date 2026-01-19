@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean coverage coverage-report coverage-html
+.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean coverage coverage-report coverage-html fmt fmt-check lint lint-fix
 
 # Default target
 help:
@@ -38,6 +38,12 @@ help:
 	@echo "  make coverage       - Run tests with coverage and generate reports"
 	@echo "  make coverage-report- Generate coverage report (after running tests)"
 	@echo "  make coverage-html  - Open HTML coverage report in browser"
+	@echo ""
+	@echo "Formatting and Linting:"
+	@echo "  make fmt            - Format all Scala code with scalafmt"
+	@echo "  make fmt-check      - Check formatting without changing files"
+	@echo "  make lint           - Check for lint issues with scalafix"
+	@echo "  make lint-fix       - Auto-fix lint issues where possible"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -204,16 +210,32 @@ install:
 	@echo "Dependencies installed!"
 
 # =============================================================================
-# Utilities
+# Formatting and Linting
 # =============================================================================
 
-# Format code (if scalafmt is configured)
+# Format all Scala code
 fmt:
+	@echo "Formatting Scala code..."
 	sbt scalafmtAll
 
-# Check formatting
+# Check formatting without changes
 fmt-check:
+	@echo "Checking code formatting..."
 	sbt scalafmtCheckAll
+
+# Check for lint issues
+lint:
+	@echo "Checking for lint issues..."
+	sbt "scalafixAll --check"
+
+# Auto-fix lint issues
+lint-fix:
+	@echo "Fixing lint issues..."
+	sbt scalafixAll
+
+# =============================================================================
+# Utilities
+# =============================================================================
 
 # Generate documentation
 docs:

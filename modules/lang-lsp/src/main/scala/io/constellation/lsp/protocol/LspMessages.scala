@@ -1,8 +1,8 @@
 package io.constellation.lsp.protocol
 
-import io.circe._
-import io.circe.generic.semiauto._
-import LspTypes._
+import io.circe.*
+import io.circe.generic.semiauto.*
+import LspTypes.*
 
 /** LSP message types for requests, responses, and notifications */
 object LspMessages {
@@ -10,208 +10,208 @@ object LspMessages {
   // ========== Initialize ==========
 
   case class InitializeParams(
-    processId: Option[Int],
-    rootUri: Option[String],
-    capabilities: ClientCapabilities
+      processId: Option[Int],
+      rootUri: Option[String],
+      capabilities: ClientCapabilities
   )
 
   case class ClientCapabilities(
-    textDocument: Option[TextDocumentClientCapabilities] = None
+      textDocument: Option[TextDocumentClientCapabilities] = None
   )
 
   case class TextDocumentClientCapabilities(
-    completion: Option[CompletionClientCapabilities] = None,
-    hover: Option[HoverClientCapabilities] = None
+      completion: Option[CompletionClientCapabilities] = None,
+      hover: Option[HoverClientCapabilities] = None
   )
 
   case class CompletionClientCapabilities(
-    dynamicRegistration: Option[Boolean] = None
+      dynamicRegistration: Option[Boolean] = None
   )
 
   case class HoverClientCapabilities(
-    dynamicRegistration: Option[Boolean] = None
+      dynamicRegistration: Option[Boolean] = None
   )
 
   case class InitializeResult(
-    capabilities: ServerCapabilities
+      capabilities: ServerCapabilities
   )
 
   case class ServerCapabilities(
-    textDocumentSync: Option[Int] = Some(1), // 1 = Full sync
-    completionProvider: Option[CompletionOptions] = Some(CompletionOptions()),
-    hoverProvider: Option[Boolean] = Some(true),
-    executeCommandProvider: Option[ExecuteCommandOptions] = None
+      textDocumentSync: Option[Int] = Some(1), // 1 = Full sync
+      completionProvider: Option[CompletionOptions] = Some(CompletionOptions()),
+      hoverProvider: Option[Boolean] = Some(true),
+      executeCommandProvider: Option[ExecuteCommandOptions] = None
   )
 
   case class CompletionOptions(
-    triggerCharacters: Option[List[String]] = None
+      triggerCharacters: Option[List[String]] = None
   )
 
   case class ExecuteCommandOptions(
-    commands: List[String]
+      commands: List[String]
   )
 
   // ========== Text Document Sync ==========
 
   case class DidOpenTextDocumentParams(
-    textDocument: TextDocumentItem
+      textDocument: TextDocumentItem
   )
 
   case class DidChangeTextDocumentParams(
-    textDocument: VersionedTextDocumentIdentifier,
-    contentChanges: List[TextDocumentContentChangeEvent]
+      textDocument: VersionedTextDocumentIdentifier,
+      contentChanges: List[TextDocumentContentChangeEvent]
   )
 
   case class DidCloseTextDocumentParams(
-    textDocument: TextDocumentIdentifier
+      textDocument: TextDocumentIdentifier
   )
 
   case class PublishDiagnosticsParams(
-    uri: String,
-    diagnostics: List[Diagnostic]
+      uri: String,
+      diagnostics: List[Diagnostic]
   )
 
   // ========== Completion ==========
 
   case class CompletionParams(
-    textDocument: TextDocumentIdentifier,
-    position: Position,
-    context: Option[CompletionContext] = None
+      textDocument: TextDocumentIdentifier,
+      position: Position,
+      context: Option[CompletionContext] = None
   )
 
   case class CompletionContext(
-    triggerKind: Int,
-    triggerCharacter: Option[String] = None
+      triggerKind: Int,
+      triggerCharacter: Option[String] = None
   )
 
   // ========== Hover ==========
 
   case class HoverParams(
-    textDocument: TextDocumentIdentifier,
-    position: Position
+      textDocument: TextDocumentIdentifier,
+      position: Position
   )
 
   // ========== Structured Error Information ==========
 
   /** Error category for classification */
   enum ErrorCategory:
-    case Syntax      // Parser failures
-    case Type        // Type mismatches, unknown types
-    case Reference   // Undefined variables, unknown modules
-    case Runtime     // Execution failures, module exceptions
+    case Syntax    // Parser failures
+    case Type      // Type mismatches, unknown types
+    case Reference // Undefined variables, unknown modules
+    case Runtime   // Execution failures, module exceptions
 
   /** Structured error information with source location and context */
   case class ErrorInfo(
-    category: ErrorCategory,
-    message: String,
-    line: Option[Int] = None,          // 1-based line number
-    column: Option[Int] = None,        // 1-based column number
-    endLine: Option[Int] = None,       // End line for range highlighting
-    endColumn: Option[Int] = None,     // End column for range highlighting
-    codeContext: Option[String] = None, // Code snippet showing error location
-    suggestion: Option[String] = None   // Suggested fix (e.g., "Did you mean: Uppercase?")
+      category: ErrorCategory,
+      message: String,
+      line: Option[Int] = None,           // 1-based line number
+      column: Option[Int] = None,         // 1-based column number
+      endLine: Option[Int] = None,        // End line for range highlighting
+      endColumn: Option[Int] = None,      // End column for range highlighting
+      codeContext: Option[String] = None, // Code snippet showing error location
+      suggestion: Option[String] = None   // Suggested fix (e.g., "Did you mean: Uppercase?")
   )
 
   // ========== Custom: Execute Pipeline ==========
 
   case class ExecutePipelineParams(
-    uri: String,
-    inputs: Map[String, Json]
+      uri: String,
+      inputs: Map[String, Json]
   )
 
   case class ExecutePipelineResult(
-    success: Boolean,
-    outputs: Option[Map[String, Json]],
-    error: Option[String],                  // Simple error message (kept for backwards compat)
-    errors: Option[List[ErrorInfo]] = None, // Structured errors with context
-    executionTimeMs: Option[Long] = None
+      success: Boolean,
+      outputs: Option[Map[String, Json]],
+      error: Option[String],                  // Simple error message (kept for backwards compat)
+      errors: Option[List[ErrorInfo]] = None, // Structured errors with context
+      executionTimeMs: Option[Long] = None
   )
 
   // ========== Custom: Get Input Schema ==========
 
   case class GetInputSchemaParams(
-    uri: String
+      uri: String
   )
 
   case class GetInputSchemaResult(
-    success: Boolean,
-    inputs: Option[List[InputField]],
-    error: Option[String],                  // Simple error message (kept for backwards compat)
-    errors: Option[List[ErrorInfo]] = None  // Structured errors with context
+      success: Boolean,
+      inputs: Option[List[InputField]],
+      error: Option[String],                 // Simple error message (kept for backwards compat)
+      errors: Option[List[ErrorInfo]] = None // Structured errors with context
   )
 
   // ========== Custom: Get DAG Structure ==========
 
   case class GetDagStructureParams(
-    uri: String
+      uri: String
   )
 
   case class GetDagStructureResult(
-    success: Boolean,
-    dag: Option[DagStructure],
-    error: Option[String]
+      success: Boolean,
+      dag: Option[DagStructure],
+      error: Option[String]
   )
 
   case class DagStructure(
-    modules: Map[String, ModuleNode],
-    data: Map[String, DataNode],
-    inEdges: List[(String, String)],
-    outEdges: List[(String, String)],
-    declaredOutputs: List[String]
+      modules: Map[String, ModuleNode],
+      data: Map[String, DataNode],
+      inEdges: List[(String, String)],
+      outEdges: List[(String, String)],
+      declaredOutputs: List[String]
   )
 
   case class ModuleNode(
-    name: String,
-    consumes: Map[String, String],
-    produces: Map[String, String]
+      name: String,
+      consumes: Map[String, String],
+      produces: Map[String, String]
   )
 
   case class DataNode(
-    name: String,
-    cType: String
+      name: String,
+      cType: String
   )
 
   case class InputField(
-    name: String,
-    `type`: TypeDescriptor,
-    line: Int
+      name: String,
+      `type`: TypeDescriptor,
+      line: Int
   )
 
   // ========== Custom: DAG Execution Updates ==========
 
   /** Execution state for a node in the DAG */
   enum ExecutionState:
-    case Pending    // Not yet executed
-    case Running    // Currently executing
-    case Completed  // Successfully executed
-    case Failed     // Execution failed
+    case Pending   // Not yet executed
+    case Running   // Currently executing
+    case Completed // Successfully executed
+    case Failed    // Execution failed
 
   /** Update about a node's execution state */
   case class DagExecutionUpdateParams(
-    uri: String,                           // Document URI
-    nodeId: String,                        // Node UUID
-    state: ExecutionState,                 // Current state
-    valuePreview: Option[String] = None,   // Short preview of output value
-    valueFull: Option[Json] = None,        // Full output value as JSON
-    durationMs: Option[Long] = None,       // Execution time if completed
-    error: Option[String] = None           // Error message if failed
+      uri: String,                         // Document URI
+      nodeId: String,                      // Node UUID
+      state: ExecutionState,               // Current state
+      valuePreview: Option[String] = None, // Short preview of output value
+      valueFull: Option[Json] = None,      // Full output value as JSON
+      durationMs: Option[Long] = None,     // Execution time if completed
+      error: Option[String] = None         // Error message if failed
   )
 
   /** Batch update for all nodes (e.g., when execution starts or completes) */
   case class DagExecutionBatchUpdateParams(
-    uri: String,
-    updates: List[DagExecutionUpdateParams]
+      uri: String,
+      updates: List[DagExecutionUpdateParams]
   )
 
   sealed trait TypeDescriptor
 
   object TypeDescriptor {
-    case class PrimitiveType(name: String) extends TypeDescriptor
-    case class ListType(elementType: TypeDescriptor) extends TypeDescriptor
-    case class RecordType(fields: List[RecordField]) extends TypeDescriptor
-    case class MapType(keyType: TypeDescriptor, valueType: TypeDescriptor) extends TypeDescriptor
+    case class PrimitiveType(name: String)                                   extends TypeDescriptor
+    case class ListType(elementType: TypeDescriptor)                         extends TypeDescriptor
+    case class RecordType(fields: List[RecordField])                         extends TypeDescriptor
+    case class MapType(keyType: TypeDescriptor, valueType: TypeDescriptor)   extends TypeDescriptor
     case class ParameterizedType(name: String, params: List[TypeDescriptor]) extends TypeDescriptor
-    case class RefType(name: String) extends TypeDescriptor
+    case class RefType(name: String)                                         extends TypeDescriptor
   }
 
   case class RecordField(name: String, `type`: TypeDescriptor)
@@ -267,18 +267,18 @@ object LspMessages {
   given Decoder[HoverParams] = deriveDecoder
 
   given Encoder[ErrorCategory] = Encoder.encodeString.contramap {
-    case ErrorCategory.Syntax => "syntax"
-    case ErrorCategory.Type => "type"
+    case ErrorCategory.Syntax    => "syntax"
+    case ErrorCategory.Type      => "type"
     case ErrorCategory.Reference => "reference"
-    case ErrorCategory.Runtime => "runtime"
+    case ErrorCategory.Runtime   => "runtime"
   }
 
   given Decoder[ErrorCategory] = Decoder.decodeString.emap {
-    case "syntax" => Right(ErrorCategory.Syntax)
-    case "type" => Right(ErrorCategory.Type)
+    case "syntax"    => Right(ErrorCategory.Syntax)
+    case "type"      => Right(ErrorCategory.Type)
     case "reference" => Right(ErrorCategory.Reference)
-    case "runtime" => Right(ErrorCategory.Runtime)
-    case other => Left(s"Unknown error category: $other")
+    case "runtime"   => Right(ErrorCategory.Runtime)
+    case other       => Left(s"Unknown error category: $other")
   }
 
   given Encoder[ErrorInfo] = deriveEncoder
@@ -319,19 +319,25 @@ object LspMessages {
     case TypeDescriptor.PrimitiveType(name) =>
       Json.obj("kind" -> Json.fromString("primitive"), "name" -> Json.fromString(name))
     case TypeDescriptor.ListType(elementType) =>
-      Json.obj("kind" -> Json.fromString("list"), "elementType" -> Encoder[TypeDescriptor].apply(elementType))
+      Json.obj(
+        "kind"        -> Json.fromString("list"),
+        "elementType" -> Encoder[TypeDescriptor].apply(elementType)
+      )
     case TypeDescriptor.RecordType(fields) =>
-      Json.obj("kind" -> Json.fromString("record"), "fields" -> Encoder[List[RecordField]].apply(fields))
+      Json.obj(
+        "kind"   -> Json.fromString("record"),
+        "fields" -> Encoder[List[RecordField]].apply(fields)
+      )
     case TypeDescriptor.MapType(keyType, valueType) =>
       Json.obj(
-        "kind" -> Json.fromString("map"),
-        "keyType" -> Encoder[TypeDescriptor].apply(keyType),
+        "kind"      -> Json.fromString("map"),
+        "keyType"   -> Encoder[TypeDescriptor].apply(keyType),
         "valueType" -> Encoder[TypeDescriptor].apply(valueType)
       )
     case TypeDescriptor.ParameterizedType(name, params) =>
       Json.obj(
-        "kind" -> Json.fromString("parameterized"),
-        "name" -> Json.fromString(name),
+        "kind"   -> Json.fromString("parameterized"),
+        "name"   -> Json.fromString(name),
         "params" -> Encoder[List[TypeDescriptor]].apply(params)
       )
     case TypeDescriptor.RefType(name) =>
@@ -348,12 +354,12 @@ object LspMessages {
         cursor.downField("fields").as[List[RecordField]].map(TypeDescriptor.RecordType(_))
       case "map" =>
         for {
-          keyType <- cursor.downField("keyType").as[TypeDescriptor]
+          keyType   <- cursor.downField("keyType").as[TypeDescriptor]
           valueType <- cursor.downField("valueType").as[TypeDescriptor]
         } yield TypeDescriptor.MapType(keyType, valueType)
       case "parameterized" =>
         for {
-          name <- cursor.downField("name").as[String]
+          name   <- cursor.downField("name").as[String]
           params <- cursor.downField("params").as[List[TypeDescriptor]]
         } yield TypeDescriptor.ParameterizedType(name, params)
       case "ref" =>
@@ -367,18 +373,18 @@ object LspMessages {
   given Decoder[InputField] = deriveDecoder
 
   given Encoder[ExecutionState] = Encoder.encodeString.contramap {
-    case ExecutionState.Pending => "pending"
-    case ExecutionState.Running => "running"
+    case ExecutionState.Pending   => "pending"
+    case ExecutionState.Running   => "running"
     case ExecutionState.Completed => "completed"
-    case ExecutionState.Failed => "failed"
+    case ExecutionState.Failed    => "failed"
   }
 
   given Decoder[ExecutionState] = Decoder.decodeString.emap {
-    case "pending" => Right(ExecutionState.Pending)
-    case "running" => Right(ExecutionState.Running)
+    case "pending"   => Right(ExecutionState.Pending)
+    case "running"   => Right(ExecutionState.Running)
     case "completed" => Right(ExecutionState.Completed)
-    case "failed" => Right(ExecutionState.Failed)
-    case other => Left(s"Unknown execution state: $other")
+    case "failed"    => Right(ExecutionState.Failed)
+    case other       => Left(s"Unknown execution state: $other")
   }
 
   given Encoder[DagExecutionUpdateParams] = deriveEncoder
@@ -391,68 +397,68 @@ object LspMessages {
 
   /** Start step-through execution - returns session ID and initial state */
   case class StepStartParams(
-    uri: String,
-    inputs: Map[String, Json]
+      uri: String,
+      inputs: Map[String, Json]
   )
 
   case class StepStartResult(
-    success: Boolean,
-    sessionId: Option[String],
-    totalBatches: Option[Int],
-    initialState: Option[StepState],
-    error: Option[String]
+      success: Boolean,
+      sessionId: Option[String],
+      totalBatches: Option[Int],
+      initialState: Option[StepState],
+      error: Option[String]
   )
 
   /** Execute next batch */
   case class StepNextParams(
-    sessionId: String
+      sessionId: String
   )
 
   case class StepNextResult(
-    success: Boolean,
-    state: Option[StepState],
-    isComplete: Boolean,
-    error: Option[String]
+      success: Boolean,
+      state: Option[StepState],
+      isComplete: Boolean,
+      error: Option[String]
   )
 
   /** Continue to completion */
   case class StepContinueParams(
-    sessionId: String
+      sessionId: String
   )
 
   case class StepContinueResult(
-    success: Boolean,
-    state: Option[StepState],
-    outputs: Option[Map[String, Json]],
-    executionTimeMs: Option[Long],
-    error: Option[String]
+      success: Boolean,
+      state: Option[StepState],
+      outputs: Option[Map[String, Json]],
+      executionTimeMs: Option[Long],
+      error: Option[String]
   )
 
   /** Abort execution */
   case class StepStopParams(
-    sessionId: String
+      sessionId: String
   )
 
   case class StepStopResult(
-    success: Boolean
+      success: Boolean
   )
 
   /** State after each step */
   case class StepState(
-    currentBatch: Int,
-    totalBatches: Int,
-    batchNodes: List[String],         // Node IDs in current batch
-    completedNodes: List[CompletedNode],
-    pendingNodes: List[String]        // Node IDs still pending
+      currentBatch: Int,
+      totalBatches: Int,
+      batchNodes: List[String], // Node IDs in current batch
+      completedNodes: List[CompletedNode],
+      pendingNodes: List[String] // Node IDs still pending
   )
 
   /** Information about a completed node */
   case class CompletedNode(
-    nodeId: String,
-    nodeName: String,
-    nodeType: String,                 // "module" or "data"
-    valuePreview: String,
-    durationMs: Option[Long]
+      nodeId: String,
+      nodeName: String,
+      nodeType: String, // "module" or "data"
+      valuePreview: String,
+      durationMs: Option[Long]
   )
 
   // JSON encoders/decoders for step-through execution

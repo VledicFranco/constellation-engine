@@ -10,13 +10,13 @@ import scala.deriving.Mirror
 
 /** ModuleBuilder - Fluent API for defining Constellation modules.
   *
-  * ModuleBuilder provides a type-safe, declarative way to create processing
-  * modules that can be composed into DAG pipelines. Each module has:
-  * - Metadata (name, description, version, tags)
-  * - Input/output type signatures (derived from case classes)
-  * - Implementation (pure function or IO-based)
+  * ModuleBuilder provides a type-safe, declarative way to create processing modules that can be
+  * composed into DAG pipelines. Each module has:
+  *   - Metadata (name, description, version, tags)
+  *   - Input/output type signatures (derived from case classes)
+  *   - Implementation (pure function or IO-based)
   *
-  * == Basic Usage ==
+  * ==Basic Usage==
   *
   * {{{
   * // 1. Define input/output case classes
@@ -38,7 +38,7 @@ import scala.deriving.Mirror
   *   .build
   * }}}
   *
-  * == Implementation Types ==
+  * ==Implementation Types==
   *
   * '''Pure implementations''' - For side-effect-free transformations:
   * {{{
@@ -55,7 +55,7 @@ import scala.deriving.Mirror
   * }
   * }}}
   *
-  * == Field Naming Rules ==
+  * ==Field Naming Rules==
   *
   * Case class field names map directly to variable names in constellation-lang:
   * {{{
@@ -65,13 +65,15 @@ import scala.deriving.Mirror
   * result = MyModule(text, count)  // field names must match exactly
   * }}}
   *
-  * == Module States ==
+  * ==Module States==
   *
-  * - `Module.Uninitialized` - Module template, not yet registered
-  * - `Module.Initialized` - Module with runtime context, ready for execution
+  *   - `Module.Uninitialized` - Module template, not yet registered
+  *   - `Module.Initialized` - Module with runtime context, ready for execution
   *
-  * @see [[io.constellation.Module]] for module type definitions
-  * @see [[io.constellation.Constellation]] for module registration API
+  * @see
+  *   [[io.constellation.Module]] for module type definitions
+  * @see
+  *   [[io.constellation.Constellation]] for module registration API
   */
 object ModuleBuilder {
 
@@ -80,11 +82,11 @@ object ModuleBuilder {
   case class SimpleOut[A](out: A)
 
   def metadata(
-    name: String,
-    description: String,
-    majorVersion: Int,
-    minorVersion: Int,
-    tags: List[String] = List.empty,
+      name: String,
+      description: String,
+      majorVersion: Int,
+      minorVersion: Int,
+      tags: List[String] = List.empty
   ): ModuleBuilderInit = ModuleBuilderInit(
     ComponentMetadata(
       name = name,
@@ -98,9 +100,9 @@ object ModuleBuilder {
 
 /** Initial builder state before implementation is defined */
 final case class ModuleBuilderInit(
-  _metadata: ComponentMetadata,
-  _config: ModuleConfig = ModuleConfig.default,
-  _context: Option[Map[String, Json]] = None,
+    _metadata: ComponentMetadata,
+    _config: ModuleConfig = ModuleConfig.default,
+    _context: Option[Map[String, Json]] = None
 ) {
 
   def name(newName: String): ModuleBuilderInit =
@@ -135,7 +137,9 @@ final case class ModuleBuilderInit(
   def implementationPure[I <: Product, O <: Product](newRun: I => O): ModuleBuilder[I, O] =
     implementation((input: I) => IO.pure(newRun(input)))
 
-  def implementationWithContext[I <: Product, O <: Product](newRun: I => IO[Module.Produces[O]]): ModuleBuilder[I, O] =
+  def implementationWithContext[I <: Product, O <: Product](
+      newRun: I => IO[Module.Produces[O]]
+  ): ModuleBuilder[I, O] =
     ModuleBuilder(
       _metadata = _metadata,
       _config = _config,
@@ -146,10 +150,10 @@ final case class ModuleBuilderInit(
 
 /** Typed builder with implementation defined */
 final case class ModuleBuilder[I <: Product, O <: Product](
-  _metadata: ComponentMetadata,
-  _config: ModuleConfig = ModuleConfig.default,
-  _context: Option[Map[String, Json]] = None,
-  _run: I => IO[Module.Produces[O]],
+    _metadata: ComponentMetadata,
+    _config: ModuleConfig = ModuleConfig.default,
+    _context: Option[Map[String, Json]] = None,
+    _run: I => IO[Module.Produces[O]]
 ) {
 
   def map[O2 <: Product](f: O => O2): ModuleBuilder[I, O2] =
@@ -188,12 +192,11 @@ final case class ModuleBuilder[I <: Product, O <: Product](
   }
 
   inline def buildSimple(using
-    inTag: CTypeTag[I],
-    outTag: CTypeTag[O],
-    outInjector: CValueInjector[O],
-    miIn: Mirror.ProductOf[SimpleIn[I]],
-    moOut: Mirror.ProductOf[SimpleOut[O]],
-  ): Module.Uninitialized = {
+      inTag: CTypeTag[I],
+      outTag: CTypeTag[O],
+      outInjector: CValueInjector[O],
+      miIn: Mirror.ProductOf[SimpleIn[I]],
+      moOut: Mirror.ProductOf[SimpleOut[O]]
+  ): Module.Uninitialized =
     biMap[SimpleIn[I], SimpleOut[O]](_.in, SimpleOut(_)).build
-  }
 }

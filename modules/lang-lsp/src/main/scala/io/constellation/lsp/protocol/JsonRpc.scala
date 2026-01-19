@@ -1,33 +1,33 @@
 package io.constellation.lsp.protocol
 
-import io.circe._
-import io.circe.generic.semiauto._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.generic.semiauto.*
+import io.circe.syntax.*
 
 /** JSON-RPC 2.0 protocol types for LSP communication */
 object JsonRpc {
 
   /** JSON-RPC request from client to server */
   case class Request(
-    jsonrpc: String = "2.0",
-    id: RequestId,
-    method: String,
-    params: Option[Json]
+      jsonrpc: String = "2.0",
+      id: RequestId,
+      method: String,
+      params: Option[Json]
   )
 
   /** JSON-RPC response from server to client */
   case class Response(
-    jsonrpc: String = "2.0",
-    id: RequestId,
-    result: Option[Json] = None,
-    error: Option[ResponseError] = None
+      jsonrpc: String = "2.0",
+      id: RequestId,
+      result: Option[Json] = None,
+      error: Option[ResponseError] = None
   )
 
   /** JSON-RPC notification (no response expected) */
   case class Notification(
-    jsonrpc: String = "2.0",
-    method: String,
-    params: Option[Json]
+      jsonrpc: String = "2.0",
+      method: String,
+      params: Option[Json]
   )
 
   /** Request identifier (can be string, number, or null) */
@@ -38,24 +38,24 @@ object JsonRpc {
 
   /** Error object for responses */
   case class ResponseError(
-    code: Int,
-    message: String,
-    data: Option[Json] = None
+      code: Int,
+      message: String,
+      data: Option[Json] = None
   )
 
   /** Standard JSON-RPC error codes */
   object ErrorCodes {
-    val ParseError = -32700
+    val ParseError     = -32700
     val InvalidRequest = -32600
     val MethodNotFound = -32601
-    val InvalidParams = -32602
-    val InternalError = -32603
+    val InvalidParams  = -32602
+    val InternalError  = -32603
 
     // LSP-specific error codes
     val ServerNotInitialized = -32002
-    val UnknownErrorCode = -32001
-    val RequestCancelled = -32800
-    val ContentModified = -32801
+    val UnknownErrorCode     = -32001
+    val RequestCancelled     = -32800
+    val ContentModified      = -32801
   }
 
   // JSON encoders/decoders
@@ -63,14 +63,14 @@ object JsonRpc {
   given Encoder[RequestId] = {
     case RequestId.StringId(value) => Json.fromString(value)
     case RequestId.NumberId(value) => Json.fromLong(value)
-    case RequestId.NullId => Json.Null
+    case RequestId.NullId          => Json.Null
   }
 
   given Decoder[RequestId] = Decoder.instance { cursor =>
     cursor.value match {
       case json if json.isString => cursor.as[String].map(RequestId.StringId.apply)
       case json if json.isNumber => cursor.as[Long].map(RequestId.NumberId.apply)
-      case json if json.isNull => Right(RequestId.NullId)
+      case json if json.isNull   => Right(RequestId.NullId)
       case _ => Left(DecodingFailure("RequestId must be string, number, or null", cursor.history))
     }
   }
@@ -82,13 +82,13 @@ object JsonRpc {
   given Decoder[Request] = deriveDecoder
 
   /** Custom encoder for Response that follows JSON-RPC 2.0 spec:
-    * - On success: include result, omit error
-    * - On error: include error, omit result
+    *   - On success: include result, omit error
+    *   - On error: include error, omit result
     */
   given Encoder[Response] = Encoder.instance { response =>
     val baseFields = List(
       "jsonrpc" -> Json.fromString(response.jsonrpc),
-      "id" -> response.id.asJson
+      "id"      -> response.id.asJson
     )
 
     val responseFields = response.error match {
@@ -100,7 +100,7 @@ object JsonRpc {
         baseFields :+ ("result" -> response.result.getOrElse(Json.Null))
     }
 
-    Json.obj(responseFields: _*)
+    Json.obj(responseFields*)
   }
 
   given Decoder[Response] = deriveDecoder

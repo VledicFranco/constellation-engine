@@ -1,7 +1,7 @@
 package io.constellation.examples
 
 import cats.effect.IO
-import io.constellation._
+import io.constellation.*
 
 import scala.concurrent.duration.DurationInt
 
@@ -26,7 +26,9 @@ object ModuleAlwaysFails {
   def run(in: Input): IO[Output] =
     for {
       randomDelay <- IO(scala.util.Random.nextInt(10))
-      _ <- IO.sleep(randomDelay.millis)
-      _ <- IO.whenA(1 == 1)(IO.raiseError(new RuntimeException("This module always fails with random latency")))
+      _           <- IO.sleep(randomDelay.millis)
+      _ <- IO.whenA(1 == 1)(
+        IO.raiseError(new RuntimeException("This module always fails with random latency"))
+      )
     } yield Output(in.n)
 }

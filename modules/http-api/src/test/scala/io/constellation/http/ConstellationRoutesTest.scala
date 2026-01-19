@@ -2,27 +2,27 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import org.http4s._
-import org.http4s.implicits._
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.*
+import org.http4s.implicits.*
+import org.http4s.circe.CirceEntityCodec.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.http.ApiModels._
+import io.constellation.http.ApiModels.*
 import io.circe.Json
 
 class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
   // Create test constellation and compiler instances
-  val constellation = ConstellationImpl.init.unsafeRunSync()
-  val compiler = LangCompiler.empty
+  val constellation    = ConstellationImpl.init.unsafeRunSync()
+  val compiler         = LangCompiler.empty
   val functionRegistry = FunctionRegistry.empty
-  val routes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
+  val routes           = ConstellationRoutes(constellation, compiler, functionRegistry).routes
 
   "ConstellationRoutes" should "respond to health check" in {
-    val request = Request[IO](Method.GET, uri"/health")
+    val request  = Request[IO](Method.GET, uri"/health")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -85,7 +85,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Then list DAGs
     val listRequest = Request[IO](Method.GET, uri"/dags")
-    val response = routes.orNotFound.run(listRequest).unsafeRunSync()
+    val response    = routes.orNotFound.run(listRequest).unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[DagListResponse].unsafeRunSync()
@@ -105,7 +105,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Then get the DAG
     val getRequest = Request[IO](Method.GET, uri"/dags/get-test-dag")
-    val response = routes.orNotFound.run(getRequest).unsafeRunSync()
+    val response   = routes.orNotFound.run(getRequest).unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[DagResponse].unsafeRunSync()
@@ -113,7 +113,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return 404 for non-existent DAG" in {
-    val request = Request[IO](Method.GET, uri"/dags/non-existent")
+    val request  = Request[IO](Method.GET, uri"/dags/non-existent")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
@@ -122,7 +122,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "list available modules" in {
-    val request = Request[IO](Method.GET, uri"/modules")
+    val request  = Request[IO](Method.GET, uri"/modules")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -258,11 +258,15 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // Execute with a list input
     val executeRequest = ExecuteRequest(
       dagName = "list-passthrough",
-      inputs = Map("items" -> Json.fromValues(List(
-        Json.fromString("apple"),
-        Json.fromString("banana"),
-        Json.fromString("cherry")
-      )))
+      inputs = Map(
+        "items" -> Json.fromValues(
+          List(
+            Json.fromString("apple"),
+            Json.fromString("banana"),
+            Json.fromString("cherry")
+          )
+        )
+      )
     )
 
     val execReq = Request[IO](Method.POST, uri"/execute")
@@ -273,11 +277,15 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     val body = response.as[ExecuteResponse].unsafeRunSync()
     body.success shouldBe true
     body.error shouldBe None
-    body.outputs.get("items") shouldBe Some(Json.fromValues(List(
-      Json.fromString("apple"),
-      Json.fromString("banana"),
-      Json.fromString("cherry")
-    )))
+    body.outputs.get("items") shouldBe Some(
+      Json.fromValues(
+        List(
+          Json.fromString("apple"),
+          Json.fromString("banana"),
+          Json.fromString("cherry")
+        )
+      )
+    )
   }
 
   // Run endpoint tests (compile + execute in one step)
@@ -368,10 +376,12 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in user: { name: String, age: Int }
         out user
       """,
-      inputs = Map("user" -> Json.obj(
-        "name" -> Json.fromString("Alice"),
-        "age" -> Json.fromLong(30)
-      ))
+      inputs = Map(
+        "user" -> Json.obj(
+          "name" -> Json.fromString("Alice"),
+          "age"  -> Json.fromLong(30)
+        )
+      )
     )
 
     val request = Request[IO](Method.POST, uri"/run")
@@ -382,10 +392,12 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     val body = response.as[RunResponse].unsafeRunSync()
     body.success shouldBe true
     body.error shouldBe None
-    body.outputs.get("user") shouldBe Some(Json.obj(
-      "name" -> Json.fromString("Alice"),
-      "age" -> Json.fromLong(30)
-    ))
+    body.outputs.get("user") shouldBe Some(
+      Json.obj(
+        "name" -> Json.fromString("Alice"),
+        "age"  -> Json.fromLong(30)
+      )
+    )
   }
 
   it should "run script with multiple inputs where all are required" in {
@@ -420,24 +432,28 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // Create routes with a populated function registry
     import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
-    registry.register(FunctionSignature(
-      name = "upper",
-      params = List("value" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "stdlib.upper",
-      namespace = Some("stdlib.string")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "upper",
+        params = List("value" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "stdlib.upper",
+        namespace = Some("stdlib.string")
+      )
+    )
 
     val routesWithNs = ConstellationRoutes(constellation, compiler, registry).routes
 
-    val request = Request[IO](Method.GET, uri"/namespaces")
+    val request  = Request[IO](Method.GET, uri"/namespaces")
     val response = routesWithNs.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -448,24 +464,28 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   it should "list functions in a specific namespace" in {
     import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val routesWithNs = ConstellationRoutes(constellation, compiler, registry).routes
 
-    val request = Request[IO](Method.GET, uri"/namespaces/stdlib.math")
+    val request  = Request[IO](Method.GET, uri"/namespaces/stdlib.math")
     val response = routesWithNs.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -475,7 +495,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return 404 for non-existent namespace" in {
-    val request = Request[IO](Method.GET, uri"/namespaces/nonexistent.namespace")
+    val request  = Request[IO](Method.GET, uri"/namespaces/nonexistent.namespace")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
@@ -484,7 +504,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return empty namespace list when no functions registered" in {
-    val request = Request[IO](Method.GET, uri"/namespaces")
+    val request  = Request[IO](Method.GET, uri"/namespaces")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok

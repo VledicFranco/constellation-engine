@@ -8,6 +8,10 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",
 )
 
+// Scalafix semantic analysis (required for scalafix rules)
+ThisBuild / semanticdbEnabled := true
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
+
 // Code coverage settings
 ThisBuild / coverageEnabled := false // Enable via `sbt coverage` command
 ThisBuild / coverageHighlighting := true

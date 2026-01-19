@@ -4,51 +4,55 @@ import io.circe.Json
 
 /** Bidirectional converter between JSON and CValue/RawValue types.
   *
-  * JSON → CValue/RawValue requires type information (CType) to guide the conversion.
-  * CValue → JSON is straightforward and doesn't require type information.
+  * JSON → CValue/RawValue requires type information (CType) to guide the conversion. CValue → JSON
+  * is straightforward and doesn't require type information.
   *
-  * == Memory-Efficient Path ==
+  * ==Memory-Efficient Path==
   *
   * For large data (especially numeric arrays), use the RawValue methods:
-  * - `jsonToRawValue`: Direct JSON to RawValue (most efficient)
-  * - `rawValueToJson`: Direct RawValue to JSON using type info
+  *   - `jsonToRawValue`: Direct JSON to RawValue (most efficient)
+  *   - `rawValueToJson`: Direct RawValue to JSON using type info
   *
-  * These avoid allocating intermediate CValue wrappers, providing ~6x memory
-  * reduction for large numeric arrays.
+  * These avoid allocating intermediate CValue wrappers, providing ~6x memory reduction for large
+  * numeric arrays.
   */
 object JsonCValueConverter {
 
   /** Convert JSON to CValue using the expected type as a guide.
     *
-    * @param json The JSON value to convert
-    * @param expectedType The expected CType to guide conversion
-    * @param path The current field path for error reporting (e.g., "field.subfield")
-    * @return Either an error message with field path or the converted CValue
+    * @param json
+    *   The JSON value to convert
+    * @param expectedType
+    *   The expected CType to guide conversion
+    * @param path
+    *   The current field path for error reporting (e.g., "field.subfield")
+    * @return
+    *   Either an error message with field path or the converted CValue
     */
   def jsonToCValue(json: Json, expectedType: CType, path: String = ""): Either[String, CValue] = {
     expectedType match {
       case CType.CString =>
         json.asString match {
           case Some(str) => Right(CValue.CString(str))
-          case None => Left(fieldError(path, s"expected String, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected String, got ${jsonTypeName(json)}"))
         }
 
       case CType.CInt =>
         json.asNumber.flatMap(_.toLong) match {
           case Some(num) => Right(CValue.CInt(num))
-          case None => Left(fieldError(path, s"expected Int, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected Int, got ${jsonTypeName(json)}"))
         }
 
       case CType.CFloat =>
         json.asNumber.map(_.toDouble) match {
           case Some(num) => Right(CValue.CFloat(num))
-          case None => Left(fieldError(path, s"expected Float, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected Float, got ${jsonTypeName(json)}"))
         }
 
       case CType.CBoolean =>
         json.asBoolean match {
           case Some(bool) => Right(CValue.CBoolean(bool))
-          case None => Left(fieldError(path, s"expected Boolean, got ${jsonTypeName(json)}"))
+          case None       => Left(fieldError(path, s"expected Boolean, got ${jsonTypeName(json)}"))
         }
 
       case CType.CList(valuesType) =>
@@ -58,7 +62,7 @@ object JsonCValueConverter {
               jsonToCValue(elem, valuesType, fieldPath(path, s"[$idx]"))
             }
             val errors = converted.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               val values = converted.collect { case Right(v) => v }.toVector
@@ -80,7 +84,7 @@ object JsonCValueConverter {
               }
             }
             val errors = converted.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               val pairs = converted.collect { case Right(p) => p }.toVector
@@ -94,20 +98,21 @@ object JsonCValueConverter {
                   elem.asArray match {
                     case Some(pair) if pair.size == 2 =>
                       for {
-                        key <- jsonToCValue(pair(0), keysType, fieldPath(path, s"[$idx][0]"))
+                        key   <- jsonToCValue(pair(0), keysType, fieldPath(path, s"[$idx][0]"))
                         value <- jsonToCValue(pair(1), valuesType, fieldPath(path, s"[$idx][1]"))
                       } yield (key, value)
                     case _ => Left(fieldError(path, s"[$idx]: expected [key, value] pair"))
                   }
                 }
                 val errors = converted.collect { case Left(err) => err }
-                if (errors.nonEmpty) {
+                if errors.nonEmpty then {
                   Left(errors.mkString("; "))
                 } else {
                   val pairs = converted.collect { case Right(p) => p }.toVector
                   Right(CValue.CMap(pairs, keysType, valuesType))
                 }
-              case None => Left(fieldError(path, s"expected Array or Object, got ${jsonTypeName(json)}"))
+              case None =>
+                Left(fieldError(path, s"expected Array or Object, got ${jsonTypeName(json)}"))
             }
         }
 
@@ -123,7 +128,7 @@ object JsonCValueConverter {
               }
             }
             val errors = converted.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               val fields = converted.collect { case Right(f) => f }.toMap
@@ -146,7 +151,12 @@ object JsonCValueConverter {
                           CValue.CUnion(v, structure, tag)
                         }
                       case None =>
-                        Left(fieldError(path, s"invalid union tag '$tag', expected one of: ${structure.keys.mkString(", ")}"))
+                        Left(
+                          fieldError(
+                            path,
+                            s"invalid union tag '$tag', expected one of: ${structure.keys.mkString(", ")}"
+                          )
+                        )
                     }
                   case None =>
                     Left(fieldError(path, "union tag must be a string"))
@@ -154,12 +164,15 @@ object JsonCValueConverter {
               case _ =>
                 Left(fieldError(path, "union must have 'tag' and 'value' fields"))
             }
-          case None => Left(fieldError(path, s"expected Object with 'tag' and 'value', got ${jsonTypeName(json)}"))
+          case None =>
+            Left(
+              fieldError(path, s"expected Object with 'tag' and 'value', got ${jsonTypeName(json)}")
+            )
         }
 
       case CType.COptional(innerType) =>
         // null or missing field is None, otherwise convert inner value
-        if (json.isNull) {
+        if json.isNull then {
           Right(CValue.CNone(innerType))
         } else {
           jsonToCValue(json, innerType, path).map(v => CValue.CSome(v, innerType))
@@ -171,13 +184,15 @@ object JsonCValueConverter {
     *
     * This is a straightforward conversion that doesn't require type information.
     *
-    * @param cValue The CValue to convert
-    * @return The converted JSON value
+    * @param cValue
+    *   The CValue to convert
+    * @return
+    *   The converted JSON value
     */
   def cValueToJson(cValue: CValue): Json = cValue match {
-    case CValue.CString(value) => Json.fromString(value)
-    case CValue.CInt(value) => Json.fromLong(value)
-    case CValue.CFloat(value) => Json.fromDouble(value).getOrElse(Json.fromString(value.toString))
+    case CValue.CString(value)  => Json.fromString(value)
+    case CValue.CInt(value)     => Json.fromLong(value)
+    case CValue.CFloat(value)   => Json.fromDouble(value).getOrElse(Json.fromString(value.toString))
     case CValue.CBoolean(value) => Json.fromBoolean(value)
 
     case CValue.CList(values, _) =>
@@ -189,9 +204,10 @@ object JsonCValueConverter {
         case CType.CString =>
           val fields = pairs.map {
             case (CValue.CString(key), value) => key -> cValueToJson(value)
-            case _ => throw new RuntimeException("CMap with CString key type must have CString keys")
+            case _ =>
+              throw new RuntimeException("CMap with CString key type must have CString keys")
           }
-          Json.obj(fields: _*)
+          Json.obj(fields*)
         case _ =>
           // Use array of pairs format
           Json.fromValues(pairs.map { case (k, v) =>
@@ -200,41 +216,38 @@ object JsonCValueConverter {
       }
 
     case CValue.CProduct(fields, _) =>
-      Json.obj(fields.map { case (name, value) => name -> cValueToJson(value) }.toSeq: _*)
+      Json.obj(fields.map { case (name, value) => name -> cValueToJson(value) }.toSeq*)
 
     case CValue.CUnion(value, _, tag) =>
       Json.obj(
-        "tag" -> Json.fromString(tag),
+        "tag"   -> Json.fromString(tag),
         "value" -> cValueToJson(value)
       )
 
     case CValue.CSome(value, _) => cValueToJson(value)
-    case CValue.CNone(_) => Json.Null
+    case CValue.CNone(_)        => Json.Null
   }
 
   /** Build field path for error reporting */
-  private def fieldPath(parent: String, field: String): String = {
-    if (parent.isEmpty) field
-    else if (field.startsWith("[")) s"$parent$field"
+  private def fieldPath(parent: String, field: String): String =
+    if parent.isEmpty then field
+    else if field.startsWith("[") then s"$parent$field"
     else s"$parent.$field"
-  }
 
   /** Create error message with field path */
-  private def fieldError(path: String, message: String): String = {
-    if (path.isEmpty) message
+  private def fieldError(path: String, message: String): String =
+    if path.isEmpty then message
     else s"field '$path': $message"
-  }
 
   /** Get human-readable JSON type name */
-  private def jsonTypeName(json: Json): String = {
-    if (json.isNull) "null"
-    else if (json.isBoolean) "boolean"
-    else if (json.isNumber) "number"
-    else if (json.isString) "string"
-    else if (json.isArray) "array"
-    else if (json.isObject) "object"
+  private def jsonTypeName(json: Json): String =
+    if json.isNull then "null"
+    else if json.isBoolean then "boolean"
+    else if json.isNumber then "number"
+    else if json.isString then "string"
+    else if json.isArray then "array"
+    else if json.isObject then "object"
     else "unknown"
-  }
 
   // ==========================================================================
   // RawValue Conversion Methods (Memory-Efficient Path)
@@ -242,59 +255,71 @@ object JsonCValueConverter {
 
   /** Convert JSON directly to RawValue using the expected type as a guide.
     *
-    * This is more memory-efficient than JSON → CValue → RawValue for large data,
-    * as it avoids allocating intermediate CValue wrappers.
+    * This is more memory-efficient than JSON → CValue → RawValue for large data, as it avoids
+    * allocating intermediate CValue wrappers.
     *
-    * @param json The JSON value to convert
-    * @param expectedType The expected CType to guide conversion
-    * @param path The current field path for error reporting
-    * @return Either an error message with field path or the converted RawValue
+    * @param json
+    *   The JSON value to convert
+    * @param expectedType
+    *   The expected CType to guide conversion
+    * @param path
+    *   The current field path for error reporting
+    * @return
+    *   Either an error message with field path or the converted RawValue
     */
-  def jsonToRawValue(json: Json, expectedType: CType, path: String = ""): Either[String, RawValue] = {
+  def jsonToRawValue(
+      json: Json,
+      expectedType: CType,
+      path: String = ""
+  ): Either[String, RawValue] = {
     expectedType match {
       case CType.CString =>
         json.asString match {
           case Some(str) => Right(RawValue.RString(str))
-          case None => Left(fieldError(path, s"expected String, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected String, got ${jsonTypeName(json)}"))
         }
 
       case CType.CInt =>
         json.asNumber.flatMap(_.toLong) match {
           case Some(num) => Right(RawValue.RInt(num))
-          case None => Left(fieldError(path, s"expected Int, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected Int, got ${jsonTypeName(json)}"))
         }
 
       case CType.CFloat =>
         json.asNumber.map(_.toDouble) match {
           case Some(num) => Right(RawValue.RFloat(num))
-          case None => Left(fieldError(path, s"expected Float, got ${jsonTypeName(json)}"))
+          case None      => Left(fieldError(path, s"expected Float, got ${jsonTypeName(json)}"))
         }
 
       case CType.CBoolean =>
         json.asBoolean match {
           case Some(bool) => Right(RawValue.RBool(bool))
-          case None => Left(fieldError(path, s"expected Boolean, got ${jsonTypeName(json)}"))
+          case None       => Left(fieldError(path, s"expected Boolean, got ${jsonTypeName(json)}"))
         }
 
       case CType.CList(CType.CInt) =>
         // Specialized path for int lists - use unboxed array
         json.asArray match {
           case Some(arr) =>
-            val result = new Array[Long](arr.size)
-            var i = 0
+            val result                = new Array[Long](arr.size)
+            var i                     = 0
             var error: Option[String] = None
-            while (i < arr.size && error.isEmpty) {
+            while i < arr.size && error.isEmpty do
               arr(i).asNumber.flatMap(_.toLong) match {
                 case Some(num) =>
                   result(i) = num
                   i += 1
                 case None =>
-                  error = Some(fieldError(fieldPath(path, s"[$i]"), s"expected Int, got ${jsonTypeName(arr(i))}"))
+                  error = Some(
+                    fieldError(
+                      fieldPath(path, s"[$i]"),
+                      s"expected Int, got ${jsonTypeName(arr(i))}"
+                    )
+                  )
               }
-            }
             error match {
               case Some(err) => Left(err)
-              case None => Right(RawValue.RIntList(result))
+              case None      => Right(RawValue.RIntList(result))
             }
           case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
         }
@@ -303,21 +328,25 @@ object JsonCValueConverter {
         // Specialized path for float lists - use unboxed array
         json.asArray match {
           case Some(arr) =>
-            val result = new Array[Double](arr.size)
-            var i = 0
+            val result                = new Array[Double](arr.size)
+            var i                     = 0
             var error: Option[String] = None
-            while (i < arr.size && error.isEmpty) {
+            while i < arr.size && error.isEmpty do
               arr(i).asNumber.map(_.toDouble) match {
                 case Some(num) =>
                   result(i) = num
                   i += 1
                 case None =>
-                  error = Some(fieldError(fieldPath(path, s"[$i]"), s"expected Float, got ${jsonTypeName(arr(i))}"))
+                  error = Some(
+                    fieldError(
+                      fieldPath(path, s"[$i]"),
+                      s"expected Float, got ${jsonTypeName(arr(i))}"
+                    )
+                  )
               }
-            }
             error match {
               case Some(err) => Left(err)
-              case None => Right(RawValue.RFloatList(result))
+              case None      => Right(RawValue.RFloatList(result))
             }
           case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
         }
@@ -326,21 +355,25 @@ object JsonCValueConverter {
         // Specialized path for string lists
         json.asArray match {
           case Some(arr) =>
-            val result = new Array[String](arr.size)
-            var i = 0
+            val result                = new Array[String](arr.size)
+            var i                     = 0
             var error: Option[String] = None
-            while (i < arr.size && error.isEmpty) {
+            while i < arr.size && error.isEmpty do
               arr(i).asString match {
                 case Some(str) =>
                   result(i) = str
                   i += 1
                 case None =>
-                  error = Some(fieldError(fieldPath(path, s"[$i]"), s"expected String, got ${jsonTypeName(arr(i))}"))
+                  error = Some(
+                    fieldError(
+                      fieldPath(path, s"[$i]"),
+                      s"expected String, got ${jsonTypeName(arr(i))}"
+                    )
+                  )
               }
-            }
             error match {
               case Some(err) => Left(err)
-              case None => Right(RawValue.RStringList(result))
+              case None      => Right(RawValue.RStringList(result))
             }
           case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
         }
@@ -349,21 +382,25 @@ object JsonCValueConverter {
         // Specialized path for bool lists
         json.asArray match {
           case Some(arr) =>
-            val result = new Array[Boolean](arr.size)
-            var i = 0
+            val result                = new Array[Boolean](arr.size)
+            var i                     = 0
             var error: Option[String] = None
-            while (i < arr.size && error.isEmpty) {
+            while i < arr.size && error.isEmpty do
               arr(i).asBoolean match {
                 case Some(b) =>
                   result(i) = b
                   i += 1
                 case None =>
-                  error = Some(fieldError(fieldPath(path, s"[$i]"), s"expected Boolean, got ${jsonTypeName(arr(i))}"))
+                  error = Some(
+                    fieldError(
+                      fieldPath(path, s"[$i]"),
+                      s"expected Boolean, got ${jsonTypeName(arr(i))}"
+                    )
+                  )
               }
-            }
             error match {
               case Some(err) => Left(err)
-              case None => Right(RawValue.RBoolList(result))
+              case None      => Right(RawValue.RBoolList(result))
             }
           case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
         }
@@ -376,7 +413,7 @@ object JsonCValueConverter {
               jsonToRawValue(elem, elemType, fieldPath(path, s"[$idx]"))
             }
             val errors = results.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               Right(RawValue.RList(results.collect { case Right(v) => v }.toArray))
@@ -393,7 +430,7 @@ object JsonCValueConverter {
               }
             }
             val errors = results.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               Right(RawValue.RMap(results.collect { case Right(p) => p }.toArray))
@@ -405,19 +442,20 @@ object JsonCValueConverter {
                   elem.asArray match {
                     case Some(pair) if pair.size == 2 =>
                       for {
-                        key <- jsonToRawValue(pair(0), keyType, fieldPath(path, s"[$idx][0]"))
+                        key   <- jsonToRawValue(pair(0), keyType, fieldPath(path, s"[$idx][0]"))
                         value <- jsonToRawValue(pair(1), valueType, fieldPath(path, s"[$idx][1]"))
                       } yield (key, value)
                     case _ => Left(fieldError(path, s"[$idx]: expected [key, value] pair"))
                   }
                 }
                 val errors = results.collect { case Left(err) => err }
-                if (errors.nonEmpty) {
+                if errors.nonEmpty then {
                   Left(errors.mkString("; "))
                 } else {
                   Right(RawValue.RMap(results.collect { case Right(p) => p }.toArray))
                 }
-              case None => Left(fieldError(path, s"expected Array or Object, got ${jsonTypeName(json)}"))
+              case None =>
+                Left(fieldError(path, s"expected Array or Object, got ${jsonTypeName(json)}"))
             }
         }
 
@@ -434,7 +472,7 @@ object JsonCValueConverter {
               }
             }
             val errors = results.collect { case Left(err) => err }
-            if (errors.nonEmpty) {
+            if errors.nonEmpty then {
               Left(errors.mkString("; "))
             } else {
               Right(RawValue.RProduct(results.collect { case Right(v) => v }.toArray))
@@ -455,7 +493,12 @@ object JsonCValueConverter {
                           RawValue.RUnion(tag, v)
                         }
                       case None =>
-                        Left(fieldError(path, s"invalid union tag '$tag', expected one of: ${structure.keys.mkString(", ")}"))
+                        Left(
+                          fieldError(
+                            path,
+                            s"invalid union tag '$tag', expected one of: ${structure.keys.mkString(", ")}"
+                          )
+                        )
                     }
                   case None =>
                     Left(fieldError(path, "union tag must be a string"))
@@ -463,11 +506,14 @@ object JsonCValueConverter {
               case _ =>
                 Left(fieldError(path, "union must have 'tag' and 'value' fields"))
             }
-          case None => Left(fieldError(path, s"expected Object with 'tag' and 'value', got ${jsonTypeName(json)}"))
+          case None =>
+            Left(
+              fieldError(path, s"expected Object with 'tag' and 'value', got ${jsonTypeName(json)}")
+            )
         }
 
       case CType.COptional(innerType) =>
-        if (json.isNull) {
+        if json.isNull then {
           Right(RawValue.RNone)
         } else {
           jsonToRawValue(json, innerType, path).map(RawValue.RSome(_))
@@ -477,15 +523,18 @@ object JsonCValueConverter {
 
   /** Convert RawValue to JSON using type information.
     *
-    * @param raw The RawValue to convert
-    * @param cType The CType describing the value's structure
-    * @return The converted JSON value
+    * @param raw
+    *   The RawValue to convert
+    * @param cType
+    *   The CType describing the value's structure
+    * @return
+    *   The converted JSON value
     */
   def rawValueToJson(raw: RawValue, cType: CType): Json = (raw, cType) match {
     case (RawValue.RString(v), _) => Json.fromString(v)
-    case (RawValue.RInt(v), _) => Json.fromLong(v)
-    case (RawValue.RFloat(v), _) => Json.fromDouble(v).getOrElse(Json.fromString(v.toString))
-    case (RawValue.RBool(v), _) => Json.fromBoolean(v)
+    case (RawValue.RInt(v), _)    => Json.fromLong(v)
+    case (RawValue.RFloat(v), _)  => Json.fromDouble(v).getOrElse(Json.fromString(v.toString))
+    case (RawValue.RBool(v), _)   => Json.fromBoolean(v)
 
     case (RawValue.RSome(v), CType.COptional(innerType)) =>
       rawValueToJson(v, innerType)
@@ -511,9 +560,10 @@ object JsonCValueConverter {
         case CType.CString =>
           val fields = entries.map {
             case (RawValue.RString(key), value) => key -> rawValueToJson(value, valueType)
-            case (key, _) => throw new RuntimeException(s"Expected RString key, got ${key.getClass.getSimpleName}")
+            case (key, _) =>
+              throw new RuntimeException(s"Expected RString key, got ${key.getClass.getSimpleName}")
           }
-          Json.obj(fields.toSeq: _*)
+          Json.obj(fields.toSeq*)
         case _ =>
           Json.fromValues(entries.map { case (k, v) =>
             Json.fromValues(Vector(rawValueToJson(k, keyType), rawValueToJson(v, valueType)))
@@ -525,17 +575,19 @@ object JsonCValueConverter {
       val fields = sortedFields.zip(values).map { case ((name, fieldType), value) =>
         name -> rawValueToJson(value, fieldType)
       }
-      Json.obj(fields: _*)
+      Json.obj(fields*)
 
     case (RawValue.RUnion(tag, value), CType.CUnion(structure)) =>
-      val valueType = structure.getOrElse(tag,
-        throw new RuntimeException(s"Unknown union tag '$tag'"))
+      val valueType =
+        structure.getOrElse(tag, throw new RuntimeException(s"Unknown union tag '$tag'"))
       Json.obj(
-        "tag" -> Json.fromString(tag),
+        "tag"   -> Json.fromString(tag),
         "value" -> rawValueToJson(value, valueType)
       )
 
     case (raw, cType) =>
-      throw new RuntimeException(s"Cannot convert ${raw.getClass.getSimpleName} to JSON with type $cType")
+      throw new RuntimeException(
+        s"Cannot convert ${raw.getClass.getSimpleName} to JSON with type $cType"
+      )
   }
 }

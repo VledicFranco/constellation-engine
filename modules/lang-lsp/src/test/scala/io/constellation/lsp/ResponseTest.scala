@@ -1,9 +1,9 @@
 package io.constellation.lsp
 
-import io.constellation.lsp.protocol.JsonRpc._
-import io.constellation.lsp.protocol.JsonRpc.RequestId._
-import io.constellation.lsp.protocol.LspTypes._
-import io.circe.syntax._
+import io.constellation.lsp.protocol.JsonRpc.*
+import io.constellation.lsp.protocol.JsonRpc.RequestId.*
+import io.constellation.lsp.protocol.LspTypes.*
+import io.circe.syntax.*
 import io.circe.Json
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -72,25 +72,29 @@ class ResponseTest extends AnyFlatSpec with Matchers {
   "Response with error" should "not include result field" in {
     val response = Response(
       id = StringId("1"),
-      error = Some(ResponseError(
-        code = ErrorCodes.InvalidParams,
-        message = "Invalid params"
-      ))
+      error = Some(
+        ResponseError(
+          code = ErrorCodes.InvalidParams,
+          message = "Invalid params"
+        )
+      )
     )
 
     val json = response.asJson.noSpaces
 
     json should include("\"error\":")
-    json should not include ("\"result\":")
+    json should not include "\"result\":"
   }
 
   it should "include error code and message" in {
     val response = Response(
       id = StringId("1"),
-      error = Some(ResponseError(
-        code = ErrorCodes.MethodNotFound,
-        message = "Method not found: test"
-      ))
+      error = Some(
+        ResponseError(
+          code = ErrorCodes.MethodNotFound,
+          message = "Method not found: test"
+        )
+      )
     )
 
     val json = response.asJson.noSpaces
@@ -124,7 +128,7 @@ class ResponseTest extends AnyFlatSpec with Matchers {
       result = Some(hover.asJson)
     )
 
-    val json = originalResponse.asJson
+    val json   = originalResponse.asJson
     val parsed = json.as[Response]
 
     parsed match {
@@ -148,9 +152,9 @@ class ResponseTest extends AnyFlatSpec with Matchers {
       result = Some(hover.asJson)
     )
 
-    val json = response.asJson
+    val json   = response.asJson
     val parsed = json.as[Response]
 
-    parsed should be (Symbol("right"))
+    parsed should be(Symbol("right"))
   }
 }

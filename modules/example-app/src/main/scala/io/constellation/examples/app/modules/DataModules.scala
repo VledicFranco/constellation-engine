@@ -1,6 +1,6 @@
 package io.constellation.examples.app.modules
 
-import io.constellation._
+import io.constellation.*
 import cats.effect.IO
 
 /** Custom data processing modules for the example application
@@ -35,13 +35,14 @@ object DataModules {
   val average: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Average",
-      description = "Calculates the arithmetic mean of a list of numbers. Returns 0.0 for an empty list.",
+      description =
+        "Calculates the arithmetic mean of a list of numbers. Returns 0.0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
     .tags("data", "statistics")
     .implementationPure[AverageInput, AverageOutput] { input =>
-      if (input.numbers.isEmpty) {
+      if input.numbers.isEmpty then {
         AverageOutput(0.0)
       } else {
         AverageOutput(input.numbers.sum.toDouble / input.numbers.length)
@@ -56,13 +57,14 @@ object DataModules {
   val max: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Max",
-      description = "Finds the maximum (largest) value in a list of integers. Returns 0 for an empty list.",
+      description =
+        "Finds the maximum (largest) value in a list of integers. Returns 0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
     .tags("data", "statistics")
     .implementationPure[MaxInput, MaxOutput] { input =>
-      MaxOutput(if (input.numbers.isEmpty) 0L else input.numbers.max)
+      MaxOutput(if input.numbers.isEmpty then 0L else input.numbers.max)
     }
     .build
 
@@ -73,13 +75,14 @@ object DataModules {
   val min: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Min",
-      description = "Finds the minimum (smallest) value in a list of integers. Returns 0 for an empty list.",
+      description =
+        "Finds the minimum (smallest) value in a list of integers. Returns 0 for an empty list.",
       majorVersion = 1,
       minorVersion = 0
     )
     .tags("data", "statistics")
     .implementationPure[MinInput, MinOutput] { input =>
-      MinOutput(if (input.numbers.isEmpty) 0L else input.numbers.min)
+      MinOutput(if input.numbers.isEmpty then 0L else input.numbers.min)
     }
     .build
 
@@ -92,7 +95,8 @@ object DataModules {
   val filterGreaterThan: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "FilterGreaterThan",
-      description = "Filters a list to keep only numbers greater than the specified threshold value. Returns only values strictly greater than the threshold.",
+      description =
+        "Filters a list to keep only numbers greater than the specified threshold value. Returns only values strictly greater than the threshold.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -109,7 +113,8 @@ object DataModules {
   val multiplyEach: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "MultiplyEach",
-      description = "Multiplies each number in a list by a constant multiplier. Returns a new list with the transformed values.",
+      description =
+        "Multiplies each number in a list by a constant multiplier. Returns a new list with the transformed values.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -128,7 +133,8 @@ object DataModules {
   val range: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "Range",
-      description = "Generates a list of consecutive integers from start to end (inclusive). Useful for iteration and sequence generation.",
+      description =
+        "Generates a list of consecutive integers from start to end (inclusive). Useful for iteration and sequence generation.",
       majorVersion = 1,
       minorVersion = 0
     )
@@ -147,7 +153,8 @@ object DataModules {
   val formatNumber: Module.Uninitialized = ModuleBuilder
     .metadata(
       name = "FormatNumber",
-      description = "Formats a number with thousand separators (commas) for improved readability. Example: 1000000 becomes 1,000,000.",
+      description =
+        "Formats a number with thousand separators (commas) for improved readability. Example: 1000000 becomes 1,000,000.",
       majorVersion = 1,
       minorVersion = 0
     )

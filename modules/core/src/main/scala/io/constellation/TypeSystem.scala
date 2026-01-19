@@ -5,11 +5,11 @@ import cats.implicits.toTraverseOps
 
 /** Constellation Type System
   *
-  * This module defines the core type system used throughout Constellation Engine.
-  * It provides runtime type representations (CType) and value representations (CValue)
-  * that enable type-safe data flow between modules in a DAG pipeline.
+  * This module defines the core type system used throughout Constellation Engine. It provides
+  * runtime type representations (CType) and value representations (CValue) that enable type-safe
+  * data flow between modules in a DAG pipeline.
   *
-  * == Type Hierarchy ==
+  * ==Type Hierarchy==
   *
   * {{{
   * CType (runtime type representation)
@@ -33,7 +33,7 @@ import cats.implicits.toTraverseOps
   * └── CUnion       - Tagged union value
   * }}}
   *
-  * == Type Tags ==
+  * ==Type Tags==
   *
   * CTypeTag provides compile-time type mapping from Scala types to CType:
   * {{{
@@ -44,7 +44,7 @@ import cats.implicits.toTraverseOps
   * given CTypeTag[List[A]] -> CType.CList(A's type)
   * }}}
   *
-  * == Injectors and Extractors ==
+  * ==Injectors and Extractors==
   *
   * CValueInjector converts Scala values to CValue:
   * {{{
@@ -56,26 +56,29 @@ import cats.implicits.toTraverseOps
   * CValueExtractor[String].extract(CValue.CString("hello")) // => Right("hello")
   * }}}
   *
-  * @see [[io.constellation.Spec]] for DAG specification types
-  * @see [[io.constellation.ModuleBuilder]] for module definition API
+  * @see
+  *   [[io.constellation.Spec]] for DAG specification types
+  * @see
+  *   [[io.constellation.ModuleBuilder]] for module definition API
   */
 
 /** Runtime type representation for Constellation values.
   *
-  * CType is a sealed trait representing all possible types that can flow
-  * through a Constellation DAG. Every CValue has a corresponding CType.
+  * CType is a sealed trait representing all possible types that can flow through a Constellation
+  * DAG. Every CValue has a corresponding CType.
   */
 sealed trait CType
 
 object CType {
-  case object CString extends CType
-  case object CInt extends CType
-  case object CFloat extends CType
-  case object CBoolean extends CType
-  final case class CList(valuesType: CType) extends CType
+  case object CString                                       extends CType
+  case object CInt                                          extends CType
+  case object CFloat                                        extends CType
+  case object CBoolean                                      extends CType
+  final case class CList(valuesType: CType)                 extends CType
   final case class CMap(keysType: CType, valuesType: CType) extends CType
-  final case class CProduct(structure: Map[String, CType]) extends CType
-  final case class CUnion(structure: Map[String, CType]) extends CType
+  final case class CProduct(structure: Map[String, CType])  extends CType
+  final case class CUnion(structure: Map[String, CType])    extends CType
+
   /** Optional type - represents a value that may or may not exist */
   final case class COptional(innerType: CType) extends CType
 }
@@ -100,13 +103,16 @@ object CValue {
   final case class CList(value: Vector[CValue], subtype: CType) extends CValue {
     override def ctype: CType = CType.CList(subtype)
   }
-  final case class CMap(value: Vector[(CValue, CValue)], keysType: CType, valuesType: CType) extends CValue {
+  final case class CMap(value: Vector[(CValue, CValue)], keysType: CType, valuesType: CType)
+      extends CValue {
     override def ctype: CType = CType.CMap(keysType, valuesType)
   }
-  final case class CProduct(value: Map[String, CValue], structure: Map[String, CType]) extends CValue {
+  final case class CProduct(value: Map[String, CValue], structure: Map[String, CType])
+      extends CValue {
     override def ctype: CType = CType.CProduct(structure)
   }
-  final case class CUnion(value: CValue, structure: Map[String, CType], tag: String) extends CValue {
+  final case class CUnion(value: CValue, structure: Map[String, CType], tag: String)
+      extends CValue {
     override def ctype: CType = CType.CUnion(structure)
   }
 
@@ -150,7 +156,10 @@ object CTypeTag {
   given listTag[A](using injector: CTypeTag[A]): CTypeTag[List[A]] =
     of[List[A]](CType.CList(injector.cType))
 
-  given mapTag[A, B](using keyInjector: CTypeTag[A], valueInjector: CTypeTag[B]): CTypeTag[Map[A, B]] =
+  given mapTag[A, B](using
+      keyInjector: CTypeTag[A],
+      valueInjector: CTypeTag[B]
+  ): CTypeTag[Map[A, B]] =
     of[Map[A, B]](CType.CMap(keyInjector.cType, valueInjector.cType))
 
   given optionTag[A](using innerTag: CTypeTag[A]): CTypeTag[Option[A]] =
@@ -201,14 +210,14 @@ object CValueExtractor {
     vectorExtractor[A].map(_.toList)
 
   given mapExtractor[A, B](using
-    keyExtractor: CValueExtractor[A],
-    valueExtractor: CValueExtractor[B]
+      keyExtractor: CValueExtractor[A],
+      valueExtractor: CValueExtractor[B]
   ): CValueExtractor[Map[A, B]] = {
     case CValue.CMap(value, _, _) =>
       value
         .traverse { case (k, v) =>
           for {
-            key <- keyExtractor.extract(k)
+            key   <- keyExtractor.extract(k)
             value <- valueExtractor.extract(v)
           } yield key -> value
         }
@@ -219,7 +228,7 @@ object CValueExtractor {
 
   given optionExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[Option[A]] = {
     case CValue.CSome(value, _) => extractor.extract(value).map(Some(_))
-    case CValue.CNone(_) => IO.pure(None)
+    case CValue.CNone(_)        => IO.pure(None)
     case other =>
       IO.raiseError(new RuntimeException(s"Expected CValue.CSome or CValue.CNone, but got $other"))
   }
@@ -244,19 +253,22 @@ object CValueInjector {
   given booleanInjector: CValueInjector[Boolean] = (value: Boolean) => CValue.CBoolean(value)
 
   given vectorInjector[A](using
-    injector: CValueInjector[A],
-    typeTag: CTypeTag[A]
+      injector: CValueInjector[A],
+      typeTag: CTypeTag[A]
   ): CValueInjector[Vector[A]] =
     (value: Vector[A]) => CValue.CList(value.map(injector.inject), typeTag.cType)
 
-  given listInjector[A](using injector: CValueInjector[A], typeTag: CTypeTag[A]): CValueInjector[List[A]] =
+  given listInjector[A](using
+      injector: CValueInjector[A],
+      typeTag: CTypeTag[A]
+  ): CValueInjector[List[A]] =
     vectorInjector[A].contramap(_.toVector)
 
   given mapInjector[A, B](using
-    keyInjector: CValueInjector[A],
-    valueInjector: CValueInjector[B],
-    keyTypeTag: CTypeTag[A],
-    valueTypeTag: CTypeTag[B]
+      keyInjector: CValueInjector[A],
+      valueInjector: CValueInjector[B],
+      keyTypeTag: CTypeTag[A],
+      valueTypeTag: CTypeTag[B]
   ): CValueInjector[Map[A, B]] =
     (value: Map[A, B]) =>
       CValue.CMap(
@@ -266,11 +278,12 @@ object CValueInjector {
       )
 
   given optionInjector[A](using
-    injector: CValueInjector[A],
-    typeTag: CTypeTag[A]
+      injector: CValueInjector[A],
+      typeTag: CTypeTag[A]
   ): CValueInjector[Option[A]] =
-    (value: Option[A]) => value match {
-      case Some(v) => CValue.CSome(injector.inject(v), typeTag.cType)
-      case None => CValue.CNone(typeTag.cType)
-    }
+    (value: Option[A]) =>
+      value match {
+        case Some(v) => CValue.CSome(injector.inject(v), typeTag.cType)
+        case None    => CValue.CNone(typeTag.cType)
+      }
 }

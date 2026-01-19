@@ -4,8 +4,11 @@
 // Usage: sbt "~exampleApp/reStart"
 addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
 
-// Code formatting (optional - uncomment to enable)
-// addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
+// Code formatting
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
+
+// Linting and refactoring rules
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 
 // Code coverage reporting
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.9")

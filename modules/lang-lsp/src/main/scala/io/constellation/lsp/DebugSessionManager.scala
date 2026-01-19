@@ -1,32 +1,30 @@
 package io.constellation.lsp
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 import io.constellation.{CValue, DagSpec, Module, SteppedExecution}
 
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
-/**
- * Manages debug/stepping sessions for the language server.
- * Thread-safe session storage with automatic cleanup of stale sessions.
- */
+/** Manages debug/stepping sessions for the language server. Thread-safe session storage with
+  * automatic cleanup of stale sessions.
+  */
 class DebugSessionManager private (
-  sessionsRef: Ref[IO, Map[String, DebugSessionManager.ManagedSession]]
+    sessionsRef: Ref[IO, Map[String, DebugSessionManager.ManagedSession]]
 ) {
-  import DebugSessionManager._
+  import DebugSessionManager.*
 
   /** Session timeout - sessions are cleaned up after this duration of inactivity */
   private val sessionTimeout: FiniteDuration = 30.minutes
 
-  /**
-   * Create a new debug session.
-   */
+  /** Create a new debug session.
+    */
   def createSession(
-    dagSpec: DagSpec,
-    syntheticModules: Map[UUID, Module.Uninitialized],
-    registeredModules: Map[UUID, Module.Uninitialized],
-    inputs: Map[String, CValue]
+      dagSpec: DagSpec,
+      syntheticModules: Map[UUID, Module.Uninitialized],
+      registeredModules: Map[UUID, Module.Uninitialized],
+      inputs: Map[String, CValue]
   ): IO[SteppedExecution.SessionState] = {
     val sessionId = UUID.randomUUID().toString
 
@@ -53,10 +51,9 @@ class DebugSessionManager private (
     } yield initializedSession
   }
 
-  /**
-   * Get a session by ID, updating last accessed time.
-   */
-  def getSession(sessionId: String): IO[Option[SteppedExecution.SessionState]] = {
+  /** Get a session by ID, updating last accessed time.
+    */
+  def getSession(sessionId: String): IO[Option[SteppedExecution.SessionState]] =
     sessionsRef.modify { sessions =>
       sessions.get(sessionId) match {
         case Some(managed) =>
@@ -66,12 +63,10 @@ class DebugSessionManager private (
           (sessions, None)
       }
     }
-  }
 
-  /**
-   * Update a session with new state.
-   */
-  def updateSession(session: SteppedExecution.SessionState): IO[Unit] = {
+  /** Update a session with new state.
+    */
+  def updateSession(session: SteppedExecution.SessionState): IO[Unit] =
     sessionsRef.update { sessions =>
       sessions.get(session.sessionId) match {
         case Some(_) =>
@@ -83,25 +78,21 @@ class DebugSessionManager private (
           sessions
       }
     }
-  }
 
-  /**
-   * Remove a session.
-   */
-  def removeSession(sessionId: String): IO[Boolean] = {
+  /** Remove a session.
+    */
+  def removeSession(sessionId: String): IO[Boolean] =
     sessionsRef.modify { sessions =>
-      if (sessions.contains(sessionId)) {
+      if sessions.contains(sessionId) then {
         (sessions - sessionId, true)
       } else {
         (sessions, false)
       }
     }
-  }
 
-  /**
-   * Execute the next batch for a session.
-   */
-  def stepNext(sessionId: String): IO[Option[(SteppedExecution.SessionState, Boolean)]] = {
+  /** Execute the next batch for a session.
+    */
+  def stepNext(sessionId: String): IO[Option[(SteppedExecution.SessionState, Boolean)]] =
     for {
       maybeSession <- getSession(sessionId)
       result <- maybeSession match {
@@ -113,36 +104,30 @@ class DebugSessionManager private (
           IO.pure(None)
       }
     } yield result
-  }
 
-  /**
-   * Execute to completion for a session.
-   */
-  def stepContinue(sessionId: String): IO[Option[SteppedExecution.SessionState]] = {
+  /** Execute to completion for a session.
+    */
+  def stepContinue(sessionId: String): IO[Option[SteppedExecution.SessionState]] =
     for {
       maybeSession <- getSession(sessionId)
       result <- maybeSession match {
         case Some(session) =>
           for {
             completedSession <- SteppedExecution.executeToCompletion(session)
-            _ <- updateSession(completedSession)
+            _                <- updateSession(completedSession)
           } yield Some(completedSession)
         case None =>
           IO.pure(None)
       }
     } yield result
-  }
 
-  /**
-   * Stop a session (remove it).
-   */
-  def stopSession(sessionId: String): IO[Boolean] = {
+  /** Stop a session (remove it).
+    */
+  def stopSession(sessionId: String): IO[Boolean] =
     removeSession(sessionId)
-  }
 
-  /**
-   * Remove sessions that haven't been accessed within the timeout.
-   */
+  /** Remove sessions that haven't been accessed within the timeout.
+    */
   private def cleanupStaleSessions(): IO[Unit] = {
     val cutoff = System.currentTimeMillis() - sessionTimeout.toMillis
     sessionsRef.update { sessions =>
@@ -152,28 +137,24 @@ class DebugSessionManager private (
     }
   }
 
-  /**
-   * Get count of active sessions (for monitoring).
-   */
-  def sessionCount: IO[Int] = {
+  /** Get count of active sessions (for monitoring).
+    */
+  def sessionCount: IO[Int] =
     sessionsRef.get.map(_.size)
-  }
 }
 
 object DebugSessionManager {
 
   /** Internal session wrapper with metadata */
   case class ManagedSession(
-    session: SteppedExecution.SessionState,
-    lastAccessed: Long
+      session: SteppedExecution.SessionState,
+      lastAccessed: Long
   )
 
-  /**
-   * Create a new DebugSessionManager.
-   */
-  def create: IO[DebugSessionManager] = {
+  /** Create a new DebugSessionManager.
+    */
+  def create: IO[DebugSessionManager] =
     Ref.of[IO, Map[String, ManagedSession]](Map.empty).map { ref =>
       new DebugSessionManager(ref)
     }
-  }
 }

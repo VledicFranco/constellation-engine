@@ -2,8 +2,8 @@ package io.constellation.examples.app.modules
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
-import io.constellation._
+import cats.implicits.*
+import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.examples.app.ExampleLib
 import io.constellation.stdlib.StdLib
@@ -19,13 +19,12 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
   private val compiler = ExampleLib.compiler
 
   /** Create a Constellation instance with all modules registered */
-  private def createConstellation: IO[Constellation] = {
+  private def createConstellation: IO[Constellation] =
     for {
       constellation <- ConstellationImpl.init
       allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
       _ <- allModules.traverse(constellation.setModule)
     } yield constellation
-  }
 
   /** Helper to compile, run, and extract output value */
   private def runModule[T](
@@ -37,10 +36,10 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       compiled = compiler.compile(source, dagName).toOption.get
-      _ <- constellation.setDag(dagName, compiled.dagSpec)
+      _     <- constellation.setDag(dagName, compiled.dagSpec)
       state <- constellation.runDag(dagName, inputs)
       resultBinding = compiled.dagSpec.outputBindings(outputName)
-      resultValue = state.data.get(resultBinding).map(_.value)
+      resultValue   = state.data.get(resultBinding).map(_.value)
     } yield resultValue
 
     val result = test.unsafeRunSync()
@@ -60,8 +59,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(1L, 2L, 3L, 4L, 5L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "sumlist-test", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "sumlist-test", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 15L
   }
@@ -76,8 +75,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "sumlist-empty", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "sumlist-empty", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 0L
   }
@@ -126,8 +125,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(2L, 4L, 6L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Double](source, "avg-test", inputs, "result") {
-      case CValue.CFloat(v) => v
+    val result = runModule[Double](source, "avg-test", inputs, "result") { case CValue.CFloat(v) =>
+      v
     }
     result shouldBe 4.0
   }
@@ -142,8 +141,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Double](source, "avg-empty", inputs, "result") {
-      case CValue.CFloat(v) => v
+    val result = runModule[Double](source, "avg-empty", inputs, "result") { case CValue.CFloat(v) =>
+      v
     }
     result shouldBe 0.0
   }
@@ -192,8 +191,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(3L, 7L, 2L, 9L, 1L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-test", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "max-test", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 9L
   }
@@ -208,8 +207,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-empty", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "max-empty", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 0L
   }
@@ -224,8 +223,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(-5L, -2L, -8L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-negative", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "max-negative", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe -2L
   }
@@ -242,8 +241,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(3L, 7L, 2L, 9L, 1L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-test", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "min-test", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 1L
   }
@@ -258,8 +257,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-empty", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "min-empty", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 0L
   }
@@ -274,8 +273,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(-5L, -2L, -8L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-negative", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "min-negative", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe -8L
   }
@@ -290,7 +289,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector(1L, 5L, 3L, 8L, 2L).map(CValue.CInt.apply), CType.CInt),
+      "numbers"   -> CValue.CList(Vector(1L, 5L, 3L, 8L, 2L).map(CValue.CInt.apply), CType.CInt),
       "threshold" -> CValue.CInt(3)
     )
 
@@ -308,7 +307,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+      "numbers"   -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
       "threshold" -> CValue.CInt(10)
     )
 
@@ -326,7 +325,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector.empty, CType.CInt),
+      "numbers"   -> CValue.CList(Vector.empty, CType.CInt),
       "threshold" -> CValue.CInt(5)
     )
 
@@ -346,7 +345,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+      "numbers"    -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
       "multiplier" -> CValue.CInt(3)
     )
 
@@ -364,7 +363,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector(5L, 10L).map(CValue.CInt.apply), CType.CInt),
+      "numbers"    -> CValue.CList(Vector(5L, 10L).map(CValue.CInt.apply), CType.CInt),
       "multiplier" -> CValue.CInt(0)
     )
 
@@ -382,7 +381,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector(2L, 4L).map(CValue.CInt.apply), CType.CInt),
+      "numbers"    -> CValue.CList(Vector(2L, 4L).map(CValue.CInt.apply), CType.CInt),
       "multiplier" -> CValue.CInt(-2)
     )
 
@@ -400,7 +399,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(Vector.empty, CType.CInt),
+      "numbers"    -> CValue.CList(Vector.empty, CType.CInt),
       "multiplier" -> CValue.CInt(5)
     )
 
@@ -421,7 +420,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     """
     val inputs = Map(
       "start" -> CValue.CInt(1),
-      "end" -> CValue.CInt(5)
+      "end"   -> CValue.CInt(5)
     )
 
     val result = runModule[Vector[Long]](source, "range-test", inputs, "result") {
@@ -439,7 +438,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     """
     val inputs = Map(
       "start" -> CValue.CInt(5),
-      "end" -> CValue.CInt(5)
+      "end"   -> CValue.CInt(5)
     )
 
     val result = runModule[Vector[Long]](source, "range-single", inputs, "result") {
@@ -457,7 +456,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     """
     val inputs = Map(
       "start" -> CValue.CInt(-2),
-      "end" -> CValue.CInt(2)
+      "end"   -> CValue.CInt(2)
     )
 
     val result = runModule[Vector[Long]](source, "range-neg", inputs, "result") {
@@ -566,7 +565,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       module.spec.metadata.tags should not be empty
       module.spec.metadata.tags.exists(t =>
         t == "data" || t == "aggregation" || t == "statistics" ||
-        t == "filter" || t == "transform" || t == "generator" || t == "format"
+          t == "filter" || t == "transform" || t == "generator" || t == "format"
       ) shouldBe true
     }
   }

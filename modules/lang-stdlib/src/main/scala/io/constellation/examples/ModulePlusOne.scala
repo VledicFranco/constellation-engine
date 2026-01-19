@@ -1,6 +1,6 @@
 package io.constellation.examples
 
-import io.constellation._
+import io.constellation.*
 
 object ModulePlusOne {
 
@@ -12,7 +12,12 @@ object ModulePlusOne {
 
   val module: Module.Uninitialized =
     ModuleBuilder
-      .metadata(name = "PlusOne", description = "Adds one to the input", majorVersion = 0, minorVersion = 1)
+      .metadata(
+        name = "PlusOne",
+        description = "Adds one to the input",
+        majorVersion = 0,
+        minorVersion = 1
+      )
       .tags("math", "demo")
       .implementationPure(run)
       .build

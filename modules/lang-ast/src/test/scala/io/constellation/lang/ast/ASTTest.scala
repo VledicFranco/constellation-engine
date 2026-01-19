@@ -26,7 +26,7 @@ class ASTTest extends AnyFlatSpec with Matchers {
     span.contains(15) shouldBe true
     span.contains(19) shouldBe true
     span.contains(9) shouldBe false
-    span.contains(20) shouldBe false  // end is exclusive
+    span.contains(20) shouldBe false // end is exclusive
   }
 
   it should "correctly detect empty spans" in {
@@ -86,18 +86,18 @@ class ASTTest extends AnyFlatSpec with Matchers {
   it should "handle multiple lines" in {
     val lm = LineMap.fromSource("hello\nworld\n")
     lm.lineCount shouldBe 3
-    lm.offsetToLineCol(0) shouldBe LineCol(1, 1)   // 'h' in hello
-    lm.offsetToLineCol(5) shouldBe LineCol(1, 6)   // newline after hello
-    lm.offsetToLineCol(6) shouldBe LineCol(2, 1)   // 'w' in world
-    lm.offsetToLineCol(11) shouldBe LineCol(2, 6)  // newline after world
+    lm.offsetToLineCol(0) shouldBe LineCol(1, 1)  // 'h' in hello
+    lm.offsetToLineCol(5) shouldBe LineCol(1, 6)  // newline after hello
+    lm.offsetToLineCol(6) shouldBe LineCol(2, 1)  // 'w' in world
+    lm.offsetToLineCol(11) shouldBe LineCol(2, 6) // newline after world
   }
 
   it should "correctly handle offsets in the middle of lines" in {
     val lm = LineMap.fromSource("abc\ndefgh\nij")
-    lm.offsetToLineCol(1) shouldBe LineCol(1, 2)   // 'b'
-    lm.offsetToLineCol(5) shouldBe LineCol(2, 2)   // 'e'
-    lm.offsetToLineCol(10) shouldBe LineCol(3, 1)  // 'i'
-    lm.offsetToLineCol(11) shouldBe LineCol(3, 2)  // 'j'
+    lm.offsetToLineCol(1) shouldBe LineCol(1, 2)  // 'b'
+    lm.offsetToLineCol(5) shouldBe LineCol(2, 2)  // 'e'
+    lm.offsetToLineCol(10) shouldBe LineCol(3, 1) // 'i'
+    lm.offsetToLineCol(11) shouldBe LineCol(3, 2) // 'j'
   }
 
   // ============================================================
@@ -105,7 +105,7 @@ class ASTTest extends AnyFlatSpec with Matchers {
   // ============================================================
 
   "SourceFile" should "convert span to line/column positions" in {
-    val sf = SourceFile("test.cst", "hello\nworld")
+    val sf           = SourceFile("test.cst", "hello\nworld")
     val (start, end) = sf.spanToLineCol(Span(0, 5))
     start shouldBe LineCol(1, 1)
     end shouldBe LineCol(1, 6)
@@ -119,11 +119,11 @@ class ASTTest extends AnyFlatSpec with Matchers {
   }
 
   it should "extract a code snippet with line number and pointer" in {
-    val sf = SourceFile("test.cst", "let x = 42")
+    val sf      = SourceFile("test.cst", "let x = 42")
     val snippet = sf.extractSnippet(Span(4, 5))
-    snippet should include("1")       // line number
+    snippet should include("1") // line number
     snippet should include("let x = 42")
-    snippet should include("^")       // pointer
+    snippet should include("^") // pointer
   }
 
   // ============================================================
@@ -137,7 +137,7 @@ class ASTTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map over the value while preserving span" in {
-    val loc = Located(10, Span(5, 10))
+    val loc    = Located(10, Span(5, 10))
     val mapped = loc.map(_ * 2)
     mapped.value shouldBe 20
     mapped.span shouldBe Span(5, 10)
@@ -267,10 +267,12 @@ class ASTTest extends AnyFlatSpec with Matchers {
   }
 
   "TypeExpr.Record" should "hold field definitions" in {
-    val record = TypeExpr.Record(List(
-      ("id", TypeExpr.Primitive("String")),
-      ("count", TypeExpr.Primitive("Int"))
-    ))
+    val record = TypeExpr.Record(
+      List(
+        ("id", TypeExpr.Primitive("String")),
+        ("count", TypeExpr.Primitive("Int"))
+      )
+    )
     record.fields.size shouldBe 2
     record.fields.head shouldBe ("id", TypeExpr.Primitive("String"))
     record.fields(1) shouldBe ("count", TypeExpr.Primitive("Int"))
@@ -281,10 +283,13 @@ class ASTTest extends AnyFlatSpec with Matchers {
     listType.name shouldBe "List"
     listType.params shouldBe List(TypeExpr.Primitive("String"))
 
-    val mapType = TypeExpr.Parameterized("Map", List(
-      TypeExpr.Primitive("String"),
-      TypeExpr.Primitive("Int")
-    ))
+    val mapType = TypeExpr.Parameterized(
+      "Map",
+      List(
+        TypeExpr.Primitive("String"),
+        TypeExpr.Primitive("Int")
+      )
+    )
     mapType.params.size shouldBe 2
   }
 
@@ -421,13 +426,14 @@ class ASTTest extends AnyFlatSpec with Matchers {
   }
 
   "CompileError.AmbiguousFunction" should "generate descriptive message" in {
-    val err = CompileError.AmbiguousFunction("add", List("math.add", "custom.add"), Some(Span(0, 3)))
+    val err =
+      CompileError.AmbiguousFunction("add", List("math.add", "custom.add"), Some(Span(0, 3)))
     err.message shouldBe "Ambiguous function 'add'. Candidates: math.add, custom.add"
   }
 
   "CompileError.formatWithSource" should "include source context" in {
-    val sf = SourceFile("test.cst", "let x = undefined")
-    val err = CompileError.UndefinedVariable("undefined", Some(Span(8, 17)))
+    val sf        = SourceFile("test.cst", "let x = undefined")
+    val err       = CompileError.UndefinedVariable("undefined", Some(Span(8, 17)))
     val formatted = err.formatWithSource(sf)
 
     formatted should include("test.cst")
@@ -541,12 +547,17 @@ class ASTTest extends AnyFlatSpec with Matchers {
       "Map",
       List(
         TypeExpr.Primitive("String"),
-        TypeExpr.Parameterized("List", List(
-          TypeExpr.Record(List(
-            ("id", TypeExpr.Primitive("Int")),
-            ("data", TypeExpr.TypeRef("CustomType"))
-          ))
-        ))
+        TypeExpr.Parameterized(
+          "List",
+          List(
+            TypeExpr.Record(
+              List(
+                ("id", TypeExpr.Primitive("Int")),
+                ("data", TypeExpr.TypeRef("CustomType"))
+              )
+            )
+          )
+        )
       )
     )
     nested.name shouldBe "Map"
@@ -555,10 +566,13 @@ class ASTTest extends AnyFlatSpec with Matchers {
 
   "Deeply nested expressions" should "be constructible" in {
     val nested = Expression.Merge(
-      Located(Expression.Merge(
-        Located(Expression.VarRef("a"), Span(0, 1)),
-        Located(Expression.VarRef("b"), Span(4, 5))
-      ), Span(0, 5)),
+      Located(
+        Expression.Merge(
+          Located(Expression.VarRef("a"), Span(0, 1)),
+          Located(Expression.VarRef("b"), Span(4, 5))
+        ),
+        Span(0, 5)
+      ),
       Located(Expression.VarRef("c"), Span(8, 9))
     )
     nested.left.value shouldBe a[Expression.Merge]

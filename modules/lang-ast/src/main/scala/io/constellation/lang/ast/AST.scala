@@ -2,10 +2,10 @@ package io.constellation.lang.ast
 
 /** Source span representing a range in the source code (byte offsets) */
 final case class Span(start: Int, end: Int) {
-  def point: Int = start  // Where to place caret in error message
-  def length: Int = end - start
+  def point: Int                     = start // Where to place caret in error message
+  def length: Int                    = end - start
   def contains(offset: Int): Boolean = offset >= start && offset < end
-  def isEmpty: Boolean = start == end
+  def isEmpty: Boolean               = start == end
 
   override def toString: String = s"[$start..$end)"
 }
@@ -26,10 +26,10 @@ final case class LineCol(line: Int, col: Int) {
 final case class LineMap(lineStarts: Array[Int]) {
   def offsetToLineCol(offset: Int): LineCol = {
     // Binary search for line containing offset
-    val lineIdx = java.util.Arrays.binarySearch(lineStarts, offset)
-    val actualLine = if (lineIdx >= 0) lineIdx else -lineIdx - 2
-    val col = offset - lineStarts(actualLine)
-    LineCol(actualLine + 1, col + 1)  // 1-based for display
+    val lineIdx    = java.util.Arrays.binarySearch(lineStarts, offset)
+    val actualLine = if lineIdx >= 0 then lineIdx else -lineIdx - 2
+    val col        = offset - lineStarts(actualLine)
+    LineCol(actualLine + 1, col + 1) // 1-based for display
   }
 
   def lineCount: Int = lineStarts.length
@@ -37,8 +37,8 @@ final case class LineMap(lineStarts: Array[Int]) {
 
 object LineMap {
   def fromSource(content: String): LineMap = {
-    val starts = content.zipWithIndex.collect {
-      case ('\n', idx) => idx + 1
+    val starts = content.zipWithIndex.collect { case ('\n', idx) =>
+      idx + 1
     }
     LineMap((0 +: starts).toArray)
   }
@@ -55,18 +55,18 @@ final case class SourceFile(name: String, content: String) {
 
   def extractLine(line: Int): String = {
     val start = lineMap.lineStarts(line - 1)
-    val end = if (line < lineMap.lineCount)
-                lineMap.lineStarts(line) - 1
-              else
-                content.length
+    val end =
+      if line < lineMap.lineCount then lineMap.lineStarts(line) - 1
+      else content.length
     content.substring(start, end)
   }
 
   def extractSnippet(span: Span): String = {
     val (startLC, endLC) = spanToLineCol(span)
-    val line = extractLine(startLC.line)
-    val lineNum = f"${startLC.line}%3d"
-    val pointer = " " * (startLC.col - 1) + "^" * ((span.length max 1) min (line.length - startLC.col + 1))
+    val line             = extractLine(startLC.line)
+    val lineNum          = f"${startLC.line}%3d"
+    val pointer =
+      " " * (startLC.col - 1) + "^" * ((span.length max 1) min (line.length - startLC.col + 1))
     s"""|
         | $lineNum | $line
         |     | $pointer""".stripMargin
@@ -84,12 +84,13 @@ object Located {
 
 /** Qualified name for namespace support (e.g., "stdlib.math.add") */
 final case class QualifiedName(parts: List[String]) {
+
   /** True if this is a simple name without namespace */
   def isSimple: Boolean = parts.size == 1
 
   /** The namespace portion (all parts except the last) */
   def namespace: Option[String] =
-    if (parts.size > 1) Some(parts.init.mkString(".")) else None
+    if parts.size > 1 then Some(parts.init.mkString(".")) else None
 
   /** The local name (last part) */
   def localName: String = parts.last
@@ -101,6 +102,7 @@ final case class QualifiedName(parts: List[String]) {
 }
 
 object QualifiedName {
+
   /** Create a simple (non-qualified) name */
   def simple(name: String): QualifiedName = QualifiedName(List(name))
 
@@ -110,41 +112,42 @@ object QualifiedName {
 
 /** A complete constellation-lang program */
 final case class Program(
-  declarations: List[Declaration],
-  outputs: List[Located[String]]  // List of declared output variable names
+    declarations: List[Declaration],
+    outputs: List[Located[String]] // List of declared output variable names
 )
 
 /** Top-level declarations */
 sealed trait Declaration
 
 object Declaration {
+
   /** Type definition: type Communication = { id: String, channel: String } */
   final case class TypeDef(
-    name: Located[String],
-    definition: Located[TypeExpr]
+      name: Located[String],
+      definition: Located[TypeExpr]
   ) extends Declaration
 
   /** Input declaration: in communications: Candidates<Communication> */
   final case class InputDecl(
-    name: Located[String],
-    typeExpr: Located[TypeExpr]
+      name: Located[String],
+      typeExpr: Located[TypeExpr]
   ) extends Declaration
 
   /** Variable assignment: embeddings = embed-model(communications) */
   final case class Assignment(
-    target: Located[String],
-    value: Located[Expression]
+      target: Located[String],
+      value: Located[Expression]
   ) extends Declaration
 
   /** Output declaration: out varName */
   final case class OutputDecl(
-    name: Located[String]
+      name: Located[String]
   ) extends Declaration
 
   /** Use declaration: use stdlib.math or use stdlib.math as m */
   final case class UseDecl(
-    path: Located[QualifiedName],
-    alias: Option[Located[String]]
+      path: Located[QualifiedName],
+      alias: Option[Located[String]]
   ) extends Declaration
 }
 
@@ -152,6 +155,7 @@ object Declaration {
 sealed trait TypeExpr
 
 object TypeExpr {
+
   /** Primitive types: String, Int, Float, Boolean */
   final case class Primitive(name: String) extends TypeExpr
 
@@ -170,61 +174,62 @@ object TypeExpr {
 
 /** Comparison operators */
 enum CompareOp:
-  case Eq      // ==
-  case NotEq   // !=
-  case Lt      // <
-  case Gt      // >
-  case LtEq    // <=
-  case GtEq    // >=
+  case Eq    // ==
+  case NotEq // !=
+  case Lt    // <
+  case Gt    // >
+  case LtEq  // <=
+  case GtEq  // >=
 
 /** Arithmetic operators */
 enum ArithOp:
-  case Add     // +
-  case Sub     // -
-  case Mul     // *
-  case Div     // /
+  case Add // +
+  case Sub // -
+  case Mul // *
+  case Div // /
 
 /** Boolean operators */
 enum BoolOp:
-  case And     // and
-  case Or      // or
+  case And // and
+  case Or  // or
 
 /** Expressions */
 sealed trait Expression
 
 object Expression {
+
   /** Variable reference: communications, embeddings */
   final case class VarRef(name: String) extends Expression
 
   /** Function call: ide-ranker-v2-candidate-embed(communications) or stdlib.math.add(a, b) */
   final case class FunctionCall(
-    name: QualifiedName,
-    args: List[Located[Expression]]
+      name: QualifiedName,
+      args: List[Located[Expression]]
   ) extends Expression
 
   /** Type algebra on expressions: embeddings + communications */
   final case class Merge(
-    left: Located[Expression],
-    right: Located[Expression]
+      left: Located[Expression],
+      right: Located[Expression]
   ) extends Expression
 
   /** Projection: communications[communicationId, channel] */
   final case class Projection(
-    source: Located[Expression],
-    fields: List[String]
+      source: Located[Expression],
+      fields: List[String]
   ) extends Expression
 
   /** Field access: user.name (returns the field value directly, not wrapped in a record) */
   final case class FieldAccess(
-    source: Located[Expression],
-    field: Located[String]
+      source: Located[Expression],
+      field: Located[String]
   ) extends Expression
 
   /** Conditional: if (cond) expr else expr */
   final case class Conditional(
-    condition: Located[Expression],
-    thenBranch: Located[Expression],
-    elseBranch: Located[Expression]
+      condition: Located[Expression],
+      thenBranch: Located[Expression],
+      elseBranch: Located[Expression]
   ) extends Expression
 
   /** String literal: "hello" */
@@ -241,61 +246,53 @@ object Expression {
 
   /** Comparison expression: a == b, x < y, etc. */
   final case class Compare(
-    left: Located[Expression],
-    op: CompareOp,
-    right: Located[Expression]
+      left: Located[Expression],
+      op: CompareOp,
+      right: Located[Expression]
   ) extends Expression
 
   /** Arithmetic expression: a + b, x * y, etc. */
   final case class Arithmetic(
-    left: Located[Expression],
-    op: ArithOp,
-    right: Located[Expression]
+      left: Located[Expression],
+      op: ArithOp,
+      right: Located[Expression]
   ) extends Expression
 
   /** Boolean binary expression: a and b, a or b */
   final case class BoolBinary(
-    left: Located[Expression],
-    op: BoolOp,
-    right: Located[Expression]
+      left: Located[Expression],
+      op: BoolOp,
+      right: Located[Expression]
   ) extends Expression
 
   /** Boolean negation: not a */
   final case class Not(
-    operand: Located[Expression]
+      operand: Located[Expression]
   ) extends Expression
 
-  /** Guard expression: expr when condition
-    * Returns Optional<T> where T is the type of expr.
-    * If condition is true, returns Some(expr), else returns None.
+  /** Guard expression: expr when condition Returns Optional<T> where T is the type of expr. If
+    * condition is true, returns Some(expr), else returns None.
     */
   final case class Guard(
-    expr: Located[Expression],
-    condition: Located[Expression]
+      expr: Located[Expression],
+      condition: Located[Expression]
   ) extends Expression
 
-  /** Coalesce expression: optional ?? fallback
-    * If optional is Some(v), returns v.
-    * If optional is None, evaluates and returns fallback.
-    * Short-circuits: fallback not evaluated if left is Some.
+  /** Coalesce expression: optional ?? fallback If optional is Some(v), returns v. If optional is
+    * None, evaluates and returns fallback. Short-circuits: fallback not evaluated if left is Some.
     */
   final case class Coalesce(
-    left: Located[Expression],
-    right: Located[Expression]
+      left: Located[Expression],
+      right: Located[Expression]
   ) extends Expression
 
-  /** Branch expression: multi-way conditional
-    * branch {
-    *   condition1 -> expression1,
-    *   condition2 -> expression2,
-    *   otherwise -> defaultExpression
-    * }
-    * Conditions evaluated in order; first match wins.
+  /** Branch expression: multi-way conditional branch { condition1 -> expression1, condition2 ->
+    * expression2, otherwise -> defaultExpression } Conditions evaluated in order; first match wins.
     * 'otherwise' is required for exhaustiveness.
     */
   final case class Branch(
-    cases: List[(Located[Expression], Located[Expression])],  // condition -> expression pairs
-    otherwise: Located[Expression]
+      cases: List[(Located[Expression], Located[Expression])], // condition -> expression pairs
+      otherwise: Located[Expression]
   ) extends Expression
 }
 
@@ -306,13 +303,13 @@ sealed trait CompileError {
 
   def format: String = span match {
     case Some(s) => s"Error at $s: $message"
-    case None => s"Error: $message"
+    case None    => s"Error: $message"
   }
 
   def formatWithSource(source: SourceFile): String = span match {
     case Some(s) =>
       val (start, _) = source.spanToLineCol(s)
-      val snippet = source.extractSnippet(s)
+      val snippet    = source.extractSnippet(s)
       s"Error at ${source.name}:$start\n$message\n$snippet"
     case None =>
       s"Error: $message"
@@ -321,7 +318,7 @@ sealed trait CompileError {
 
 object CompileError {
   final case class ParseError(message: String, span: Option[Span]) extends CompileError
-  final case class TypeError(message: String, span: Option[Span]) extends CompileError
+  final case class TypeError(message: String, span: Option[Span])  extends CompileError
   final case class UndefinedVariable(name: String, span: Option[Span]) extends CompileError {
     def message: String = s"Undefined variable: $name"
   }
@@ -331,16 +328,28 @@ object CompileError {
   final case class UndefinedFunction(name: String, span: Option[Span]) extends CompileError {
     def message: String = s"Undefined function: $name"
   }
-  final case class TypeMismatch(expected: String, actual: String, span: Option[Span]) extends CompileError {
+  final case class TypeMismatch(expected: String, actual: String, span: Option[Span])
+      extends CompileError {
     def message: String = s"Type mismatch: expected $expected, got $actual"
   }
-  final case class InvalidProjection(field: String, availableFields: List[String], span: Option[Span]) extends CompileError {
-    def message: String = s"Invalid projection: field '$field' not found. Available: ${availableFields.mkString(", ")}"
+  final case class InvalidProjection(
+      field: String,
+      availableFields: List[String],
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Invalid projection: field '$field' not found. Available: ${availableFields.mkString(", ")}"
   }
-  final case class InvalidFieldAccess(field: String, availableFields: List[String], span: Option[Span]) extends CompileError {
-    def message: String = s"Invalid field access: field '$field' not found. Available: ${availableFields.mkString(", ")}"
+  final case class InvalidFieldAccess(
+      field: String,
+      availableFields: List[String],
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Invalid field access: field '$field' not found. Available: ${availableFields.mkString(", ")}"
   }
-  final case class IncompatibleMerge(leftType: String, rightType: String, span: Option[Span]) extends CompileError {
+  final case class IncompatibleMerge(leftType: String, rightType: String, span: Option[Span])
+      extends CompileError {
     def message: String =
       s"""Cannot merge types: $leftType + $rightType
          |The '+' operator requires compatible types:
@@ -352,15 +361,27 @@ object CompileError {
   final case class UndefinedNamespace(namespace: String, span: Option[Span]) extends CompileError {
     def message: String = s"Undefined namespace: $namespace"
   }
-  final case class AmbiguousFunction(name: String, candidates: List[String], span: Option[Span]) extends CompileError {
+  final case class AmbiguousFunction(name: String, candidates: List[String], span: Option[Span])
+      extends CompileError {
     def message: String = s"Ambiguous function '$name'. Candidates: ${candidates.mkString(", ")}"
   }
 
-  final case class UnsupportedComparison(op: String, leftType: String, rightType: String, span: Option[Span]) extends CompileError {
+  final case class UnsupportedComparison(
+      op: String,
+      leftType: String,
+      rightType: String,
+      span: Option[Span]
+  ) extends CompileError {
     def message: String = s"Operator '$op' is not supported for types $leftType and $rightType"
   }
 
-  final case class UnsupportedArithmetic(op: String, leftType: String, rightType: String, span: Option[Span]) extends CompileError {
-    def message: String = s"Arithmetic operator '$op' is not supported for types $leftType and $rightType"
+  final case class UnsupportedArithmetic(
+      op: String,
+      leftType: String,
+      rightType: String,
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Arithmetic operator '$op' is not supported for types $leftType and $rightType"
   }
 }

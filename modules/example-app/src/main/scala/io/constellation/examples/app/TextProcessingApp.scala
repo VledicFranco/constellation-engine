@@ -1,38 +1,36 @@
 package io.constellation.examples.app
 
 import cats.effect.{IO, IOApp}
-import cats.implicits._
+import cats.implicits.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.http.ConstellationServer
-import io.constellation.examples.app.modules.{TextModules, DataModules}
+import io.constellation.examples.app.modules.{DataModules, TextModules}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Example Application: Text Processing Pipeline
   *
   * This application demonstrates how to:
-  * 1. Create custom domain-specific modules
-  * 2. Register them with the Constellation engine
-  * 3. Expose them via HTTP API
-  * 4. Use constellation-lang to compose pipelines
+  *   1. Create custom domain-specific modules 2. Register them with the Constellation engine 3.
+  *      Expose them via HTTP API 4. Use constellation-lang to compose pipelines
   *
-  * == Custom Modules ==
+  * ==Custom Modules==
   * This app provides text processing and data analysis modules:
   *
   * '''Text Transformers:'''
-  *  - Uppercase, Lowercase, Trim
-  *  - Replace, Split
+  *   - Uppercase, Lowercase, Trim
+  *   - Replace, Split
   *
   * '''Text Analyzers:'''
-  *  - WordCount, TextLength
-  *  - Contains
+  *   - WordCount, TextLength
+  *   - Contains
   *
   * '''Data Processors:'''
-  *  - SumList, Average, Max, Min
-  *  - Filter, Map operations
+  *   - SumList, Average, Max, Min
+  *   - Filter, Map operations
   *
-  * == Usage ==
+  * ==Usage==
   * Start the server:
   * {{{
   * sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
@@ -53,12 +51,13 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   * }}}
   */
 object TextProcessingApp extends IOApp.Simple {
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.examples.app.TextProcessingApp")
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName[IO]("io.constellation.examples.app.TextProcessingApp")
 
-  def run: IO[Unit] = {
+  def run: IO[Unit] =
     for {
       // Step 1: Initialize the Constellation engine
-      _ <- logger.info("Initializing Constellation Engine...")
+      _             <- logger.info("Initializing Constellation Engine...")
       constellation <- ConstellationImpl.init
 
       // Step 2: Register custom modules
@@ -66,11 +65,11 @@ object TextProcessingApp extends IOApp.Simple {
       _ <- registerCustomModules(constellation)
 
       // Step 3: Create compiler with registered modules
-      _ <- logger.info("Creating compiler...")
+      _        <- logger.info("Creating compiler...")
       compiler <- buildCompiler(constellation)
 
       // Step 4: Log registered modules
-      _ <- logger.info("Available custom modules:")
+      _       <- logger.info("Available custom modules:")
       modules <- constellation.getModules
       _ <- modules.traverse { module =>
         logger.info(s"  ${module.name} (v${module.majorVersion}.${module.minorVersion})")
@@ -86,7 +85,6 @@ object TextProcessingApp extends IOApp.Simple {
         .withPort(8080)
         .run
     } yield ()
-  }
 
   /** Register all custom modules with the engine */
   private def registerCustomModules(constellation: io.constellation.Constellation): IO[Unit] = {
@@ -98,7 +96,7 @@ object TextProcessingApp extends IOApp.Simple {
   }
 
   /** Build a LangCompiler with all registered modules from Constellation */
-  private def buildCompiler(constellation: io.constellation.Constellation): IO[LangCompiler] = {
+  private def buildCompiler(constellation: io.constellation.Constellation): IO[LangCompiler] =
     constellation.getModules.map { modules =>
       val builder = modules.foldLeft(LangCompiler.builder) { (b, moduleSpec) =>
         // Extract params and return type from module spec
@@ -108,7 +106,7 @@ object TextProcessingApp extends IOApp.Simple {
 
         val returns = moduleSpec.produces.get("out") match {
           case Some(ctype) => io.constellation.lang.semantic.SemanticType.fromCType(ctype)
-          case None =>
+          case None        =>
             // If no "out", create a record from all produces
             io.constellation.lang.semantic.SemanticType.SRecord(
               moduleSpec.produces.map { case (name, ctype) =>
@@ -129,5 +127,4 @@ object TextProcessingApp extends IOApp.Simple {
       }
       builder.build
     }
-  }
 }

@@ -17,9 +17,9 @@ class SpecTest extends AnyFlatSpec with Matchers {
   }
 
   it should "identify top level data nodes" in {
-    val dataId1 = UUID.randomUUID()
-    val dataId2 = UUID.randomUUID()
-    val dataId3 = UUID.randomUUID()
+    val dataId1  = UUID.randomUUID()
+    val dataId2  = UUID.randomUUID()
+    val dataId3  = UUID.randomUUID()
     val moduleId = UUID.randomUUID()
 
     val dataSpec1 = DataNodeSpec(name = "data1", nicknames = Map.empty, cType = CType.CInt)
@@ -38,7 +38,7 @@ class SpecTest extends AnyFlatSpec with Matchers {
     // dataId2 has no edges at all - the current implementation only considers nodes in inEdges
     // dataId3 is produced by a module, so it's not top-level
     dag.topLevelDataNodes.keys should contain(dataId1)
-    dag.topLevelDataNodes.keys should not contain(dataId3)
+    dag.topLevelDataNodes.keys should not contain dataId3
   }
 
   "DataNodeSpec" should "store nicknames per module" in {

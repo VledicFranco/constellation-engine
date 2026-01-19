@@ -2,8 +2,8 @@ package io.constellation.examples.app
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
-import io.constellation._
+import cats.implicits.*
+import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.compiler.CompileResult
 import io.constellation.stdlib.StdLib
@@ -14,13 +14,11 @@ import java.io.File
 import java.nio.file.{Files, Paths}
 import scala.io.Source
 
-/** Tests that verify all .cst example programs in the examples directory compile
-  * and execute successfully.
+/** Tests that verify all .cst example programs in the examples directory compile and execute
+  * successfully.
   *
-  * This test suite automatically discovers all .cst files in the examples directory
-  * and verifies:
-  * 1. Each file compiles without errors
-  * 2. The compiled DAG has the expected structure
+  * This test suite automatically discovers all .cst files in the examples directory and verifies:
+  *   1. Each file compiles without errors 2. The compiled DAG has the expected structure
   */
 class ExamplesTest extends AnyFlatSpec with Matchers {
 
@@ -29,12 +27,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   /** Get all .cst files from the examples directory */
   private def getExampleFiles: List[File] = {
     val examplesDir = new File("modules/example-app/examples")
-    if (examplesDir.exists() && examplesDir.isDirectory) {
+    if examplesDir.exists() && examplesDir.isDirectory then {
       examplesDir.listFiles().filter(_.getName.endsWith(".cst")).toList
     } else {
       // Try alternate path (when running from different working directory)
       val altDir = new File("examples")
-      if (altDir.exists() && altDir.isDirectory) {
+      if altDir.exists() && altDir.isDirectory then {
         altDir.listFiles().filter(_.getName.endsWith(".cst")).toList
       } else {
         List.empty
@@ -58,7 +56,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   // ========== simple-test.cst ==========
 
   "simple-test.cst" should "compile successfully" in {
-    val files = getExampleFiles
+    val files      = getExampleFiles
     val simpleTest = files.find(_.getName == "simple-test.cst")
     simpleTest shouldBe defined
 
@@ -71,10 +69,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "have correct input and output structure" in {
-    val files = getExampleFiles
+    val files      = getExampleFiles
     val simpleTest = files.find(_.getName == "simple-test.cst").get
-    val source = readFile(simpleTest)
-    val result = compiler.compile(source, "simple-test")
+    val source     = readFile(simpleTest)
+    val result     = compiler.compile(source, "simple-test")
 
     val compiled = result.toOption.get
 
@@ -92,7 +90,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   // ========== text-analysis.cst ==========
 
   "text-analysis.cst" should "compile successfully" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val textAnalysis = files.find(_.getName == "text-analysis.cst")
     textAnalysis shouldBe defined
 
@@ -105,10 +103,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "have correct input and output structure" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val textAnalysis = files.find(_.getName == "text-analysis.cst").get
-    val source = readFile(textAnalysis)
-    val result = compiler.compile(source, "text-analysis")
+    val source       = readFile(textAnalysis)
+    val result       = compiler.compile(source, "text-analysis")
 
     val compiled = result.toOption.get
 
@@ -117,7 +115,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     inputNames should contain("document")
 
     // Should have multiple outputs
-    compiled.dagSpec.declaredOutputs should contain allOf("cleaned", "normalized", "words", "chars", "lines")
+    compiled.dagSpec.declaredOutputs should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
 
     // Should have the text processing modules
     val moduleNames = compiled.dagSpec.modules.values.map(_.name).toList
@@ -131,7 +129,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   // ========== data-pipeline.cst ==========
 
   "data-pipeline.cst" should "compile successfully" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val dataPipeline = files.find(_.getName == "data-pipeline.cst")
     dataPipeline shouldBe defined
 
@@ -144,37 +142,37 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "have correct input structure" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val dataPipeline = files.find(_.getName == "data-pipeline.cst").get
-    val source = readFile(dataPipeline)
-    val result = compiler.compile(source, "data-pipeline")
+    val source       = readFile(dataPipeline)
+    val result       = compiler.compile(source, "data-pipeline")
 
     val compiled = result.toOption.get
 
     // Should have 'numbers', 'threshold', and 'multiplier' as inputs
     val inputNames = compiled.dagSpec.data.values.map(_.name).toSet
-    inputNames should contain allOf("numbers", "threshold", "multiplier")
+    inputNames should contain allOf ("numbers", "threshold", "multiplier")
   }
 
   it should "have correct output structure" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val dataPipeline = files.find(_.getName == "data-pipeline.cst").get
-    val source = readFile(dataPipeline)
-    val result = compiler.compile(source, "data-pipeline")
+    val source       = readFile(dataPipeline)
+    val result       = compiler.compile(source, "data-pipeline")
 
     val compiled = result.toOption.get
 
     // Should have all declared outputs
-    compiled.dagSpec.declaredOutputs should contain allOf(
+    compiled.dagSpec.declaredOutputs should contain allOf (
       "filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal"
     )
   }
 
   it should "have all required data processing modules" in {
-    val files = getExampleFiles
+    val files        = getExampleFiles
     val dataPipeline = files.find(_.getName == "data-pipeline.cst").get
-    val source = readFile(dataPipeline)
-    val result = compiler.compile(source, "data-pipeline")
+    val source       = readFile(dataPipeline)
+    val result       = compiler.compile(source, "data-pipeline")
 
     val compiled = result.toOption.get
 
@@ -196,14 +194,14 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     files should not be empty
 
     val results = files.map { file =>
-      val source = readFile(file)
+      val source  = readFile(file)
       val dagName = file.getName.stripSuffix(".cst")
-      val result = compiler.compile(source, dagName)
+      val result  = compiler.compile(source, dagName)
       (file.getName, result)
     }
 
     val failures = results.filter(_._2.isLeft)
-    if (failures.nonEmpty) {
+    if failures.nonEmpty then {
       val errorMessages = failures.map { case (name, result) =>
         s"$name: ${result.left.toOption.get.map(_.message).mkString("; ")}"
       }
@@ -217,9 +215,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val files = getExampleFiles
 
     files.foreach { file =>
-      val source = readFile(file)
+      val source  = readFile(file)
       val dagName = file.getName.stripSuffix(".cst")
-      val result = compiler.compile(source, dagName)
+      val result  = compiler.compile(source, dagName)
 
       withClue(s"${file.getName}: ") {
         result.isRight shouldBe true
@@ -236,20 +234,19 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   // ========== Execution Tests ==========
 
   /** Create a Constellation instance with all modules registered */
-  private def createConstellation: IO[Constellation] = {
+  private def createConstellation: IO[Constellation] =
     for {
       constellation <- ConstellationImpl.init
       allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
       _ <- allModules.traverse(constellation.setModule)
     } yield constellation
-  }
 
   "simple-test.cst" should "execute with correct output" in {
     val test = for {
       constellation <- createConstellation
-      files = getExampleFiles
+      files      = getExampleFiles
       simpleTest = files.find(_.getName == "simple-test.cst").get
-      source = readFile(simpleTest)
+      source     = readFile(simpleTest)
 
       // Compile
       compiled = compiler.compile(source, "simple-test").toOption.get
@@ -263,7 +260,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
       // Get the output
       resultBinding = compiled.dagSpec.outputBindings("result")
-      resultValue = state.data.get(resultBinding).map(_.value)
+      resultValue   = state.data.get(resultBinding).map(_.value)
     } yield resultValue
 
     val result = test.unsafeRunSync()
@@ -274,9 +271,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   "text-analysis.cst" should "execute with correct outputs" in {
     val test = for {
       constellation <- createConstellation
-      files = getExampleFiles
+      files        = getExampleFiles
       textAnalysis = files.find(_.getName == "text-analysis.cst").get
-      source = readFile(textAnalysis)
+      source       = readFile(textAnalysis)
 
       // Compile
       compiled = compiler.compile(source, "text-analysis").toOption.get
@@ -293,7 +290,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     // Verify outputs exist
     val outputBindings = compiled.dagSpec.outputBindings
-    outputBindings.keys should contain allOf("cleaned", "normalized", "words", "chars", "lines")
+    outputBindings.keys should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
 
     // Check cleaned output
     val cleanedValue = state.data.get(outputBindings("cleaned")).map(_.value)
@@ -314,9 +311,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   "data-pipeline.cst" should "execute with correct outputs" in {
     val test = for {
       constellation <- createConstellation
-      files = getExampleFiles
+      files        = getExampleFiles
       dataPipeline = files.find(_.getName == "data-pipeline.cst").get
-      source = readFile(dataPipeline)
+      source       = readFile(dataPipeline)
 
       // Compile
       compiled = compiler.compile(source, "data-pipeline").toOption.get
@@ -327,8 +324,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       // Execute with inputs: numbers=[1,2,3,4,5], threshold=2, multiplier=3
       // Expected: filtered=[3,4,5], scaled=[9,12,15], total=36, avg=12.0, highest=15, lowest=9
       inputs = Map(
-        "numbers" -> CValue.CList(Vector(1L, 2L, 3L, 4L, 5L).map(CValue.CInt.apply), CType.CInt),
-        "threshold" -> CValue.CInt(2),
+        "numbers"    -> CValue.CList(Vector(1L, 2L, 3L, 4L, 5L).map(CValue.CInt.apply), CType.CInt),
+        "threshold"  -> CValue.CInt(2),
         "multiplier" -> CValue.CInt(3)
       )
       state <- constellation.runDag("data-pipeline", inputs)
@@ -337,7 +334,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val (state, compiled) = test.unsafeRunSync()
 
     val outputBindings = compiled.dagSpec.outputBindings
-    outputBindings.keys should contain allOf("filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal")
+    outputBindings.keys should contain allOf ("filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal")
 
     // Verify filtered output: [3, 4, 5]
     val filteredValue = state.data.get(outputBindings("filtered")).map(_.value)

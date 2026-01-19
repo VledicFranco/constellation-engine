@@ -5,45 +5,44 @@ import io.constellation.{DagSpec, Module, ModuleNodeSpec, ModuleRegistry}
 
 import java.util.UUID
 
-class ModuleRegistryImpl(refMap: Ref[IO, Map[String, Module.Uninitialized]]) extends ModuleRegistry {
+class ModuleRegistryImpl(refMap: Ref[IO, Map[String, Module.Uninitialized]])
+    extends ModuleRegistry {
 
   override def listModules: IO[List[ModuleNodeSpec]] = for {
     map <- refMap.get
     result = map.values.map(_.spec).toList
   } yield result
 
-  override def register(name: String, node: Module.Uninitialized): IO[Unit] = refMap.update(_ + (name -> node))
+  override def register(name: String, node: Module.Uninitialized): IO[Unit] =
+    refMap.update(_ + (name -> node))
 
-  override def get(name: String): IO[Option[Module.Uninitialized]] = {
+  override def get(name: String): IO[Option[Module.Uninitialized]] =
     for {
       store <- refMap.get
       // Try exact name first, then try stripping dag name prefix (e.g., "test.Uppercase" -> "Uppercase")
-      exactMatch = store.get(name)
+      exactMatch    = store.get(name)
       strippedMatch = name.split('.').lastOption.flatMap(store.get)
     } yield exactMatch.orElse(strippedMatch)
-  }
 
-  override def initModules(dagSpec: DagSpec): IO[Map[UUID, Module.Uninitialized]] = {
+  override def initModules(dagSpec: DagSpec): IO[Map[UUID, Module.Uninitialized]] =
     for {
       store <- refMap.get
       loaded = dagSpec.modules.toList
         .map { case (uuid, spec) =>
           // Try exact name first, then try stripping dag name prefix (e.g., "test.Uppercase" -> "Uppercase")
-          val exactMatch = store.get(spec.name)
+          val exactMatch    = store.get(spec.name)
           val strippedMatch = spec.name.split('.').lastOption.flatMap(store.get)
           exactMatch.orElse(strippedMatch).map(uuid -> _)
         }
         .collect { case Some(f) => f }
         .toMap
     } yield loaded
-  }
 }
 
 object ModuleRegistryImpl {
 
-  def init: IO[ModuleRegistry] = {
+  def init: IO[ModuleRegistry] =
     for {
       ref <- Ref.of[IO, Map[String, Module.Uninitialized]](Map.empty)
     } yield new ModuleRegistryImpl(ref)
-  }
 }

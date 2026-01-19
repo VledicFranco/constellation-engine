@@ -54,39 +54,40 @@ object SemanticType {
 
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
-    case SString => CType.CString
-    case SInt => CType.CInt
-    case SFloat => CType.CFloat
-    case SBoolean => CType.CBoolean
-    case SRecord(fields) => CType.CProduct(fields.view.mapValues(toCType).toMap)
+    case SString           => CType.CString
+    case SInt              => CType.CInt
+    case SFloat            => CType.CFloat
+    case SBoolean          => CType.CBoolean
+    case SRecord(fields)   => CType.CProduct(fields.view.mapValues(toCType).toMap)
     case SCandidates(elem) => CType.CList(toCType(elem))
-    case SList(elem) => CType.CList(toCType(elem))
-    case SMap(k, v) => CType.CMap(toCType(k), toCType(v))
-    case SOptional(inner) => CType.COptional(toCType(inner))
+    case SList(elem)       => CType.CList(toCType(elem))
+    case SMap(k, v)        => CType.CMap(toCType(k), toCType(v))
+    case SOptional(inner)  => CType.COptional(toCType(inner))
   }
 
   /** Convert Constellation CType to SemanticType */
   def fromCType(ct: CType): SemanticType = ct match {
-    case CType.CString => SString
-    case CType.CInt => SInt
-    case CType.CFloat => SFloat
-    case CType.CBoolean => SBoolean
-    case CType.CList(elem) => SList(fromCType(elem))
-    case CType.CMap(k, v) => SMap(fromCType(k), fromCType(v))
+    case CType.CString          => SString
+    case CType.CInt             => SInt
+    case CType.CFloat           => SFloat
+    case CType.CBoolean         => SBoolean
+    case CType.CList(elem)      => SList(fromCType(elem))
+    case CType.CMap(k, v)       => SMap(fromCType(k), fromCType(v))
     case CType.CProduct(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
-    case CType.CUnion(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
+    case CType.CUnion(fields)   => SRecord(fields.view.mapValues(fromCType).toMap)
     case CType.COptional(inner) => SOptional(fromCType(inner))
   }
 }
 
 /** Function signature for registered modules */
 final case class FunctionSignature(
-  name: String,                              // Language name: "ide-ranker-v2"
-  params: List[(String, SemanticType)],      // Parameter names and types
-  returns: SemanticType,                     // Return type
-  moduleName: String,                        // Constellation module name
-  namespace: Option[String] = None           // Optional namespace: "stdlib.math"
+    name: String,                         // Language name: "ide-ranker-v2"
+    params: List[(String, SemanticType)], // Parameter names and types
+    returns: SemanticType,                // Return type
+    moduleName: String,                   // Constellation module name
+    namespace: Option[String] = None      // Optional namespace: "stdlib.math"
 ) {
+
   /** Fully qualified name (namespace.name or just name if no namespace) */
   def qualifiedName: String = namespace.map(_ + ".").getOrElse("") + name
 
@@ -100,9 +101,10 @@ import io.constellation.lang.ast.{CompileError, QualifiedName, Span}
 
 /** Tracks imported namespaces and aliases within a scope */
 final case class NamespaceScope(
-  imports: Map[String, String] = Map.empty,      // alias -> full namespace
-  wildcardImports: Set[String] = Set.empty       // namespaces imported without alias
+    imports: Map[String, String] = Map.empty, // alias -> full namespace
+    wildcardImports: Set[String] = Set.empty  // namespaces imported without alias
 ) {
+
   /** Add a wildcard import (use stdlib.math) */
   def addWildcard(namespace: String): NamespaceScope =
     copy(wildcardImports = wildcardImports + namespace)
@@ -118,17 +120,23 @@ object NamespaceScope {
 
 /** Registry of available functions for type checking */
 trait FunctionRegistry {
+
   /** Lookup by simple name (for backwards compatibility) */
   def lookup(name: String): Option[FunctionSignature]
 
-  /** Lookup all functions with a given simple name (may return multiple from different namespaces) */
+  /** Lookup all functions with a given simple name (may return multiple from different namespaces)
+    */
   def lookupSimple(name: String): List[FunctionSignature]
 
   /** Lookup by fully qualified name (e.g., "stdlib.math.add") */
   def lookupQualified(qualifiedName: String): Option[FunctionSignature]
 
   /** Lookup a function in a given namespace scope, resolving imports and aliases */
-  def lookupInScope(name: QualifiedName, scope: NamespaceScope, span: Option[Span]): Either[CompileError, FunctionSignature]
+  def lookupInScope(
+      name: QualifiedName,
+      scope: NamespaceScope,
+      span: Option[Span]
+  ): Either[CompileError, FunctionSignature]
 
   /** Register a function signature */
   def register(sig: FunctionSignature): Unit
@@ -149,10 +157,9 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
   // All registered namespaces
   private var allNamespaces: Set[String] = Set.empty
 
-  def lookup(name: String): Option[FunctionSignature] = {
+  def lookup(name: String): Option[FunctionSignature] =
     // First try qualified, then simple (return first match for backwards compat)
     byQualifiedName.get(name).orElse(bySimpleName.get(name).flatMap(_.headOption))
-  }
 
   def lookupSimple(name: String): List[FunctionSignature] =
     bySimpleName.getOrElse(name, List.empty)
@@ -160,8 +167,12 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
   def lookupQualified(qualifiedName: String): Option[FunctionSignature] =
     byQualifiedName.get(qualifiedName)
 
-  def lookupInScope(name: QualifiedName, scope: NamespaceScope, span: Option[Span]): Either[CompileError, FunctionSignature] = {
-    if (name.isSimple) {
+  def lookupInScope(
+      name: QualifiedName,
+      scope: NamespaceScope,
+      span: Option[Span]
+  ): Either[CompileError, FunctionSignature] =
+    if name.isSimple then {
       // Simple name: check imports, then look for unambiguous match
       val simpleName = name.localName
 
@@ -181,7 +192,7 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
           val direct = lookupSimple(simpleName).filter(_.namespace.isEmpty)
 
           // For backwards compatibility: if no imports are defined, also include functions with namespaces
-          val backwardsCompat = if (scope.imports.isEmpty && scope.wildcardImports.isEmpty) {
+          val backwardsCompat = if scope.imports.isEmpty && scope.wildcardImports.isEmpty then {
             // Include ALL functions with this simple name for backwards compatibility
             lookupSimple(simpleName).filter(_.namespace.isDefined)
           } else {
@@ -194,11 +205,13 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
             case Nil =>
               // No matches - maybe it exists but not imported
               val existing = lookupSimple(simpleName)
-              if (existing.nonEmpty) {
-                Left(CompileError.UndefinedFunction(
-                  s"$simpleName (did you mean to import ${existing.map(_.qualifiedName).mkString(" or ")}?)",
-                  span
-                ))
+              if existing.nonEmpty then {
+                Left(
+                  CompileError.UndefinedFunction(
+                    s"$simpleName (did you mean to import ${existing.map(_.qualifiedName).mkString(" or ")}?)",
+                    span
+                  )
+                )
               } else {
                 Left(CompileError.UndefinedFunction(simpleName, span))
               }
@@ -224,24 +237,23 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
           // Try as a fully qualified name
           lookupQualified(name.fullName).toRight(
             // Check if namespace exists but function doesn't
-            if (allNamespaces.contains(name.namespace.getOrElse(""))) {
+            if allNamespaces.contains(name.namespace.getOrElse("")) then {
               CompileError.UndefinedFunction(name.fullName, span)
             } else {
               name.namespace match {
                 case Some(ns) => CompileError.UndefinedNamespace(ns, span)
-                case None => CompileError.UndefinedFunction(name.fullName, span)
+                case None     => CompileError.UndefinedFunction(name.fullName, span)
               }
             }
           )
       }
     }
-  }
 
   def register(sig: FunctionSignature): Unit = {
     // Register by simple name
     bySimpleName = bySimpleName.updatedWith(sig.name) {
       case Some(existing) => Some(existing :+ sig)
-      case None => Some(List(sig))
+      case None           => Some(List(sig))
     }
 
     // Register by qualified name

@@ -2,8 +2,8 @@ package io.constellation.examples.app.modules
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
-import io.constellation._
+import cats.implicits.*
+import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.examples.app.ExampleLib
 import io.constellation.stdlib.StdLib
@@ -19,13 +19,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
   private val compiler = ExampleLib.compiler
 
   /** Create a Constellation instance with all modules registered */
-  private def createConstellation: IO[Constellation] = {
+  private def createConstellation: IO[Constellation] =
     for {
       constellation <- ConstellationImpl.init
       allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
       _ <- allModules.traverse(constellation.setModule)
     } yield constellation
-  }
 
   /** Helper to compile, run, and extract output value */
   private def runModule[T](
@@ -37,10 +36,10 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       compiled = compiler.compile(source, dagName).toOption.get
-      _ <- constellation.setDag(dagName, compiled.dagSpec)
+      _     <- constellation.setDag(dagName, compiled.dagSpec)
       state <- constellation.runDag(dagName, inputs)
       resultBinding = compiled.dagSpec.outputBindings(outputName)
-      resultValue = state.data.get(resultBinding).map(_.value)
+      resultValue   = state.data.get(resultBinding).map(_.value)
     } yield resultValue
 
     val result = test.unsafeRunSync()
@@ -219,8 +218,8 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello hello hello"),
-      "find" -> CValue.CString("hello"),
+      "text"    -> CValue.CString("hello hello hello"),
+      "find"    -> CValue.CString("hello"),
       "replace" -> CValue.CString("hi")
     )
 
@@ -239,8 +238,8 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello world"),
-      "find" -> CValue.CString("xyz"),
+      "text"    -> CValue.CString("hello world"),
+      "find"    -> CValue.CString("xyz"),
       "replace" -> CValue.CString("abc")
     )
 
@@ -259,8 +258,8 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello world"),
-      "find" -> CValue.CString("o"),
+      "text"    -> CValue.CString("hello world"),
+      "find"    -> CValue.CString("o"),
       "replace" -> CValue.CString("")
     )
 
@@ -352,8 +351,8 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     """
     val inputs = Map("text" -> CValue.CString("hello"))
 
-    val result = runModule[Long](source, "length-test", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "length-test", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 5L
   }
@@ -366,8 +365,8 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     """
     val inputs = Map("text" -> CValue.CString(""))
 
-    val result = runModule[Long](source, "length-empty", inputs, "result") {
-      case CValue.CInt(v) => v
+    val result = runModule[Long](source, "length-empty", inputs, "result") { case CValue.CInt(v) =>
+      v
     }
     result shouldBe 0L
   }
@@ -396,7 +395,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello world"),
+      "text"      -> CValue.CString("hello world"),
       "substring" -> CValue.CString("world")
     )
 
@@ -414,7 +413,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello world"),
+      "text"      -> CValue.CString("hello world"),
       "substring" -> CValue.CString("xyz")
     )
 
@@ -432,7 +431,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("Hello World"),
+      "text"      -> CValue.CString("Hello World"),
       "substring" -> CValue.CString("hello")
     )
 
@@ -450,7 +449,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello"),
+      "text"      -> CValue.CString("hello"),
       "substring" -> CValue.CString("")
     )
 
@@ -514,7 +513,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("a,b,c,d"),
+      "text"      -> CValue.CString("a,b,c,d"),
       "delimiter" -> CValue.CString(",")
     )
 
@@ -532,7 +531,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("a::b::c"),
+      "text"      -> CValue.CString("a::b::c"),
       "delimiter" -> CValue.CString("::")
     )
 
@@ -550,7 +549,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
       out result
     """
     val inputs = Map(
-      "text" -> CValue.CString("hello world"),
+      "text"      -> CValue.CString("hello world"),
       "delimiter" -> CValue.CString(",")
     )
 

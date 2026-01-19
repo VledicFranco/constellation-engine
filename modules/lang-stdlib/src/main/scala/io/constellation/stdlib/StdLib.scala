@@ -1,10 +1,10 @@
 package io.constellation.stdlib
 
 import cats.effect.IO
-import io.constellation._
+import io.constellation.*
 import io.constellation.lang.compiler.CompileResult
 import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
-import io.constellation.lang.semantic._
+import io.constellation.lang.semantic.*
 
 import java.util.UUID
 
@@ -15,7 +15,7 @@ import java.util.UUID
 object StdLib {
 
   /** Register all standard library functions with a LangCompiler builder */
-  def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder = {
+  def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder =
     builder
       // Identity and transformation
       .withFunction(Identity.signature)
@@ -53,39 +53,38 @@ object StdLib {
       .withFunction(CompareOps.lteSignature)
       // Debug operations
       .withFunction(DebugOps.logSignature)
-  }
 
   /** Get all standard library modules */
   def allModules: Map[String, Module.Uninitialized] = Map(
-    Identity.module.spec.name -> Identity.module,
-    Const.intModule.spec.name -> Const.intModule,
-    Const.floatModule.spec.name -> Const.floatModule,
-    Const.stringModule.spec.name -> Const.stringModule,
-    Const.boolModule.spec.name -> Const.boolModule,
-    ListOps.lengthModule.spec.name -> ListOps.lengthModule,
-    ListOps.firstModule.spec.name -> ListOps.firstModule,
-    ListOps.lastModule.spec.name -> ListOps.lastModule,
-    ListOps.isEmptyModule.spec.name -> ListOps.isEmptyModule,
-    MathOps.addModule.spec.name -> MathOps.addModule,
-    MathOps.subtractModule.spec.name -> MathOps.subtractModule,
-    MathOps.multiplyModule.spec.name -> MathOps.multiplyModule,
-    MathOps.divideModule.spec.name -> MathOps.divideModule,
-    MathOps.maxModule.spec.name -> MathOps.maxModule,
-    MathOps.minModule.spec.name -> MathOps.minModule,
-    StringOps.concatModule.spec.name -> StringOps.concatModule,
-    StringOps.upperModule.spec.name -> StringOps.upperModule,
-    StringOps.lowerModule.spec.name -> StringOps.lowerModule,
-    StringOps.lengthModule.spec.name -> StringOps.lengthModule,
-    BoolOps.andModule.spec.name -> BoolOps.andModule,
-    BoolOps.orModule.spec.name -> BoolOps.orModule,
-    BoolOps.notModule.spec.name -> BoolOps.notModule,
-    CompareOps.eqIntModule.spec.name -> CompareOps.eqIntModule,
+    Identity.module.spec.name           -> Identity.module,
+    Const.intModule.spec.name           -> Const.intModule,
+    Const.floatModule.spec.name         -> Const.floatModule,
+    Const.stringModule.spec.name        -> Const.stringModule,
+    Const.boolModule.spec.name          -> Const.boolModule,
+    ListOps.lengthModule.spec.name      -> ListOps.lengthModule,
+    ListOps.firstModule.spec.name       -> ListOps.firstModule,
+    ListOps.lastModule.spec.name        -> ListOps.lastModule,
+    ListOps.isEmptyModule.spec.name     -> ListOps.isEmptyModule,
+    MathOps.addModule.spec.name         -> MathOps.addModule,
+    MathOps.subtractModule.spec.name    -> MathOps.subtractModule,
+    MathOps.multiplyModule.spec.name    -> MathOps.multiplyModule,
+    MathOps.divideModule.spec.name      -> MathOps.divideModule,
+    MathOps.maxModule.spec.name         -> MathOps.maxModule,
+    MathOps.minModule.spec.name         -> MathOps.minModule,
+    StringOps.concatModule.spec.name    -> StringOps.concatModule,
+    StringOps.upperModule.spec.name     -> StringOps.upperModule,
+    StringOps.lowerModule.spec.name     -> StringOps.lowerModule,
+    StringOps.lengthModule.spec.name    -> StringOps.lengthModule,
+    BoolOps.andModule.spec.name         -> BoolOps.andModule,
+    BoolOps.orModule.spec.name          -> BoolOps.orModule,
+    BoolOps.notModule.spec.name         -> BoolOps.notModule,
+    CompareOps.eqIntModule.spec.name    -> CompareOps.eqIntModule,
     CompareOps.eqStringModule.spec.name -> CompareOps.eqStringModule,
-    CompareOps.gtModule.spec.name -> CompareOps.gtModule,
-    CompareOps.ltModule.spec.name -> CompareOps.ltModule,
-    CompareOps.gteModule.spec.name -> CompareOps.gteModule,
-    CompareOps.lteModule.spec.name -> CompareOps.lteModule,
-    DebugOps.logModule.spec.name -> DebugOps.logModule,
+    CompareOps.gtModule.spec.name       -> CompareOps.gtModule,
+    CompareOps.ltModule.spec.name       -> CompareOps.ltModule,
+    CompareOps.gteModule.spec.name      -> CompareOps.gteModule,
+    CompareOps.lteModule.spec.name      -> CompareOps.lteModule,
+    DebugOps.logModule.spec.name        -> DebugOps.logModule
   )
 
   /** Create a LangCompiler with all standard library functions registered */
@@ -96,23 +95,23 @@ object StdLib {
 
   /** Compiler wrapper that includes stdlib modules in results */
   private class StdLibCompiler(
-    underlying: LangCompiler,
-    stdModules: Map[String, Module.Uninitialized]
+      underlying: LangCompiler,
+      stdModules: Map[String, Module.Uninitialized]
   ) extends LangCompiler {
     def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
-    def compile(source: String, dagName: String) = {
+    def compile(source: String, dagName: String) =
       underlying.compile(source, dagName).map { result =>
         // Include stdlib modules that are referenced by the DAG
         // Match module specs in the DAG to stdlib modules by name
-        val neededStdModules: Map[UUID, Module.Uninitialized] = result.dagSpec.modules.flatMap {
-          case (moduleId, spec) =>
-            stdModules.find { case (name, _) => spec.name.contains(name) }
+        val neededStdModules: Map[UUID, Module.Uninitialized] =
+          result.dagSpec.modules.flatMap { case (moduleId, spec) =>
+            stdModules
+              .find { case (name, _) => spec.name.contains(name) }
               .map { case (_, module) => moduleId -> module }
-        }
+          }
         result.copy(syntheticModules = result.syntheticModules ++ neededStdModules)
       }
-    }
   }
 }
 
@@ -180,10 +179,34 @@ object Const {
     .implementationPure[BoolIn, BoolOut](in => BoolOut(in.value))
     .build
 
-  val intSignature = FunctionSignature("const-int", List("value" -> SemanticType.SInt), SemanticType.SInt, "stdlib.const-int", Some("stdlib"))
-  val floatSignature = FunctionSignature("const-float", List("value" -> SemanticType.SFloat), SemanticType.SFloat, "stdlib.const-float", Some("stdlib"))
-  val stringSignature = FunctionSignature("const-string", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.const-string", Some("stdlib"))
-  val boolSignature = FunctionSignature("const-bool", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.const-bool", Some("stdlib"))
+  val intSignature = FunctionSignature(
+    "const-int",
+    List("value" -> SemanticType.SInt),
+    SemanticType.SInt,
+    "stdlib.const-int",
+    Some("stdlib")
+  )
+  val floatSignature = FunctionSignature(
+    "const-float",
+    List("value" -> SemanticType.SFloat),
+    SemanticType.SFloat,
+    "stdlib.const-float",
+    Some("stdlib")
+  )
+  val stringSignature = FunctionSignature(
+    "const-string",
+    List("value" -> SemanticType.SString),
+    SemanticType.SString,
+    "stdlib.const-string",
+    Some("stdlib")
+  )
+  val boolSignature = FunctionSignature(
+    "const-bool",
+    List("value" -> SemanticType.SBoolean),
+    SemanticType.SBoolean,
+    "stdlib.const-bool",
+    Some("stdlib")
+  )
 }
 
 // =============================================================================
@@ -219,10 +242,34 @@ object ListOps {
     .implementationPure[ListIntIn, BoolOut](in => BoolOut(in.list.isEmpty))
     .build
 
-  val lengthSignature = FunctionSignature("list-length", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-length", Some("stdlib.list"))
-  val firstSignature = FunctionSignature("list-first", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-first", Some("stdlib.list"))
-  val lastSignature = FunctionSignature("list-last", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SInt, "stdlib.list-last", Some("stdlib.list"))
-  val isEmptySignature = FunctionSignature("list-is-empty", List("list" -> SemanticType.SList(SemanticType.SInt)), SemanticType.SBoolean, "stdlib.list-is-empty", Some("stdlib.list"))
+  val lengthSignature = FunctionSignature(
+    "list-length",
+    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    SemanticType.SInt,
+    "stdlib.list-length",
+    Some("stdlib.list")
+  )
+  val firstSignature = FunctionSignature(
+    "list-first",
+    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    SemanticType.SInt,
+    "stdlib.list-first",
+    Some("stdlib.list")
+  )
+  val lastSignature = FunctionSignature(
+    "list-last",
+    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    SemanticType.SInt,
+    "stdlib.list-last",
+    Some("stdlib.list")
+  )
+  val isEmptySignature = FunctionSignature(
+    "list-is-empty",
+    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    SemanticType.SBoolean,
+    "stdlib.list-is-empty",
+    Some("stdlib.list")
+  )
 }
 
 // =============================================================================
@@ -256,7 +303,7 @@ object MathOps {
   val divideModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.divide", "Divide two integers", 1, 0)
     .tags("stdlib", "math")
-    .implementationPure[TwoInts, IntOut](in => IntOut(if (in.b != 0) in.a / in.b else 0))
+    .implementationPure[TwoInts, IntOut](in => IntOut(if in.b != 0 then in.a / in.b else 0))
     .build
 
   val maxModule: Module.Uninitialized = ModuleBuilder
@@ -273,12 +320,33 @@ object MathOps {
 
   private val twoIntParams = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
 
-  val addSignature = FunctionSignature("add", twoIntParams, SemanticType.SInt, "stdlib.add", Some("stdlib.math"))
-  val subtractSignature = FunctionSignature("subtract", twoIntParams, SemanticType.SInt, "stdlib.subtract", Some("stdlib.math"))
-  val multiplySignature = FunctionSignature("multiply", twoIntParams, SemanticType.SInt, "stdlib.multiply", Some("stdlib.math"))
-  val divideSignature = FunctionSignature("divide", twoIntParams, SemanticType.SInt, "stdlib.divide", Some("stdlib.math"))
-  val maxSignature = FunctionSignature("max", twoIntParams, SemanticType.SInt, "stdlib.max", Some("stdlib.math"))
-  val minSignature = FunctionSignature("min", twoIntParams, SemanticType.SInt, "stdlib.min", Some("stdlib.math"))
+  val addSignature =
+    FunctionSignature("add", twoIntParams, SemanticType.SInt, "stdlib.add", Some("stdlib.math"))
+  val subtractSignature = FunctionSignature(
+    "subtract",
+    twoIntParams,
+    SemanticType.SInt,
+    "stdlib.subtract",
+    Some("stdlib.math")
+  )
+  val multiplySignature = FunctionSignature(
+    "multiply",
+    twoIntParams,
+    SemanticType.SInt,
+    "stdlib.multiply",
+    Some("stdlib.math")
+  )
+  val divideSignature = FunctionSignature(
+    "divide",
+    twoIntParams,
+    SemanticType.SInt,
+    "stdlib.divide",
+    Some("stdlib.math")
+  )
+  val maxSignature =
+    FunctionSignature("max", twoIntParams, SemanticType.SInt, "stdlib.max", Some("stdlib.math"))
+  val minSignature =
+    FunctionSignature("min", twoIntParams, SemanticType.SInt, "stdlib.min", Some("stdlib.math"))
 }
 
 // =============================================================================
@@ -315,10 +383,34 @@ object StringOps {
     .implementationPure[OneString, IntOut](in => IntOut(in.value.length.toLong))
     .build
 
-  val concatSignature = FunctionSignature("concat", List("a" -> SemanticType.SString, "b" -> SemanticType.SString), SemanticType.SString, "stdlib.concat", Some("stdlib.string"))
-  val upperSignature = FunctionSignature("upper", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.upper", Some("stdlib.string"))
-  val lowerSignature = FunctionSignature("lower", List("value" -> SemanticType.SString), SemanticType.SString, "stdlib.lower", Some("stdlib.string"))
-  val lengthSignature = FunctionSignature("string-length", List("value" -> SemanticType.SString), SemanticType.SInt, "stdlib.string-length", Some("stdlib.string"))
+  val concatSignature = FunctionSignature(
+    "concat",
+    List("a" -> SemanticType.SString, "b" -> SemanticType.SString),
+    SemanticType.SString,
+    "stdlib.concat",
+    Some("stdlib.string")
+  )
+  val upperSignature = FunctionSignature(
+    "upper",
+    List("value" -> SemanticType.SString),
+    SemanticType.SString,
+    "stdlib.upper",
+    Some("stdlib.string")
+  )
+  val lowerSignature = FunctionSignature(
+    "lower",
+    List("value" -> SemanticType.SString),
+    SemanticType.SString,
+    "stdlib.lower",
+    Some("stdlib.string")
+  )
+  val lengthSignature = FunctionSignature(
+    "string-length",
+    List("value" -> SemanticType.SString),
+    SemanticType.SInt,
+    "stdlib.string-length",
+    Some("stdlib.string")
+  )
 }
 
 // =============================================================================
@@ -348,9 +440,27 @@ object BoolOps {
     .implementationPure[OneBool, BoolOut](in => BoolOut(!in.value))
     .build
 
-  val andSignature = FunctionSignature("and", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.and", Some("stdlib.bool"))
-  val orSignature = FunctionSignature("or", List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.or", Some("stdlib.bool"))
-  val notSignature = FunctionSignature("not", List("value" -> SemanticType.SBoolean), SemanticType.SBoolean, "stdlib.not", Some("stdlib.bool"))
+  val andSignature = FunctionSignature(
+    "and",
+    List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean),
+    SemanticType.SBoolean,
+    "stdlib.and",
+    Some("stdlib.bool")
+  )
+  val orSignature = FunctionSignature(
+    "or",
+    List("a" -> SemanticType.SBoolean, "b" -> SemanticType.SBoolean),
+    SemanticType.SBoolean,
+    "stdlib.or",
+    Some("stdlib.bool")
+  )
+  val notSignature = FunctionSignature(
+    "not",
+    List("value" -> SemanticType.SBoolean),
+    SemanticType.SBoolean,
+    "stdlib.not",
+    Some("stdlib.bool")
+  )
 }
 
 // =============================================================================
@@ -398,15 +508,51 @@ object CompareOps {
     .implementationPure[TwoInts, BoolOut](in => BoolOut(in.a <= in.b))
     .build
 
-  private val twoIntParams = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
+  private val twoIntParams    = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
   private val twoStringParams = List("a" -> SemanticType.SString, "b" -> SemanticType.SString)
 
-  val eqIntSignature = FunctionSignature("eq-int", twoIntParams, SemanticType.SBoolean, "stdlib.eq-int", Some("stdlib.compare"))
-  val eqStringSignature = FunctionSignature("eq-string", twoStringParams, SemanticType.SBoolean, "stdlib.eq-string", Some("stdlib.compare"))
-  val gtSignature = FunctionSignature("gt", twoIntParams, SemanticType.SBoolean, "stdlib.gt", Some("stdlib.compare"))
-  val ltSignature = FunctionSignature("lt", twoIntParams, SemanticType.SBoolean, "stdlib.lt", Some("stdlib.compare"))
-  val gteSignature = FunctionSignature("gte", twoIntParams, SemanticType.SBoolean, "stdlib.gte", Some("stdlib.compare"))
-  val lteSignature = FunctionSignature("lte", twoIntParams, SemanticType.SBoolean, "stdlib.lte", Some("stdlib.compare"))
+  val eqIntSignature = FunctionSignature(
+    "eq-int",
+    twoIntParams,
+    SemanticType.SBoolean,
+    "stdlib.eq-int",
+    Some("stdlib.compare")
+  )
+  val eqStringSignature = FunctionSignature(
+    "eq-string",
+    twoStringParams,
+    SemanticType.SBoolean,
+    "stdlib.eq-string",
+    Some("stdlib.compare")
+  )
+  val gtSignature = FunctionSignature(
+    "gt",
+    twoIntParams,
+    SemanticType.SBoolean,
+    "stdlib.gt",
+    Some("stdlib.compare")
+  )
+  val ltSignature = FunctionSignature(
+    "lt",
+    twoIntParams,
+    SemanticType.SBoolean,
+    "stdlib.lt",
+    Some("stdlib.compare")
+  )
+  val gteSignature = FunctionSignature(
+    "gte",
+    twoIntParams,
+    SemanticType.SBoolean,
+    "stdlib.gte",
+    Some("stdlib.compare")
+  )
+  val lteSignature = FunctionSignature(
+    "lte",
+    twoIntParams,
+    SemanticType.SBoolean,
+    "stdlib.lte",
+    Some("stdlib.compare")
+  )
 }
 
 // =============================================================================
@@ -425,5 +571,11 @@ object DebugOps {
     }
     .build
 
-  val logSignature = FunctionSignature("log", List("message" -> SemanticType.SString), SemanticType.SString, "stdlib.log", Some("stdlib.debug"))
+  val logSignature = FunctionSignature(
+    "log",
+    List("message" -> SemanticType.SString),
+    SemanticType.SString,
+    "stdlib.log",
+    Some("stdlib.debug")
+  )
 }

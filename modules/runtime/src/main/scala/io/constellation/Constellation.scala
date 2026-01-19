@@ -27,8 +27,8 @@ trait Constellation {
 
   /** Run a DAG with pre-resolved modules (from compilation) */
   def runDagWithModules(
-    dagSpec: DagSpec,
-    inputs: Map[String, CValue],
-    modules: Map[java.util.UUID, Module.Uninitialized]
+      dagSpec: DagSpec,
+      inputs: Map[String, CValue],
+      modules: Map[java.util.UUID, Module.Uninitialized]
   ): IO[Runtime.State]
 }

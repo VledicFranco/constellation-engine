@@ -1,8 +1,8 @@
 package io.constellation.http
 
 import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto._
-import io.constellation.{ComponentMetadata, CValue}
+import io.circe.generic.semiauto.*
+import io.constellation.{CValue, ComponentMetadata}
 import io.constellation.json.given
 
 /** API request and response models for the HTTP server */
@@ -14,8 +14,8 @@ object ApiModels {
 
   /** Request to compile constellation-lang source code */
   case class CompileRequest(
-    source: String,
-    dagName: String
+      source: String,
+      dagName: String
   )
 
   object CompileRequest {
@@ -25,9 +25,9 @@ object ApiModels {
 
   /** Response from compilation */
   case class CompileResponse(
-    success: Boolean,
-    dagName: Option[String] = None,
-    errors: List[String] = List.empty
+      success: Boolean,
+      dagName: Option[String] = None,
+      errors: List[String] = List.empty
   )
 
   object CompileResponse {
@@ -37,8 +37,8 @@ object ApiModels {
 
   /** Request to execute a DAG */
   case class ExecuteRequest(
-    dagName: String,
-    inputs: Map[String, Json]
+      dagName: String,
+      inputs: Map[String, Json]
   )
 
   object ExecuteRequest {
@@ -48,9 +48,9 @@ object ApiModels {
 
   /** Response from DAG execution */
   case class ExecuteResponse(
-    success: Boolean,
-    outputs: Map[String, Json] = Map.empty,
-    error: Option[String] = None
+      success: Boolean,
+      outputs: Map[String, Json] = Map.empty,
+      error: Option[String] = None
   )
 
   object ExecuteResponse {
@@ -60,8 +60,8 @@ object ApiModels {
 
   /** Request to compile and run a script in one step */
   case class RunRequest(
-    source: String,
-    inputs: Map[String, Json]
+      source: String,
+      inputs: Map[String, Json]
   )
 
   object RunRequest {
@@ -71,10 +71,10 @@ object ApiModels {
 
   /** Response from compile-and-run */
   case class RunResponse(
-    success: Boolean,
-    outputs: Map[String, Json] = Map.empty,
-    compilationErrors: List[String] = List.empty,
-    error: Option[String] = None
+      success: Boolean,
+      outputs: Map[String, Json] = Map.empty,
+      compilationErrors: List[String] = List.empty,
+      error: Option[String] = None
   )
 
   object RunResponse {
@@ -84,7 +84,7 @@ object ApiModels {
 
   /** Response listing available DAGs */
   case class DagListResponse(
-    dags: Map[String, ComponentMetadata]
+      dags: Map[String, ComponentMetadata]
   )
 
   object DagListResponse {
@@ -94,8 +94,8 @@ object ApiModels {
 
   /** Response with a single DAG specification */
   case class DagResponse(
-    name: String,
-    metadata: ComponentMetadata
+      name: String,
+      metadata: ComponentMetadata
   )
 
   object DagResponse {
@@ -105,7 +105,7 @@ object ApiModels {
 
   /** Response listing available modules */
   case class ModuleListResponse(
-    modules: List[ModuleInfo]
+      modules: List[ModuleInfo]
   )
 
   object ModuleListResponse {
@@ -115,11 +115,11 @@ object ApiModels {
 
   /** Module information */
   case class ModuleInfo(
-    name: String,
-    description: String,
-    version: String,
-    inputs: Map[String, String],
-    outputs: Map[String, String]
+      name: String,
+      description: String,
+      version: String,
+      inputs: Map[String, String],
+      outputs: Map[String, String]
   )
 
   object ModuleInfo {
@@ -129,8 +129,8 @@ object ApiModels {
 
   /** Error response */
   case class ErrorResponse(
-    error: String,
-    message: String
+      error: String,
+      message: String
   )
 
   object ErrorResponse {
@@ -140,7 +140,7 @@ object ApiModels {
 
   /** Response listing available namespaces */
   case class NamespaceListResponse(
-    namespaces: List[String]
+      namespaces: List[String]
   )
 
   object NamespaceListResponse {
@@ -150,10 +150,10 @@ object ApiModels {
 
   /** Function information for namespace listing */
   case class FunctionInfo(
-    name: String,
-    qualifiedName: String,
-    params: List[String],
-    returns: String
+      name: String,
+      qualifiedName: String,
+      params: List[String],
+      returns: String
   )
 
   object FunctionInfo {
@@ -163,8 +163,8 @@ object ApiModels {
 
   /** Response listing functions in a namespace */
   case class NamespaceFunctionsResponse(
-    namespace: String,
-    functions: List[FunctionInfo]
+      namespace: String,
+      functions: List[FunctionInfo]
   )
 
   object NamespaceFunctionsResponse {

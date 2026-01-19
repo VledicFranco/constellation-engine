@@ -23,9 +23,8 @@ class DagRegistryImpl(dagsRef: Ref[IO, Map[String, DagSpec]]) extends DagRegistr
 
 object DagRegistryImpl {
 
-  def init: IO[DagRegistry] = {
+  def init: IO[DagRegistry] =
     for {
       dagsRef <- Ref.of[IO, Map[String, DagSpec]](Map.empty)
     } yield new DagRegistryImpl(dagsRef)
-  }
 }

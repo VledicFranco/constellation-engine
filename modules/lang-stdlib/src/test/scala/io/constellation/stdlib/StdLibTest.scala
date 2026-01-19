@@ -1,6 +1,6 @@
 package io.constellation.stdlib
 
-import io.constellation.lang.semantic._
+import io.constellation.lang.semantic.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -124,11 +124,28 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     // Should be able to use all functions
     // Note: and, or, not are now built-in operators (keywords), not stdlib functions
     val functions = List(
-      "add", "subtract", "multiply", "divide", "max", "min",
-      "concat", "upper", "lower", "string-length",
-      "gt", "lt", "gte", "lte", "eq-int", "eq-string",
-      "list-length", "list-first", "list-last", "list-is-empty",
-      "log", "identity"
+      "add",
+      "subtract",
+      "multiply",
+      "divide",
+      "max",
+      "min",
+      "concat",
+      "upper",
+      "lower",
+      "string-length",
+      "gt",
+      "lt",
+      "gte",
+      "lte",
+      "eq-int",
+      "eq-string",
+      "list-length",
+      "list-first",
+      "list-last",
+      "list-is-empty",
+      "log",
+      "identity"
     )
 
     // Verify each function can be used in a minimal program
@@ -187,14 +204,14 @@ class StdLibTest extends AnyFlatSpec with Matchers {
   "StdLib.allModules" should "contain all modules" in {
     val modules = StdLib.allModules
 
-    modules.keys should contain ("stdlib.add")
-    modules.keys should contain ("stdlib.subtract")
-    modules.keys should contain ("stdlib.concat")
-    modules.keys should contain ("stdlib.upper")
-    modules.keys should contain ("stdlib.and")
-    modules.keys should contain ("stdlib.gt")
-    modules.keys should contain ("stdlib.list-length")
-    modules.keys should contain ("stdlib.log")
+    modules.keys should contain("stdlib.add")
+    modules.keys should contain("stdlib.subtract")
+    modules.keys should contain("stdlib.concat")
+    modules.keys should contain("stdlib.upper")
+    modules.keys should contain("stdlib.and")
+    modules.keys should contain("stdlib.gt")
+    modules.keys should contain("stdlib.list-length")
+    modules.keys should contain("stdlib.log")
   }
 
   // Namespace tests
@@ -292,11 +309,11 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val registry = compiler.functionRegistry
 
     // Should have all stdlib namespaces
-    registry.namespaces should contain ("stdlib.math")
-    registry.namespaces should contain ("stdlib.string")
-    registry.namespaces should contain ("stdlib.bool")
-    registry.namespaces should contain ("stdlib.compare")
-    registry.namespaces should contain ("stdlib.list")
+    registry.namespaces should contain("stdlib.math")
+    registry.namespaces should contain("stdlib.string")
+    registry.namespaces should contain("stdlib.bool")
+    registry.namespaces should contain("stdlib.compare")
+    registry.namespaces should contain("stdlib.list")
 
     // Should be able to lookup by qualified name
     registry.lookupQualified("stdlib.math.add").isDefined shouldBe true

@@ -10,7 +10,10 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   private def parse(source: String): Program =
     ConstellationParser.parse(source).getOrElse(fail("Parse failed"))
 
-  private def check(source: String, registry: FunctionRegistry = FunctionRegistry.empty): Either[List[CompileError], TypedProgram] =
+  private def check(
+      source: String,
+      registry: FunctionRegistry = FunctionRegistry.empty
+  ): Either[List[CompileError], TypedProgram] =
     TypeChecker.check(parse(source), registry)
 
   /** Helper to get the output type (assumes single output) */
@@ -72,7 +75,10 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe SemanticType.SMap(SemanticType.SString, SemanticType.SInt)
+    getOutputType(result.toOption.get) shouldBe SemanticType.SMap(
+      SemanticType.SString,
+      SemanticType.SInt
+    )
   }
 
   it should "type check assignments" in {
@@ -114,7 +120,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields("x") shouldBe SemanticType.SInt
     elementType.fields("y") shouldBe SemanticType.SString
@@ -145,7 +151,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
   }
@@ -189,7 +195,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
     elementType.fields.keys should contain allOf ("id", "name")
@@ -260,12 +266,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check function calls with registry" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "double",
-      params = List("n" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "double-module"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "double",
+        params = List("n" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "double-module"
+      )
+    )
 
     val source = """
       in x: Int
@@ -279,12 +287,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check multi-argument function calls" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "add-module"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "add-module"
+      )
+    )
 
     val source = """
       in x: Int
@@ -301,36 +311,50 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val registry = FunctionRegistry.empty
 
     // Register the functions used in the example
-    val communicationType = SemanticType.SRecord(Map(
-      "communicationId" -> SemanticType.SString,
-      "contentBlocks" -> SemanticType.SList(SemanticType.SString),
-      "channel" -> SemanticType.SString
-    ))
+    val communicationType = SemanticType.SRecord(
+      Map(
+        "communicationId" -> SemanticType.SString,
+        "contentBlocks"   -> SemanticType.SList(SemanticType.SString),
+        "channel"         -> SemanticType.SString
+      )
+    )
 
-    val embeddingsType = SemanticType.SCandidates(SemanticType.SRecord(Map(
-      "embedding" -> SemanticType.SList(SemanticType.SFloat)
-    )))
+    val embeddingsType = SemanticType.SCandidates(
+      SemanticType.SRecord(
+        Map(
+          "embedding" -> SemanticType.SList(SemanticType.SFloat)
+        )
+      )
+    )
 
-    val scoresType = SemanticType.SCandidates(SemanticType.SRecord(Map(
-      "score" -> SemanticType.SFloat
-    )))
+    val scoresType = SemanticType.SCandidates(
+      SemanticType.SRecord(
+        Map(
+          "score" -> SemanticType.SFloat
+        )
+      )
+    )
 
-    registry.register(FunctionSignature(
-      name = "ide-ranker-v2-candidate-embed",
-      params = List("input" -> SemanticType.SCandidates(communicationType)),
-      returns = embeddingsType,
-      moduleName = "ide-ranker-v2-candidate-embed"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "ide-ranker-v2-candidate-embed",
+        params = List("input" -> SemanticType.SCandidates(communicationType)),
+        returns = embeddingsType,
+        moduleName = "ide-ranker-v2-candidate-embed"
+      )
+    )
 
-    registry.register(FunctionSignature(
-      name = "ide-ranker-v2-precomputed-embeddings",
-      params = List(
-        "data" -> SemanticType.SCandidates(SemanticType.SRecord(Map.empty)), // Will be merged
-        "userId" -> SemanticType.SInt
-      ),
-      returns = scoresType,
-      moduleName = "ide-ranker-v2-precomputed-embeddings"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "ide-ranker-v2-precomputed-embeddings",
+        params = List(
+          "data"   -> SemanticType.SCandidates(SemanticType.SRecord(Map.empty)), // Will be merged
+          "userId" -> SemanticType.SInt
+        ),
+        returns = scoresType,
+        moduleName = "ide-ranker-v2-precomputed-embeddings"
+      )
+    )
 
     val source = """
       type Communication = {
@@ -384,12 +408,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "report type mismatch error for function arguments" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "expects-int",
-      params = List("n" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "expects-int"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "expects-int",
+        params = List("n" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "expects-int"
+      )
+    )
 
     val source = """
       in x: String
@@ -403,12 +429,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "report wrong argument count error" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "two-args",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "two-args"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "two-args",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "two-args"
+      )
+    )
 
     val source = """
       in x: Int
@@ -452,7 +480,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isLeft shouldBe true
     // + with non-numeric/non-record types produces UnsupportedArithmetic
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
   }
 
   it should "report conditional with non-boolean condition error" in {
@@ -495,13 +524,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check fully qualified function calls" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in a: Int
@@ -516,13 +547,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check use declaration with wildcard import" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       use stdlib.math
@@ -538,13 +571,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check use declaration with alias" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       use stdlib.math as m
@@ -560,20 +595,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check multiple use declarations" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
-    registry.register(FunctionSignature(
-      name = "upper",
-      params = List("value" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "stdlib.upper",
-      namespace = Some("stdlib.string")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "upper",
+        params = List("value" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "stdlib.upper",
+        namespace = Some("stdlib.string")
+      )
+    )
 
     val source = """
       use stdlib.math
@@ -591,13 +630,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "report undefined namespace error for unknown namespace" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in a: Int
@@ -611,20 +652,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "report ambiguous function error when multiple namespaces have same function" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "ns1.process",
-      namespace = Some("namespace1")
-    ))
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "ns2.process",
-      namespace = Some("namespace2")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "ns1.process",
+        namespace = Some("namespace1")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "ns2.process",
+        namespace = Some("namespace2")
+      )
+    )
 
     val source = """
       use namespace1
@@ -640,13 +685,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "resolve unambiguous function from single wildcard import" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "unique",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "myns.unique",
-      namespace = Some("myns")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "unique",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "myns.unique",
+        namespace = Some("myns")
+      )
+    )
 
     val source = """
       use myns
@@ -660,13 +707,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "prefer imported function over requiring full qualification" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     // Without import, simple name shouldn't work if namespaces are defined
     val source = """
@@ -709,7 +758,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields("x") shouldBe SemanticType.SInt
     elementType.fields("y") shouldBe SemanticType.SString
@@ -726,7 +775,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
   }
@@ -992,57 +1041,71 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   private def comparisonRegistry: FunctionRegistry = {
     val registry = FunctionRegistry.empty
     // Int comparison functions
-    registry.register(FunctionSignature(
-      name = "eq-int",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.eq-int",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "lte",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lte",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "gte",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gte",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "eq-int",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.eq-int",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "lte",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lte",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "gte",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gte",
+        namespace = Some("stdlib.compare")
+      )
+    )
     // String comparison
-    registry.register(FunctionSignature(
-      name = "eq-string",
-      params = List("a" -> SemanticType.SString, "b" -> SemanticType.SString),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.eq-string",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "eq-string",
+        params = List("a" -> SemanticType.SString, "b" -> SemanticType.SString),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.eq-string",
+        namespace = Some("stdlib.compare")
+      )
+    )
     // Boolean not for NotEq
-    registry.register(FunctionSignature(
-      name = "not",
-      params = List("value" -> SemanticType.SBoolean),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.not",
-      namespace = Some("stdlib.bool")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "not",
+        params = List("value" -> SemanticType.SBoolean),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.not",
+        namespace = Some("stdlib.bool")
+      )
+    )
     registry
   }
 
@@ -1163,7 +1226,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source, comparisonRegistry)
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UnsupportedComparison]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[CompileError.UnsupportedComparison]) shouldBe true
   }
 
   it should "type check comparison with literal" in {
@@ -1373,7 +1437,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1389,7 +1453,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1405,7 +1469,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields shouldBe empty
   }
@@ -1420,11 +1484,11 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
-    elementType.fields("value") shouldBe SemanticType.SString  // Right wins
+    elementType.fields("value") shouldBe SemanticType.SString // Right wins
     elementType.fields("extra") shouldBe SemanticType.SBoolean
   }
 
@@ -1439,7 +1503,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1459,7 +1523,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
     elementType.fields("id") shouldBe SemanticType.SInt
@@ -1476,7 +1540,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("userId") shouldBe SemanticType.SInt
@@ -1492,11 +1556,11 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
-    elementType.fields("value") shouldBe SemanticType.SString  // Right (Record) wins
+    elementType.fields("value") shouldBe SemanticType.SString // Right (Record) wins
     elementType.fields("extra") shouldBe SemanticType.SBoolean
   }
 
@@ -1510,11 +1574,11 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
-    elementType.fields("value") shouldBe SemanticType.SString  // Right (Candidates elem) wins
+    elementType.fields("value") shouldBe SemanticType.SString // Right (Candidates elem) wins
     elementType.fields("extra") shouldBe SemanticType.SBoolean
   }
 
@@ -1529,7 +1593,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1548,7 +1612,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1638,12 +1702,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check guard expression with function call as expression" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SFloat,
-      moduleName = "process-module"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SFloat,
+        moduleName = "process-module"
+      )
+    )
 
     val source = """
       in x: Int
@@ -1930,7 +1996,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    val errors = result.left.toOption.get
+    val errors     = result.left.toOption.get
     val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
     arithError.message should include("+")
     arithError.message should include("Int")
@@ -2037,7 +2103,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    val errors = result.left.toOption.get
+    val errors     = result.left.toOption.get
     val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
     arithError.span.isDefined shouldBe true
   }

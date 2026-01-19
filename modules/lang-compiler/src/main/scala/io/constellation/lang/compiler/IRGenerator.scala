@@ -10,8 +10,8 @@ object IRGenerator {
 
   /** Context for IR generation */
   private case class GenContext(
-    nodes: Map[UUID, IRNode],
-    bindings: Map[String, UUID]  // Variable name -> node ID
+      nodes: Map[UUID, IRNode],
+      bindings: Map[String, UUID] // Variable name -> node ID
   ) {
     def addNode(node: IRNode): GenContext =
       copy(nodes = nodes + (node.id -> node))
@@ -43,11 +43,11 @@ object IRGenerator {
   }
 
   private def generateDeclarations(
-    decls: List[TypedDeclaration],
-    ctx: GenContext
+      decls: List[TypedDeclaration],
+      ctx: GenContext
   ): (GenContext, List[UUID]) = {
     var currentCtx = ctx
-    var inputIds = List.empty[UUID]
+    var inputIds   = List.empty[UUID]
 
     decls.foreach {
       case TypedDeclaration.TypeDef(_, _, _) =>
@@ -55,7 +55,7 @@ object IRGenerator {
         ()
 
       case TypedDeclaration.InputDecl(name, semanticType, span) =>
-        val id = UUID.randomUUID()
+        val id   = UUID.randomUUID()
         val node = IRNode.Input(id, name, semanticType, Some(span))
         currentCtx = currentCtx.addNode(node).bind(name, id)
         inputIds = inputIds :+ id
@@ -77,15 +77,15 @@ object IRGenerator {
   }
 
   private def generateExpression(
-    expr: TypedExpression,
-    ctx: GenContext
+      expr: TypedExpression,
+      ctx: GenContext
   ): (GenContext, UUID) = expr match {
 
     case TypedExpression.VarRef(name, _, _) =>
       // Variable reference just looks up the existing node ID
       ctx.lookup(name) match {
         case Some(id) => (ctx, id)
-        case None =>
+        case None     =>
           // This shouldn't happen after type checking, but handle gracefully
           throw new IllegalStateException(s"Undefined variable in IR generation: $name")
       }
@@ -95,7 +95,7 @@ object IRGenerator {
       val (argsCtx, argIds) = args.foldLeft((ctx, List.empty[(String, UUID)])) {
         case ((currentCtx, ids), arg) =>
           val (newCtx, argId) = generateExpression(arg, currentCtx)
-          val paramName = signature.params(ids.size)._1
+          val paramName       = signature.params(ids.size)._1
           (newCtx, ids :+ (paramName -> argId))
       }
 
@@ -111,24 +111,24 @@ object IRGenerator {
       (argsCtx.addNode(node), id)
 
     case TypedExpression.Merge(left, right, semanticType, span) =>
-      val (leftCtx, leftId) = generateExpression(left, ctx)
+      val (leftCtx, leftId)   = generateExpression(left, ctx)
       val (rightCtx, rightId) = generateExpression(right, leftCtx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.MergeNode(id, leftId, rightId, semanticType, Some(span))
       (rightCtx.addNode(node), id)
 
     case TypedExpression.Projection(source, fields, semanticType, span) =>
       val (sourceCtx, sourceId) = generateExpression(source, ctx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.ProjectNode(id, sourceId, fields, semanticType, Some(span))
       (sourceCtx.addNode(node), id)
 
     case TypedExpression.FieldAccess(source, field, semanticType, span) =>
       val (sourceCtx, sourceId) = generateExpression(source, ctx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.FieldAccessNode(id, sourceId, field, semanticType, Some(span))
       (sourceCtx.addNode(node), id)
 
@@ -137,30 +137,30 @@ object IRGenerator {
       val (thenCtx, thenId) = generateExpression(thenBr, condCtx)
       val (elseCtx, elseId) = generateExpression(elseBr, thenCtx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.ConditionalNode(id, condId, thenId, elseId, semanticType, Some(span))
       (elseCtx.addNode(node), id)
 
     case TypedExpression.Literal(value, semanticType, span) =>
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.LiteralNode(id, value, semanticType, Some(span))
       (ctx.addNode(node), id)
 
     case TypedExpression.BoolBinary(left, op, right, span) =>
-      val (leftCtx, leftId) = generateExpression(left, ctx)
+      val (leftCtx, leftId)   = generateExpression(left, ctx)
       val (rightCtx, rightId) = generateExpression(right, leftCtx)
 
       val id = UUID.randomUUID()
       val node = op match {
         case BoolOp.And => IRNode.AndNode(id, leftId, rightId, Some(span))
-        case BoolOp.Or => IRNode.OrNode(id, leftId, rightId, Some(span))
+        case BoolOp.Or  => IRNode.OrNode(id, leftId, rightId, Some(span))
       }
       (rightCtx.addNode(node), id)
 
     case TypedExpression.Not(operand, span) =>
       val (operandCtx, operandId) = generateExpression(operand, ctx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.NotNode(id, operandId, Some(span))
       (operandCtx.addNode(node), id)
 
@@ -168,15 +168,15 @@ object IRGenerator {
       val (exprCtx, exprId) = generateExpression(expr, ctx)
       val (condCtx, condId) = generateExpression(condition, exprCtx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.GuardNode(id, exprId, condId, expr.semanticType, Some(span))
       (condCtx.addNode(node), id)
 
     case TypedExpression.Coalesce(left, right, span, resultType) =>
-      val (leftCtx, leftId) = generateExpression(left, ctx)
+      val (leftCtx, leftId)   = generateExpression(left, ctx)
       val (rightCtx, rightId) = generateExpression(right, leftCtx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.CoalesceNode(id, leftId, rightId, resultType, Some(span))
       (rightCtx.addNode(node), id)
 
@@ -191,7 +191,7 @@ object IRGenerator {
 
       val (otherwiseCtx, otherwiseId) = generateExpression(otherwise, casesCtx)
 
-      val id = UUID.randomUUID()
+      val id   = UUID.randomUUID()
       val node = IRNode.BranchNode(id, caseIds, otherwiseId, semanticType, Some(span))
       (otherwiseCtx.addNode(node), id)
   }

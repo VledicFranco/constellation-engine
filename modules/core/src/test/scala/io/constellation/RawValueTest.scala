@@ -6,10 +6,10 @@ import org.scalatest.matchers.should.Matchers
 class RawValueTest extends AnyFlatSpec with Matchers {
 
   "RawValueConverter" should "convert primitive CValues to RawValues" in {
-    val intCV = CValue.CInt(42)
+    val intCV    = CValue.CInt(42)
     val stringCV = CValue.CString("hello")
-    val floatCV = CValue.CFloat(3.14)
-    val boolCV = CValue.CBoolean(true)
+    val floatCV  = CValue.CFloat(3.14)
+    val boolCV   = CValue.CBoolean(true)
 
     RawValueConverter.fromCValue(intCV) shouldBe RawValue.RInt(42)
     RawValueConverter.fromCValue(stringCV) shouldBe RawValue.RString("hello")
@@ -62,8 +62,8 @@ class RawValueTest extends AnyFlatSpec with Matchers {
     // Fields are sorted alphabetically: age, name
     val product = raw.asInstanceOf[RawValue.RProduct]
     product.values.length shouldBe 2
-    product.values(0) shouldBe RawValue.RInt(30)    // age
-    product.values(1) shouldBe RawValue.RString("Alice")  // name
+    product.values(0) shouldBe RawValue.RInt(30)         // age
+    product.values(1) shouldBe RawValue.RString("Alice") // name
   }
 
   it should "convert optional values" in {
@@ -76,14 +76,14 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor" should "convert RawValue back to CValue" in {
     val accessor = TypedValueAccessor(CType.CInt)
-    val raw = RawValue.RInt(42)
+    val raw      = RawValue.RInt(42)
     accessor.toCValue(raw) shouldBe CValue.CInt(42)
   }
 
   it should "convert RIntList back to CList" in {
     val accessor = TypedValueAccessor(CType.CList(CType.CInt))
-    val raw = RawValue.RIntList(Array(1, 2, 3))
-    val cValue = accessor.toCValue(raw)
+    val raw      = RawValue.RIntList(Array(1, 2, 3))
+    val cValue   = accessor.toCValue(raw)
 
     cValue shouldBe a[CValue.CList]
     val list = cValue.asInstanceOf[CValue.CList]
@@ -93,8 +93,8 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert RProduct back to CProduct" in {
     val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
-    val raw = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
+    val raw       = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
 
     val cValue = accessor.toCValue(raw)
     cValue shouldBe a[CValue.CProduct]
@@ -104,18 +104,18 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "access fields from RProduct" in {
     val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
-    val raw = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
+    val raw       = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
 
     accessor.getField(raw, "age") shouldBe RawValue.RInt(30)
     accessor.getField(raw, "name") shouldBe RawValue.RString("Alice")
   }
 
   it should "get extractors for primitives" in {
-    val intAccessor = TypedValueAccessor(CType.CInt)
-    val floatAccessor = TypedValueAccessor(CType.CFloat)
+    val intAccessor    = TypedValueAccessor(CType.CInt)
+    val floatAccessor  = TypedValueAccessor(CType.CFloat)
     val stringAccessor = TypedValueAccessor(CType.CString)
-    val boolAccessor = TypedValueAccessor(CType.CBoolean)
+    val boolAccessor   = TypedValueAccessor(CType.CBoolean)
 
     intAccessor.getInt(RawValue.RInt(42)) shouldBe 42L
     floatAccessor.getFloat(RawValue.RFloat(3.14)) shouldBe 3.14
@@ -127,21 +127,21 @@ class RawValueTest extends AnyFlatSpec with Matchers {
     val structure = Map("scores" -> CType.CList(CType.CFloat), "name" -> CType.CString)
     val original = CValue.CProduct(
       Map(
-        "name" -> CValue.CString("Test"),
+        "name"   -> CValue.CString("Test"),
         "scores" -> CValue.CList(Vector(CValue.CFloat(1.0), CValue.CFloat(2.0)), CType.CFloat)
       ),
       structure
     )
 
-    val raw = RawValueConverter.fromCValue(original)
+    val raw      = RawValueConverter.fromCValue(original)
     val restored = RawValueConverter.toCValue(raw, CType.CProduct(structure))
 
     restored shouldBe original
   }
 
   it should "preserve large int arrays through conversion" in {
-    val size = 10000
-    val values = (0 until size).map(i => CValue.CInt(i.toLong)).toVector
+    val size     = 10000
+    val values   = (0 until size).map(i => CValue.CInt(i.toLong)).toVector
     val original = CValue.CList(values, CType.CInt)
 
     val raw = RawValueConverter.fromCValue(original)
@@ -153,8 +153,8 @@ class RawValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve large float arrays through conversion" in {
-    val size = 10000
-    val values = (0 until size).map(i => CValue.CFloat(i.toDouble)).toVector
+    val size     = 10000
+    val values   = (0 until size).map(i => CValue.CFloat(i.toDouble)).toVector
     val original = CValue.CList(values, CType.CFloat)
 
     val raw = RawValueConverter.fromCValue(original)

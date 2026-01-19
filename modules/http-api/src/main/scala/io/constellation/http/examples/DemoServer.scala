@@ -7,15 +7,15 @@ import io.constellation.http.ConstellationServer
 
 /** Demo HTTP server with standard library functions pre-loaded
   *
-  * This example demonstrates how to start a Constellation HTTP API server
-  * with the standard library functions available for use in constellation-lang programs.
+  * This example demonstrates how to start a Constellation HTTP API server with the standard library
+  * functions available for use in constellation-lang programs.
   *
   * Once started, you can:
-  * - Compile constellation-lang programs: POST /compile
-  * - Execute compiled DAGs: POST /execute
-  * - List available DAGs: GET /dags
-  * - List available modules: GET /modules
-  * - Check server health: GET /health
+  *   - Compile constellation-lang programs: POST /compile
+  *   - Execute compiled DAGs: POST /execute
+  *   - List available DAGs: GET /dags
+  *   - List available modules: GET /modules
+  *   - Check server health: GET /health
   *
   * Example curl commands:
   * {{{
@@ -39,7 +39,7 @@ import io.constellation.http.ConstellationServer
   */
 object DemoServer extends IOApp.Simple {
 
-  def run: IO[Unit] = {
+  def run: IO[Unit] =
     for {
       // Create constellation engine instance
       constellation <- ConstellationImpl.init
@@ -54,5 +54,4 @@ object DemoServer extends IOApp.Simple {
         .withPort(8080)
         .run
     } yield ()
-  }
 }

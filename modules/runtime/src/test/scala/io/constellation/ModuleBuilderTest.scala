@@ -151,10 +151,10 @@ class ModuleBuilderTest extends AnyFlatSpec with Matchers {
 
     module.spec.consumes shouldBe Map(
       "values" -> CType.CList(CType.CInt),
-      "label" -> CType.CString
+      "label"  -> CType.CString
     )
     module.spec.produces shouldBe Map(
-      "sum" -> CType.CInt,
+      "sum"   -> CType.CInt,
       "count" -> CType.CInt
     )
   }

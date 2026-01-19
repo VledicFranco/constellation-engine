@@ -1,8 +1,8 @@
 package io.constellation.http
 
 import cats.effect.{IO, Resource}
-import cats.implicits._
-import com.comcast.ip4s._
+import cats.implicits.*
+import com.comcast.ip4s.*
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import io.constellation.Constellation
@@ -13,8 +13,8 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** HTTP server for the Constellation Engine API
   *
-  * Provides a REST API for compiling constellation-lang programs,
-  * managing DAGs and modules, and executing computational pipelines.
+  * Provides a REST API for compiling constellation-lang programs, managing DAGs and modules, and
+  * executing computational pipelines.
   *
   * Example usage:
   * {{{
@@ -35,23 +35,24 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   * }}}
   */
 object ConstellationServer {
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.ConstellationServer")
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.ConstellationServer")
 
   /** Default port, can be overridden via CONSTELLATION_PORT environment variable */
   val DefaultPort: Int = sys.env.get("CONSTELLATION_PORT").flatMap(_.toIntOption).getOrElse(8080)
 
   /** Configuration for the HTTP server */
   case class Config(
-    host: String = "0.0.0.0",
-    port: Int = DefaultPort
+      host: String = "0.0.0.0",
+      port: Int = DefaultPort
   )
 
   /** Builder for creating a Constellation HTTP server */
   class ServerBuilder(
-    constellation: Constellation,
-    compiler: LangCompiler,
-    functionRegistry: FunctionRegistry = FunctionRegistry.empty,
-    config: Config = Config()
+      constellation: Constellation,
+      compiler: LangCompiler,
+      functionRegistry: FunctionRegistry = FunctionRegistry.empty,
+      config: Config = Config()
   ) {
 
     /** Set the host address */
@@ -90,16 +91,21 @@ object ConstellationServer {
     /** Run the server and return when it completes */
     def run: IO[Unit] =
       build.use { server =>
-        logger.info(s"Constellation HTTP API server started at http://${config.host}:${config.port}") *>
+        logger.info(
+          s"Constellation HTTP API server started at http://${config.host}:${config.port}"
+        ) *>
           IO.never
       }
   }
 
   /** Create a new server builder
     *
-    * @param constellation The constellation engine instance
-    * @param compiler The constellation-lang compiler instance
-    * @return A builder for configuring and starting the server
+    * @param constellation
+    *   The constellation engine instance
+    * @param compiler
+    *   The constellation-lang compiler instance
+    * @return
+    *   A builder for configuring and starting the server
     */
   def builder(constellation: Constellation, compiler: LangCompiler): ServerBuilder =
     new ServerBuilder(constellation, compiler, compiler.functionRegistry)

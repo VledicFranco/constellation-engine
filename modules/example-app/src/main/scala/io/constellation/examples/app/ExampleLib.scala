@@ -1,8 +1,8 @@
 package io.constellation.examples.app
 
-import io.constellation._
+import io.constellation.*
 import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
-import io.constellation.lang.semantic._
+import io.constellation.lang.semantic.*
 import io.constellation.stdlib.StdLib
 import io.constellation.examples.app.modules.{DataModules, TextModules}
 
@@ -10,34 +10,33 @@ import java.util.UUID
 
 /** ExampleLib - Complete function library for example applications.
   *
-  * This library combines the standard library (StdLib) with custom example
-  * modules (DataModules, TextModules) to provide a full-featured compiler
-  * for demonstration and testing purposes.
+  * This library combines the standard library (StdLib) with custom example modules (DataModules,
+  * TextModules) to provide a full-featured compiler for demonstration and testing purposes.
   *
-  * == Available Functions ==
+  * ==Available Functions==
   *
   * '''Data Processing (from DataModules):'''
-  *  - `SumList(numbers: List<Int>) -> Int` - Sum of list elements
-  *  - `Average(numbers: List<Int>) -> Float` - Arithmetic mean
-  *  - `Max(numbers: List<Int>) -> Int` - Maximum value
-  *  - `Min(numbers: List<Int>) -> Int` - Minimum value
-  *  - `FilterGreaterThan(numbers: List<Int>, threshold: Int) -> List<Int>`
-  *  - `MultiplyEach(numbers: List<Int>, multiplier: Int) -> List<Int>`
-  *  - `Range(start: Int, end: Int) -> List<Int>` - Generate number sequence
-  *  - `FormatNumber(number: Int) -> String` - Format with commas
+  *   - `SumList(numbers: List<Int>) -> Int` - Sum of list elements
+  *   - `Average(numbers: List<Int>) -> Float` - Arithmetic mean
+  *   - `Max(numbers: List<Int>) -> Int` - Maximum value
+  *   - `Min(numbers: List<Int>) -> Int` - Minimum value
+  *   - `FilterGreaterThan(numbers: List<Int>, threshold: Int) -> List<Int>`
+  *   - `MultiplyEach(numbers: List<Int>, multiplier: Int) -> List<Int>`
+  *   - `Range(start: Int, end: Int) -> List<Int>` - Generate number sequence
+  *   - `FormatNumber(number: Int) -> String` - Format with commas
   *
   * '''Text Processing (from TextModules):'''
-  *  - `Uppercase(text: String) -> String` - Convert to uppercase
-  *  - `Lowercase(text: String) -> String` - Convert to lowercase
-  *  - `Trim(text: String) -> String` - Remove whitespace
-  *  - `Replace(text: String, find: String, replace: String) -> String`
-  *  - `WordCount(text: String) -> Int` - Count words
-  *  - `TextLength(text: String) -> Int` - Character count
-  *  - `Contains(text: String, substring: String) -> Boolean`
-  *  - `SplitLines(text: String) -> List<String>` - Split by newline
-  *  - `Split(text: String, delimiter: String) -> List<String>`
+  *   - `Uppercase(text: String) -> String` - Convert to uppercase
+  *   - `Lowercase(text: String) -> String` - Convert to lowercase
+  *   - `Trim(text: String) -> String` - Remove whitespace
+  *   - `Replace(text: String, find: String, replace: String) -> String`
+  *   - `WordCount(text: String) -> Int` - Count words
+  *   - `TextLength(text: String) -> Int` - Character count
+  *   - `Contains(text: String, substring: String) -> Boolean`
+  *   - `SplitLines(text: String) -> List<String>` - Split by newline
+  *   - `Split(text: String, delimiter: String) -> List<String>`
   *
-  * == Usage ==
+  * ==Usage==
   *
   * {{{
   * // Get a compiler with all example functions
@@ -51,15 +50,18 @@ import java.util.UUID
   * """, "my-pipeline")
   * }}}
   *
-  * @see [[io.constellation.stdlib.StdLib]] for standard library functions
-  * @see [[io.constellation.examples.app.modules.DataModules]] for data modules
-  * @see [[io.constellation.examples.app.modules.TextModules]] for text modules
+  * @see
+  *   [[io.constellation.stdlib.StdLib]] for standard library functions
+  * @see
+  *   [[io.constellation.examples.app.modules.DataModules]] for data modules
+  * @see
+  *   [[io.constellation.examples.app.modules.TextModules]] for text modules
   */
 
 /** Example library combining StdLib with custom DataModules and TextModules.
   *
-  * Registers all function signatures with the compiler for type-checking
-  * and provides module implementations for runtime execution.
+  * Registers all function signatures with the compiler for type-checking and provides module
+  * implementations for runtime execution.
   */
 object ExampleLib {
 
@@ -96,7 +98,7 @@ object ExampleLib {
   private val filterGreaterThanSig = FunctionSignature(
     name = "FilterGreaterThan",
     params = List(
-      "numbers" -> SemanticType.SList(SemanticType.SInt),
+      "numbers"   -> SemanticType.SList(SemanticType.SInt),
       "threshold" -> SemanticType.SInt
     ),
     returns = SemanticType.SList(SemanticType.SInt),
@@ -106,7 +108,7 @@ object ExampleLib {
   private val multiplyEachSig = FunctionSignature(
     name = "MultiplyEach",
     params = List(
-      "numbers" -> SemanticType.SList(SemanticType.SInt),
+      "numbers"    -> SemanticType.SList(SemanticType.SInt),
       "multiplier" -> SemanticType.SInt
     ),
     returns = SemanticType.SList(SemanticType.SInt),
@@ -117,7 +119,7 @@ object ExampleLib {
     name = "Range",
     params = List(
       "start" -> SemanticType.SInt,
-      "end" -> SemanticType.SInt
+      "end"   -> SemanticType.SInt
     ),
     returns = SemanticType.SList(SemanticType.SInt),
     moduleName = "Range"
@@ -156,8 +158,8 @@ object ExampleLib {
   private val replaceSig = FunctionSignature(
     name = "Replace",
     params = List(
-      "text" -> SemanticType.SString,
-      "find" -> SemanticType.SString,
+      "text"    -> SemanticType.SString,
+      "find"    -> SemanticType.SString,
       "replace" -> SemanticType.SString
     ),
     returns = SemanticType.SString,
@@ -181,7 +183,7 @@ object ExampleLib {
   private val containsSig = FunctionSignature(
     name = "Contains",
     params = List(
-      "text" -> SemanticType.SString,
+      "text"      -> SemanticType.SString,
       "substring" -> SemanticType.SString
     ),
     returns = SemanticType.SBoolean,
@@ -198,7 +200,7 @@ object ExampleLib {
   private val splitSig = FunctionSignature(
     name = "Split",
     params = List(
-      "text" -> SemanticType.SString,
+      "text"      -> SemanticType.SString,
       "delimiter" -> SemanticType.SString
     ),
     returns = SemanticType.SList(SemanticType.SString),
@@ -242,38 +244,37 @@ object ExampleLib {
   }
 
   /** Register all example functions with a LangCompiler builder */
-  def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder = {
+  def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder =
     allSignatures.foldLeft(builder) { (b, sig) =>
       b.withFunction(sig)
     }
-  }
 
   /** Create a compiler with StdLib + ExampleLib functions */
   def compiler: LangCompiler = {
     // Start with StdLib, then add ExampleLib signatures, then add modules
     val combinedModules = StdLib.allModules ++ allModules
     val builder = registerAll(StdLib.registerAll(LangCompilerBuilder()))
-      .withModules(combinedModules)  // Make modules available to DagCompiler
+      .withModules(combinedModules) // Make modules available to DagCompiler
     builder.build
   }
 
   /** Compiler wrapper that includes both stdlib and example modules */
   private class ExampleLibCompiler(
-    underlying: LangCompiler,
-    modules: Map[String, Module.Uninitialized]
+      underlying: LangCompiler,
+      modules: Map[String, Module.Uninitialized]
   ) extends LangCompiler {
     def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
-    def compile(source: String, dagName: String) = {
+    def compile(source: String, dagName: String) =
       underlying.compile(source, dagName).map { result =>
         // Include modules that are referenced by the DAG
-        val neededModules: Map[UUID, Module.Uninitialized] = result.dagSpec.modules.flatMap {
-          case (moduleId, spec) =>
-            modules.find { case (name, _) => spec.name.contains(name) }
+        val neededModules: Map[UUID, Module.Uninitialized] =
+          result.dagSpec.modules.flatMap { case (moduleId, spec) =>
+            modules
+              .find { case (name, _) => spec.name.contains(name) }
               .map { case (_, module) => moduleId -> module }
-        }
+          }
         result.copy(syntheticModules = result.syntheticModules ++ neededModules)
       }
-    }
   }
 }

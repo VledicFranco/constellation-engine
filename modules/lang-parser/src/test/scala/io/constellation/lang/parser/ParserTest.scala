@@ -112,7 +112,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.args should have size 2
   }
 
@@ -178,7 +178,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val result = ConstellationParser.parse(source)
     result.isRight shouldBe true
 
-    val program = result.toOption.get
+    val program    = result.toOption.get
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
     val projection = assignment.value.value.asInstanceOf[Expression.Projection]
     projection.fields shouldBe List("id")
@@ -486,7 +486,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName(List("stdlib", "math", "add"))
     funcCall.name.namespace shouldBe Some("stdlib.math")
     funcCall.name.localName shouldBe "add"
@@ -556,7 +556,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName(List("m", "add"))
   }
 
@@ -708,7 +708,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.NotEq
   }
 
@@ -724,7 +724,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.Lt
   }
 
@@ -740,7 +740,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.Gt
   }
 
@@ -756,7 +756,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.LtEq
   }
 
@@ -772,7 +772,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.GtEq
   }
 
@@ -791,7 +791,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(4).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.Eq
     compare.left.value shouldBe a[Expression.Arithmetic]
     compare.right.value shouldBe a[Expression.Arithmetic]
@@ -808,7 +808,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val compare = assignment.value.value.asInstanceOf[Expression.Compare]
+    val compare    = assignment.value.value.asInstanceOf[Expression.Compare]
     compare.op shouldBe CompareOp.Eq
     compare.left.value shouldBe a[Expression.VarRef]
     compare.right.value shouldBe Expression.IntLit(42)
@@ -881,10 +881,10 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    val arith      = assignment.value.value.asInstanceOf[Expression.Arithmetic]
     arith.op shouldBe ArithOp.Add
-    arith.left.value shouldBe a[Expression.VarRef]  // a
-    arith.right.value shouldBe a[Expression.Arithmetic]  // b * c
+    arith.left.value shouldBe a[Expression.VarRef]      // a
+    arith.right.value shouldBe a[Expression.Arithmetic] // b * c
     val mulExpr = arith.right.value.asInstanceOf[Expression.Arithmetic]
     mulExpr.op shouldBe ArithOp.Mul
   }
@@ -903,10 +903,10 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    val arith      = assignment.value.value.asInstanceOf[Expression.Arithmetic]
     arith.op shouldBe ArithOp.Sub
-    arith.left.value shouldBe a[Expression.VarRef]  // a
-    arith.right.value shouldBe a[Expression.Arithmetic]  // b / c
+    arith.left.value shouldBe a[Expression.VarRef]      // a
+    arith.right.value shouldBe a[Expression.Arithmetic] // b / c
     val divExpr = arith.right.value.asInstanceOf[Expression.Arithmetic]
     divExpr.op shouldBe ArithOp.Div
   }
@@ -925,10 +925,10 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    val arith      = assignment.value.value.asInstanceOf[Expression.Arithmetic]
     arith.op shouldBe ArithOp.Mul
-    arith.left.value shouldBe a[Expression.Arithmetic]  // a * b
-    arith.right.value shouldBe a[Expression.VarRef]  // c
+    arith.left.value shouldBe a[Expression.Arithmetic] // a * b
+    arith.right.value shouldBe a[Expression.VarRef]    // c
     val leftMul = arith.left.value.asInstanceOf[Expression.Arithmetic]
     leftMul.op shouldBe ArithOp.Mul
   }
@@ -1102,7 +1102,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val outer = assignment.value.value.asInstanceOf[Expression.Not]
+    val outer      = assignment.value.value.asInstanceOf[Expression.Not]
     outer.operand.value shouldBe a[Expression.Not]
   }
 
@@ -1196,7 +1196,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe a[Expression.VarRef]
     guard.condition.value shouldBe a[Expression.Compare]
   }
@@ -1214,7 +1214,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.condition.value shouldBe a[Expression.BoolBinary]
   }
 
@@ -1230,7 +1230,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe a[Expression.FunctionCall]
     guard.condition.value shouldBe a[Expression.VarRef]
   }
@@ -1249,7 +1249,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe a[Expression.BoolBinary]
     val boolBinary = guard.expr.value.asInstanceOf[Expression.BoolBinary]
     boolBinary.op shouldBe BoolOp.Or
@@ -1277,7 +1277,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe a[Expression.Arithmetic]
   }
 
@@ -1292,7 +1292,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    val guard      = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe Expression.IntLit(42)
   }
 
@@ -1331,7 +1331,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     coalesce.left.value shouldBe a[Expression.VarRef]
     // right should be another coalesce (b ?? c)
     coalesce.right.value shouldBe a[Expression.Coalesce]
@@ -1354,7 +1354,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     // left side should be a guard expression
     coalesce.left.value shouldBe a[Expression.Guard]
     val guard = coalesce.left.value.asInstanceOf[Expression.Guard]
@@ -1376,7 +1376,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     coalesce.left.value shouldBe a[Expression.FunctionCall]
     coalesce.right.value shouldBe a[Expression.VarRef]
   }
@@ -1392,7 +1392,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     coalesce.left.value shouldBe a[Expression.VarRef]
     coalesce.right.value shouldBe Expression.IntLit(0)
   }
@@ -1408,7 +1408,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     coalesce.right.value shouldBe Expression.StringLit("default")
   }
 
@@ -1424,7 +1424,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    val coalesce   = assignment.value.value.asInstanceOf[Expression.Coalesce]
     coalesce.left.value shouldBe a[Expression.FieldAccess]
     coalesce.right.value shouldBe a[Expression.VarRef]
   }
@@ -1442,7 +1442,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    val assignment = program.declarations(4).asInstanceOf[Declaration.Assignment]
+    val assignment  = program.declarations(4).asInstanceOf[Declaration.Assignment]
     val conditional = assignment.value.value.asInstanceOf[Expression.Conditional]
     conditional.thenBranch.value shouldBe a[Expression.Coalesce]
     conditional.elseBranch.value shouldBe a[Expression.Coalesce]
@@ -1507,7 +1507,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(5).asInstanceOf[Declaration.Assignment]
-    val branch = assignment.value.value.asInstanceOf[Expression.Branch]
+    val branch     = assignment.value.value.asInstanceOf[Expression.Branch]
     branch.cases should have size 2
   }
 
@@ -1522,7 +1522,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val branch = assignment.value.value.asInstanceOf[Expression.Branch]
+    val branch     = assignment.value.value.asInstanceOf[Expression.Branch]
     branch.cases should have size 0
     branch.otherwise.value shouldBe Expression.VarRef("x")
   }

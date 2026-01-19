@@ -1,6 +1,6 @@
 package io.constellation.lsp
 
-import io.constellation.{CType, ModuleNodeSpec, ComponentMetadata}
+import io.constellation.{CType, ComponentMetadata, ModuleNodeSpec}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -24,7 +24,7 @@ class HoverContentTest extends AnyFlatSpec with Matchers {
 
   it should "format parameters section correctly" in {
     val consumes = Map(
-      "text" -> CType.CString,
+      "text"      -> CType.CString,
       "delimiter" -> CType.CString
     )
 
@@ -89,14 +89,16 @@ class HoverContentTest extends AnyFlatSpec with Matchers {
     val module = ModuleNodeSpec(
       metadata = ComponentMetadata("ComplexFunc", "Complex function", List("transform"), 1, 0),
       consumes = Map(
-        "items" -> CType.CList(CType.CString),
+        "items"  -> CType.CList(CType.CString),
         "config" -> CType.CMap(CType.CString, CType.CInt)
       ),
       produces = Map(
-        "result" -> CType.CProduct(Map(
-          "success" -> CType.CBoolean,
-          "data" -> CType.CList(CType.CString)
-        ))
+        "result" -> CType.CProduct(
+          Map(
+            "success" -> CType.CBoolean,
+            "data"    -> CType.CList(CType.CString)
+          )
+        )
       )
     )
 
@@ -136,7 +138,8 @@ class HoverContentTest extends AnyFlatSpec with Matchers {
 
   it should "provide tags via helper method" in {
     val module = ModuleNodeSpec(
-      metadata = ComponentMetadata("Test", "Test description", List("text", "transform", "utility"), 1, 0),
+      metadata =
+        ComponentMetadata("Test", "Test description", List("text", "transform", "utility"), 1, 0),
       consumes = Map.empty,
       produces = Map("out" -> CType.CString)
     )

@@ -116,7 +116,7 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     val sig = ExampleLib.dataSignatures.find(_.name == "FilterGreaterThan").get
 
     sig.params should have size 2
-    sig.params(0) shouldBe ("numbers" -> SemanticType.SList(SemanticType.SInt))
+    sig.params(0) shouldBe ("numbers"   -> SemanticType.SList(SemanticType.SInt))
     sig.params(1) shouldBe ("threshold" -> SemanticType.SInt)
     sig.returns shouldBe SemanticType.SList(SemanticType.SInt)
   }
@@ -141,7 +141,7 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     val sig = ExampleLib.textSignatures.find(_.name == "Contains").get
 
     sig.params should have size 2
-    sig.params(0) shouldBe ("text" -> SemanticType.SString)
+    sig.params(0) shouldBe ("text"      -> SemanticType.SString)
     sig.params(1) shouldBe ("substring" -> SemanticType.SString)
     sig.returns shouldBe SemanticType.SBoolean
   }
@@ -150,7 +150,7 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     val sig = ExampleLib.textSignatures.find(_.name == "Split").get
 
     sig.params should have size 2
-    sig.params(0) shouldBe ("text" -> SemanticType.SString)
+    sig.params(0) shouldBe ("text"      -> SemanticType.SString)
     sig.params(1) shouldBe ("delimiter" -> SemanticType.SString)
     sig.returns shouldBe SemanticType.SList(SemanticType.SString)
   }
@@ -158,7 +158,7 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
   // ========== Compiler Registration Tests ==========
 
   "ExampleLib.registerAll" should "register all functions with a compiler builder" in {
-    val builder = ExampleLib.registerAll(LangCompilerBuilder())
+    val builder  = ExampleLib.registerAll(LangCompilerBuilder())
     val compiler = builder.build
     val registry = compiler.functionRegistry
 
@@ -328,21 +328,21 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
   // ========== Module Consistency Tests ==========
 
   "DataModules and ExampleLib" should "have consistent module counts" in {
-    val dataModuleCount = DataModules.all.size
+    val dataModuleCount    = DataModules.all.size
     val dataSignatureCount = ExampleLib.dataSignatures.size
 
     dataModuleCount shouldBe dataSignatureCount
   }
 
   "TextModules and ExampleLib" should "have consistent module counts" in {
-    val textModuleCount = TextModules.all.size
+    val textModuleCount    = TextModules.all.size
     val textSignatureCount = ExampleLib.textSignatures.size
 
     textModuleCount shouldBe textSignatureCount
   }
 
   "All modules" should "have corresponding signatures" in {
-    val moduleNames = ExampleLib.allModules.keys.toSet
+    val moduleNames    = ExampleLib.allModules.keys.toSet
     val signatureNames = ExampleLib.allSignatures.map(_.name).toSet
 
     moduleNames shouldBe signatureNames
