@@ -215,6 +215,15 @@ export class DagVisualizerPanel {
       --state-running: var(--vscode-charts-blue, #3794ff);
       --state-completed: var(--vscode-charts-green, #3fb950);
       --state-failed: var(--vscode-charts-red, #f85149);
+      /* Data type colors */
+      --type-string: #98c379;
+      --type-int: #61afef;
+      --type-float: #56b6c2;
+      --type-boolean: #c678dd;
+      --type-list: #e5c07b;
+      --type-record: #d19a66;
+      --type-optional: #7f848e;
+      --type-unknown: var(--vscode-descriptionForeground, #888888);
     `;
 
     const styles = getBaseStyles(additionalVars) + this._getCustomStyles();
@@ -431,7 +440,7 @@ export class DagVisualizerPanel {
 
       .dag-node .node-type {
         font-size: 10px;
-        fill: var(--vscode-descriptionForeground);
+        font-weight: 500;
       }
 
       .dag-node .node-role {
@@ -439,6 +448,18 @@ export class DagVisualizerPanel {
         fill: var(--vscode-descriptionForeground);
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+
+      /* Type indicator badge */
+      .dag-node .type-badge {
+        font-size: 9px;
+        font-weight: 600;
+        fill: var(--vscode-editor-background);
+      }
+
+      .dag-node .type-badge-bg {
+        rx: 3;
+        ry: 3;
       }
 
       .dag-edge path {
@@ -762,6 +783,57 @@ export class DagVisualizerPanel {
     return points.map(function(p) { return p[0] + ',' + p[1]; }).join(' ');
   }
 
+  // Get CSS color variable for a data type
+  function getTypeColor(cType) {
+    if (!cType) return 'var(--type-unknown)';
+
+    var typeLower = cType.toLowerCase();
+
+    // Check for primitive types
+    if (typeLower === 'string' || typeLower === 'text') {
+      return 'var(--type-string)';
+    }
+    if (typeLower === 'int' || typeLower === 'integer' || typeLower === 'long') {
+      return 'var(--type-int)';
+    }
+    if (typeLower === 'float' || typeLower === 'double' || typeLower === 'decimal' || typeLower === 'number') {
+      return 'var(--type-float)';
+    }
+    if (typeLower === 'boolean' || typeLower === 'bool') {
+      return 'var(--type-boolean)';
+    }
+
+    // Check for container types
+    if (typeLower.startsWith('list') || typeLower.startsWith('array') || typeLower.startsWith('seq')) {
+      return 'var(--type-list)';
+    }
+    if (typeLower.startsWith('record') || typeLower.startsWith('struct') || typeLower.startsWith('object')) {
+      return 'var(--type-record)';
+    }
+    if (typeLower.startsWith('option') || typeLower.startsWith('maybe') || typeLower.includes('?')) {
+      return 'var(--type-optional)';
+    }
+
+    return 'var(--type-unknown)';
+  }
+
+  // Get a short type indicator (icon/emoji) for the type
+  function getTypeIndicator(cType) {
+    if (!cType) return '';
+
+    var typeLower = cType.toLowerCase();
+
+    if (typeLower === 'string' || typeLower === 'text') return 'T';
+    if (typeLower === 'int' || typeLower === 'integer' || typeLower === 'long') return '#';
+    if (typeLower === 'float' || typeLower === 'double' || typeLower === 'decimal') return '.#';
+    if (typeLower === 'boolean' || typeLower === 'bool') return '?';
+    if (typeLower.startsWith('list') || typeLower.startsWith('array')) return '[]';
+    if (typeLower.startsWith('record') || typeLower.startsWith('struct')) return '{}';
+    if (typeLower.startsWith('option') || typeLower.includes('?')) return '~';
+
+    return '';
+  }
+
   function exportAsSvg() {
     // Clone the SVG to avoid modifying the displayed one
     var svgClone = dagSvg.cloneNode(true);
@@ -865,6 +937,14 @@ export class DagVisualizerPanel {
     var stateCompleted = styles.getPropertyValue('--state-completed') || '#3fb950';
     var stateFailed = styles.getPropertyValue('--state-failed') || '#f85149';
 
+    // Type colors
+    var typeString = styles.getPropertyValue('--type-string') || '#98c379';
+    var typeInt = styles.getPropertyValue('--type-int') || '#61afef';
+    var typeFloat = styles.getPropertyValue('--type-float') || '#56b6c2';
+    var typeBoolean = styles.getPropertyValue('--type-boolean') || '#c678dd';
+    var typeList = styles.getPropertyValue('--type-list') || '#e5c07b';
+    var typeRecord = styles.getPropertyValue('--type-record') || '#d19a66';
+
     return '\\n' +
       '.dag-node rect, .dag-node ellipse, .dag-node polygon { fill: ' + editorBg + '; stroke-width: 2; }\\n' +
       '.dag-node-input ellipse { stroke: ' + inputBorder + '; }\\n' +
@@ -873,7 +953,9 @@ export class DagVisualizerPanel {
       '.dag-node-operation rect.node-body { stroke: ' + moduleBorder + '; }\\n' +
       '.dag-node-operation rect.node-header { fill: ' + moduleBorder + '; stroke: ' + moduleBorder + '; }\\n' +
       '.dag-node text { fill: ' + foreground + '; font-family: monospace; font-size: 12px; text-anchor: middle; dominant-baseline: middle; }\\n' +
-      '.dag-node .node-type { font-size: 10px; fill: ' + descForeground + '; }\\n' +
+      '.dag-node .node-type { font-size: 10px; font-weight: 500; }\\n' +
+      '.dag-node .type-badge { font-size: 9px; font-weight: 600; fill: ' + editorBg + '; }\\n' +
+      '.dag-node .type-badge-bg { rx: 3; ry: 3; }\\n' +
       '.dag-edge path { fill: none; stroke: ' + edgeColor + '; stroke-width: 1.5; opacity: 0.8; }\\n' +
       '.dag-edge polygon { fill: ' + edgeColor + '; opacity: 0.8; }\\n' +
       '.dag-node.state-pending rect, .dag-node.state-pending ellipse, .dag-node.state-pending polygon { stroke: ' + statePending + '; opacity: 0.6; }\\n' +
@@ -1277,12 +1359,40 @@ export class DagVisualizerPanel {
       text.textContent = displayName;
       nodeGroup.appendChild(text);
 
-      // Add type info for data nodes (simplified if needed)
+      // Add type info for data nodes with color coding
       if (node.type === 'data' && node.cType) {
+        var typeColor = getTypeColor(node.cType);
+        var typeIndicator = getTypeIndicator(node.cType);
+
+        // Add type badge (small colored indicator)
+        if (typeIndicator) {
+          var badgeWidth = typeIndicator.length * 7 + 6;
+          var badgeX = node.width - badgeWidth - 4;
+          var badgeY = 4;
+
+          var badgeBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          badgeBg.setAttribute('class', 'type-badge-bg');
+          badgeBg.setAttribute('x', badgeX);
+          badgeBg.setAttribute('y', badgeY);
+          badgeBg.setAttribute('width', badgeWidth);
+          badgeBg.setAttribute('height', 14);
+          badgeBg.setAttribute('fill', typeColor);
+          nodeGroup.appendChild(badgeBg);
+
+          var badgeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          badgeText.setAttribute('class', 'type-badge');
+          badgeText.setAttribute('x', badgeX + badgeWidth / 2);
+          badgeText.setAttribute('y', badgeY + 10);
+          badgeText.textContent = typeIndicator;
+          nodeGroup.appendChild(badgeText);
+        }
+
+        // Add type text with color
         var typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         typeText.setAttribute('class', 'node-type');
         typeText.setAttribute('x', node.width / 2);
         typeText.setAttribute('y', textY + 12);
+        typeText.setAttribute('fill', typeColor);
         // Simplify type name if it has generics or is too long
         var displayType = simplifyLabel(node.cType, 20);
         typeText.textContent = displayType;
