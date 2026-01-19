@@ -212,6 +212,7 @@ object LspMessages {
     case class MapType(keyType: TypeDescriptor, valueType: TypeDescriptor)   extends TypeDescriptor
     case class ParameterizedType(name: String, params: List[TypeDescriptor]) extends TypeDescriptor
     case class RefType(name: String)                                         extends TypeDescriptor
+    case class UnionType(members: List[TypeDescriptor])                      extends TypeDescriptor
   }
 
   case class RecordField(name: String, `type`: TypeDescriptor)
@@ -342,6 +343,11 @@ object LspMessages {
       )
     case TypeDescriptor.RefType(name) =>
       Json.obj("kind" -> Json.fromString("ref"), "name" -> Json.fromString(name))
+    case TypeDescriptor.UnionType(members) =>
+      Json.obj(
+        "kind"    -> Json.fromString("union"),
+        "members" -> Encoder[List[TypeDescriptor]].apply(members)
+      )
   }
 
   given Decoder[TypeDescriptor] = Decoder.instance { cursor =>
@@ -364,6 +370,8 @@ object LspMessages {
         } yield TypeDescriptor.ParameterizedType(name, params)
       case "ref" =>
         cursor.downField("name").as[String].map(TypeDescriptor.RefType(_))
+      case "union" =>
+        cursor.downField("members").as[List[TypeDescriptor]].map(TypeDescriptor.UnionType(_))
       case other =>
         Left(DecodingFailure(s"Unknown TypeDescriptor kind: $other", cursor.history))
     }

@@ -1935,4 +1935,110 @@ class ParserTest extends AnyFlatSpec with Matchers {
     compare.left.value shouldBe a[Expression.FieldAccess]
     compare.right.value shouldBe a[Expression.FieldAccess]
   }
+
+  // Union type tests
+
+  it should "parse simple union type A | B" in {
+    val source = """
+      in x: String | Int
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    inputDecl.typeExpr.value shouldBe a[TypeExpr.Union]
+
+    val union = inputDecl.typeExpr.value.asInstanceOf[TypeExpr.Union]
+    union.members should have size 2
+    union.members should contain allOf (TypeExpr.Primitive("String"), TypeExpr.Primitive("Int"))
+  }
+
+  it should "parse multi-member union type A | B | C" in {
+    val source = """
+      in x: String | Int | Boolean
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    inputDecl.typeExpr.value shouldBe a[TypeExpr.Union]
+
+    val union = inputDecl.typeExpr.value.asInstanceOf[TypeExpr.Union]
+    union.members should have size 3
+  }
+
+  it should "parse union type with records" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in r: Result
+      out r
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val typeDef = program.declarations.head.asInstanceOf[Declaration.TypeDef]
+    typeDef.definition.value shouldBe a[TypeExpr.Union]
+
+    val union = typeDef.definition.value.asInstanceOf[TypeExpr.Union]
+    union.members should have size 2
+    union.members.foreach(_ shouldBe a[TypeExpr.Record])
+  }
+
+  it should "parse union with lower precedence than merge (+)" in {
+    // A + B | C should parse as (A + B) | C
+    val source = """
+      type A = { x: Int }
+      type B = { y: Int }
+      type C = { z: Int }
+      type Combined = A + B | C
+      in c: Combined
+      out c
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val typeDef = program.declarations(3).asInstanceOf[Declaration.TypeDef]
+    typeDef.definition.value shouldBe a[TypeExpr.Union]
+
+    val union = typeDef.definition.value.asInstanceOf[TypeExpr.Union]
+    union.members should have size 2
+    // First member should be TypeMerge(A, B)
+    union.members.head shouldBe a[TypeExpr.TypeMerge]
+    // Second member should be TypeRef(C)
+    union.members(1) shouldBe TypeExpr.TypeRef("C")
+  }
+
+  it should "parse union type with parameterized types" in {
+    val source = """
+      in x: List<String> | List<Int>
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    inputDecl.typeExpr.value shouldBe a[TypeExpr.Union]
+
+    val union = inputDecl.typeExpr.value.asInstanceOf[TypeExpr.Union]
+    union.members should have size 2
+    union.members.foreach(_ shouldBe a[TypeExpr.Parameterized])
+  }
+
+  it should "parse union type in function parameter position" in {
+    val source = """
+      type MaybeError = { success: Boolean } | { error: String }
+      in data: MaybeError
+      result = Process(data)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+  }
 }

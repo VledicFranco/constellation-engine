@@ -63,6 +63,11 @@ object SemanticType {
     }
   }
 
+  /** Union type: A | B | C - value can be any of the member types */
+  final case class SUnion(members: Set[SemanticType]) extends SemanticType {
+    def prettyPrint: String = members.map(_.prettyPrint).toList.sorted.mkString(" | ")
+  }
+
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
     case SString           => CType.CString
@@ -76,6 +81,9 @@ object SemanticType {
     case SOptional(inner)  => CType.COptional(toCType(inner))
     case SFunction(_, _)   =>
       throw new IllegalArgumentException("Function types cannot be converted to CType - they exist only at compile time")
+    case SUnion(members)   =>
+      // Use prettyPrint as tag name for each member type
+      CType.CUnion(members.map(m => m.prettyPrint -> toCType(m)).toMap)
   }
 
   /** Convert Constellation CType to SemanticType */
@@ -87,7 +95,7 @@ object SemanticType {
     case CType.CList(elem)      => SList(fromCType(elem))
     case CType.CMap(k, v)       => SMap(fromCType(k), fromCType(v))
     case CType.CProduct(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
-    case CType.CUnion(fields)   => SRecord(fields.view.mapValues(fromCType).toMap)
+    case CType.CUnion(fields)   => SUnion(fields.values.map(fromCType).toSet)
     case CType.COptional(inner) => SOptional(fromCType(inner))
   }
 }

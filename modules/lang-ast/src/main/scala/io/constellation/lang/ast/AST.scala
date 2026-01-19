@@ -170,6 +170,9 @@ object TypeExpr {
 
   /** Type algebra: A + B (merges record fields) */
   final case class TypeMerge(left: TypeExpr, right: TypeExpr) extends TypeExpr
+
+  /** Union type: A | B (value can be either type) */
+  final case class Union(members: List[TypeExpr]) extends TypeExpr
 }
 
 /** Comparison operators */

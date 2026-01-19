@@ -473,6 +473,9 @@ class ConstellationLanguageServer(
             )
           )
       }
+
+    case TypeExpr.Union(members) =>
+      TypeDescriptor.UnionType(members.map(typeExprToDescriptor))
   }
 
   // ========== Step-through Execution Handlers ==========
