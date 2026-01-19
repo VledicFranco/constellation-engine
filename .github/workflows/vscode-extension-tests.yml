@@ -1,0 +1,116 @@
+name: VSCode Extension Tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'vscode-extension/**'
+      - '.github/workflows/vscode-extension-tests.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'vscode-extension/**'
+      - '.github/workflows/vscode-extension-tests.yml'
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        vscode-version: [stable]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Compile extension
+        working-directory: vscode-extension
+        run: npm run compile
+
+      # Required for running VS Code on Linux in CI
+      - name: Setup display (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      # Run tests with xvfb on Linux
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
+        working-directory: vscode-extension
+        run: xvfb-run -a npm test
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
+
+      # Run tests directly on Windows and macOS
+      - name: Run tests (Windows/macOS)
+        if: runner.os != 'Linux'
+        working-directory: vscode-extension
+        run: npm test
+        env:
+          VSCODE_VERSION: ${{ matrix.vscode-version }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Check TypeScript compilation
+        working-directory: vscode-extension
+        run: npm run compile
+
+  package:
+    runs-on: ubuntu-latest
+    needs: [test, lint]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Package extension
+        working-directory: vscode-extension
+        run: npm run package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: constellation-lang-vsix
+          path: vscode-extension/*.vsix
+          retention-days: 7

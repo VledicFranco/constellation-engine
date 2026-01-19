@@ -367,6 +367,42 @@ npm run compile
 npm run watch
 ```
 
+### Running Tests
+
+The extension includes comprehensive tests covering extension activation, LSP integration, and user workflows.
+
+**Run all tests:**
+```bash
+npm test
+```
+
+This will:
+1. Download a VS Code instance if needed
+2. Launch VS Code with the extension loaded
+3. Run all test suites
+4. Report results in the terminal
+
+**Test structure:**
+- `src/test/suite/extension.test.ts` - Extension activation tests
+- `src/test/suite/integration/lsp.test.ts` - LSP communication tests
+- `src/test/suite/e2e/workflow.test.ts` - End-to-end user workflow tests
+- `src/test/fixtures/` - Test fixture files (`.cst` scripts)
+
+**Test requirements:**
+- Tests that require the LSP server will skip gracefully if the server is not running
+- For full integration testing, start the server before running tests:
+  ```bash
+  # In one terminal
+  sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
+
+  # In another terminal
+  cd vscode-extension
+  npm test
+  ```
+
+**CI Integration:**
+Tests run automatically on push/PR via GitHub Actions across Windows, macOS, and Ubuntu.
+
 ### Debugging
 
 1. Open the extension directory in VSCode

@@ -1,0 +1,6 @@
+# Simple test script
+in text: String
+
+result = Uppercase(text)
+
+out result

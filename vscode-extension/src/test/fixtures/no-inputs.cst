@@ -1,0 +1,4 @@
+# Script with no inputs (hardcoded values)
+text = "Hello World"
+result = Uppercase(text)
+out result
