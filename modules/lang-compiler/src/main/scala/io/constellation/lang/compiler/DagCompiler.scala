@@ -172,7 +172,6 @@ object DagCompiler {
       right: UUID,
       outputType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val leftDataId = nodeOutputs.getOrElse(left,
@@ -186,38 +185,14 @@ object DagCompiler {
       val rightCType = dataNodes(rightDataId).cType
       val outputCType = SemanticType.toCType(outputType)
 
-      // Create synthetic merge module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.merge-${id.toString.take(8)}"),
-        consumes = Map("left" -> leftCType, "right" -> rightCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createMergeModule(spec, leftCType, rightCType, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames for input data nodes
-      dataNodes = dataNodes.updatedWith(leftDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(rightDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"merge_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.MergeTransform(leftCType, rightCType)),
+        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -227,7 +202,6 @@ object DagCompiler {
       fields: List[String],
       outputType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val sourceDataId = nodeOutputs.getOrElse(source,
@@ -237,34 +211,14 @@ object DagCompiler {
       val sourceCType = dataNodes(sourceDataId).cType
       val outputCType = SemanticType.toCType(outputType)
 
-      // Create synthetic projection module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.project-${id.toString.take(8)}"),
-        consumes = Map("source" -> sourceCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createProjectionModule(spec, fields, sourceCType, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames for input data node
-      dataNodes = dataNodes.updatedWith(sourceDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "source")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((sourceDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"project_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.ProjectTransform(fields, sourceCType)),
+        transformInputs = Map("source" -> sourceDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -274,7 +228,6 @@ object DagCompiler {
       field: String,
       outputType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val sourceDataId = nodeOutputs.getOrElse(source,
@@ -284,34 +237,14 @@ object DagCompiler {
       val sourceCType = dataNodes(sourceDataId).cType
       val outputCType = SemanticType.toCType(outputType)
 
-      // Create synthetic field access module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.field-${id.toString.take(8)}"),
-        consumes = Map("source" -> sourceCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createFieldAccessModule(spec, field, sourceCType, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames for input data node
-      dataNodes = dataNodes.updatedWith(sourceDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "source")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((sourceDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"field_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.FieldAccessTransform(field, sourceCType)),
+        transformInputs = Map("source" -> sourceDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -322,7 +255,6 @@ object DagCompiler {
       elseBranch: UUID,
       outputType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val condDataId = nodeOutputs.getOrElse(condition,
@@ -335,47 +267,16 @@ object DagCompiler {
         throw new IllegalStateException(s"Else branch node $elseBranch not found")
       )
 
-      val condCType = dataNodes(condDataId).cType
-      val thenCType = dataNodes(thenDataId).cType
-      val elseCType = dataNodes(elseDataId).cType
       val outputCType = SemanticType.toCType(outputType)
 
-      // Create synthetic conditional module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.conditional-${id.toString.take(8)}"),
-        consumes = Map("cond" -> condCType, "thenBr" -> thenCType, "elseBr" -> elseCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createConditionalModule(spec, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(condDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "cond")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(thenDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "thenBr")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(elseDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "elseBr")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((condDataId, moduleId)) + ((thenDataId, moduleId)) + ((elseDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"conditional_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.ConditionalTransform),
+        transformInputs = Map("cond" -> condDataId, "thenBr" -> thenDataId, "elseBr" -> elseDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -384,171 +285,17 @@ object DagCompiler {
       value: Any,
       outputType: SemanticType
     ): Unit = {
-      // Literals become input data nodes with constant values
+      // Literals become data nodes with inline literal transform
       val dataId = UUID.randomUUID()
       val cType = SemanticType.toCType(outputType)
       dataNodes = dataNodes + (dataId -> DataNodeSpec(
         name = s"literal_${id.toString.take(8)}",
         nicknames = Map(dataId -> s"literal_${id.toString.take(8)}"),
-        cType = cType
+        cType = cType,
+        inlineTransform = Some(InlineTransform.LiteralTransform(value)),
+        transformInputs = Map.empty // No inputs needed for literals
       ))
       nodeOutputs = nodeOutputs + (id -> dataId)
-    }
-
-    /** Create a merge module that combines two records */
-    private def createMergeModule(
-      spec: ModuleNodeSpec,
-      leftCType: CType,
-      rightCType: CType,
-      outputCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            leftDeferred <- cats.effect.Deferred[IO, Any]
-            rightDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            leftId <- consumesNs.nameId("left")
-            rightId <- consumesNs.nameId("right")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                leftValue <- runtime.getTableData(leftId)
-                rightValue <- runtime.getTableData(rightId)
-                merged = mergeValues(leftValue, rightValue, leftCType, rightCType)
-                _ <- runtime.setTableData(outId, merged)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Merge two values (record merge or list element-wise merge) */
-    private def mergeValues(left: Any, right: Any, leftCType: CType, rightCType: CType): Any = {
-      (left, right, leftCType, rightCType) match {
-        case (lMap: Map[String, ?] @unchecked, rMap: Map[String, ?] @unchecked, _, _) =>
-          lMap ++ rMap
-
-        case (lList: List[?] @unchecked, rList: List[?] @unchecked, CType.CList(lElem), CType.CList(rElem)) =>
-          if (lList.size != rList.size) {
-            throw new IllegalArgumentException(
-              s"Cannot merge Candidates with different lengths: left has ${lList.size} elements, right has ${rList.size} elements"
-            )
-          }
-          lList.zip(rList).map { case (l, r) => mergeValues(l, r, lElem, rElem) }
-
-        case (lList: List[?] @unchecked, rMap: Map[String, ?] @unchecked, CType.CList(_), _) =>
-          lList.map {
-            case elemMap: Map[String, ?] @unchecked => elemMap ++ rMap
-            case other => other
-          }
-
-        case (lMap: Map[String, ?] @unchecked, rList: List[?] @unchecked, _, CType.CList(_)) =>
-          rList.map {
-            case elemMap: Map[String, ?] @unchecked => lMap ++ elemMap
-            case other => other
-          }
-
-        case _ => right // Fallback: right wins
-      }
-    }
-
-    /** Create a projection module that selects fields */
-    private def createProjectionModule(
-      spec: ModuleNodeSpec,
-      fields: List[String],
-      sourceCType: CType,
-      outputCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            sourceDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            sourceId <- consumesNs.nameId("source")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(sourceId -> sourceDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                sourceValue <- runtime.getTableData(sourceId)
-                projected = projectFields(sourceValue, fields, sourceCType)
-                _ <- runtime.setTableData(outId, projected)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Project fields from a value */
-    private def projectFields(value: Any, fields: List[String], cType: CType): Any = {
-      (value, cType) match {
-        case (map: Map[String, ?] @unchecked, CType.CProduct(_)) =>
-          fields.flatMap(f => map.get(f).map(f -> _)).toMap
-
-        case (list: List[?] @unchecked, CType.CList(elemType)) =>
-          list.map(elem => projectFields(elem, fields, elemType))
-
-        case _ => value
-      }
-    }
-
-    /** Create a field access module that extracts a single field value */
-    private def createFieldAccessModule(
-      spec: ModuleNodeSpec,
-      field: String,
-      sourceCType: CType,
-      outputCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            sourceDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            sourceId <- consumesNs.nameId("source")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(sourceId -> sourceDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                sourceValue <- runtime.getTableData(sourceId)
-                fieldValue = accessField(sourceValue, field, sourceCType)
-                _ <- runtime.setTableData(outId, fieldValue)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Access a single field from a value */
-    private def accessField(value: Any, field: String, cType: CType): Any = {
-      (value, cType) match {
-        case (map: Map[String, ?] @unchecked, CType.CProduct(_)) =>
-          map.getOrElse(field, throw new IllegalStateException(s"Field '$field' not found"))
-
-        case (list: List[?] @unchecked, CType.CList(elemType)) =>
-          list.map(elem => accessField(elem, field, elemType))
-
-        case _ =>
-          throw new IllegalStateException(s"Cannot access field '$field' on non-record type")
-      }
     }
 
     private def processAndNode(
@@ -556,7 +303,6 @@ object DagCompiler {
       left: UUID,
       right: UUID
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val leftDataId = nodeOutputs.getOrElse(left,
@@ -566,38 +312,14 @@ object DagCompiler {
         throw new IllegalStateException(s"Right node $right not found")
       )
 
-      // Create synthetic AND module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.and-${id.toString.take(8)}"),
-        consumes = Map("left" -> CType.CBoolean, "right" -> CType.CBoolean),
-        produces = Map("out" -> CType.CBoolean)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation with short-circuit evaluation
-      val syntheticModule = createAndModule(spec)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(leftDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(rightDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"and_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = CType.CBoolean
+        nicknames = Map.empty,
+        cType = CType.CBoolean,
+        inlineTransform = Some(InlineTransform.AndTransform),
+        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -606,7 +328,6 @@ object DagCompiler {
       left: UUID,
       right: UUID
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val leftDataId = nodeOutputs.getOrElse(left,
@@ -616,38 +337,14 @@ object DagCompiler {
         throw new IllegalStateException(s"Right node $right not found")
       )
 
-      // Create synthetic OR module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.or-${id.toString.take(8)}"),
-        consumes = Map("left" -> CType.CBoolean, "right" -> CType.CBoolean),
-        produces = Map("out" -> CType.CBoolean)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation with short-circuit evaluation
-      val syntheticModule = createOrModule(spec)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(leftDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(rightDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"or_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = CType.CBoolean
+        nicknames = Map.empty,
+        cType = CType.CBoolean,
+        inlineTransform = Some(InlineTransform.OrTransform),
+        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
@@ -655,137 +352,21 @@ object DagCompiler {
       id: UUID,
       operand: UUID
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val operandDataId = nodeOutputs.getOrElse(operand,
         throw new IllegalStateException(s"Operand node $operand not found")
       )
 
-      // Create synthetic NOT module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.not-${id.toString.take(8)}"),
-        consumes = Map("operand" -> CType.CBoolean),
-        produces = Map("out" -> CType.CBoolean)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createNotModule(spec)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(operandDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "operand")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((operandDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"not_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = CType.CBoolean
+        nicknames = Map.empty,
+        cType = CType.CBoolean,
+        inlineTransform = Some(InlineTransform.NotTransform),
+        transformInputs = Map("operand" -> operandDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
-    }
-
-    /** Create an AND module with short-circuit evaluation */
-    private def createAndModule(spec: ModuleNodeSpec): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            leftDeferred <- cats.effect.Deferred[IO, Any]
-            rightDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            leftId <- consumesNs.nameId("left")
-            rightId <- consumesNs.nameId("right")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                leftValue <- runtime.getTableData(leftId)
-                // Short-circuit: if left is false, don't evaluate right
-                result <- if (!leftValue.asInstanceOf[Boolean]) {
-                  IO.pure(false)
-                } else {
-                  runtime.getTableData(rightId).map(_.asInstanceOf[Boolean])
-                }
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Create an OR module with short-circuit evaluation */
-    private def createOrModule(spec: ModuleNodeSpec): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            leftDeferred <- cats.effect.Deferred[IO, Any]
-            rightDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            leftId <- consumesNs.nameId("left")
-            rightId <- consumesNs.nameId("right")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                leftValue <- runtime.getTableData(leftId)
-                // Short-circuit: if left is true, don't evaluate right
-                result <- if (leftValue.asInstanceOf[Boolean]) {
-                  IO.pure(true)
-                } else {
-                  runtime.getTableData(rightId).map(_.asInstanceOf[Boolean])
-                }
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Create a NOT module */
-    private def createNotModule(spec: ModuleNodeSpec): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            operandDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            operandId <- consumesNs.nameId("operand")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(operandId -> operandDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                operandValue <- runtime.getTableData(operandId)
-                result = !operandValue.asInstanceOf[Boolean]
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
     }
 
     private def processGuardNode(
@@ -794,7 +375,6 @@ object DagCompiler {
       condition: UUID,
       innerType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val exprDataId = nodeOutputs.getOrElse(expr,
@@ -805,82 +385,17 @@ object DagCompiler {
       )
 
       val exprCType = dataNodes(exprDataId).cType
-      val condCType = dataNodes(condDataId).cType
       val outputCType = CType.COptional(exprCType)
 
-      // Create synthetic guard module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.guard-${id.toString.take(8)}"),
-        consumes = Map("expr" -> exprCType, "cond" -> condCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createGuardModule(spec, exprCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(exprDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "expr")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(condDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "cond")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((exprDataId, moduleId)) + ((condDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"guard_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.GuardTransform),
+        transformInputs = Map("expr" -> exprDataId, "cond" -> condDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
-    }
-
-    /** Create a guard module that returns Optional<T>.
-      * Returns Some(expr) if condition is true, None otherwise.
-      */
-    private def createGuardModule(
-      spec: ModuleNodeSpec,
-      innerCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            exprDeferred <- cats.effect.Deferred[IO, Any]
-            condDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            exprId <- consumesNs.nameId("expr")
-            condId <- consumesNs.nameId("cond")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(exprId -> exprDeferred, condId -> condDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                condValue <- runtime.getTableData(condId)
-                result <- if (condValue.asInstanceOf[Boolean]) {
-                  // Condition is true: evaluate expression and return Some
-                  runtime.getTableData(exprId).map(v => Some(v))
-                } else {
-                  // Condition is false: return None (don't evaluate expression)
-                  IO.pure(None)
-                }
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
     }
 
     private def processCoalesceNode(
@@ -889,7 +404,6 @@ object DagCompiler {
       right: UUID,
       resultType: SemanticType
     ): Unit = {
-      val moduleId = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       val leftDataId = nodeOutputs.getOrElse(left,
@@ -899,120 +413,17 @@ object DagCompiler {
         throw new IllegalStateException(s"Right node $right not found")
       )
 
-      val leftCType = dataNodes(leftDataId).cType
-      val rightCType = dataNodes(rightDataId).cType
       val outputCType = SemanticType.toCType(resultType)
 
-      // Create synthetic coalesce module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.coalesce-${id.toString.take(8)}"),
-        consumes = Map("left" -> leftCType, "right" -> rightCType),
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createCoalesceModule(spec, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames
-      dataNodes = dataNodes.updatedWith(leftDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
-        case None => None
-      }
-      dataNodes = dataNodes.updatedWith(rightDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
-        case None => None
-      }
-
-      // Connect edges
-      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
-
-      // Create output data node
+      // Create data node with inline transform (no synthetic module needed)
       dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
         name = s"coalesce_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(InlineTransform.CoalesceTransform),
+        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
       ))
-      outEdges = outEdges + ((moduleId, outputDataId))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
-    }
-
-    /** Create a coalesce module that unwraps Optional.
-      * Returns the inner value if Some, otherwise returns the fallback.
-      */
-    private def createCoalesceModule(
-      spec: ModuleNodeSpec,
-      outputCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            leftDeferred <- cats.effect.Deferred[IO, Any]
-            rightDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            leftId <- consumesNs.nameId("left")
-            rightId <- consumesNs.nameId("right")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                leftValue <- runtime.getTableData(leftId)
-                result <- leftValue match {
-                  case Some(v) =>
-                    // Left is Some: return the unwrapped value
-                    IO.pure(v)
-                  case None =>
-                    // Left is None: return the right (fallback) value
-                    runtime.getTableData(rightId)
-                }
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
-    }
-
-    /** Create a conditional module */
-    private def createConditionalModule(
-      spec: ModuleNodeSpec,
-      outputCType: CType
-    ): Module.Uninitialized = {
-      Module.Uninitialized(
-        spec = spec,
-        init = (moduleId, dagSpec) => {
-          for {
-            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-            condDeferred <- cats.effect.Deferred[IO, Any]
-            thenDeferred <- cats.effect.Deferred[IO, Any]
-            elseDeferred <- cats.effect.Deferred[IO, Any]
-            outDeferred <- cats.effect.Deferred[IO, Any]
-            condId <- consumesNs.nameId("cond")
-            thenId <- consumesNs.nameId("thenBr")
-            elseId <- consumesNs.nameId("elseBr")
-            outId <- producesNs.nameId("out")
-          } yield Module.Runnable(
-            id = moduleId,
-            data = Map(condId -> condDeferred, thenId -> thenDeferred, elseId -> elseDeferred, outId -> outDeferred),
-            run = runtime => {
-              for {
-                condValue <- runtime.getTableData(condId)
-                thenValue <- runtime.getTableData(thenId)
-                elseValue <- runtime.getTableData(elseId)
-                result = if (condValue.asInstanceOf[Boolean]) thenValue else elseValue
-                _ <- runtime.setTableData(outId, result)
-              } yield ()
-            }
-          )
-        }
-      )
     }
   }
 }

@@ -3,7 +3,7 @@ package io.constellation
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, ValidatedNel}
 import cats.effect.{Deferred, IO, Ref}
-import cats.implicits.{catsSyntaxParallelTraverse1, toTraverseOps}
+import cats.implicits.{catsSyntaxParallelTraverse1, catsSyntaxTuple2Parallel, toTraverseOps}
 import cats.{Eval, Monoid}
 import io.circe.Json
 
@@ -81,14 +81,26 @@ object Runtime {
     for {
       _ <- validateRunIO(dag, initData)
       modulesAndDataTable <- initModules(dag, modules)
-      (runnable, dataTable) = modulesAndDataTable
+      (runnable, moduleDataTable) = modulesAndDataTable
+
+      // Create deferreds for data nodes with inline transforms
+      inlineTransformTable <- initInlineTransformTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable
+
       contextRef <- initState(dag)
       runtime = Runtime(state = contextRef, table = dataTable)
       _ <- completeTopLevelDataNodes(dag, initData, runtime)
-      latency <- runnable
-        .parTraverse(_.run(runtime))
+
+      // Start inline transform fibers (they run in parallel with modules)
+      transformFibers <- startInlineTransformFibers(dag, runtime)
+
+      latency <- (
+        runnable.parTraverse(_.run(runtime)),
+        transformFibers.parTraverse(_.join)
+      ).parMapN((_, _) => ())
         .timed
         .map(_._1)
+
       finalState <- runtime.close(latency)
     } yield finalState
   }
@@ -166,6 +178,59 @@ object Runtime {
         _ <- runtime.setStateData(uuid, cValue)
       } yield ()
     }.void
+
+  /**
+   * Create deferreds for all data nodes that have inline transforms.
+   * These data nodes compute their values from other data nodes rather than from modules.
+   */
+  private def initInlineTransformTable(dag: DagSpec): IO[MutableDataTable] = {
+    dag.data.toList
+      .filter(_._2.inlineTransform.isDefined)
+      .traverse { case (dataId, _) =>
+        Deferred[IO, Any].map(dataId -> _)
+      }
+      .map(_.toMap)
+  }
+
+  /**
+   * Start fibers to compute inline transform values.
+   * Each fiber waits for its input values, applies the transform, and completes the output deferred.
+   * Fibers run in parallel and naturally respect data dependencies through deferred waiting.
+   */
+  private def startInlineTransformFibers(dag: DagSpec, runtime: Runtime): IO[List[cats.effect.Fiber[IO, Throwable, Unit]]] = {
+    dag.data.toList
+      .filter(_._2.inlineTransform.isDefined)
+      .traverse { case (dataId, spec) =>
+        computeInlineTransform(dataId, spec, runtime).start
+      }
+  }
+
+  /**
+   * Compute a single inline transform value.
+   * Waits for all input values, applies the transform, and sets the output.
+   */
+  private def computeInlineTransform(dataId: UUID, spec: DataNodeSpec, runtime: Runtime): IO[Unit] = {
+    spec.inlineTransform match {
+      case Some(transform) =>
+        for {
+          // Wait for all input values
+          inputValues <- spec.transformInputs.toList.traverse { case (inputName, inputDataId) =>
+            runtime.getTableData(inputDataId).map(inputName -> _)
+          }
+          inputMap = inputValues.toMap
+
+          // Apply the transform
+          result = transform.apply(inputMap)
+
+          // Complete the output deferred
+          _ <- runtime.setTableData(dataId, result)
+        } yield ()
+
+      case None =>
+        // Should not happen - we filter for inlineTransform.isDefined above
+        IO.unit
+    }
+  }
 }
 
 object Module {

@@ -50,7 +50,27 @@ object DagSpec {
   )
 }
 
-final case class DataNodeSpec(name: String, nicknames: Map[UUID, String], cType: CType)
+/**
+ * Specification for a data node in a DAG.
+ *
+ * @param name The name of the data node
+ * @param nicknames Map from module UUID to the parameter name used by that module
+ * @param cType The type of data this node holds
+ * @param inlineTransform Optional inline transform to compute this node's value from inputs.
+ *                        When present, this data node computes its value by applying the transform
+ *                        to the values of its input data nodes (specified in transformInputs).
+ *                        This eliminates the need for a synthetic module node.
+ * @param transformInputs Map from input name (as expected by the transform) to source data node UUID.
+ *                        Only used when inlineTransform is defined. For example, a MergeTransform
+ *                        expects inputs named "left" and "right".
+ */
+final case class DataNodeSpec(
+  name: String,
+  nicknames: Map[UUID, String],
+  cType: CType,
+  inlineTransform: Option[InlineTransform] = None,
+  transformInputs: Map[String, UUID] = Map.empty
+)
 
 case class ModuleNodeSpec(
   metadata: ComponentMetadata,

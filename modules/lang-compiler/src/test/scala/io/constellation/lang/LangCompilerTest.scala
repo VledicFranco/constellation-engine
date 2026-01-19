@@ -62,9 +62,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have a synthetic merge module
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+    // Should have a data node with inline merge transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    ) shouldBe true
   }
 
   it should "compile a program with projection expressions" in {
@@ -80,9 +81,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have a synthetic project module
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("project")) shouldBe true
+    // Should have a data node with inline project transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("project") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.ProjectTransform])
+    ) shouldBe true
   }
 
   it should "compile a program with registered functions" in {
@@ -124,9 +126,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have a synthetic conditional module
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("conditional")) shouldBe true
+    // Should have a data node with inline conditional transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("conditional") && d.inlineTransform.contains(InlineTransform.ConditionalTransform)
+    ) shouldBe true
   }
 
   it should "compile the example program from design doc" in {
@@ -306,10 +309,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have both project and merge modules
-    val moduleNames = compiled.dagSpec.modules.values.map(_.name).toList
-    moduleNames.exists(_.contains("project")) shouldBe true
-    moduleNames.exists(_.contains("merge")) shouldBe true
+    // Should have data nodes with both project and merge inline transforms
+    val dataNodes = compiled.dagSpec.data.values.toList
+    dataNodes.exists(d => d.name.contains("project") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.ProjectTransform])) shouldBe true
+    dataNodes.exists(d => d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])) shouldBe true
   }
 
   it should "handle Candidates projection correctly" in {
@@ -753,9 +756,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have a synthetic merge module
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+    // Should have a data node with inline merge transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    ) shouldBe true
   }
 
   it should "compile Candidates + Candidates with empty inner records" in {
@@ -772,7 +776,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.syntheticModules should not be empty
+    // Should have a data node with inline merge transform
+    compiled.dagSpec.data.values.exists(_.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])) shouldBe true
   }
 
   it should "compile chained Candidates merges" in {
@@ -793,9 +798,11 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have 2 merge modules for a + b + c
-    val mergeModules = compiled.dagSpec.modules.values.filter(_.name.contains("merge"))
-    mergeModules should have size 2
+    // Should have 2 data nodes with inline merge transforms for a + b + c
+    val mergeDataNodes = compiled.dagSpec.data.values.filter(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    )
+    mergeDataNodes should have size 2
   }
 
   it should "generate correct output type for Candidates merge" in {
@@ -842,8 +849,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+    // Should have a data node with inline merge transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    ) shouldBe true
   }
 
   it should "compile Record + Candidates broadcast merge" in {
@@ -861,8 +870,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.syntheticModules should not be empty
-    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+    // Should have a data node with inline merge transform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    ) shouldBe true
   }
 
   it should "generate correct output type for Candidates + Record merge" in {
@@ -906,8 +917,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have 2 merge modules for a + b + c
-    val mergeModules = compiled.dagSpec.modules.values.filter(_.name.contains("merge"))
-    mergeModules should have size 2
+    // Should have 2 data nodes with inline merge transforms for a + b + c
+    val mergeDataNodes = compiled.dagSpec.data.values.filter(d =>
+      d.name.contains("merge") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    )
+    mergeDataNodes should have size 2
   }
 }
