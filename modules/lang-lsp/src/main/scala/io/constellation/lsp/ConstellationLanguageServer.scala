@@ -1274,7 +1274,8 @@ class ConstellationLanguageServer(
           _: CompileError.AmbiguousFunction | _: CompileError.InvalidProjection |
           _: CompileError.InvalidFieldAccess =>
         ErrorCategory.Reference
-      case _: CompileError.UnsupportedComparison => ErrorCategory.Type
+      case _: CompileError.UnsupportedComparison | _: CompileError.UnsupportedArithmetic =>
+        ErrorCategory.Type
     }
 
     val (line, column, endLine, endColumn, codeContext) = error.span match {
