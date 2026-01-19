@@ -368,4 +368,287 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     lowestValue shouldBe defined
     lowestValue.get shouldBe CValue.CInt(9)
   }
+
+  // ========== Union Type Integration Tests ==========
+
+  "Union type programs" should "compile with simple union type inputs" in {
+    val source = """
+      in x: String | Int
+      out x
+    """
+    val result = compiler.compile(source, "union-simple-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data should have size 1
+
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure.keys should contain allOf ("String", "Int")
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile with union type definition" in {
+    val source = """
+      type Result = String | Int | Boolean
+      in result: Result
+      out result
+    """
+    val result = compiler.compile(source, "union-typedef-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 3
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile with union of record types" in {
+    val source = """
+      type Success = { value: Int }
+      type Error = { message: String }
+      type Outcome = Success | Error
+      in outcome: Outcome
+      out outcome
+    """
+    val result = compiler.compile(source, "union-record-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.values.forall(_.isInstanceOf[CType.CProduct]) shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile and preserve union type through assignment" in {
+    val source = """
+      in x: String | Int
+      y = x
+      out y
+    """
+    val result = compiler.compile(source, "union-assign-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("y")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.CUnion(structure) =>
+        structure.keys should contain allOf ("String", "Int")
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union with parameterized types" in {
+    val source = """
+      in x: Optional<Int> | String
+      out x
+    """
+    val result = compiler.compile(source, "union-param-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.keys should contain("String")
+        structure.values.exists {
+          case CType.COptional(CType.CInt) => true
+          case _ => false
+        } shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union combined with merge type expression" in {
+    val source = """
+      type A = { x: Int }
+      type B = { y: String }
+      type Combined = A + B | { z: Boolean }
+      in data: Combined
+      out data
+    """
+    val result = compiler.compile(source, "union-merge-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        // One member should have both x and y fields
+        structure.values.exists {
+          case CType.CProduct(fields) =>
+            fields.contains("x") && fields.contains("y")
+          case _ => false
+        } shouldBe true
+        // Other member should have z field
+        structure.values.exists {
+          case CType.CProduct(fields) =>
+            fields.contains("z") && !fields.contains("x")
+          case _ => false
+        } shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  // ========== Guard Expression Integration Tests ==========
+
+  "Guard expression programs" should "compile and produce Optional type" in {
+    val source = """
+      in value: Int
+      in isActive: Boolean
+      result = value when isActive
+      out result
+    """
+    val result = compiler.compile(source, "guard-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.COptional(CType.CInt)
+  }
+
+  it should "compile guard with record value" in {
+    val source = """
+      in person: { name: String, age: Int }
+      in isAdult: Boolean
+      result = person when isAdult
+      out result
+    """
+    val result = compiler.compile(source, "guard-record-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.COptional(CType.CProduct(fields)) =>
+        fields.keys should contain allOf ("name", "age")
+      case other => fail(s"Expected Optional<Record>, got $other")
+    }
+  }
+
+  it should "compile guard with union type value" in {
+    val source = """
+      in data: String | Int
+      in flag: Boolean
+      result = data when flag
+      out result
+    """
+    val result = compiler.compile(source, "guard-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.COptional(CType.CUnion(structure)) =>
+        structure.keys should contain allOf ("String", "Int")
+      case other => fail(s"Expected Optional<Union>, got $other")
+    }
+  }
+
+  // ========== Coalesce Expression Integration Tests ==========
+
+  "Coalesce expression programs" should "compile with Optional and fallback" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      in fallback: Int
+      result = maybeValue ?? fallback
+      out result
+    """
+    val result = compiler.compile(source, "coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "compile coalesce with two Optional values" in {
+    val source = """
+      in primary: Optional<Int>
+      in secondary: Optional<Int>
+      result = primary ?? secondary
+      out result
+    """
+    val result = compiler.compile(source, "coalesce-optional-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.COptional(CType.CInt)
+  }
+
+  it should "compile combined guard and coalesce expressions" in {
+    val source = """
+      in value: Int
+      in condition: Boolean
+      in fallback: Int
+      result = value when condition ?? fallback
+      out result
+    """
+    val result = compiler.compile(source, "guard-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "compile chained coalesce expressions" in {
+    val source = """
+      in first: Optional<Int>
+      in second: Optional<Int>
+      in last: Int
+      result = first ?? second ?? last
+      out result
+    """
+    val result = compiler.compile(source, "chained-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CInt
+  }
 }

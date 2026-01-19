@@ -164,4 +164,232 @@ class RawValueTest extends AnyFlatSpec with Matchers {
     val restored = RawValueConverter.toCValue(raw, CType.CList(CType.CFloat))
     restored shouldBe original
   }
+
+  // Union type tests
+
+  "RawValueConverter" should "convert CUnion with Int value to RUnion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val unionCV = CValue.CUnion(CValue.CInt(42), structure, "Int")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "Int"
+    rUnion.value shouldBe RawValue.RInt(42)
+  }
+
+  it should "convert CUnion with String value to RUnion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val unionCV = CValue.CUnion(CValue.CString("hello"), structure, "String")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "String"
+    rUnion.value shouldBe RawValue.RString("hello")
+  }
+
+  it should "convert CUnion with Boolean value to RUnion" in {
+    val structure = Map("Boolean" -> CType.CBoolean, "Int" -> CType.CInt)
+    val unionCV = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "Boolean"
+    rUnion.value shouldBe RawValue.RBool(true)
+  }
+
+  it should "convert CUnion with Float value to RUnion" in {
+    val structure = Map("Float" -> CType.CFloat, "Int" -> CType.CInt)
+    val unionCV = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "Float"
+    rUnion.value shouldBe RawValue.RFloat(3.14)
+  }
+
+  it should "convert CUnion with record value to RUnion" in {
+    val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
+    val recordType = CType.CProduct(recordStructure)
+    val structure = Map("Person" -> recordType, "Error" -> CType.CString)
+
+    val recordValue = CValue.CProduct(
+      Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
+      recordStructure
+    )
+    val unionCV = CValue.CUnion(recordValue, structure, "Person")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "Person"
+    rUnion.value shouldBe a[RawValue.RProduct]
+  }
+
+  it should "convert CUnion with list value to RUnion" in {
+    val listType = CType.CList(CType.CInt)
+    val structure = Map("Numbers" -> listType, "Text" -> CType.CString)
+
+    val listValue = CValue.CList(
+      Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
+      CType.CInt
+    )
+    val unionCV = CValue.CUnion(listValue, structure, "Numbers")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "Numbers"
+    rUnion.value shouldBe a[RawValue.RIntList]
+  }
+
+  it should "convert CUnion with Optional value to RUnion" in {
+    val optType = CType.COptional(CType.CInt)
+    val structure = Map("MaybeInt" -> optType, "String" -> CType.CString)
+
+    val someValue = CValue.CSome(CValue.CInt(42), CType.CInt)
+    val unionCV = CValue.CUnion(someValue, structure, "MaybeInt")
+
+    val raw = RawValueConverter.fromCValue(unionCV)
+    raw shouldBe a[RawValue.RUnion]
+
+    val rUnion = raw.asInstanceOf[RawValue.RUnion]
+    rUnion.tag shouldBe "MaybeInt"
+    rUnion.value shouldBe RawValue.RSome(RawValue.RInt(42))
+  }
+
+  "TypedValueAccessor" should "convert RUnion back to CUnion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val accessor = TypedValueAccessor(CType.CUnion(structure))
+
+    val rUnion = RawValue.RUnion("Int", RawValue.RInt(42))
+    val cValue = accessor.toCValue(rUnion)
+
+    cValue shouldBe a[CValue.CUnion]
+    val union = cValue.asInstanceOf[CValue.CUnion]
+    union.tag shouldBe "Int"
+    union.value shouldBe CValue.CInt(42)
+    union.structure shouldBe structure
+  }
+
+  it should "convert RUnion with String back to CUnion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val accessor = TypedValueAccessor(CType.CUnion(structure))
+
+    val rUnion = RawValue.RUnion("String", RawValue.RString("hello"))
+    val cValue = accessor.toCValue(rUnion)
+
+    cValue shouldBe a[CValue.CUnion]
+    val union = cValue.asInstanceOf[CValue.CUnion]
+    union.tag shouldBe "String"
+    union.value shouldBe CValue.CString("hello")
+  }
+
+  it should "convert RUnion with record back to CUnion" in {
+    val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
+    val recordType = CType.CProduct(recordStructure)
+    val unionStructure = Map("Person" -> recordType, "Error" -> CType.CString)
+
+    val accessor = TypedValueAccessor(CType.CUnion(unionStructure))
+
+    // Fields sorted alphabetically: age, name
+    val rUnion = RawValue.RUnion("Person", RawValue.RProduct(Array(
+      RawValue.RInt(30),
+      RawValue.RString("Alice")
+    )))
+    val cValue = accessor.toCValue(rUnion)
+
+    cValue shouldBe a[CValue.CUnion]
+    val union = cValue.asInstanceOf[CValue.CUnion]
+    union.tag shouldBe "Person"
+    union.value shouldBe a[CValue.CProduct]
+
+    val record = union.value.asInstanceOf[CValue.CProduct]
+    record.value("name") shouldBe CValue.CString("Alice")
+    record.value("age") shouldBe CValue.CInt(30)
+  }
+
+  "RUnion roundtrip" should "preserve union values through conversion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val original = CValue.CUnion(CValue.CInt(42), structure, "Int")
+
+    val raw = RawValueConverter.fromCValue(original)
+    val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
+
+    restored shouldBe original
+  }
+
+  it should "preserve union with String value through conversion" in {
+    val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val original = CValue.CUnion(CValue.CString("hello"), structure, "String")
+
+    val raw = RawValueConverter.fromCValue(original)
+    val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
+
+    restored shouldBe original
+  }
+
+  it should "preserve union with record value through conversion" in {
+    val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
+    val recordType = CType.CProduct(recordStructure)
+    val unionStructure = Map("Person" -> recordType, "Error" -> CType.CString)
+
+    val recordValue = CValue.CProduct(
+      Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
+      recordStructure
+    )
+    val original = CValue.CUnion(recordValue, unionStructure, "Person")
+
+    val raw = RawValueConverter.fromCValue(original)
+    val restored = RawValueConverter.toCValue(raw, CType.CUnion(unionStructure))
+
+    restored shouldBe original
+  }
+
+  it should "preserve union with list value through conversion" in {
+    val listType = CType.CList(CType.CInt)
+    val structure = Map("Numbers" -> listType, "Text" -> CType.CString)
+
+    val listValue = CValue.CList(
+      Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
+      CType.CInt
+    )
+    val original = CValue.CUnion(listValue, structure, "Numbers")
+
+    val raw = RawValueConverter.fromCValue(original)
+    val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
+
+    restored shouldBe original
+  }
+
+  it should "preserve multi-type union through conversion" in {
+    val structure = Map(
+      "Int" -> CType.CInt,
+      "String" -> CType.CString,
+      "Boolean" -> CType.CBoolean,
+      "Float" -> CType.CFloat
+    )
+
+    // Test each variant
+    val intOriginal = CValue.CUnion(CValue.CInt(42), structure, "Int")
+    val stringOriginal = CValue.CUnion(CValue.CString("test"), structure, "String")
+    val boolOriginal = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
+    val floatOriginal = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
+
+    val cType = CType.CUnion(structure)
+
+    RawValueConverter.toCValue(RawValueConverter.fromCValue(intOriginal), cType) shouldBe intOriginal
+    RawValueConverter.toCValue(RawValueConverter.fromCValue(stringOriginal), cType) shouldBe stringOriginal
+    RawValueConverter.toCValue(RawValueConverter.fromCValue(boolOriginal), cType) shouldBe boolOriginal
+    RawValueConverter.toCValue(RawValueConverter.fromCValue(floatOriginal), cType) shouldBe floatOriginal
+  }
 }
