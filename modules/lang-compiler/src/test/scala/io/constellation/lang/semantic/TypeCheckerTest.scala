@@ -1446,4 +1446,113 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     elementType.fields("y") shouldBe SemanticType.SString
     elementType.fields("z") shouldBe SemanticType.SBoolean
   }
+
+  // Candidates + Record broadcast merge edge cases
+
+  it should "broadcast empty record to Candidates elements" in {
+    val source = """
+      in items: Candidates<{ id: Int, name: String }>
+      in empty: {}
+      result = items + empty
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 2
+    elementType.fields("id") shouldBe SemanticType.SInt
+    elementType.fields("name") shouldBe SemanticType.SString
+  }
+
+  it should "broadcast record to Candidates with empty inner type" in {
+    val source = """
+      in items: Candidates<{}>
+      in context: { userId: Int }
+      result = items + context
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 1
+    elementType.fields("userId") shouldBe SemanticType.SInt
+  }
+
+  it should "handle overlapping fields in Candidates + Record (right wins)" in {
+    val source = """
+      in items: Candidates<{ id: Int, value: Int }>
+      in context: { value: String, extra: Boolean }
+      result = items + context
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("id") shouldBe SemanticType.SInt
+    elementType.fields("value") shouldBe SemanticType.SString  // Right (Record) wins
+    elementType.fields("extra") shouldBe SemanticType.SBoolean
+  }
+
+  it should "handle overlapping fields in Record + Candidates (right wins)" in {
+    val source = """
+      in context: { value: Int, extra: Boolean }
+      in items: Candidates<{ id: Int, value: String }>
+      result = context + items
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("id") shouldBe SemanticType.SInt
+    elementType.fields("value") shouldBe SemanticType.SString  // Right (Candidates elem) wins
+    elementType.fields("extra") shouldBe SemanticType.SBoolean
+  }
+
+  it should "chain Candidates + Record + Candidates merges" in {
+    val source = """
+      in a: Candidates<{ x: Int }>
+      in b: { y: String }
+      in c: Candidates<{ z: Boolean }>
+      result = a + b + c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("x") shouldBe SemanticType.SInt
+    elementType.fields("y") shouldBe SemanticType.SString
+    elementType.fields("z") shouldBe SemanticType.SBoolean
+  }
+
+  it should "chain Record + Candidates + Record merges" in {
+    val source = """
+      in a: { x: Int }
+      in b: Candidates<{ y: String }>
+      in c: { z: Boolean }
+      result = a + b + c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("x") shouldBe SemanticType.SInt
+    elementType.fields("y") shouldBe SemanticType.SString
+    elementType.fields("z") shouldBe SemanticType.SBoolean
+  }
 }

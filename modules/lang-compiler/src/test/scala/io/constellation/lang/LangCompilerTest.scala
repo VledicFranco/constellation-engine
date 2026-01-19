@@ -824,4 +824,90 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       case other => fail(s"Expected CList(CProduct(...)), got $other")
     }
   }
+
+  // Candidates + Record broadcast merge compilation tests
+
+  it should "compile Candidates + Record broadcast merge" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Item = { id: Int, name: String }
+      in items: Candidates<Item>
+      in context: { userId: Int }
+      result = items + context
+      out result
+    """
+
+    val result = compiler.compile(source, "candidates-record-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+  }
+
+  it should "compile Record + Candidates broadcast merge" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Item = { id: Int, name: String }
+      in context: { userId: Int }
+      in items: Candidates<Item>
+      result = context + items
+      out result
+    """
+
+    val result = compiler.compile(source, "record-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+  }
+
+  it should "generate correct output type for Candidates + Record merge" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in items: Candidates<{ id: Int, name: String }>
+      in context: { userId: Int, sessionId: String }
+      result = items + context
+      out result
+    """
+
+    val result = compiler.compile(source, "typed-broadcast-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.CList(CType.CProduct(fields)) =>
+        fields.keys should contain allOf ("id", "name", "userId", "sessionId")
+      case other => fail(s"Expected CList(CProduct(...)), got $other")
+    }
+  }
+
+  it should "compile chained Candidates + Record + Candidates merge" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: Candidates<{ x: Int }>
+      in b: { y: String }
+      in c: Candidates<{ z: Boolean }>
+      result = a + b + c
+      out result
+    """
+
+    val result = compiler.compile(source, "chained-broadcast-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 merge modules for a + b + c
+    val mergeModules = compiled.dagSpec.modules.values.filter(_.name.contains("merge"))
+    mergeModules should have size 2
+  }
 }
