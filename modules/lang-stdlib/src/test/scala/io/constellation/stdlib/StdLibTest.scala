@@ -173,32 +173,32 @@ class StdLibTest extends AnyFlatSpec with Matchers {
   }
 
   "Math signatures" should "have correct types" in {
-    MathOps.addSignature.params shouldBe List(
+    StdLib.addSignature.params shouldBe List(
       "a" -> SemanticType.SInt,
       "b" -> SemanticType.SInt
     )
-    MathOps.addSignature.returns shouldBe SemanticType.SInt
+    StdLib.addSignature.returns shouldBe SemanticType.SInt
   }
 
   "String signatures" should "have correct types" in {
-    StringOps.concatSignature.params shouldBe List(
+    StdLib.concatSignature.params shouldBe List(
       "a" -> SemanticType.SString,
       "b" -> SemanticType.SString
     )
-    StringOps.concatSignature.returns shouldBe SemanticType.SString
+    StdLib.concatSignature.returns shouldBe SemanticType.SString
 
-    StringOps.upperSignature.returns shouldBe SemanticType.SString
+    StdLib.upperSignature.returns shouldBe SemanticType.SString
   }
 
   "Boolean signatures" should "have correct types" in {
-    BoolOps.andSignature.returns shouldBe SemanticType.SBoolean
-    BoolOps.notSignature.params shouldBe List("value" -> SemanticType.SBoolean)
+    StdLib.andSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.notSignature.params shouldBe List("value" -> SemanticType.SBoolean)
   }
 
   "Comparison signatures" should "return Boolean" in {
-    CompareOps.gtSignature.returns shouldBe SemanticType.SBoolean
-    CompareOps.ltSignature.returns shouldBe SemanticType.SBoolean
-    CompareOps.eqIntSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.gtSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.ltSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.eqIntSignature.returns shouldBe SemanticType.SBoolean
   }
 
   "StdLib.allModules" should "contain all modules" in {
@@ -322,17 +322,17 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have signatures with correct namespace attributes" in {
     // Math namespace
-    MathOps.addSignature.namespace shouldBe Some("stdlib.math")
-    MathOps.multiplySignature.namespace shouldBe Some("stdlib.math")
+    StdLib.addSignature.namespace shouldBe Some("stdlib.math")
+    StdLib.multiplySignature.namespace shouldBe Some("stdlib.math")
 
     // String namespace
-    StringOps.upperSignature.namespace shouldBe Some("stdlib.string")
-    StringOps.concatSignature.namespace shouldBe Some("stdlib.string")
+    StdLib.upperSignature.namespace shouldBe Some("stdlib.string")
+    StdLib.concatSignature.namespace shouldBe Some("stdlib.string")
 
     // Bool namespace
-    BoolOps.andSignature.namespace shouldBe Some("stdlib.bool")
+    StdLib.andSignature.namespace shouldBe Some("stdlib.bool")
 
     // Compare namespace
-    CompareOps.gtSignature.namespace shouldBe Some("stdlib.compare")
+    StdLib.gtSignature.namespace shouldBe Some("stdlib.compare")
   }
 }
