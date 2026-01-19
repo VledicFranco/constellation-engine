@@ -1,0 +1,19 @@
+# Source files (compiled files in out/ are included)
+src/**
+
+# Test files and fixtures
+out/test/**
+.vscode-test/**
+
+# Development files
+node_modules/**
+.gitignore
+tsconfig.json
+*.map
+
+# CI/CD
+.github/**
+
+# Documentation (README is included for marketplace)
+*.md
+!README.md

@@ -1,0 +1,12 @@
+# Multi-step pipeline test script
+in text: String
+in count: Int
+
+# Process text
+trimmed = Trim(text)
+upper = Uppercase(trimmed)
+
+# Use count
+repeated = Repeat(upper, count)
+
+out repeated

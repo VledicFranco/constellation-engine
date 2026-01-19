@@ -1,0 +1,10 @@
+# Script with intentional errors for testing diagnostics
+in text: String
+
+# Unknown module
+result = UnknownModule(text)
+
+# Missing input
+other = Uppercase(missing)
+
+out result

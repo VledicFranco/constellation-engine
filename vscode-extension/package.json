@@ -116,17 +116,28 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "package": "vsce package",
+    "test": "node ./out/test/runTest.js",
+    "test:unit": "mocha --require ts-node/register 'src/test/unit/**/*.test.ts'",
+    "pretest": "npm run compile"
   },
   "dependencies": {
     "vscode-languageclient": "^8.1.0",
     "ws": "^8.14.0"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
     "@types/node": "^18.x",
+    "@types/sinon": "^17.0.3",
     "@types/vscode": "^1.75.0",
     "@types/ws": "^8.5.8",
+    "@vscode/test-electron": "^2.3.8",
     "@vscode/vsce": "^2.22.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.0"
   }
 }
