@@ -3230,4 +3230,321 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
   }
+
+  // String Interpolation Type Checking Tests
+
+  it should "type check simple string interpolation with variable" in {
+    val source = """
+      in name: String
+      result = "Hello, ${name}!"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with Int value" in {
+    val source = """
+      in count: Int
+      result = "You have ${count} items"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with Boolean value" in {
+    val source = """
+      in flag: Boolean
+      result = "Status: ${flag}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with arithmetic expression" in {
+    // Arithmetic requires stdlib.math functions in registry
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      in a: Int
+      in b: Int
+      result = "Sum: ${a + b}"
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with multiple expressions" in {
+    val source = """
+      in firstName: String
+      in lastName: String
+      in age: Int
+      result = "${firstName} ${lastName} is ${age} years old"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with field access" in {
+    val source = """
+      in user: { name: String, age: Int }
+      result = "User ${user.name} is ${user.age}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with function call" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "double",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "double"
+    ))
+
+    val source = """
+      in x: Int
+      result = "Double: ${double(x)}"
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with conditional expression" in {
+    val source = """
+      in flag: Boolean
+      result = "Result: ${if (flag) 1 else 0}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with Optional value" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      result = "Value: ${maybeValue}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with List value" in {
+    val source = """
+      in items: List<Int>
+      result = "Items: ${items}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with Record value" in {
+    val source = """
+      in user: { name: String, age: Int }
+      result = "User: ${user}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation used as function argument" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "process"
+    ))
+
+    val source = """
+      in name: String
+      result = process("Hello ${name}")
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check nested string variable in interpolation" in {
+    val source = """
+      in message: String
+      result = "Outer: ${message}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with comparison expression" in {
+    // Comparison requires stdlib.compare functions in registry
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt",
+      namespace = Some("stdlib.compare")
+    ))
+
+    val source = """
+      in a: Int
+      in b: Int
+      result = "Comparison: ${a > b}"
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with boolean operators" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = "Result: ${a and b}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with parenthesized expression" in {
+    // Arithmetic requires stdlib.math functions in registry
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    registry.register(FunctionSignature(
+      name = "multiply",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.multiply",
+      namespace = Some("stdlib.math")
+    ))
+
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      result = "Result: ${(a + b) * c}"
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check empty string with no interpolation" in {
+    val source = """
+      result = ""
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string with only interpolation" in {
+    val source = """
+      in value: Int
+      result = "${value}"
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "report error for undefined variable in interpolation" in {
+    val source = """
+      result = "Hello ${undefined}"
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedVariable]) shouldBe true
+  }
+
+  it should "report error for invalid field access in interpolation" in {
+    val source = """
+      in user: { name: String }
+      result = "Age: ${user.age}"
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "type check string interpolation assigned to intermediate variable" in {
+    val source = """
+      in name: String
+      greeting = "Hello, ${name}!"
+      result = greeting
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check string interpolation with branch expression" in {
+    // Comparison requires stdlib.compare functions in registry
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt",
+      namespace = Some("stdlib.compare")
+    ))
+
+    val source = """
+      in score: Int
+      grade = branch {
+        score > 90 -> "A",
+        score > 80 -> "B",
+        otherwise -> "C"
+      }
+      result = "Grade: ${grade}"
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
 }

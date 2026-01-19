@@ -2597,4 +2597,382 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
+
+  // String Interpolation DAG Compilation Tests
+
+  it should "compile simple string interpolation to DAG" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "Hello, ${name}!"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-simple-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Output should be String type
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    outputBinding shouldBe defined
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.get.cType shouldBe CType.CString
+  }
+
+  it should "compile string interpolation with InlineTransform" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "Hello, ${name}!"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-transform-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have data node with StringInterpolationTransform
+    val hasStringInterp = compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    hasStringInterp shouldBe true
+  }
+
+  it should "compile string interpolation with multiple expressions" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in firstName: String
+      in lastName: String
+      result = "${firstName} ${lastName}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-multi-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have StringInterpolationTransform
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    interpNode shouldBe defined
+
+    // Check transform inputs include both expressions
+    interpNode.get.transformInputs.size shouldBe 2
+  }
+
+  it should "compile string interpolation with Int expression" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in count: Int
+      result = "Count: ${count}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-int-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Output type should be String
+    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    outputNode.get.cType shouldBe CType.CString
+  }
+
+  it should "compile string interpolation with Boolean expression" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in flag: Boolean
+      result = "Flag: ${flag}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-bool-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  it should "compile string interpolation with field access" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in user: { name: String, age: Int }
+      result = "Name: ${user.name}, Age: ${user.age}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-field-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    interpNode shouldBe defined
+    // Should have 2 expression inputs (user.name and user.age)
+    interpNode.get.transformInputs.size shouldBe 2
+  }
+
+  it should "compile string interpolation with correct parts" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "Hello, ${name}!"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-parts-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ).get
+
+    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    // parts should be ["Hello, ", "!"]
+    transform.parts shouldBe List("Hello, ", "!")
+  }
+
+  it should "compile string interpolation at start of string" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "${name} says hi"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-start-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ).get
+
+    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    // First part should be empty when interpolation is at start
+    transform.parts.head shouldBe ""
+  }
+
+  it should "compile string interpolation at end of string" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "Hello ${name}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-end-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ).get
+
+    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    // Last part should be empty when interpolation is at end
+    transform.parts.last shouldBe ""
+  }
+
+  it should "compile string with only interpolation" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      result = "${name}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-only-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val interpNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ).get
+
+    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    // Parts should be ["", ""] when only interpolation
+    transform.parts shouldBe List("", "")
+  }
+
+  it should "compile string interpolation with function call" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "upper",
+      params = List("s" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "stdlib.upper",
+      namespace = Some("stdlib.string")
+    ))
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in name: String
+      result = "HELLO ${upper(name)}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-func-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  it should "compile string interpolation with conditional expression" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in flag: Boolean
+      result = "Value: ${if (flag) 1 else 0}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-cond-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  it should "compile string interpolation with Optional value" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in maybeValue: Optional<Int>
+      result = "Value: ${maybeValue}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-optional-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  it should "compile string interpolation with List value" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in items: List<Int>
+      result = "Items: ${items}"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-list-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  it should "compile string interpolation used as function argument" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "process"
+    ))
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in name: String
+      result = process("Hello ${name}")
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-arg-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have both StringInterpolationTransform and module call
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "compile chained string interpolations" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      in name: String
+      greeting = "Hello, ${name}!"
+      message = "Message: ${greeting}"
+      out message
+    """
+
+    val result = compiler.compile(source, "interp-chain-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 StringInterpolationTransform nodes
+    val interpCount = compiled.dagSpec.data.values.count(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    interpCount shouldBe 2
+  }
+
+  it should "compile plain string without interpolation" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      result = "Hello, World!"
+      out result
+    """
+
+    val result = compiler.compile(source, "plain-string-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should NOT have StringInterpolationTransform for plain strings
+    val hasStringInterp = compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    hasStringInterp shouldBe false
+  }
+
+  it should "compile string with escaped dollar sign" in {
+    val compiler = LangCompiler(FunctionRegistry.empty, Map.empty)
+
+    val source = """
+      result = "Price: \$100"
+      out result
+    """
+
+    val result = compiler.compile(source, "escaped-dollar-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Escaped $ should be literal, not interpolation
+    val hasStringInterp = compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    )
+    hasStringInterp shouldBe false
+  }
 }
