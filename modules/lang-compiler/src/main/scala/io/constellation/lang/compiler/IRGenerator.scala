@@ -171,5 +171,13 @@ object IRGenerator {
       val id = UUID.randomUUID()
       val node = IRNode.GuardNode(id, exprId, condId, expr.semanticType, Some(span))
       (condCtx.addNode(node), id)
+
+    case TypedExpression.Coalesce(left, right, span, resultType) =>
+      val (leftCtx, leftId) = generateExpression(left, ctx)
+      val (rightCtx, rightId) = generateExpression(right, leftCtx)
+
+      val id = UUID.randomUUID()
+      val node = IRNode.CoalesceNode(id, leftId, rightId, resultType, Some(span))
+      (rightCtx.addNode(node), id)
   }
 }

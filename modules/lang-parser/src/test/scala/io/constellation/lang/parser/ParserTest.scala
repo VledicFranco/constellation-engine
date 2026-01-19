@@ -1295,4 +1295,176 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val guard = assignment.value.value.asInstanceOf[Expression.Guard]
     guard.expr.value shouldBe Expression.IntLit(42)
   }
+
+  // Coalesce operator tests
+
+  it should "parse basic coalesce expression with ??" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      in fallback: Int
+      result = maybeValue ?? fallback
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Coalesce]
+
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.left.value shouldBe a[Expression.VarRef]
+    coalesce.right.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse coalesce with right associativity" in {
+    // a ?? b ?? c should parse as a ?? (b ?? c)
+    val source = """
+      in a: Optional<Int>
+      in b: Optional<Int>
+      in c: Int
+      result = a ?? b ?? c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.left.value shouldBe a[Expression.VarRef]
+    // right should be another coalesce (b ?? c)
+    coalesce.right.value shouldBe a[Expression.Coalesce]
+    val innerCoalesce = coalesce.right.value.asInstanceOf[Expression.Coalesce]
+    innerCoalesce.left.value shouldBe a[Expression.VarRef]
+    innerCoalesce.right.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse coalesce with lower precedence than guard" in {
+    // a when b ?? c should parse as (a when b) ?? c
+    val source = """
+      in a: Int
+      in b: Boolean
+      in c: Int
+      result = a when b ?? c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    // left side should be a guard expression
+    coalesce.left.value shouldBe a[Expression.Guard]
+    val guard = coalesce.left.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.VarRef]
+    guard.condition.value shouldBe a[Expression.VarRef]
+    // right side should be the fallback value
+    coalesce.right.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse coalesce with function call on left side" in {
+    val source = """
+      in x: Int
+      in fallback: Int
+      result = compute(x) ?? fallback
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.left.value shouldBe a[Expression.FunctionCall]
+    coalesce.right.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse coalesce with literal fallback" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      result = maybeValue ?? 0
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.left.value shouldBe a[Expression.VarRef]
+    coalesce.right.value shouldBe Expression.IntLit(0)
+  }
+
+  it should "parse coalesce with string literal fallback" in {
+    val source = """
+      in maybeName: Optional<String>
+      result = maybeName ?? "default"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.right.value shouldBe Expression.StringLit("default")
+  }
+
+  it should "parse coalesce with field access" in {
+    val source = """
+      in record: { maybeValue: Optional<Int> }
+      in fallback: Int
+      result = record.maybeValue ?? fallback
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val coalesce = assignment.value.value.asInstanceOf[Expression.Coalesce]
+    coalesce.left.value shouldBe a[Expression.FieldAccess]
+    coalesce.right.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse coalesce in conditional expression" in {
+    val source = """
+      in flag: Boolean
+      in a: Optional<Int>
+      in b: Optional<Int>
+      in fallback: Int
+      result = if (flag) a ?? fallback else b ?? fallback
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(4).asInstanceOf[Declaration.Assignment]
+    val conditional = assignment.value.value.asInstanceOf[Expression.Conditional]
+    conditional.thenBranch.value shouldBe a[Expression.Coalesce]
+    conditional.elseBranch.value shouldBe a[Expression.Coalesce]
+  }
+
+  it should "parse parenthesized coalesce expression" in {
+    val source = """
+      in a: Optional<Int>
+      in b: Int
+      in c: Int
+      result = (a ?? b) + c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    // Should be Arithmetic(Coalesce(...), +, c)
+    val arith = assignment.value.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Add
+    arith.left.value shouldBe a[Expression.Coalesce]
+    arith.right.value shouldBe a[Expression.VarRef]
+  }
 }

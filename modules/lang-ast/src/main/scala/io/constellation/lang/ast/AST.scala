@@ -273,6 +273,16 @@ object Expression {
     expr: Located[Expression],
     condition: Located[Expression]
   ) extends Expression
+
+  /** Coalesce expression: optional ?? fallback
+    * If optional is Some(v), returns v.
+    * If optional is None, evaluates and returns fallback.
+    * Short-circuits: fallback not evaluated if left is Some.
+    */
+  final case class Coalesce(
+    left: Located[Expression],
+    right: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */

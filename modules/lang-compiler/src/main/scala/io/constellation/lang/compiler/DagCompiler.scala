@@ -103,6 +103,9 @@ object DagCompiler {
 
       case IRNode.GuardNode(id, expr, condition, innerType, _) =>
         processGuardNode(id, expr, condition, innerType)
+
+      case IRNode.CoalesceNode(id, left, right, resultType, _) =>
+        processCoalesceNode(id, left, right, resultType)
     }
 
     private def processModuleCall(
@@ -871,6 +874,102 @@ object DagCompiler {
                 } else {
                   // Condition is false: return None (don't evaluate expression)
                   IO.pure(None)
+                }
+                _ <- runtime.setTableData(outId, result)
+              } yield ()
+            }
+          )
+        }
+      )
+    }
+
+    private def processCoalesceNode(
+      id: UUID,
+      left: UUID,
+      right: UUID,
+      resultType: SemanticType
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val leftDataId = nodeOutputs.getOrElse(left,
+        throw new IllegalStateException(s"Left node $left not found")
+      )
+      val rightDataId = nodeOutputs.getOrElse(right,
+        throw new IllegalStateException(s"Right node $right not found")
+      )
+
+      val leftCType = dataNodes(leftDataId).cType
+      val rightCType = dataNodes(rightDataId).cType
+      val outputCType = SemanticType.toCType(resultType)
+
+      // Create synthetic coalesce module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.coalesce-${id.toString.take(8)}"),
+        consumes = Map("left" -> leftCType, "right" -> rightCType),
+        produces = Map("out" -> outputCType)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation
+      val syntheticModule = createCoalesceModule(spec, outputCType)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames
+      dataNodes = dataNodes.updatedWith(leftDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "left")))
+        case None => None
+      }
+      dataNodes = dataNodes.updatedWith(rightDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "right")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((leftDataId, moduleId)) + ((rightDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"coalesce_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = outputCType
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    /** Create a coalesce module that unwraps Optional.
+      * Returns the inner value if Some, otherwise returns the fallback.
+      */
+    private def createCoalesceModule(
+      spec: ModuleNodeSpec,
+      outputCType: CType
+    ): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            leftDeferred <- cats.effect.Deferred[IO, Any]
+            rightDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            leftId <- consumesNs.nameId("left")
+            rightId <- consumesNs.nameId("right")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(leftId -> leftDeferred, rightId -> rightDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                leftValue <- runtime.getTableData(leftId)
+                result <- leftValue match {
+                  case Some(v) =>
+                    // Left is Some: return the unwrapped value
+                    IO.pure(v)
+                  case None =>
+                    // Left is None: return the right (fallback) value
+                    runtime.getTableData(rightId)
                 }
                 _ <- runtime.setTableData(outId, result)
               } yield ()

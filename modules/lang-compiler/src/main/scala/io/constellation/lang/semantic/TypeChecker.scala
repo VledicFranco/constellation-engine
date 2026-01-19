@@ -127,6 +127,21 @@ object TypedExpression {
   ) extends TypedExpression {
     def semanticType: SemanticType = SemanticType.SOptional(expr.semanticType)
   }
+
+  /** Coalesce expression: optional ?? fallback
+    * If left is Some(v), returns v. If None, returns right.
+    * Return type depends on right operand:
+    * - Optional<T> ?? T -> T
+    * - Optional<T> ?? Optional<T> -> Optional<T>
+    */
+  final case class Coalesce(
+    left: TypedExpression,
+    right: TypedExpression,
+    span: Span,
+    resultType: SemanticType
+  ) extends TypedExpression {
+    def semanticType: SemanticType = resultType
+  }
 }
 
 /** Type checker for constellation-lang */
@@ -472,6 +487,31 @@ object TypeChecker {
             CompileError.TypeMismatch("Boolean", typedCondition.semanticType.prettyPrint, Some(condition.span)).invalidNel
           else
             TypedExpression.Guard(typedExpr, typedCondition, span).validNel
+        }
+        .andThen(identity)
+
+    case Expression.Coalesce(left, right) =>
+      (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
+        .mapN { (typedLeft, typedRight) =>
+          typedLeft.semanticType match {
+            case SemanticType.SOptional(innerType) =>
+              val rightType = typedRight.semanticType
+              // First check: Optional<T> ?? T -> T (even if T is Optional)
+              if (innerType == rightType)
+                TypedExpression.Coalesce(typedLeft, typedRight, span, rightType).validNel
+              // Second check: Optional<T> ?? Optional<T> -> Optional<T> (when inner types match)
+              else rightType match {
+                case SemanticType.SOptional(rightInner) if innerType == rightInner =>
+                  TypedExpression.Coalesce(typedLeft, typedRight, span, SemanticType.SOptional(innerType)).validNel
+                case _ =>
+                  CompileError.TypeMismatch(innerType.prettyPrint, rightType.prettyPrint, Some(right.span)).invalidNel
+              }
+            case other =>
+              CompileError.TypeError(
+                s"Left side of ?? must be Optional, got ${other.prettyPrint}",
+                Some(left.span)
+              ).invalidNel
+          }
         }
         .andThen(identity)
   }

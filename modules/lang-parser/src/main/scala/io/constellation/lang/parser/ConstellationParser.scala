@@ -140,12 +140,22 @@ object ConstellationParser {
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
   // Expressions
-  // Precedence (low to high): when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
-  lazy val expression: P[Expression] = P.defer(exprGuard)
+  // Precedence (low to high): coalesce (??) -> when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
+  lazy val expression: P[Expression] = P.defer(exprCoalesce)
+
+  // Coalesce operator: a ?? b
+  // Returns unwrapped value if a is Some, otherwise b
+  // Right-associative: a ?? b ?? c = a ?? (b ?? c)
+  private lazy val coalesceOp: P[Unit] = token(P.string("??").void)
+
+  private lazy val exprCoalesce: P[Expression] =
+    (withSpan(exprGuard) ~ (coalesceOp *> withSpan(P.defer(exprCoalesce))).?).map {
+      case (left, None) => left.value
+      case (left, Some(right)) => Expression.Coalesce(left, right)
+    }
 
   // Guard expression: expr when condition
   // Returns Optional<T> where T is the type of expr
-  // Lowest precedence - evaluated after all other operations
   private lazy val exprGuard: P[Expression] =
     (withSpan(exprOr) ~ (whenKw *> withSpan(exprOr)).?).map {
       case (expr, None) => expr.value

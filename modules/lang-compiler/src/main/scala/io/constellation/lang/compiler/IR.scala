@@ -127,6 +127,20 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = SemanticType.SOptional(innerType)
   }
+
+  /** Coalesce node for null-coalescing operation.
+    * If left (Optional) is Some(v), returns v. If None, returns right.
+    * Short-circuits: right is not evaluated if left is Some.
+    */
+  final case class CoalesceNode(
+    id: UUID,
+    left: UUID,
+    right: UUID,
+    resultType: SemanticType,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = resultType
+  }
 }
 
 /** The complete IR program representing a constellation-lang program */
@@ -150,6 +164,7 @@ final case class IRProgram(
     case Some(IRNode.OrNode(_, left, right, _)) => Set(left, right)
     case Some(IRNode.NotNode(_, operand, _)) => Set(operand)
     case Some(IRNode.GuardNode(_, expr, condition, _, _)) => Set(expr, condition)
+    case Some(IRNode.CoalesceNode(_, left, right, _, _)) => Set(left, right)
     case None => Set.empty
   }
 
