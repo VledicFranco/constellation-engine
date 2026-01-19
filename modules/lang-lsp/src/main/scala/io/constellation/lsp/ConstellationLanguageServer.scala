@@ -12,6 +12,8 @@ import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspTypes._
 import io.constellation.lsp.protocol.LspMessages._
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
@@ -20,6 +22,7 @@ class ConstellationLanguageServer(
   documentManager: DocumentManager,
   publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
 ) {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
 
   /** Handle LSP request */
   def handleRequest(request: Request): IO[Response] = {
@@ -134,7 +137,7 @@ class ConstellationLanguageServer(
     request.params match {
       case None =>
         for {
-          _ <- IO.println(s"[HOVER] Missing params in request")
+          _ <- logger.debug("Missing params in hover request")
         } yield Response(
           id = request.id,
           error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
@@ -143,26 +146,25 @@ class ConstellationLanguageServer(
         json.as[HoverParams] match {
           case Left(decodeError) =>
             for {
-              _ <- IO.println(s"[HOVER] Params decode error: ${decodeError.message}")
+              _ <- logger.debug(s"Hover params decode error: ${decodeError.message}")
             } yield Response(
               id = request.id,
               error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
             )
           case Right(params) =>
             for {
-              _ <- IO.println(s"[HOVER] Request received for uri: ${params.textDocument.uri}, position: ${params.position}")
+              _ <- logger.debug(s"Hover request for uri: ${params.textDocument.uri}, position: ${params.position}")
               maybeDoc <- documentManager.getDocument(params.textDocument.uri)
               response <- maybeDoc match {
                 case Some(document) =>
                   for {
                     hover <- getHover(document, params.position)
                     response = Response(id = request.id, result = hover.map(_.asJson))
-                    _ <- IO.println(s"[HOVER] Response result: ${hover.isDefined}")
-                    _ <- IO.println(s"[HOVER] Response JSON: ${response.asJson.noSpaces}")
+                    _ <- logger.debug(s"Hover response result: ${hover.isDefined}")
                   } yield response
                 case None =>
                   for {
-                    _ <- IO.println(s"[HOVER] Document not found: ${params.textDocument.uri}")
+                    _ <- logger.debug(s"Hover document not found: ${params.textDocument.uri}")
                   } yield Response(id = request.id, result = None)
               }
             } yield response
@@ -594,38 +596,32 @@ class ConstellationLanguageServer(
     val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
 
     for {
-      _ <- IO.println(s"[HOVER DEBUG] Word at cursor: '$wordAtCursor'")
+      _ <- logger.trace(s"Hover word at cursor: '$wordAtCursor'")
       modules <- constellation.getModules
-      _ <- IO.println(s"[HOVER DEBUG] Total modules: ${modules.size}")
-      _ <- IO.println(s"[HOVER DEBUG] Looking for module: '$wordAtCursor'")
+      _ <- logger.trace(s"Hover total modules: ${modules.size}, looking for: '$wordAtCursor'")
 
       matchingModule = modules.find(_.name == wordAtCursor)
-      _ <- IO.println(s"[HOVER DEBUG] Found module: ${matchingModule.isDefined}")
+      _ <- logger.trace(s"Hover found module: ${matchingModule.isDefined}")
 
       result <- matchingModule match {
         case Some(module) =>
           for {
-            _ <- IO.println(s"[HOVER DEBUG] Module: ${module.name}, consumes: ${module.consumes.keys.mkString(", ")}, produces: ${module.produces.keys.mkString(", ")}")
+            _ <- logger.trace(s"Hover module: ${module.name}, consumes: ${module.consumes.keys.mkString(", ")}, produces: ${module.produces.keys.mkString(", ")}")
             signature = TypeFormatter.formatSignature(
               module.name,
               module.consumes,
               module.produces
             )
-            _ <- IO.println(s"[HOVER DEBUG] Signature: $signature")
             hover <- (for {
               h <- IO.pure(constructHoverContent(module, signature))
-              _ <- IO.println(s"[HOVER DEBUG] Hover constructed successfully")
+              _ <- logger.trace("Hover constructed successfully")
             } yield Some(h)).handleErrorWith { error =>
-              for {
-                _ <- IO.println(s"[HOVER DEBUG] Error constructing hover: ${error.getMessage}")
-              } yield None
+              logger.warn(s"Error constructing hover: ${error.getMessage}").as(None)
             }
           } yield hover
 
         case None =>
-          for {
-            _ <- IO.println(s"[HOVER DEBUG] No module found for '$wordAtCursor'")
-          } yield None
+          logger.trace(s"No module found for '$wordAtCursor'").as(None)
       }
     } yield result
   }

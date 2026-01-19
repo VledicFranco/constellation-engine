@@ -14,6 +14,8 @@ import io.constellation.lang.LangCompiler
 import io.constellation.lsp.ConstellationLanguageServer
 import io.constellation.lsp.protocol.JsonRpc._
 import io.constellation.lsp.protocol.LspMessages._
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** WebSocket handler for Language Server Protocol support
   *
@@ -28,6 +30,7 @@ class LspWebSocketHandler(
   constellation: Constellation,
   compiler: LangCompiler
 ) {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[LspWebSocketHandler])
 
   def routes(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = HttpRoutes.of[IO] {
     case GET -> Root / "lsp" =>
@@ -54,22 +57,21 @@ class LspWebSocketHandler(
                     case Left(request) =>
                       // Handle request, send response
                       for {
-                        _ <- IO.println(s"[WS] Processing request method: ${request.method}")
+                        _ <- logger.debug(s"Processing request method: ${request.method}")
                         response <- languageServer.handleRequest(request)
                         json = response.asJson.noSpaces
-                        _ <- IO.println(s"[WS] Sending response: ${json.take(200)}${if (json.length > 200) "..." else ""}")
+                        _ <- logger.debug(s"Sending response: ${json.take(200)}${if (json.length > 200) "..." else ""}")
                         message = formatLspMessage(json)
                         _ <- serverMessages.offer(message)
                       } yield ()
                     case Right(notification) =>
                       // Handle notification, no response
                       for {
-                        _ <- IO.println(s"[WS] Processing notification method: ${notification.method}")
+                        _ <- logger.debug(s"Processing notification method: ${notification.method}")
                         _ <- languageServer.handleNotification(notification)
                       } yield ()
                   }.handleErrorWith { error =>
-                    // Log error and continue
-                    IO.println(s"[WS] Error processing message: ${error.getMessage}")
+                    logger.error(s"Error processing message: ${error.getMessage}")
                   }
                 }
                 .compile

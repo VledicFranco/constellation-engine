@@ -8,6 +8,8 @@ import org.http4s.server.Server
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** HTTP server for the Constellation Engine API
   *
@@ -33,6 +35,7 @@ import io.constellation.lang.semantic.FunctionRegistry
   * }}}
   */
 object ConstellationServer {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.ConstellationServer")
 
   /** Default port, can be overridden via CONSTELLATION_PORT environment variable */
   val DefaultPort: Int = sys.env.get("CONSTELLATION_PORT").flatMap(_.toIntOption).getOrElse(8080)
@@ -87,7 +90,7 @@ object ConstellationServer {
     /** Run the server and return when it completes */
     def run: IO[Unit] =
       build.use { server =>
-        IO.println(s"Constellation HTTP API server started at http://${config.host}:${config.port}") *>
+        logger.info(s"Constellation HTTP API server started at http://${config.host}:${config.port}") *>
           IO.never
       }
   }

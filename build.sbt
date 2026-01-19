@@ -8,6 +8,16 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",
 )
 
+// Logging dependencies (shared across modules)
+val log4catsVersion = "2.6.0"
+val logbackVersion = "1.4.11"
+
+lazy val loggingDeps = Seq(
+  "org.typelevel" %% "log4cats-core" % log4catsVersion,
+  "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
+  "ch.qos.logback" % "logback-classic" % logbackVersion % Runtime
+)
+
 // Core module - foundational types, no dependencies
 lazy val core = project
   .in(file("modules/core"))
@@ -91,7 +101,7 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
       "io.circe" %% "circe-generic" % "0.14.6",
       "io.circe" %% "circe-parser" % "0.14.6",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
-    )
+    ) ++ loggingDeps
   )
 
 // HTTP API - REST API server for compiler and runtime with WebSocket LSP support
@@ -104,9 +114,8 @@ lazy val httpApi = (project in file("modules/http-api"))
       "org.http4s" %% "http4s-ember-client" % "0.23.25",
       "org.http4s" %% "http4s-dsl" % "0.23.25",
       "org.http4s" %% "http4s-circe" % "0.23.25",
-      "ch.qos.logback" % "logback-classic" % "1.4.11",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
-    )
+    ) ++ loggingDeps
   )
 
 // Example Application - demonstrates library usage
@@ -116,7 +125,7 @@ lazy val exampleApp = (project in file("modules/example-app"))
     name := "constellation-example-app",
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
-    )
+    ) ++ loggingDeps
   )
 
 // Root project aggregates all modules

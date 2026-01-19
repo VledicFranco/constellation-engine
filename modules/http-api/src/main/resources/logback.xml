@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Constellation packages - configurable log level -->
+  <logger name="io.constellation" level="${CONSTELLATION_LOG_LEVEL:-INFO}" />
+
+  <!-- HTTP server logs -->
+  <logger name="org.http4s" level="INFO" />
+
+  <!-- Reduce noise from ember server internals -->
+  <logger name="org.http4s.ember" level="WARN" />
+
+  <!-- Root logger -->
+  <root level="WARN">
+    <appender-ref ref="CONSOLE" />
+  </root>
+</configuration>

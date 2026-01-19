@@ -6,6 +6,8 @@ import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.http.ConstellationServer
 import io.constellation.examples.app.modules.{TextModules, DataModules}
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Example Application: Text Processing Pipeline
   *
@@ -51,36 +53,32 @@ import io.constellation.examples.app.modules.{TextModules, DataModules}
   * }}}
   */
 object TextProcessingApp extends IOApp.Simple {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.examples.app.TextProcessingApp")
 
   def run: IO[Unit] = {
     for {
       // Step 1: Initialize the Constellation engine
-      _ <- IO.println("🚀 Initializing Constellation Engine...")
+      _ <- logger.info("Initializing Constellation Engine...")
       constellation <- ConstellationImpl.init
 
       // Step 2: Register custom modules
-      _ <- IO.println("📦 Registering custom modules...")
+      _ <- logger.info("Registering custom modules...")
       _ <- registerCustomModules(constellation)
 
       // Step 3: Create compiler with registered modules
-      _ <- IO.println("🔧 Creating compiler...")
+      _ <- logger.info("Creating compiler...")
       compiler <- buildCompiler(constellation)
 
-      // Step 4: Print registered modules
-      _ <- IO.println("\n✅ Available custom modules:")
+      // Step 4: Log registered modules
+      _ <- logger.info("Available custom modules:")
       modules <- constellation.getModules
       _ <- modules.traverse { module =>
-        IO.println(s"   • ${module.name} (v${module.majorVersion}.${module.minorVersion})")
+        logger.info(s"  ${module.name} (v${module.majorVersion}.${module.minorVersion})")
       }
 
       // Step 5: Start HTTP server
-      _ <- IO.println(s"\n🌐 Starting HTTP API server on port 8080...")
-      _ <- IO.println("   Available endpoints:")
-      _ <- IO.println("     GET  /health          - Health check")
-      _ <- IO.println("     POST /compile         - Compile constellation-lang program")
-      _ <- IO.println("     GET  /modules         - List available modules")
-      _ <- IO.println("     GET  /dags            - List compiled DAGs")
-      _ <- IO.println("")
+      _ <- logger.info("Starting HTTP API server on port 8080...")
+      _ <- logger.info("Available endpoints: GET /health, POST /compile, GET /modules, GET /dags")
 
       _ <- ConstellationServer
         .builder(constellation, compiler)
