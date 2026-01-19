@@ -49,6 +49,41 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
         IO.unit
     }
 
+  /**
+   * Set table data using a RawValue directly (memory-efficient path).
+   * Converts RawValue to the appropriate Scala type for internal use.
+   */
+  def setTableDataRawValue(dataId: UUID, data: RawValue): IO[Unit] =
+    table.get(dataId) match {
+      case Some(_) =>
+        val anyData = rawValueToAny(data)
+        setTableData(dataId, anyData)
+      case None =>
+        IO.unit
+    }
+
+  private def rawValueToAny(raw: RawValue): Any = raw match {
+    case RawValue.RInt(value) => value
+    case RawValue.RString(value) => value
+    case RawValue.RBool(value) => value
+    case RawValue.RFloat(value) => value
+    case RawValue.RIntList(values) => values.toList
+    case RawValue.RFloatList(values) => values.toList
+    case RawValue.RStringList(values) => values.toList
+    case RawValue.RBoolList(values) => values.toList
+    case RawValue.RList(values) => values.map(rawValueToAny).toList
+    case RawValue.RMap(entries) =>
+      entries.map { case (k, v) => (rawValueToAny(k), rawValueToAny(v)) }.toMap
+    case RawValue.RProduct(values) =>
+      values.map(rawValueToAny).toList
+    case RawValue.RUnion(tag, value) =>
+      (tag, rawValueToAny(value))
+    case RawValue.RSome(value) =>
+      Some(rawValueToAny(value))
+    case RawValue.RNone =>
+      None
+  }
+
   private def cValueToAny(cValue: CValue): IO[Any] = cValue match {
     case CValue.CInt(value)       => IO.pure(value)
     case CValue.CString(value)    => IO.pure(value)
@@ -105,6 +140,52 @@ object Runtime {
     } yield finalState
   }
 
+  /**
+   * Run DAG with RawValue inputs (memory-efficient path).
+   *
+   * This method accepts RawValue inputs directly, avoiding the memory overhead
+   * of CValue wrappers for large data structures. Internally uses the same
+   * execution model but with more efficient data representation.
+   *
+   * @param dag The DAG specification to execute
+   * @param initData Map of input names to RawValue (memory-efficient representation)
+   * @param inputTypes Map of input names to their CType (needed for validation and state reporting)
+   * @param modules The modules to execute
+   * @return The execution state with CValue results (for backwards compatibility)
+   */
+  def runWithRawInputs(
+    dag: DagSpec,
+    initData: Map[String, RawValue],
+    inputTypes: Map[String, CType],
+    modules: Map[UUID, Module.Uninitialized]
+  ): IO[Runtime.State] = {
+    for {
+      _ <- validateRawInputsIO(dag, initData, inputTypes)
+      modulesAndDataTable <- initModules(dag, modules)
+      (runnable, moduleDataTable) = modulesAndDataTable
+
+      // Create deferreds for data nodes with inline transforms
+      inlineTransformTable <- initInlineTransformTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable
+
+      contextRef <- initState(dag)
+      runtime = Runtime(state = contextRef, table = dataTable)
+      _ <- completeTopLevelDataNodesRaw(dag, initData, inputTypes, runtime)
+
+      // Start inline transform fibers (they run in parallel with modules)
+      transformFibers <- startInlineTransformFibers(dag, runtime)
+
+      latency <- (
+        runnable.parTraverse(_.run(runtime)),
+        transformFibers.parTraverse(_.join)
+      ).parMapN((_, _) => ())
+        .timed
+        .map(_._1)
+
+      finalState <- runtime.close(latency)
+    } yield finalState
+  }
+
   type MutableDataTable = Map[UUID, Deferred[IO, Any]]
 
   type MutableState = Ref[IO, State]
@@ -143,6 +224,40 @@ object Runtime {
       case Invalid(messages) => IO.raiseError(new RuntimeException(messages.toList.mkString("\n")))
     }
 
+  private def validateRawInputs(
+    dag: DagSpec,
+    initData: Map[String, RawValue],
+    inputTypes: Map[String, CType]
+  ): ValidatedNel[String, Unit] = {
+    val topLevelSpecs = dag.topLevelDataNodes.values
+
+    def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
+      val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
+        case Some(spec) => Validated.validNel(spec)
+        case None =>
+          Validated.invalidNel(s"Input $name was unexpected, input name might be misspelled.")
+      }
+      val isRightType = isExpectedName.andThen { spec =>
+        if (spec.cType == ctype) Validated.validNel(())
+        else
+          Validated.invalidNel(s"Input $name had different type, expected '${spec.cType}' but was '$ctype'.")
+      }
+      isRightType
+    }
+
+    Monoid.combineAll(inputTypes.toList.map { case (name, ctype) => validateInput(name, ctype) })
+  }
+
+  private def validateRawInputsIO(
+    dag: DagSpec,
+    initData: Map[String, RawValue],
+    inputTypes: Map[String, CType]
+  ): IO[Unit] =
+    validateRawInputs(dag, initData, inputTypes) match {
+      case Valid(_)          => IO.unit
+      case Invalid(messages) => IO.raiseError(new RuntimeException(messages.toList.mkString("\n")))
+    }
+
   private def initModules(
     dag: DagSpec,
     modules: Map[UUID, Module.Uninitialized]
@@ -175,6 +290,36 @@ object Runtime {
           )
         )
         _ <- runtime.setTableDataCValue(uuid, cValue)
+        _ <- runtime.setStateData(uuid, cValue)
+      } yield ()
+    }.void
+
+  /**
+   * Complete top-level data nodes using RawValue inputs (memory-efficient path).
+   */
+  private def completeTopLevelDataNodesRaw(
+    dag: DagSpec,
+    initData: Map[String, RawValue],
+    inputTypes: Map[String, CType],
+    runtime: Runtime
+  ): IO[Unit] =
+    dag.topLevelDataNodes.toList.traverse { case (uuid, spec) =>
+      val nicknames = spec.nicknames.values.toList
+      val optRawValue = initData.collectFirst {
+        case (name, rawValue) if nicknames.contains(name) => (name, rawValue)
+      }
+      for {
+        nameAndRaw <- IO.fromOption(optRawValue)(
+          new RuntimeException(
+            "Failed to find data node in init data, this is a bug in the implementation of the engine."
+          )
+        )
+        (name, rawValue) = nameAndRaw
+        cType = inputTypes.getOrElse(name, spec.cType)
+        // Set table data using RawValue directly (memory-efficient)
+        _ <- runtime.setTableDataRawValue(uuid, rawValue)
+        // Convert to CValue only for state reporting (backwards compatibility)
+        cValue = RawValueConverter.toCValue(rawValue, cType)
         _ <- runtime.setStateData(uuid, cValue)
       } yield ()
     }.void
