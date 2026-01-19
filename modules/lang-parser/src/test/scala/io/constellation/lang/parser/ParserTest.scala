@@ -1527,7 +1527,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     branch.otherwise.value shouldBe Expression.VarRef("x")
   }
 
-  // String interpolation tests
+// String interpolation tests
 
   it should "parse simple string interpolation" in {
     val source = """
@@ -1732,5 +1732,207 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val assignment = program.declarations.head.asInstanceOf[Declaration.Assignment]
     // Dollar sign not followed by { should be kept as literal
     assignment.value.value shouldBe Expression.StringLit("Price $100 dollars")
+  }
+
+  // Lambda expression tests
+
+  it should "parse simple lambda expression" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name shouldBe QualifiedName.simple("filter")
+    funcCall.args should have size 2
+
+    // Second argument should be a lambda
+    funcCall.args(1).value shouldBe a[Expression.Lambda]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    lambda.params should have size 1
+    lambda.params.head.name.value shouldBe "x"
+    lambda.params.head.typeAnnotation shouldBe None
+    lambda.body.value shouldBe Expression.VarRef("x")
+  }
+
+  it should "parse lambda with multiple parameters" in {
+    val source = """
+      in items: List<Int>
+      result = reduce(items, (a, b) => a)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.params should have size 2
+    lambda.params(0).name.value shouldBe "a"
+    lambda.params(1).name.value shouldBe "b"
+  }
+
+  it should "parse lambda with type annotations" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x: Int) => x)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.params should have size 1
+    lambda.params.head.name.value shouldBe "x"
+    lambda.params.head.typeAnnotation shouldBe defined
+    lambda.params.head.typeAnnotation.get.value shouldBe TypeExpr.Primitive("Int")
+  }
+
+  it should "parse lambda with field access in body" in {
+    val source = """
+      in items: List<{ active: Boolean }>
+      result = filter(items, (item) => item.active)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.params should have size 1
+    lambda.params.head.name.value shouldBe "item"
+    lambda.body.value shouldBe a[Expression.FieldAccess]
+
+    val fieldAccess = lambda.body.value.asInstanceOf[Expression.FieldAccess]
+    fieldAccess.source.value shouldBe Expression.VarRef("item")
+    fieldAccess.field.value shouldBe "active"
+  }
+
+  it should "parse lambda with comparison in body" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.body.value shouldBe a[Expression.Compare]
+    val compare = lambda.body.value.asInstanceOf[Expression.Compare]
+    compare.op shouldBe CompareOp.Gt
+  }
+
+  it should "parse lambda with arithmetic in body" in {
+    val source = """
+      in items: List<Int>
+      result = map(items, (x) => x * 2)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.body.value shouldBe a[Expression.Arithmetic]
+    val arith = lambda.body.value.asInstanceOf[Expression.Arithmetic]
+    arith.op shouldBe ArithOp.Mul
+  }
+
+  it should "parse lambda with boolean operators in body" in {
+    val source = """
+      in items: List<{ active: Boolean, verified: Boolean }>
+      result = filter(items, (x) => x.active and x.verified)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.body.value shouldBe a[Expression.BoolBinary]
+    val boolBinary = lambda.body.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.And
+  }
+
+  it should "parse lambda with multiple typed parameters" in {
+    val source = """
+      in items: List<Int>
+      result = reduce(items, (a: Int, b: Int) => a)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.params should have size 2
+    lambda.params(0).typeAnnotation shouldBe defined
+    lambda.params(1).typeAnnotation shouldBe defined
+  }
+
+  it should "parse empty parameter lambda" in {
+    val source = """
+      in x: Int
+      result = defer(() => x)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(0).value.asInstanceOf[Expression.Lambda]
+
+    lambda.params should have size 0
+    lambda.body.value shouldBe Expression.VarRef("x")
+  }
+
+  it should "parse lambda with complex expression body" in {
+    val source = """
+      in items: List<{ score: Int, threshold: Int }>
+      result = filter(items, (item) => item.score > item.threshold)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+
+    lambda.body.value shouldBe a[Expression.Compare]
+    val compare = lambda.body.value.asInstanceOf[Expression.Compare]
+    compare.left.value shouldBe a[Expression.FieldAccess]
+    compare.right.value shouldBe a[Expression.FieldAccess]
   }
 }

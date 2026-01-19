@@ -89,6 +89,7 @@ object ConstellationParser {
   private val closeAngle: P[Unit]   = token(P.char('>'))
   private val dot: P[Unit]          = P.char('.')
   private val arrow: P[Unit]        = token(P.string("->"))
+  private val fatArrow: P[Unit]     = token(P.string("=>"))
 
   // Comparison operators (order matters: longer operators first)
   private val eqOp: P[CompareOp]    = P.string("==").as(CompareOp.Eq)
@@ -160,9 +161,25 @@ object ConstellationParser {
     (typeIdentifier ~ (openAngle *> typeExpr.repSep(comma) <* closeAngle))
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
+  // Lambda parameter: x or x: Int
+  private lazy val lambdaParam: P[Expression.LambdaParam] =
+    (withSpan(identifier) ~ (colon *> withSpan(typeExpr)).?).map {
+      case (name, typeAnnotation) => Expression.LambdaParam(name, typeAnnotation)
+    }
+
+  // Lambda parameters: (x) or (a, b) or (x: Int, y: String)
+  private lazy val lambdaParams: P[List[Expression.LambdaParam]] =
+    openParen *> lambdaParam.repSep0(comma).map(_.toList) <* closeParen
+
+  // Lambda expression: (x) => x + 1 or (a, b) => a + b
+  private lazy val lambdaExpr: P[Expression.Lambda] =
+    (lambdaParams ~ (fatArrow *> withSpan(P.defer(expression)))).map {
+      case (params, body) => Expression.Lambda(params, body)
+    }
+
   // Expressions
-  // Precedence (low to high): coalesce (??) -> when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
-  lazy val expression: P[Expression] = P.defer(exprCoalesce)
+  // Precedence (low to high): lambda -> coalesce (??) -> when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
+  lazy val expression: P[Expression] = P.defer(lambdaExpr.backtrack | exprCoalesce)
 
   // Coalesce operator: a ?? b
   // Returns unwrapped value if a is Some, otherwise b

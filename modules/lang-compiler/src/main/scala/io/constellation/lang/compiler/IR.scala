@@ -156,7 +156,7 @@ object IRNode {
   /** String interpolation node.
     * Combines static string parts with evaluated expressions.
     * parts.length == expressions.length + 1
-    * Example: "Hello, \${name}!" has parts ["Hello, ", "!"] and one expression
+    * Example: "Hello, ${name}!" has parts ["Hello, ", "!"] and one expression
     */
   final case class StringInterpolationNode(
       id: UUID,
@@ -166,7 +166,39 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = SemanticType.SString
   }
+
+  /** Higher-order function operation (filter, map, all, any, etc.)
+    * Applies a lambda expression to each element of a collection.
+    */
+  final case class HigherOrderNode(
+      id: UUID,
+      operation: HigherOrderOp,
+      source: UUID,               // Source collection node ID
+      lambda: TypedLambda,        // The lambda to apply
+      outputType: SemanticType,
+      debugSpan: Option[Span] = None
+  ) extends IRNode
 }
+
+/** Higher-order operation types */
+enum HigherOrderOp:
+  case Filter  // Filter elements by predicate
+  case Map     // Transform each element
+  case All     // Check if all elements satisfy predicate
+  case Any     // Check if any element satisfies predicate
+  case SortBy  // Sort by key extractor
+
+/** Typed lambda representation for IR (independent of TypedExpression)
+  * Contains IR nodes representing the lambda body that can be evaluated
+  * per element during collection operations.
+  */
+final case class TypedLambda(
+  paramNames: List[String],
+  paramTypes: List[SemanticType],
+  bodyNodes: Map[UUID, IRNode],   // IR nodes for lambda body
+  bodyOutputId: UUID,             // Output node ID of the body
+  returnType: SemanticType
+)
 
 /** The complete IR program representing a constellation-lang program */
 final case class IRProgram(
@@ -194,6 +226,8 @@ final case class IRProgram(
       cases.flatMap { case (cond, expr) => Set(cond, expr) }.toSet + otherwise
     case Some(IRNode.StringInterpolationNode(_, _, expressions, _)) =>
       expressions.toSet
+    case Some(IRNode.HigherOrderNode(_, _, source, _, _, _)) =>
+      Set(source) // Lambda body nodes are evaluated separately per element
     case None => Set.empty
   }
 

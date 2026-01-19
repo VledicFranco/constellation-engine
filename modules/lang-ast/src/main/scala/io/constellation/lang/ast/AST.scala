@@ -303,6 +303,18 @@ object Expression {
       cases: List[(Located[Expression], Located[Expression])], // condition -> expression pairs
       otherwise: Located[Expression]
   ) extends Expression
+
+  /** Lambda parameter */
+  final case class LambdaParam(
+    name: Located[String],
+    typeAnnotation: Option[Located[TypeExpr]]
+  )
+
+  /** Lambda expression: (x, y) => x + y */
+  final case class Lambda(
+    params: List[LambdaParam],
+    body: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */

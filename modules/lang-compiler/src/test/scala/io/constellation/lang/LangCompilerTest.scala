@@ -1232,4 +1232,257 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     compiled.dagSpec.data.values.exists(_.name.contains("and")) shouldBe true
     compiled.dagSpec.data.values.exists(_.name.contains("or")) shouldBe true
   }
+
+  // Lambda expression and higher-order function tests
+
+  private def hofCompiler: LangCompiler = {
+    val registry = FunctionRegistry.empty
+    // filter: (List<Int>, (Int) => Boolean) => List<Int>
+    registry.register(FunctionSignature(
+      name = "filter",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SList(SemanticType.SInt),
+      moduleName = "stdlib.hof.filter-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // map: (List<Int>, (Int) => Int) => List<Int>
+    registry.register(FunctionSignature(
+      name = "map",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+      ),
+      returns = SemanticType.SList(SemanticType.SInt),
+      moduleName = "stdlib.hof.map-int-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // all: (List<Int>, (Int) => Boolean) => Boolean
+    registry.register(FunctionSignature(
+      name = "all",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.hof.all-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // any: (List<Int>, (Int) => Boolean) => Boolean
+    registry.register(FunctionSignature(
+      name = "any",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.hof.any-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // Comparison functions for use in lambda bodies
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt",
+      namespace = Some("stdlib.compare")
+    ))
+    registry.register(FunctionSignature(
+      name = "lt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.lt",
+      namespace = Some("stdlib.compare")
+    ))
+    // Arithmetic functions for map
+    registry.register(FunctionSignature(
+      name = "multiply",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.multiply",
+      namespace = Some("stdlib.math")
+    ))
+    LangCompiler(registry, Map.empty)
+  }
+
+  it should "compile filter with lambda expression" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a higher-order node in the DAG
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile map with lambda expression" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = map(items, (x) => x * 2)
+      out result
+    """
+
+    val result = compiler.compile(source, "map-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a higher-order node with MapTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
+    ) shouldBe true
+  }
+
+  it should "compile all with lambda expression" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = all(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "all-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a higher-order node with AllTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
+    ) shouldBe true
+  }
+
+  it should "compile any with lambda expression" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = any(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "any-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a higher-order node with AnyTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with explicit type annotation" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x: Int) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "typed-lambda-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile lambda with boolean operators in body" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0 and x < 100)
+      out result
+    """
+
+    val result = compiler.compile(source, "bool-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "generate correct output type for filter" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-output-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+  }
+
+  it should "generate correct output type for all" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = all(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "all-output-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CBoolean
+  }
+
+  it should "report error when lambda body type mismatches expected return type" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x)
+      out result
+    """
+    // filter expects (Int) => Boolean, but lambda returns Int
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error when lambda parameter type mismatches" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x: String) => true)
+      out result
+    """
+    // filter expects (Int) => Boolean, but lambda has String parameter
+
+    val result = compiler.compile(source, "error-dag")
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
 }

@@ -4,7 +4,7 @@
 # Input: User profile data
 in userName: String
 in userAge: Int
-in accountBalance: Float
+in accountBalance: Int
 
 # Simple variable interpolation
 greeting = "Hello, ${userName}!"
@@ -20,8 +20,8 @@ formatted = "Account Summary:\n\tName: ${userName}\n\tBalance: \$${accountBalanc
 
 # Conditional message using interpolation with branch
 balanceStatus = branch {
-  accountBalance > 1000.0 -> "healthy",
-  accountBalance > 0.0 -> "low",
+  accountBalance > 1000 -> "healthy",
+  accountBalance > 0 -> "low",
   otherwise -> "overdrawn"
 }
 statusMessage = "Your account status is: ${balanceStatus}"
