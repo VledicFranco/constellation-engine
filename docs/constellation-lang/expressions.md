@@ -226,6 +226,145 @@ in b: Int
 result = if (flag) a else b  # Type: Int
 ```
 
+## Guard Expressions (`when`)
+
+Attach a boolean guard to any expression for conditional execution:
+
+```
+result = expression when condition
+```
+
+The result has type `Optional<T>` where `T` is the type of `expression`. If `condition` is false, the result is `None`:
+
+```
+in text: String
+in minLength: Int
+
+# Only compute embeddings for sufficiently long text
+embeddings = compute-embeddings(text) when length(text) > minLength
+
+# Conditional feature extraction
+in user: { tier: String }
+premium_features = extract-premium(data) when user.tier == "premium"
+```
+
+Guards compose with boolean operators:
+
+```
+result = expensive-op(data) when (flag and not disabled) or override
+```
+
+## Coalesce Operator (`??`)
+
+Provide fallback values for optional expressions:
+
+```
+result = optional_expr ?? fallback_expr
+```
+
+If `optional_expr` is `Some(v)`, the result is `v`. Otherwise, the result is `fallback_expr`:
+
+```
+# Fallback to computed value if cache miss
+embeddings = cached-embeddings(id) ?? compute-embeddings(text)
+
+# Chain of fallbacks
+value = primary() ?? secondary() ?? default_value
+```
+
+## Branch Expressions
+
+Multi-way conditional with exhaustive matching:
+
+```
+result = branch {
+  condition1 -> expression1,
+  condition2 -> expression2,
+  otherwise -> default_expression
+}
+```
+
+Conditions are evaluated in order; the first matching branch is returned. The `otherwise` clause is required for exhaustiveness:
+
+```
+# Tiered processing based on priority
+processed = branch {
+  priority == "high" -> fast-path(data),
+  priority == "medium" -> standard-path(data),
+  otherwise -> batch-path(data)
+}
+
+# Model selection based on input size
+model_output = branch {
+  length(text) > 1000 -> large-model(text),
+  length(text) > 100 -> medium-model(text),
+  otherwise -> small-model(text)
+}
+```
+
+## Lambda Expressions
+
+Define inline functions for use with higher-order functions like `filter`, `map`, `all`, and `any`:
+
+```
+(parameter) => expression
+(param1, param2) => expression
+```
+
+Lambdas enable collection operations:
+
+```
+in items: Candidates<{ score: Float, active: Boolean }>
+
+# Filter items by condition
+highScoring = filter(items, (item) => item.score > 0.8)
+
+# Transform items
+doubled = map(items, (item) => item.score * 2)
+
+# Check conditions across all items
+allActive = all(items, (item) => item.active)
+anyHighScore = any(items, (item) => item.score > 0.9)
+```
+
+Lambdas can use multiple parameters:
+
+```
+# Custom comparison
+sorted = sortBy(items, (a, b) => a.score > b.score)
+```
+
+## String Interpolation
+
+Embed expressions within string literals using `${}`:
+
+```
+in name: String
+in count: Int
+
+greeting = "Hello, ${name}!"
+summary = "Processed ${count} items"
+```
+
+Expressions inside `${}` are evaluated and converted to strings:
+
+```
+in user: { firstName: String, lastName: String }
+in score: Float
+
+fullName = "${user.firstName} ${user.lastName}"
+result = "Score: ${score * 100}%"
+```
+
+String interpolation works with any expression that produces a string-convertible value:
+
+```
+in items: List<String>
+
+message = "Found ${length(items)} items"
+status = "Ready: ${isReady and hasPermission}"
+```
+
 ## Literals
 
 ```

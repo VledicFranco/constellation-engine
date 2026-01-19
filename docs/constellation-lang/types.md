@@ -59,6 +59,61 @@ in metadata: Map<String, Int>
 in lookup: Map<Int, String>
 ```
 
+## Union Types
+
+Union types represent values that can be one of several types. Use the `|` operator to create union types:
+
+```
+type Result = { value: Int } | { error: String }
+
+in response: Result
+```
+
+Union types are useful for:
+
+- **Variant returns**: Functions that can return different result types
+- **Error handling**: Representing success/failure cases
+- **Discriminated unions**: Type-safe handling of multiple cases
+
+```
+# A model that can return different output types
+type ModelOutput = {
+  prediction: Float,
+  confidence: Float
+} | {
+  error: String,
+  code: Int
+}
+
+in modelResult: ModelOutput
+```
+
+Union types can combine primitive types:
+
+```
+type StringOrInt = String | Int
+in flexible: StringOrInt
+```
+
+## Optional Type
+
+`Optional<T>` represents values that may or may not be present. Use with guard expressions and coalesce operators:
+
+```
+in maybeValue: Optional<Int>
+
+# Coalesce to provide fallback
+result = maybeValue ?? 0
+
+# Guard expressions produce Optional types
+guarded = expensiveOp(data) when condition  # Type: Optional<Result>
+```
+
+Optional interacts with the orchestration algebra:
+- Guard expressions (`when`) produce `Optional<T>` results
+- Coalesce (`??`) unwraps optionals with fallbacks
+- Branch expressions can handle optional cases
+
 ## Type References
 
 Previously defined types can be referenced by name:

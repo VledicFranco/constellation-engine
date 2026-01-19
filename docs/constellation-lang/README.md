@@ -4,15 +4,24 @@ constellation-lang is a domain-specific language for defining ML pipeline DAGs. 
 
 ## Table of Contents
 
+### Core Language
+
 - [Program Structure](./program-structure.md) - Overall program organization
-- [Types](./types.md) - Primitive, record, and parameterized types
+- [Types](./types.md) - Primitive, record, union, optional, and parameterized types
 - [Declarations](./declarations.md) - Type definitions, inputs, assignments, outputs
 - [Expressions](./expressions.md) - Variables, function calls, projections, conditionals
 - [Type Algebra](./type-algebra.md) - Merging types with the `+` operator
 - [Comments](./comments.md) - Line comments syntax
+
+### Orchestration
+
+- [Orchestration Algebra](./orchestration-algebra.md) - Boolean algebra for control flow
+  - Guard expressions (`when`)
+  - Coalesce operator (`??`)
+  - Branch expressions
+  - Lambda expressions
+
+### Reference
+
 - [Examples](./examples.md) - Complete example programs
 - [Error Messages](./error-messages.md) - Understanding compiler errors
-
-## Proposals
-
-- [Orchestration Algebra](./orchestration-algebra.md) - Boolean algebra for control flow (theoretical)

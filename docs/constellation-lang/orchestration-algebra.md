@@ -1,6 +1,19 @@
 # Boolean Algebra for Orchestration
 
-This document proposes a theoretical framework for orchestration control flow in constellation-lang, based on boolean algebra principles. The goal is to enable conditional execution, branching, and composition of pipeline fragments while maintaining the declarative, DAG-based nature of the language.
+This document describes the orchestration control flow system in constellation-lang, based on boolean algebra principles. These features enable conditional execution, branching, and composition of pipeline fragments while maintaining the declarative, DAG-based nature of the language.
+
+## Implementation Status
+
+| Feature | Status | Issue |
+|---------|--------|-------|
+| Guard expressions (`when`) | ✅ Implemented | #15 |
+| Coalesce operator (`??`) | ✅ Implemented | #17 |
+| Branch expressions | ✅ Implemented | #22 |
+| Boolean operators (`and`, `or`, `not`) | ✅ Implemented | #10 |
+| Comparison operators | ✅ Implemented | #9 |
+| Lambda expressions (for `all`, `any`, etc.) | ✅ Implemented | #23 |
+| Optional chaining (`?.`) | 🔮 Future | - |
+| Unwrap with default (`?:`) | 🔮 Future | - |
 
 ## Theoretical Foundation
 
@@ -43,9 +56,11 @@ Guards interact with the type system through an `Optional<T>` wrapper:
 - Conditional node: `Optional<T>`
 - Merging conditional branches: `Optional<T> ⊕ Optional<T> → Optional<T>`
 
-## Proposed Minimal Syntax
+## Syntax Reference
 
-### 1. Guard Expressions (`when`)
+### 1. Guard Expressions (`when`) ✅
+
+> **Status:** Implemented in #15
 
 Attach a boolean guard to any expression:
 
@@ -65,7 +80,9 @@ embeddings = compute-embeddings(text) when length(text) > 100
 premium_features = extract-premium(data) when user.tier == "premium"
 ```
 
-### 2. Boolean Operators
+### 2. Boolean Operators ✅
+
+> **Status:** Implemented in #10
 
 Standard boolean operators with short-circuit evaluation:
 
@@ -85,7 +102,9 @@ result = expensive-op(data) when (flag and not disabled) or override
 filtered = process(items) when hasFeature and itemCount > 0
 ```
 
-### 3. Comparison Operators
+### 3. Comparison Operators ✅
+
+> **Status:** Implemented in #9
 
 For constructing boolean predicates:
 
@@ -98,7 +117,9 @@ For constructing boolean predicates:
 | Less or equal | `a <= b` | Ordering |
 | Greater or equal | `a >= b` | Ordering |
 
-### 4. Coalesce Operator (`??`)
+### 4. Coalesce Operator (`??`) ✅
+
+> **Status:** Implemented in #17
 
 Provide fallback for optional values:
 
@@ -118,7 +139,9 @@ embeddings = cached-embeddings(id) ?? compute-embeddings(text)
 value = primary() ?? secondary() ?? default
 ```
 
-### 5. Unwrap with Default (`?:`)
+### 5. Unwrap with Default (`?:`) 🔮
+
+> **Status:** Not yet implemented (future work)
 
 Similar to coalesce but with explicit None handling:
 
@@ -126,7 +149,9 @@ Similar to coalesce but with explicit None handling:
 result = optional_expr ?: default_value
 ```
 
-### 6. Branch Expression (`branch`)
+### 6. Branch Expression (`branch`) ✅
+
+> **Status:** Implemented in #22
 
 Multi-way conditional with exhaustive matching:
 
@@ -158,7 +183,9 @@ model_output = branch {
 }
 ```
 
-### 7. Parallel Guards (`all`, `any`)
+### 7. Parallel Guards (`all`, `any`) ✅
+
+> **Status:** Implemented in #23 (via lambda expressions)
 
 Aggregate boolean conditions over collections:
 
@@ -177,7 +204,9 @@ validated = process(items) when all(items, isValid)
 special = special-process(items) when any(items, needsSpecial)
 ```
 
-### 8. Optional Chaining (`?.`)
+### 8. Optional Chaining (`?.`) 🔮
+
+> **Status:** Not yet implemented (future work)
 
 Safe field access on optional values:
 
@@ -294,16 +323,16 @@ Potential extensions to the algebra:
 
 ## Summary
 
-The proposed syntax additions:
+| Construct | Syntax | Purpose | Status |
+|-----------|--------|---------|--------|
+| Guard | `expr when cond` | Conditional execution | ✅ #15 |
+| Coalesce | `a ?? b` | Fallback for optionals | ✅ #17 |
+| Branch | `branch { c -> e, ... }` | Multi-way conditional | ✅ #22 |
+| Boolean ops | `and`, `or`, `not` | Predicate composition | ✅ #10 |
+| Comparisons | `==`, `!=`, `<`, `>`, `<=`, `>=` | Predicate construction | ✅ #9 |
+| Lambda | `(x) => expr` | Inline functions | ✅ #23 |
+| Aggregates | `all(xs, p)`, `any(xs, p)` | Collection predicates | ✅ #23 |
+| Optional chain | `a?.field` | Safe access | 🔮 Future |
+| Unwrap default | `a ?: b` | Explicit None handling | 🔮 Future |
 
-| Construct | Syntax | Purpose |
-|-----------|--------|---------|
-| Guard | `expr when cond` | Conditional execution |
-| Coalesce | `a ?? b` | Fallback for optionals |
-| Branch | `branch { c -> e, ... }` | Multi-way conditional |
-| Boolean ops | `and`, `or`, `not` | Predicate composition |
-| Comparisons | `==`, `!=`, `<`, `>`, `<=`, `>=` | Predicate construction |
-| Aggregates | `all(xs, p)`, `any(xs, p)` | Collection predicates |
-| Optional chain | `a?.field` | Safe access |
-
-This minimal set of primitives, grounded in boolean algebra, provides expressive orchestration control while preserving the declarative DAG semantics of constellation-lang.
+This set of primitives, grounded in boolean algebra, provides expressive orchestration control while preserving the declarative DAG semantics of constellation-lang.
