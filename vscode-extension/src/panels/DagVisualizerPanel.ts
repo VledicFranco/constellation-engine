@@ -237,6 +237,12 @@ export class DagVisualizerPanel {
           <button class="toggle-btn active" id="tbBtn" title="Top to Bottom">↓ TB</button>
           <button class="toggle-btn" id="lrBtn" title="Left to Right">→ LR</button>
         </div>
+        <div class="zoom-controls">
+          <button class="icon-btn small" id="zoomOutBtn" title="Zoom out">−</button>
+          <span class="zoom-level" id="zoomLevel">100%</span>
+          <button class="icon-btn small" id="zoomInBtn" title="Zoom in">+</button>
+          <button class="icon-btn" id="fitBtn" title="Fit to view">⊡</button>
+        </div>
         <div class="export-dropdown">
           <button class="icon-btn" id="exportBtn" title="Export">📷</button>
           <div class="export-menu" id="exportMenu">
@@ -317,6 +323,30 @@ export class DagVisualizerPanel {
         opacity: 1;
         background: var(--vscode-button-background, #0e639c);
         color: var(--vscode-button-foreground, #fff);
+      }
+
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--vscode-input-background, rgba(60, 60, 60, 0.5));
+        border-radius: var(--radius-sm);
+        padding: 2px 6px;
+      }
+
+      .zoom-level {
+        font-size: 11px;
+        min-width: 40px;
+        text-align: center;
+        color: var(--vscode-foreground);
+        opacity: 0.8;
+      }
+
+      .icon-btn.small {
+        width: 20px;
+        height: 20px;
+        font-size: 14px;
+        padding: 0;
       }
 
       .export-dropdown {
@@ -581,12 +611,17 @@ export class DagVisualizerPanel {
   var exportPngBtn = document.getElementById('exportPngBtn');
   var exportSvgBtn = document.getElementById('exportSvgBtn');
   var resetBtn = document.getElementById('resetBtn');
+  var zoomInBtn = document.getElementById('zoomInBtn');
+  var zoomOutBtn = document.getElementById('zoomOutBtn');
+  var fitBtn = document.getElementById('fitBtn');
+  var zoomLevelEl = document.getElementById('zoomLevel');
 
   var currentDag = null;
   var currentFileName = 'dag';
   var executionStates = {}; // nodeId -> { state: 'pending'|'running'|'completed'|'failed', valuePreview?: string }
   var layoutDirection = 'TB'; // 'TB' = top-to-bottom, 'LR' = left-to-right
   var viewBox = { x: 0, y: 0, width: 800, height: 600 };
+  var originalViewBox = { x: 0, y: 0, width: 800, height: 600 }; // For fit-to-view
   var isPanning = false;
   var startPan = { x: 0, y: 0 };
   var scale = 1;
@@ -633,6 +668,57 @@ export class DagVisualizerPanel {
   resetBtn.onclick = function() {
     resetExecutionStates();
   };
+
+  zoomInBtn.onclick = function() {
+    zoomBy(0.8); // Zoom in by decreasing viewBox size
+  };
+
+  zoomOutBtn.onclick = function() {
+    zoomBy(1.25); // Zoom out by increasing viewBox size
+  };
+
+  fitBtn.onclick = function() {
+    fitToView();
+  };
+
+  function zoomBy(factor) {
+    var centerX = viewBox.x + viewBox.width / 2;
+    var centerY = viewBox.y + viewBox.height / 2;
+
+    var newWidth = viewBox.width * factor;
+    var newHeight = viewBox.height * factor;
+
+    // Limit zoom level
+    var minZoom = originalViewBox.width / 10;
+    var maxZoom = originalViewBox.width * 5;
+    if (newWidth < minZoom || newWidth > maxZoom) return;
+
+    viewBox.width = newWidth;
+    viewBox.height = newHeight;
+    viewBox.x = centerX - newWidth / 2;
+    viewBox.y = centerY - newHeight / 2;
+
+    updateViewBox();
+    updateZoomLevel();
+  }
+
+  function fitToView() {
+    viewBox.x = originalViewBox.x;
+    viewBox.y = originalViewBox.y;
+    viewBox.width = originalViewBox.width;
+    viewBox.height = originalViewBox.height;
+    updateViewBox();
+    updateZoomLevel();
+  }
+
+  function updateViewBox() {
+    dagSvg.setAttribute('viewBox', viewBox.x + ' ' + viewBox.y + ' ' + viewBox.width + ' ' + viewBox.height);
+  }
+
+  function updateZoomLevel() {
+    var zoomPercent = Math.round((originalViewBox.width / viewBox.width) * 100);
+    zoomLevelEl.textContent = zoomPercent + '%';
+  }
 
   function resetExecutionStates() {
     executionStates = {};
@@ -1329,7 +1415,9 @@ export class DagVisualizerPanel {
     var height = bounds.maxY - bounds.minY;
 
     viewBox = { x: bounds.minX, y: bounds.minY, width: width, height: height };
+    originalViewBox = { x: bounds.minX, y: bounds.minY, width: width, height: height };
     dagSvg.setAttribute('viewBox', viewBox.x + ' ' + viewBox.y + ' ' + viewBox.width + ' ' + viewBox.height);
+    updateZoomLevel();
 
     // Create defs for arrow marker
     var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
@@ -1641,15 +1729,18 @@ export class DagVisualizerPanel {
       var newWidth = viewBox.width * zoomFactor;
       var newHeight = viewBox.height * zoomFactor;
 
-      // Limit zoom
-      if (newWidth < 100 || newWidth > 5000) return;
+      // Limit zoom based on original size
+      var minZoom = originalViewBox.width / 10;
+      var maxZoom = originalViewBox.width * 5;
+      if (newWidth < minZoom || newWidth > maxZoom) return;
 
       viewBox.x = svgX - (mouseX / rect.width) * newWidth;
       viewBox.y = svgY - (mouseY / rect.height) * newHeight;
       viewBox.width = newWidth;
       viewBox.height = newHeight;
 
-      dagSvg.setAttribute('viewBox', viewBox.x + ' ' + viewBox.y + ' ' + viewBox.width + ' ' + viewBox.height);
+      updateViewBox();
+      updateZoomLevel();
     };
   }
 
