@@ -466,22 +466,39 @@ export class DagVisualizerPanel {
         fill: none;
         stroke: var(--edge-color);
         stroke-width: 1.5;
-        opacity: 0.6;
-        transition: opacity 0.15s ease, stroke-width 0.15s ease;
+        opacity: 0.5;
+        transition: opacity 0.2s ease, stroke-width 0.2s ease, stroke 0.2s ease;
       }
 
-      .dag-edge:hover path {
+      .dag-edge:hover path,
+      .dag-edge.edge-highlight path {
         opacity: 1;
         stroke-width: 2.5;
+        stroke: var(--vscode-charts-orange, #d18616);
       }
 
       .dag-edge polygon {
         fill: var(--edge-color);
-        opacity: 0.6;
+        opacity: 0.5;
+        transition: opacity 0.2s ease, fill 0.2s ease;
       }
 
-      .dag-edge:hover polygon {
+      .dag-edge:hover polygon,
+      .dag-edge.edge-highlight polygon {
         opacity: 1;
+        fill: var(--vscode-charts-orange, #d18616);
+      }
+
+      /* Connected node highlighting */
+      .dag-node.connected-highlight rect,
+      .dag-node.connected-highlight ellipse,
+      .dag-node.connected-highlight polygon {
+        stroke-width: 3;
+        filter: drop-shadow(0 0 4px var(--edge-color));
+      }
+
+      .dag-node.connected-highlight text {
+        font-weight: bold;
       }
 
       /* Execution state styles - apply to all shape types */
@@ -1334,12 +1351,17 @@ export class DagVisualizerPanel {
     edgesGroup.setAttribute('class', 'edges-group');
 
     layout.edges.forEach(function(edge) {
-      var fromNode = layout.nodes[edge[0]];
-      var toNode = layout.nodes[edge[1]];
+      var fromId = edge[0];
+      var toId = edge[1];
+      var fromNode = layout.nodes[fromId];
+      var toNode = layout.nodes[toId];
       if (!fromNode || !toNode) return;
 
       var edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       edgeGroup.setAttribute('class', 'dag-edge');
+      // Store connected node IDs for hover highlighting
+      edgeGroup.setAttribute('data-from', fromId);
+      edgeGroup.setAttribute('data-to', toId);
 
       var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 
@@ -1370,6 +1392,15 @@ export class DagVisualizerPanel {
       path.setAttribute('d', d);
       path.setAttribute('marker-end', 'url(#arrowhead)');
       edgeGroup.appendChild(path);
+
+      // Add hover event listeners for edge highlighting
+      edgeGroup.addEventListener('mouseenter', function() {
+        highlightConnection(fromId, toId, true);
+      });
+      edgeGroup.addEventListener('mouseleave', function() {
+        highlightConnection(fromId, toId, false);
+      });
+
       edgesGroup.appendChild(edgeGroup);
     });
 
@@ -1519,10 +1550,47 @@ export class DagVisualizerPanel {
         vscode.postMessage({ command: 'nodeClick', nodeId: id, nodeType: node.type, nodeRole: node.role });
       };
 
+      // Add hover event listeners for highlighting connected edges
+      nodeGroup.addEventListener('mouseenter', function() {
+        highlightNodeConnections(id, true);
+      });
+      nodeGroup.addEventListener('mouseleave', function() {
+        highlightNodeConnections(id, false);
+      });
+
       nodesGroup.appendChild(nodeGroup);
     });
 
     dagSvg.appendChild(nodesGroup);
+  }
+
+  // Highlight connected nodes when hovering over an edge
+  function highlightConnection(fromId, toId, highlight) {
+    var fromNode = document.querySelector('[data-node-id="' + fromId + '"]');
+    var toNode = document.querySelector('[data-node-id="' + toId + '"]');
+    var edge = document.querySelector('.dag-edge[data-from="' + fromId + '"][data-to="' + toId + '"]');
+
+    if (highlight) {
+      if (fromNode) fromNode.classList.add('connected-highlight');
+      if (toNode) toNode.classList.add('connected-highlight');
+      if (edge) edge.classList.add('edge-highlight');
+    } else {
+      if (fromNode) fromNode.classList.remove('connected-highlight');
+      if (toNode) toNode.classList.remove('connected-highlight');
+      if (edge) edge.classList.remove('edge-highlight');
+    }
+  }
+
+  // Highlight all edges connected to a node when hovering over the node
+  function highlightNodeConnections(nodeId, highlight) {
+    // Find all edges where this node is the source or target
+    var edges = document.querySelectorAll('.dag-edge[data-from="' + nodeId + '"], .dag-edge[data-to="' + nodeId + '"]');
+
+    edges.forEach(function(edge) {
+      var fromId = edge.getAttribute('data-from');
+      var toId = edge.getAttribute('data-to');
+      highlightConnection(fromId, toId, highlight);
+    });
   }
 
   function setupPanZoom() {
