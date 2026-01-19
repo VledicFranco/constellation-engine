@@ -183,6 +183,13 @@ export class DagVisualizerPanel {
           <button class="toggle-btn active" id="tbBtn" title="Top to Bottom">↓ TB</button>
           <button class="toggle-btn" id="lrBtn" title="Left to Right">→ LR</button>
         </div>
+        <div class="export-dropdown">
+          <button class="icon-btn" id="exportBtn" title="Export">📷</button>
+          <div class="export-menu" id="exportMenu">
+            <button class="export-option" id="exportPngBtn">Export as PNG</button>
+            <button class="export-option" id="exportSvgBtn">Export as SVG</button>
+          </div>
+        </div>
         <button class="icon-btn" id="refreshBtn" title="Refresh">↻</button>
       `
     });
@@ -255,6 +262,52 @@ export class DagVisualizerPanel {
         opacity: 1;
         background: var(--vscode-button-background, #0e639c);
         color: var(--vscode-button-foreground, #fff);
+      }
+
+      .export-dropdown {
+        position: relative;
+      }
+
+      .export-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: var(--vscode-dropdown-background, #3c3c3c);
+        border: 1px solid var(--vscode-dropdown-border, #454545);
+        border-radius: var(--radius-sm);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        z-index: 100;
+        min-width: 140px;
+      }
+
+      .export-menu.show {
+        display: block;
+      }
+
+      .export-option {
+        display: block;
+        width: 100%;
+        padding: 8px 12px;
+        background: transparent;
+        border: none;
+        color: var(--vscode-dropdown-foreground, #ccc);
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+      }
+
+      .export-option:hover {
+        background: var(--vscode-list-hoverBackground, rgba(90, 93, 94, 0.31));
+      }
+
+      .export-option:first-child {
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      }
+
+      .export-option:last-child {
+        border-radius: 0 0 var(--radius-sm) var(--radius-sm);
       }
 
       .container {
@@ -356,8 +409,13 @@ export class DagVisualizerPanel {
   var refreshBtn = document.getElementById('refreshBtn');
   var tbBtn = document.getElementById('tbBtn');
   var lrBtn = document.getElementById('lrBtn');
+  var exportBtn = document.getElementById('exportBtn');
+  var exportMenu = document.getElementById('exportMenu');
+  var exportPngBtn = document.getElementById('exportPngBtn');
+  var exportSvgBtn = document.getElementById('exportSvgBtn');
 
   var currentDag = null;
+  var currentFileName = 'dag';
   var layoutDirection = 'TB'; // 'TB' = top-to-bottom, 'LR' = left-to-right
   var viewBox = { x: 0, y: 0, width: 800, height: 600 };
   var isPanning = false;
@@ -380,6 +438,136 @@ export class DagVisualizerPanel {
     }
   };
 
+  // Export dropdown handling
+  exportBtn.onclick = function(e) {
+    e.stopPropagation();
+    exportMenu.classList.toggle('show');
+  };
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!exportMenu.contains(e.target) && e.target !== exportBtn) {
+      exportMenu.classList.remove('show');
+    }
+  });
+
+  exportPngBtn.onclick = function() {
+    exportMenu.classList.remove('show');
+    exportAsPng();
+  };
+
+  exportSvgBtn.onclick = function() {
+    exportMenu.classList.remove('show');
+    exportAsSvg();
+  };
+
+  function exportAsSvg() {
+    // Clone the SVG to avoid modifying the displayed one
+    var svgClone = dagSvg.cloneNode(true);
+
+    // Add explicit styles to the SVG for standalone rendering
+    var styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    styleElement.textContent = getSvgExportStyles();
+    svgClone.insertBefore(styleElement, svgClone.firstChild);
+
+    // Set explicit dimensions based on viewBox
+    svgClone.setAttribute('width', viewBox.width);
+    svgClone.setAttribute('height', viewBox.height);
+
+    // Serialize to string
+    var serializer = new XMLSerializer();
+    var svgString = serializer.serializeToString(svgClone);
+
+    // Add XML declaration
+    svgString = '<?xml version="1.0" encoding="UTF-8"?>\\n' + svgString;
+
+    // Create download link
+    var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = currentFileName.replace('.cst', '') + '-dag.svg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportAsPng() {
+    // Clone the SVG to avoid modifying the displayed one
+    var svgClone = dagSvg.cloneNode(true);
+
+    // Add explicit styles
+    var styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    styleElement.textContent = getSvgExportStyles();
+    svgClone.insertBefore(styleElement, svgClone.firstChild);
+
+    // Set explicit dimensions (2x for high resolution)
+    var scale = 2;
+    var width = viewBox.width * scale;
+    var height = viewBox.height * scale;
+    svgClone.setAttribute('width', width);
+    svgClone.setAttribute('height', height);
+
+    // Serialize SVG
+    var serializer = new XMLSerializer();
+    var svgString = serializer.serializeToString(svgClone);
+
+    // Create image from SVG
+    var img = new Image();
+    img.onload = function() {
+      // Create canvas
+      var canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      var ctx = canvas.getContext('2d');
+
+      // Fill with editor background color (or white as fallback)
+      var bgColor = getComputedStyle(document.body).getPropertyValue('--vscode-editor-background') || '#1e1e1e';
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, width, height);
+
+      // Draw SVG
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Create download link
+      var link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = currentFileName.replace('.cst', '') + '-dag.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    img.onerror = function() {
+      console.error('Failed to load SVG for PNG export');
+    };
+
+    // Load SVG as data URL
+    var svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    img.src = URL.createObjectURL(svgBlob);
+  }
+
+  function getSvgExportStyles() {
+    // Get computed colors for export
+    var styles = getComputedStyle(document.documentElement);
+    var editorBg = styles.getPropertyValue('--vscode-editor-background') || '#1e1e1e';
+    var foreground = styles.getPropertyValue('--vscode-foreground') || '#cccccc';
+    var descForeground = styles.getPropertyValue('--vscode-descriptionForeground') || '#888888';
+    var dataBorder = styles.getPropertyValue('--node-data-border') || '#3794ff';
+    var moduleBorder = styles.getPropertyValue('--node-module-border') || '#d18616';
+    var edgeColor = styles.getPropertyValue('--edge-color') || '#cca700';
+
+    return '\\n' +
+      '.dag-node rect { fill: ' + editorBg + '; stroke-width: 2; }\\n' +
+      '.dag-node-data rect { stroke: ' + dataBorder + '; rx: 8; ry: 8; }\\n' +
+      '.dag-node-module rect { stroke: ' + moduleBorder + '; }\\n' +
+      '.dag-node text { fill: ' + foreground + '; font-family: monospace; font-size: 12px; text-anchor: middle; dominant-baseline: middle; }\\n' +
+      '.dag-node .node-type { font-size: 10px; fill: ' + descForeground + '; }\\n' +
+      '.dag-edge path { fill: none; stroke: ' + edgeColor + '; stroke-width: 1.5; opacity: 0.8; }\\n' +
+      '.dag-edge polygon { fill: ' + edgeColor + '; opacity: 0.8; }\\n';
+  }
+
   function setLayoutDirection(direction) {
     layoutDirection = direction;
     tbBtn.classList.toggle('active', direction === 'TB');
@@ -399,7 +587,8 @@ export class DagVisualizerPanel {
     } else if (message.type === 'dagData') {
       loadingContainer.style.display = 'none';
       errorContainer.style.display = 'none';
-      fileNameEl.textContent = message.fileName || 'script.cst';
+      currentFileName = message.fileName || 'script.cst';
+      fileNameEl.textContent = currentFileName;
       currentDag = message.dag;
       renderDag(message.dag);
     } else if (message.type === 'error') {
