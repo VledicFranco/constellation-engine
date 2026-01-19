@@ -113,6 +113,20 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = SemanticType.SBoolean
   }
+
+  /** Guard node for conditional execution.
+    * Returns Optional<T> where T is the inner expression type.
+    * If condition is true, returns Some(expr), else returns None.
+    */
+  final case class GuardNode(
+    id: UUID,
+    expr: UUID,
+    condition: UUID,
+    innerType: SemanticType,
+    debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SOptional(innerType)
+  }
 }
 
 /** The complete IR program representing a constellation-lang program */
@@ -135,6 +149,7 @@ final case class IRProgram(
     case Some(IRNode.AndNode(_, left, right, _)) => Set(left, right)
     case Some(IRNode.OrNode(_, left, right, _)) => Set(left, right)
     case Some(IRNode.NotNode(_, operand, _)) => Set(operand)
+    case Some(IRNode.GuardNode(_, expr, condition, _, _)) => Set(expr, condition)
     case None => Set.empty
   }
 

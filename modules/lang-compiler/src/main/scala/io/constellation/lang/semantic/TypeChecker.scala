@@ -115,6 +115,18 @@ object TypedExpression {
   ) extends TypedExpression {
     def semanticType: SemanticType = SemanticType.SBoolean
   }
+
+  /** Guard expression: expr when condition
+    * Returns Optional<T> where T is the type of expr.
+    * If condition is true, returns Some(expr), else returns None.
+    */
+  final case class Guard(
+    expr: TypedExpression,
+    condition: TypedExpression,
+    span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SOptional(expr.semanticType)
+  }
 }
 
 /** Type checker for constellation-lang */
@@ -452,6 +464,16 @@ object TypeChecker {
         else
           TypedExpression.Not(typedOperand, span).validNel
       }
+
+    case Expression.Guard(expr, condition) =>
+      (checkExpression(expr.value, expr.span, env), checkExpression(condition.value, condition.span, env))
+        .mapN { (typedExpr, typedCondition) =>
+          if (typedCondition.semanticType != SemanticType.SBoolean)
+            CompileError.TypeMismatch("Boolean", typedCondition.semanticType.prettyPrint, Some(condition.span)).invalidNel
+          else
+            TypedExpression.Guard(typedExpr, typedCondition, span).validNel
+        }
+        .andThen(identity)
   }
 
   private def checkProjection(

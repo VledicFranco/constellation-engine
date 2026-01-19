@@ -1162,4 +1162,137 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val notExpr = assignment.value.value.asInstanceOf[Expression.Not]
     notExpr.operand.value shouldBe a[Expression.Compare]
   }
+
+  // Guard expression tests
+
+  it should "parse guard expression with 'when' keyword" in {
+    val source = """
+      in value: Int
+      in isActive: Boolean
+      result = value when isActive
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Guard]
+
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.VarRef]
+    guard.condition.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse guard expression with comparison condition" in {
+    val source = """
+      in score: Int
+      in data: String
+      result = data when score > 90
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.VarRef]
+    guard.condition.value shouldBe a[Expression.Compare]
+  }
+
+  it should "parse guard expression with boolean operators in condition" in {
+    val source = """
+      in value: Int
+      in a: Boolean
+      in b: Boolean
+      result = value when a and b
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.condition.value shouldBe a[Expression.BoolBinary]
+  }
+
+  it should "parse guard expression with function call as expression" in {
+    val source = """
+      in x: Int
+      in isEnabled: Boolean
+      result = process(x) when isEnabled
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.FunctionCall]
+    guard.condition.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse guard with lowest precedence (below or)" in {
+    // a or b when c should parse as (a or b) when c
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in c: Boolean
+      result = a or b when c
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.BoolBinary]
+    val boolBinary = guard.expr.value.asInstanceOf[Expression.BoolBinary]
+    boolBinary.op shouldBe BoolOp.Or
+  }
+
+  it should "not allow 'when' as an identifier" in {
+    val source = """
+      in when: Int
+      out when
+    """
+    val result = ConstellationParser.parse(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "parse guard expression with arithmetic expression" in {
+    val source = """
+      in a: Int
+      in b: Int
+      in flag: Boolean
+      result = a + b when flag
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe a[Expression.Arithmetic]
+  }
+
+  it should "parse guard expression with literal expression" in {
+    val source = """
+      in flag: Boolean
+      result = 42 when flag
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val guard = assignment.value.value.asInstanceOf[Expression.Guard]
+    guard.expr.value shouldBe Expression.IntLit(42)
+  }
 }

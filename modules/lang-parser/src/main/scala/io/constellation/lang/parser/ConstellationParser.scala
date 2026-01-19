@@ -34,9 +34,10 @@ object ConstellationParser {
   private val andKw: P[Unit] = keyword("and")
   private val orKw: P[Unit] = keyword("or")
   private val notKw: P[Unit] = keyword("not")
+  private val whenKw: P[Unit] = keyword("when")
 
   // Reserved words
-  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as", "and", "or", "not")
+  private val reserved: Set[String] = Set("type", "in", "out", "if", "else", "true", "false", "use", "as", "and", "or", "not", "when")
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
   private val identifierStart: P[Char] = alpha | P.charIn("_")
@@ -139,8 +140,17 @@ object ConstellationParser {
       .map { case (name, params) => TypeExpr.Parameterized(name, params.toList) }
 
   // Expressions
-  // Precedence (low to high): or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
-  lazy val expression: P[Expression] = P.defer(exprOr)
+  // Precedence (low to high): when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
+  lazy val expression: P[Expression] = P.defer(exprGuard)
+
+  // Guard expression: expr when condition
+  // Returns Optional<T> where T is the type of expr
+  // Lowest precedence - evaluated after all other operations
+  private lazy val exprGuard: P[Expression] =
+    (withSpan(exprOr) ~ (whenKw *> withSpan(exprOr)).?).map {
+      case (expr, None) => expr.value
+      case (expr, Some(condition)) => Expression.Guard(expr, condition)
+    }
 
   // Boolean OR expressions: a or b
   // Left-associative for chaining: a or b or c = (a or b) or c

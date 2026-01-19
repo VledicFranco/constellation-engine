@@ -163,5 +163,13 @@ object IRGenerator {
       val id = UUID.randomUUID()
       val node = IRNode.NotNode(id, operandId, Some(span))
       (operandCtx.addNode(node), id)
+
+    case TypedExpression.Guard(expr, condition, span) =>
+      val (exprCtx, exprId) = generateExpression(expr, ctx)
+      val (condCtx, condId) = generateExpression(condition, exprCtx)
+
+      val id = UUID.randomUUID()
+      val node = IRNode.GuardNode(id, exprId, condId, expr.semanticType, Some(span))
+      (condCtx.addNode(node), id)
   }
 }

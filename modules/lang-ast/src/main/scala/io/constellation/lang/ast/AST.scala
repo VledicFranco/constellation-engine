@@ -264,6 +264,15 @@ object Expression {
   final case class Not(
     operand: Located[Expression]
   ) extends Expression
+
+  /** Guard expression: expr when condition
+    * Returns Optional<T> where T is the type of expr.
+    * If condition is true, returns Some(expr), else returns None.
+    */
+  final case class Guard(
+    expr: Located[Expression],
+    condition: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */

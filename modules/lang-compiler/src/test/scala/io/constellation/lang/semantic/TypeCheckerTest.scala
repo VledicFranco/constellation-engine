@@ -1555,4 +1555,190 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     elementType.fields("y") shouldBe SemanticType.SString
     elementType.fields("z") shouldBe SemanticType.SBoolean
   }
+
+  // Guard expression tests
+
+  it should "type check guard expression returning Optional<T>" in {
+    val source = """
+      in value: Int
+      in isActive: Boolean
+      result = value when isActive
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard expression with String value" in {
+    val source = """
+      in data: String
+      in flag: Boolean
+      result = data when flag
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  it should "type check guard expression with record value" in {
+    val source = """
+      in person: { name: String, age: Int }
+      in isAdult: Boolean
+      result = person when isAdult
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SOptional]
+    outputType.inner shouldBe a[SemanticType.SRecord]
+    val recordType = outputType.inner.asInstanceOf[SemanticType.SRecord]
+    recordType.fields("name") shouldBe SemanticType.SString
+    recordType.fields("age") shouldBe SemanticType.SInt
+  }
+
+  it should "type check guard expression with comparison condition" in {
+    val source = """
+      in score: Int
+      in data: String
+      result = data when score > 90
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  it should "type check guard expression with boolean operators in condition" in {
+    val source = """
+      in value: Int
+      in a: Boolean
+      in b: Boolean
+      result = value when a and b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard expression with complex boolean condition" in {
+    val source = """
+      in value: String
+      in x: Int
+      in flag: Boolean
+      result = value when x > 10 and flag
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  it should "type check guard expression with function call as expression" in {
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "process",
+      params = List("x" -> SemanticType.SInt),
+      returns = SemanticType.SFloat,
+      moduleName = "process-module"
+    ))
+
+    val source = """
+      in x: Int
+      in isEnabled: Boolean
+      result = process(x) when isEnabled
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SFloat)
+  }
+
+  it should "type check guard expression with Candidates value" in {
+    val source = """
+      type Item = { id: Int }
+      in items: Candidates<Item>
+      in shouldProcess: Boolean
+      result = items when shouldProcess
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SOptional]
+    outputType.inner shouldBe a[SemanticType.SCandidates]
+  }
+
+  it should "report error for guard expression with non-boolean condition" in {
+    val source = """
+      in value: Int
+      in condition: Int
+      result = value when condition
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error for guard expression with String condition" in {
+    val source = """
+      in value: Int
+      in condition: String
+      result = value when condition
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "type check guard expression with literal value" in {
+    val source = """
+      in flag: Boolean
+      result = 42 when flag
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard expression with boolean literal condition" in {
+    val source = """
+      in value: String
+      result = value when true
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  it should "type check guard expression with merge expression" in {
+    val source = """
+      in a: { x: Int }
+      in b: { y: String }
+      in flag: Boolean
+      result = a + b when flag
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SOptional]
+    outputType.inner shouldBe a[SemanticType.SRecord]
+    val recordType = outputType.inner.asInstanceOf[SemanticType.SRecord]
+    recordType.fields should have size 2
+  }
+
+  it should "type check Optional type in input declaration" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      out maybeValue
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
 }

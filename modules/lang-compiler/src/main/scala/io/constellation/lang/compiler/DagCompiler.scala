@@ -100,6 +100,9 @@ object DagCompiler {
 
       case IRNode.NotNode(id, operand, _) =>
         processNotNode(id, operand)
+
+      case IRNode.GuardNode(id, expr, condition, innerType, _) =>
+        processGuardNode(id, expr, condition, innerType)
     }
 
     private def processModuleCall(
@@ -774,6 +777,101 @@ object DagCompiler {
               for {
                 operandValue <- runtime.getTableData(operandId)
                 result = !operandValue.asInstanceOf[Boolean]
+                _ <- runtime.setTableData(outId, result)
+              } yield ()
+            }
+          )
+        }
+      )
+    }
+
+    private def processGuardNode(
+      id: UUID,
+      expr: UUID,
+      condition: UUID,
+      innerType: SemanticType
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      val exprDataId = nodeOutputs.getOrElse(expr,
+        throw new IllegalStateException(s"Expression node $expr not found")
+      )
+      val condDataId = nodeOutputs.getOrElse(condition,
+        throw new IllegalStateException(s"Condition node $condition not found")
+      )
+
+      val exprCType = dataNodes(exprDataId).cType
+      val condCType = dataNodes(condDataId).cType
+      val outputCType = CType.COptional(exprCType)
+
+      // Create synthetic guard module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.guard-${id.toString.take(8)}"),
+        consumes = Map("expr" -> exprCType, "cond" -> condCType),
+        produces = Map("out" -> outputCType)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation
+      val syntheticModule = createGuardModule(spec, exprCType)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames
+      dataNodes = dataNodes.updatedWith(exprDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "expr")))
+        case None => None
+      }
+      dataNodes = dataNodes.updatedWith(condDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "cond")))
+        case None => None
+      }
+
+      // Connect edges
+      inEdges = inEdges + ((exprDataId, moduleId)) + ((condDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"guard_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = outputCType
+      ))
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    /** Create a guard module that returns Optional<T>.
+      * Returns Some(expr) if condition is true, None otherwise.
+      */
+    private def createGuardModule(
+      spec: ModuleNodeSpec,
+      innerCType: CType
+    ): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            exprDeferred <- cats.effect.Deferred[IO, Any]
+            condDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            exprId <- consumesNs.nameId("expr")
+            condId <- consumesNs.nameId("cond")
+            outId <- producesNs.nameId("out")
+          } yield Module.Runnable(
+            id = moduleId,
+            data = Map(exprId -> exprDeferred, condId -> condDeferred, outId -> outDeferred),
+            run = runtime => {
+              for {
+                condValue <- runtime.getTableData(condId)
+                result <- if (condValue.asInstanceOf[Boolean]) {
+                  // Condition is true: evaluate expression and return Some
+                  runtime.getTableData(exprId).map(v => Some(v))
+                } else {
+                  // Condition is false: return None (don't evaluate expression)
+                  IO.pure(None)
+                }
                 _ <- runtime.setTableData(outId, result)
               } yield ()
             }
