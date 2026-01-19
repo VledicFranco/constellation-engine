@@ -1,0 +1,112 @@
+# Branch Expressions Demo
+# =============================================================================
+# Demonstrates: Multi-way conditionals with `branch { }` and `otherwise`
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Branch expressions (branch { condition -> result, ... })
+# 2. Multiple condition arms
+# 3. Otherwise clause (required fallback)
+# 4. Complex condition expressions
+# 5. Comparison with if/else chains
+#
+# Branch expressions provide cleaner syntax for multi-way conditionals
+# compared to nested if/else chains.
+
+# =============================================================================
+# Input Declarations
+# =============================================================================
+
+in priority: String
+in score: Int
+in category: String
+
+# =============================================================================
+# Basic Branch Expression
+# =============================================================================
+
+# Branch for processing tier based on priority
+# Each arm has: condition -> result
+# The `otherwise` arm is required and acts as the default case
+processingTier = branch {
+  priority == "high" -> "fast-path",
+  priority == "medium" -> "standard",
+  otherwise -> "batch"
+}
+
+# =============================================================================
+# Numeric Range Branch
+# =============================================================================
+
+# Grade assignment based on score ranges
+# Conditions are evaluated in order - first match wins
+grade = branch {
+  score >= 90 -> "A",
+  score >= 80 -> "B",
+  score >= 70 -> "C",
+  score >= 60 -> "D",
+  otherwise -> "F"
+}
+
+# =============================================================================
+# Complex Conditions in Branch
+# =============================================================================
+
+# Using boolean operators in branch conditions
+isUrgent = priority == "high"
+isHighScore = score >= 75
+
+actionPlan = branch {
+  isUrgent and isHighScore -> "immediate-review",
+  isUrgent and not isHighScore -> "escalate",
+  isHighScore -> "queue-review",
+  otherwise -> "standard-process"
+}
+
+# =============================================================================
+# Category-Based Routing
+# =============================================================================
+
+# String equality checks in branch
+department = branch {
+  category == "sales" -> "Sales Team",
+  category == "support" -> "Customer Service",
+  category == "technical" -> "Engineering",
+  category == "billing" -> "Finance",
+  otherwise -> "General Inquiries"
+}
+
+# =============================================================================
+# Numeric Classification
+# =============================================================================
+
+# Classify score into buckets
+scoreBucket = branch {
+  score < 0 -> "invalid",
+  score == 0 -> "zero",
+  score < 25 -> "low",
+  score < 50 -> "medium-low",
+  score < 75 -> "medium-high",
+  score < 100 -> "high",
+  otherwise -> "exceptional"
+}
+
+# =============================================================================
+# Comparison: Branch vs If/Else
+# =============================================================================
+
+# The equivalent using nested if/else would be:
+# gradeIfElse = if (score >= 90) "A" else if (score >= 80) "B" else if (score >= 70) "C" else "F"
+
+# Branch is cleaner for multi-way conditionals
+gradeIfElse = if (score >= 90) "A" else if (score >= 80) "B" else "C or below"
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+out processingTier
+out grade
+out actionPlan
+out department
+out scoreBucket
+out gradeIfElse

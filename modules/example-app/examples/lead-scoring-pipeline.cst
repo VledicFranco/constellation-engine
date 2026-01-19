@@ -21,6 +21,8 @@
 # 16. Literals                        - String ("..."), Int (100, 0), Boolean
 # 17. Type references                 - in company: CompanyInfo
 # 18. Nested conditionals             - if (...) 100 else if (...) 70 else 30
+# 19. Guard expressions (when)        - expr when condition -> Optional<T>
+# 20. Coalesce operator (??)          - optional ?? fallback for safe unwrapping
 #
 # ML USE CASE: B2B Lead Scoring
 # This pipeline takes lead data and scores prospects based on:
@@ -236,3 +238,43 @@ out isAtThreshold
 # Additional calculated values
 out doubleScore
 out halfScore
+
+# =============================================================================
+# Advanced: Guard and Coalesce Demo
+# =============================================================================
+# Demonstrates how guards and coalesce can simplify conditional logic
+# compared to traditional if/else patterns.
+
+# Guard: conditionalBonus only exists when hasIndustryMatch is true
+# This produces Optional<Int> - Some(15) or None
+conditionalBonus = industryBonus when hasIndustryMatch
+
+# Coalesce: safely unwrap optional with fallback
+# If conditionalBonus is None, use 0
+adjustmentFactor = conditionalBonus ?? 0
+
+# Premium lead guard: only set when both conditions met
+# Uses compound boolean condition
+premiumLead = finalScore when isHotLead and hasIndustryMatch
+
+# Coalesce chain: try premium, fall back to regular score
+leadCategory = premiumLead ?? finalScore
+
+# Practical pattern: tiered bonus with guards
+tier1Bonus = 50 when finalScore >= 90
+tier2Bonus = 30 when finalScore >= 70
+tier3Bonus = 10 when finalScore >= 50
+
+# Chained coalesce picks first applicable tier
+tieredBonus = tier1Bonus ?? tier2Bonus ?? tier3Bonus ?? 0
+
+# Combined with arithmetic
+finalScoreWithTieredBonus = finalScore + tieredBonus
+
+# Output the new guard/coalesce results
+out conditionalBonus
+out adjustmentFactor
+out premiumLead
+out leadCategory
+out tieredBonus
+out finalScoreWithTieredBonus

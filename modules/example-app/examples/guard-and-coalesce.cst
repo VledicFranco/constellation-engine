@@ -1,0 +1,95 @@
+# Guard and Coalesce Demo
+# =============================================================================
+# Demonstrates: `when` guards, `??` coalesce, Optional<T>, fallback chains
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Guard expressions (expr when condition) - produces Optional<T>
+# 2. Coalesce operator (??) - unwraps Optional with fallback
+# 3. Chained coalesce (a ?? b ?? c)
+# 4. Complex guard conditions with boolean operators
+#
+# These features enable safe handling of conditional/optional values without
+# explicit if/else patterns.
+
+# =============================================================================
+# Input Declarations
+# =============================================================================
+
+in score: Int
+in threshold: Int
+in enabled: Boolean
+in defaultMessage: String
+
+# =============================================================================
+# Guard Expressions
+# =============================================================================
+
+# Guard: "expr when condition" produces Optional<T>
+# If condition is true, result is Some(expr)
+# If condition is false, result is None
+
+# Simple guard - high score message only shows if score exceeds threshold
+highScoreMessage = "Excellent!" when score > threshold
+
+# Boolean guard - processing result only exists when enabled
+processingResult = "Enabled" when enabled
+
+# Guard with complex condition using boolean operators
+complexGuard = "Both conditions met" when score > 50 and enabled
+
+# Nested expression in guard
+doubleScore = score * 2
+doubleGuard = "High double" when doubleScore > 100
+
+# =============================================================================
+# Coalesce Operator
+# =============================================================================
+
+# Coalesce: "optional ?? fallback" unwraps Optional with a fallback
+# Returns inner value if Some, otherwise returns fallback
+
+# Simple coalesce - provide default when guard condition is false
+finalMessage = highScoreMessage ?? "Below threshold"
+
+# Chained coalesce - try multiple optionals in order
+# First non-None value wins, otherwise use final default
+result = highScoreMessage ?? processingResult ?? defaultMessage
+
+# Coalesce with computed fallback
+computedFallback = "Score: "
+safeMessage = complexGuard ?? computedFallback
+
+# =============================================================================
+# Practical Example: Conditional Bonuses
+# =============================================================================
+
+# Calculate bonuses that only apply under certain conditions
+baseBonus = 10
+highScoreBonus = 25 when score > 80
+enabledBonus = 15 when enabled
+
+# Use coalesce to get actual bonus values (0 if condition not met)
+actualHighBonus = highScoreBonus ?? 0
+actualEnabledBonus = enabledBonus ?? 0
+
+# Total with all applicable bonuses
+totalBonus = baseBonus + actualHighBonus + actualEnabledBonus
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+# Guard results (Optional types - may be None)
+out highScoreMessage
+out processingResult
+out complexGuard
+
+# Coalesced results (unwrapped values)
+out finalMessage
+out result
+out safeMessage
+
+# Bonus calculations
+out actualHighBonus
+out actualEnabledBonus
+out totalBonus

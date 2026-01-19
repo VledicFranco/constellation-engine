@@ -21,6 +21,7 @@ import java.util.UUID
   *   - BooleanFunctions: and, or, not
   *   - ComparisonFunctions: eq-int, eq-string, gt, lt, gte, lte
   *   - UtilityFunctions: identity, const-*, log
+  *   - HigherOrderFunctions: filter, map, all, any (lambda-based)
   */
 object StdLib
     extends MathFunctions
@@ -28,7 +29,8 @@ object StdLib
     with ListFunctions
     with BooleanFunctions
     with ComparisonFunctions
-    with UtilityFunctions {
+    with UtilityFunctions
+    with HigherOrderFunctions {
 
   /** Register all standard library functions with a LangCompiler builder */
   def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder = {
@@ -37,7 +39,8 @@ object StdLib
       listSignatures ++
       booleanSignatures ++
       comparisonSignatures ++
-      utilitySignatures
+      utilitySignatures ++
+      hofSignatures
 
     allSigs.foldLeft(builder)((b, sig) => b.withFunction(sig))
   }
@@ -58,7 +61,8 @@ object StdLib
       listSignatures ++
       booleanSignatures ++
       comparisonSignatures ++
-      utilitySignatures
+      utilitySignatures ++
+      hofSignatures
 
   /** Create a LangCompiler with all standard library functions registered */
   def compiler: LangCompiler = {

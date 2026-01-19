@@ -335,4 +335,127 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     // Compare namespace
     StdLib.gtSignature.namespace shouldBe Some("stdlib.compare")
   }
+
+  // Higher-order function tests
+
+  "HOF signatures" should "have correct types for filter" in {
+    StdLib.filterIntSignature.params shouldBe List(
+      "items" -> SemanticType.SList(SemanticType.SInt),
+      "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+    )
+    StdLib.filterIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.filterIntSignature.namespace shouldBe Some("stdlib.collection")
+  }
+
+  it should "have correct types for map" in {
+    StdLib.mapIntIntSignature.params shouldBe List(
+      "items" -> SemanticType.SList(SemanticType.SInt),
+      "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+    )
+    StdLib.mapIntIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.mapIntIntSignature.namespace shouldBe Some("stdlib.collection")
+  }
+
+  it should "have correct types for all" in {
+    StdLib.allIntSignature.params shouldBe List(
+      "items" -> SemanticType.SList(SemanticType.SInt),
+      "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+    )
+    StdLib.allIntSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.allIntSignature.namespace shouldBe Some("stdlib.collection")
+  }
+
+  it should "have correct types for any" in {
+    StdLib.anyIntSignature.params shouldBe List(
+      "items" -> SemanticType.SList(SemanticType.SInt),
+      "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+    )
+    StdLib.anyIntSignature.returns shouldBe SemanticType.SBoolean
+    StdLib.anyIntSignature.namespace shouldBe Some("stdlib.collection")
+  }
+
+  "StdLib.compiler" should "compile programs with filter and lambda" in {
+    val compiler = StdLib.compiler
+
+    // Lambda bodies need stdlib.compare for comparison operators
+    val source = """
+      use stdlib.collection
+      use stdlib.compare
+      in numbers: List<Int>
+      result = filter(numbers, (x) => gt(x, 0))
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-dag")
+    result match {
+      case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => succeed
+    }
+  }
+
+  it should "compile programs with map and lambda" in {
+    val compiler = StdLib.compiler
+
+    // Lambda bodies need stdlib.math for arithmetic operators
+    val source = """
+      use stdlib.collection
+      use stdlib.math
+      in numbers: List<Int>
+      result = map(numbers, (x) => multiply(x, 2))
+      out result
+    """
+
+    val result = compiler.compile(source, "map-dag")
+    result match {
+      case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => succeed
+    }
+  }
+
+  it should "compile programs with all and lambda" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.collection
+      use stdlib.compare
+      in numbers: List<Int>
+      result = all(numbers, (x) => gt(x, 0))
+      out result
+    """
+
+    val result = compiler.compile(source, "all-dag")
+    result match {
+      case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => succeed
+    }
+  }
+
+  it should "compile programs with any and lambda" in {
+    val compiler = StdLib.compiler
+
+    val source = """
+      use stdlib.collection
+      use stdlib.compare
+      in numbers: List<Int>
+      result = any(numbers, (x) => lt(x, 0))
+      out result
+    """
+
+    val result = compiler.compile(source, "any-dag")
+    result match {
+      case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => succeed
+    }
+  }
+
+  it should "expose collection namespace in registry" in {
+    val compiler = StdLib.compiler
+    val registry = compiler.functionRegistry
+
+    registry.namespaces should contain("stdlib.collection")
+    registry.lookupQualified("stdlib.collection.filter").isDefined shouldBe true
+    registry.lookupQualified("stdlib.collection.map").isDefined shouldBe true
+    registry.lookupQualified("stdlib.collection.all").isDefined shouldBe true
+    registry.lookupQualified("stdlib.collection.any").isDefined shouldBe true
+  }
 }

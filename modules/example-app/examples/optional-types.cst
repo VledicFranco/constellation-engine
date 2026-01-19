@@ -1,0 +1,115 @@
+# Optional Types Demo
+# =============================================================================
+# Demonstrates: Explicit Optional<T> inputs, coalesce patterns, guard to Optional
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Optional<T> type declarations for inputs
+# 2. Coalesce (??) for unwrapping optionals
+# 3. Guard expressions that produce Optional<T>
+# 4. Chained optional handling
+#
+# Optional types represent values that may or may not exist, enabling
+# safe null handling without runtime errors.
+
+# =============================================================================
+# Input Declarations with Optional Types
+# =============================================================================
+
+# Optional inputs - these may be None (missing) at runtime
+in maybeValue: Optional<Int>
+in maybeName: Optional<String>
+in maybeMultiplier: Optional<Int>
+
+# Regular (required) inputs
+in defaultValue: Int
+in defaultName: String
+in score: Int
+
+# =============================================================================
+# Basic Optional Handling with Coalesce
+# =============================================================================
+
+# Unwrap optional with default - if maybeValue is None, use defaultValue
+value = maybeValue ?? defaultValue
+
+# String optional with default
+name = maybeName ?? defaultName
+
+# Optional multiplier with default of 1 (identity for multiplication)
+multiplier = maybeMultiplier ?? 1
+
+# =============================================================================
+# Guard Expressions Create Optionals
+# =============================================================================
+
+# Guard produces Optional<Int> - Some(score) if condition true, None if false
+positiveScore = score when score > 0
+
+# Coalesce the guard result to get a guaranteed value
+safeScore = positiveScore ?? 0
+
+# Guard with computed expression
+doubledScore = score * 2
+highDoubled = doubledScore when doubledScore > 100
+safeHighDoubled = highDoubled ?? 50
+
+# =============================================================================
+# Chained Optional Handling
+# =============================================================================
+
+# Multiple optionals - try each in order, use final fallback
+# This is useful for fallback chains
+bonusValue = 25 when score > 90
+standardValue = 10 when score > 50
+
+# Chain: try bonus first, then standard, finally default
+finalValue = bonusValue ?? standardValue ?? 5
+
+# =============================================================================
+# Optional with Arithmetic
+# =============================================================================
+
+# After unwrapping, use the value in calculations
+scaledValue = value * multiplier
+
+# Combine unwrapped optional with guard
+scaledBonus = scaledValue when scaledValue > 100
+finalScaledBonus = scaledBonus ?? 0
+
+# =============================================================================
+# Practical Pattern: Configuration with Defaults
+# =============================================================================
+
+# Common pattern: optional configuration with sensible defaults
+# This enables optional parameters in pipeline inputs
+
+# Default timeout if not specified
+in maybeTimeout: Optional<Int>
+timeout = maybeTimeout ?? 30
+
+# Default retry count
+in maybeRetries: Optional<Int>
+retries = maybeRetries ?? 3
+
+# Computed with defaults
+totalWaitTime = timeout * retries
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+# Unwrapped values (guaranteed non-optional)
+out value
+out name
+out multiplier
+out safeScore
+
+# Coalesced results
+out finalValue
+out scaledValue
+out finalScaledBonus
+
+# Configuration with defaults
+out timeout
+out retries
+out totalWaitTime

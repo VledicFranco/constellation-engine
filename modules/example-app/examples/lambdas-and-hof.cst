@@ -1,0 +1,158 @@
+# Lambda Expressions and Higher-Order Functions Demo
+# =============================================================================
+# Demonstrates: Lambda syntax ((x) => expr), filter, map, all, any
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Lambda expressions ((x) => body)
+# 2. filter - keep elements matching predicate
+# 3. map - transform each element
+# 4. all - check if all elements satisfy predicate
+# 5. any - check if any element satisfies predicate
+#
+# Higher-order functions accept lambdas to customize their behavior,
+# enabling declarative list processing without explicit loops.
+#
+# NOTE: Lambda bodies currently support only the lambda parameter and literals.
+# Closure capture (referencing outer variables) is not yet implemented.
+
+# =============================================================================
+# Namespace Imports
+# =============================================================================
+
+# Import HOF functions from collection namespace
+use stdlib.collection
+
+# Import comparison functions for use in lambda bodies
+use stdlib.compare
+
+# Import math functions for transformations
+use stdlib.math
+
+# =============================================================================
+# Input Declarations
+# =============================================================================
+
+in numbers: List<Int>
+
+# =============================================================================
+# Filter: Keep Elements Matching Predicate
+# =============================================================================
+
+# filter(list, predicate) returns elements where predicate returns true
+# Lambda: (x) => returns Boolean
+
+# Keep only positive numbers
+# Note: Lambda bodies use function calls (gt, lt) for comparisons
+positives = filter(numbers, (x) => gt(x, 0))
+
+# Keep numbers above 10
+above10 = filter(numbers, (x) => gt(x, 10))
+
+# Keep numbers at least 5
+atLeast5 = filter(numbers, (x) => gte(x, 5))
+
+# Keep numbers at most 50
+atMost50 = filter(numbers, (x) => lte(x, 50))
+
+# =============================================================================
+# Map: Transform Each Element
+# =============================================================================
+
+# map(list, transform) applies transform to each element
+# Lambda: (x) => returns transformed value
+
+# Double each number
+doubled = map(numbers, (x) => multiply(x, 2))
+
+# Triple each number
+tripled = map(numbers, (x) => multiply(x, 3))
+
+# Add 10 to each number
+plus10 = map(numbers, (x) => add(x, 10))
+
+# Subtract 5 from each number
+minus5 = map(numbers, (x) => subtract(x, 5))
+
+# =============================================================================
+# All: Check if All Elements Satisfy Predicate
+# =============================================================================
+
+# all(list, predicate) returns true if predicate is true for ALL elements
+# Returns true for empty list (vacuous truth)
+
+# Check if all numbers are positive
+allPositive = all(numbers, (x) => gt(x, 0))
+
+# Check if all numbers are non-negative (>= 0)
+allNonNegative = all(numbers, (x) => gte(x, 0))
+
+# Check if all numbers are below 100
+allBelow100 = all(numbers, (x) => lt(x, 100))
+
+# Check if all numbers are at most 1000
+allAtMost1000 = all(numbers, (x) => lte(x, 1000))
+
+# =============================================================================
+# Any: Check if Any Element Satisfies Predicate
+# =============================================================================
+
+# any(list, predicate) returns true if predicate is true for AT LEAST ONE element
+# Returns false for empty list
+
+# Check if any number is negative
+hasNegative = any(numbers, (x) => lt(x, 0))
+
+# Check if any number is zero
+hasZero = any(numbers, (x) => eq-int(x, 0))
+
+# Check if any number is above 100
+hasAbove100 = any(numbers, (x) => gt(x, 100))
+
+# Check if any number equals 42
+has42 = any(numbers, (x) => eq-int(x, 42))
+
+# =============================================================================
+# Chaining HOF Operations
+# =============================================================================
+
+# Pipeline: filter positive, then double them
+positivesDoubled = map(positives, (x) => multiply(x, 2))
+
+# Check if all positives are below 50
+positivesAllBelow50 = all(positives, (x) => lt(x, 50))
+
+# Check if any doubled value exceeds 100
+anyDoubledLarge = any(doubled, (x) => gt(x, 100))
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+# Filter results
+out positives
+out above10
+out atLeast5
+out atMost50
+
+# Map results
+out doubled
+out tripled
+out plus10
+out minus5
+
+# All results (Boolean)
+out allPositive
+out allNonNegative
+out allBelow100
+out allAtMost1000
+
+# Any results (Boolean)
+out hasNegative
+out hasZero
+out hasAbove100
+out has42
+
+# Chained operations
+out positivesDoubled
+out positivesAllBelow50
+out anyDoubledLarge

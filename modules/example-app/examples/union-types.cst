@@ -1,0 +1,106 @@
+# Union Types Demo
+# =============================================================================
+# Demonstrates: Union type syntax (A | B) for variant data types
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Union type declarations (type X = A | B)
+# 2. Primitive union types (String | Int)
+# 3. Record union types ({ field: T } | { other: U })
+# 4. Union types in input/output declarations
+#
+# Union types allow a value to be one of several possible types,
+# enabling flexible data modeling for variant returns.
+#
+# NOTE: Runtime pattern matching for union type discrimination is not yet
+# implemented. These examples demonstrate type declaration syntax.
+
+# =============================================================================
+# Type Definitions with Unions
+# =============================================================================
+
+# Result type: either a success value or an error
+type Result = { value: Int, status: String } | { error: String, code: Int }
+
+# Flexible identifier: can be string or numeric
+type Identifier = String | Int
+
+# API response variants
+type ApiResponse = { data: String, count: Int } | { error: String }
+
+# Processing state variants
+type ProcessingState = { pending: Boolean } | { completed: Int } | { failed: String }
+
+# =============================================================================
+# Input Declarations with Union Types
+# =============================================================================
+
+# Accept either form of result
+in result: Result
+
+# Flexible ID input
+in userId: Identifier
+
+# API response to process
+in response: ApiResponse
+
+# Current state
+in state: ProcessingState
+
+# =============================================================================
+# Regular Inputs for Demonstration
+# =============================================================================
+
+in fallbackMessage: String
+in defaultValue: Int
+
+# =============================================================================
+# Working with Union-Typed Values
+# =============================================================================
+
+# Note: Since pattern matching is not yet implemented, we demonstrate
+# that union types can be passed through the pipeline and output
+
+# Pass-through union values
+outputResult = result
+outputUserId = userId
+outputResponse = response
+outputState = state
+
+# =============================================================================
+# Practical Use Case: Flexible Input Handling
+# =============================================================================
+
+# Union types are particularly useful for:
+# 1. API responses that may succeed or fail
+# 2. Configuration that accepts multiple formats
+# 3. Processing pipelines with multiple outcome paths
+
+# Example: A scoring result that could be a number or an error
+type ScoringResult = { score: Int, confidence: Float } | { reason: String }
+
+in scoringInput: ScoringResult
+
+# =============================================================================
+# Combining with Other Features
+# =============================================================================
+
+# Union types work with other language features
+# Here we use regular conditionals alongside union-typed data
+
+isHighDefault = defaultValue > 50
+statusMessage = if (isHighDefault) "High value mode" else "Standard mode"
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+# Output union-typed values (type preserved)
+out outputResult
+out outputUserId
+out outputResponse
+out outputState
+out scoringInput
+
+# Regular outputs
+out statusMessage
+out fallbackMessage
