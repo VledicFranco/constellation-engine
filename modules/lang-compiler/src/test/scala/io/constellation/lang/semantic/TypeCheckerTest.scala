@@ -676,6 +676,148 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     elementType.fields should have size 2
   }
 
+  it should "merge empty record with non-empty record" in {
+    val source = """
+      in a: {}
+      in b: { x: Int, y: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 2
+    outputType.fields("x") shouldBe SemanticType.SInt
+    outputType.fields("y") shouldBe SemanticType.SString
+  }
+
+  it should "merge non-empty record with empty record" in {
+    val source = """
+      in a: { x: Int, y: String }
+      in b: {}
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 2
+    outputType.fields("x") shouldBe SemanticType.SInt
+    outputType.fields("y") shouldBe SemanticType.SString
+  }
+
+  it should "merge two empty records" in {
+    val source = """
+      in a: {}
+      in b: {}
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields shouldBe empty
+  }
+
+  it should "merge nested records (shallow merge)" in {
+    val source = """
+      in a: { outer: { inner: Int } }
+      in b: { other: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 2
+    outputType.fields("outer") shouldBe a[SemanticType.SRecord]
+    outputType.fields("other") shouldBe SemanticType.SString
+  }
+
+  it should "right-hand side wins when nested record field conflicts" in {
+    val source = """
+      in a: { data: { x: Int } }
+      in b: { data: { y: String } }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 1
+    // Right-hand side wins completely - no deep merge
+    val dataType = outputType.fields("data").asInstanceOf[SemanticType.SRecord]
+    dataType.fields should have size 1
+    dataType.fields("y") shouldBe SemanticType.SString
+  }
+
+  it should "chain multiple record merges" in {
+    val source = """
+      in a: { x: Int }
+      in b: { y: String }
+      in c: { z: Boolean }
+      result = a + b + c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 3
+    outputType.fields("x") shouldBe SemanticType.SInt
+    outputType.fields("y") shouldBe SemanticType.SString
+    outputType.fields("z") shouldBe SemanticType.SBoolean
+  }
+
+  it should "report error for merging Int with record" in {
+    val source = """
+      in a: Int
+      in b: { x: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "report error for merging record with Int" in {
+    val source = """
+      in a: { x: String }
+      in b: Int
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "report error for merging String with String using +" in {
+    val source = """
+      in a: String
+      in b: String
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "report error for merging List with record" in {
+    val source = """
+      in a: List<Int>
+      in b: { x: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
   // Type reference
 
   it should "resolve type references" in {
