@@ -706,7 +706,7 @@ export class DagVisualizerPanel {
         previewText.setAttribute('class', 'value-preview');
         previewText.setAttribute('x', width / 2);
         previewText.setAttribute('y', height - 6);
-        previewText.textContent = truncateValue(stateInfo.valuePreview, 20);
+        previewText.textContent = formatValuePreview(stateInfo.valuePreview, 22);
         nodeGroup.appendChild(previewText);
       }
     }
@@ -716,6 +716,94 @@ export class DagVisualizerPanel {
     if (!value) return '';
     if (value.length <= maxLen) return value;
     return value.substring(0, maxLen - 3) + '...';
+  }
+
+  // Format a value preview for display - handles various data types
+  function formatValuePreview(value, maxLen) {
+    if (value === null || value === undefined) return 'null';
+    if (value === '') return '""';
+
+    var str = String(value);
+
+    // Try to detect and format different types
+    try {
+      // Check if it's a JSON string
+      if ((str.startsWith('{') || str.startsWith('[')) && (str.endsWith('}') || str.endsWith(']'))) {
+        var parsed = JSON.parse(str);
+        str = formatJsonPreview(parsed, maxLen);
+      }
+    } catch (e) {
+      // Not valid JSON, use as-is
+    }
+
+    // Format boolean values
+    if (str === 'true' || str === 'false') {
+      return str;
+    }
+
+    // Format numbers (detect and format large numbers)
+    if (!isNaN(Number(str)) && str !== '') {
+      var num = Number(str);
+      if (Number.isInteger(num) && Math.abs(num) >= 1000000) {
+        return formatLargeNumber(num);
+      }
+      if (!Number.isInteger(num)) {
+        // Round floats to reasonable precision
+        return num.toPrecision(6).replace(/\\.?0+$/, '');
+      }
+      return str;
+    }
+
+    // Format strings - add quotes to show it's a string
+    if (!str.startsWith('"') && !str.startsWith('[') && !str.startsWith('{')) {
+      str = '"' + str + '"';
+    }
+
+    return truncateValue(str, maxLen);
+  }
+
+  // Format JSON for preview
+  function formatJsonPreview(obj, maxLen) {
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) return '[]';
+      if (obj.length === 1) return '[' + formatJsonPreview(obj[0], maxLen - 2) + ']';
+      return '[' + obj.length + ' items]';
+    }
+
+    if (typeof obj === 'object' && obj !== null) {
+      var keys = Object.keys(obj);
+      if (keys.length === 0) return '{}';
+      if (keys.length === 1) {
+        var key = keys[0];
+        var val = formatJsonPreview(obj[key], maxLen - key.length - 4);
+        var result = '{' + key + ': ' + val + '}';
+        if (result.length <= maxLen) return result;
+      }
+      return '{' + keys.length + ' fields}';
+    }
+
+    if (typeof obj === 'string') {
+      return '"' + truncateValue(obj, maxLen - 2) + '"';
+    }
+
+    return String(obj);
+  }
+
+  // Format large numbers with K/M/B suffixes
+  function formatLargeNumber(num) {
+    var absNum = Math.abs(num);
+    var sign = num < 0 ? '-' : '';
+
+    if (absNum >= 1e9) {
+      return sign + (absNum / 1e9).toFixed(1) + 'B';
+    }
+    if (absNum >= 1e6) {
+      return sign + (absNum / 1e6).toFixed(1) + 'M';
+    }
+    if (absNum >= 1e3) {
+      return sign + (absNum / 1e3).toFixed(1) + 'K';
+    }
+    return String(num);
   }
 
   // Simplify node labels by stripping common prefixes and truncating
@@ -1422,7 +1510,7 @@ export class DagVisualizerPanel {
           previewText.setAttribute('class', 'value-preview');
           previewText.setAttribute('x', node.width / 2);
           previewText.setAttribute('y', node.height - 6);
-          previewText.textContent = truncateValue(stateInfo.valuePreview, 20);
+          previewText.textContent = formatValuePreview(stateInfo.valuePreview, 22);
           nodeGroup.appendChild(previewText);
         }
       }
