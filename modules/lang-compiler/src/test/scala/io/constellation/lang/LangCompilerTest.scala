@@ -734,4 +734,94 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     registry.lookupQualified("stdlib.math.add").isDefined shouldBe true
     registry.lookupQualified("stdlib.string.upper").isDefined shouldBe true
   }
+
+  // Candidates + Candidates merge compilation tests
+
+  it should "compile Candidates + Candidates merge expression" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type A = { id: Int }
+      type B = { name: String }
+      in items: Candidates<A>
+      in metadata: Candidates<B>
+      result = items + metadata
+      out result
+    """
+
+    val result = compiler.compile(source, "candidates-merge-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a synthetic merge module
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.modules.values.exists(_.name.contains("merge")) shouldBe true
+  }
+
+  it should "compile Candidates + Candidates with empty inner records" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: Candidates<{}>
+      in b: Candidates<{ x: Int }>
+      result = a + b
+      out result
+    """
+
+    val result = compiler.compile(source, "empty-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+  }
+
+  it should "compile chained Candidates merges" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type A = { x: Int }
+      type B = { y: String }
+      type C = { z: Boolean }
+      in a: Candidates<A>
+      in b: Candidates<B>
+      in c: Candidates<C>
+      result = a + b + c
+      out result
+    """
+
+    val result = compiler.compile(source, "chained-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 merge modules for a + b + c
+    val mergeModules = compiled.dagSpec.modules.values.filter(_.name.contains("merge"))
+    mergeModules should have size 2
+  }
+
+  it should "generate correct output type for Candidates merge" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in items: Candidates<{ id: Int, name: String }>
+      in scores: Candidates<{ score: Float }>
+      result = items + scores
+      out result
+    """
+
+    val result = compiler.compile(source, "typed-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // The output data node should have the merged Candidates type (CList of CProduct)
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.CList(CType.CProduct(fields)) =>
+        fields.keys should contain allOf ("id", "name", "score")
+      case other => fail(s"Expected CList(CProduct(...)), got $other")
+    }
+  }
 }

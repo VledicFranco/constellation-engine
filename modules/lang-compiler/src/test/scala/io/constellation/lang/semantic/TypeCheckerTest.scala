@@ -1360,4 +1360,90 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SInt
   }
+
+  // Candidates + Candidates edge cases
+
+  it should "merge Candidates with empty inner record with Candidates with non-empty record" in {
+    val source = """
+      in a: Candidates<{}>
+      in b: Candidates<{ x: Int }>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 1
+    elementType.fields("x") shouldBe SemanticType.SInt
+  }
+
+  it should "merge Candidates with non-empty inner record with Candidates with empty record" in {
+    val source = """
+      in a: Candidates<{ x: Int }>
+      in b: Candidates<{}>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 1
+    elementType.fields("x") shouldBe SemanticType.SInt
+  }
+
+  it should "merge two Candidates with empty inner records" in {
+    val source = """
+      in a: Candidates<{}>
+      in b: Candidates<{}>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields shouldBe empty
+  }
+
+  it should "merge Candidates with overlapping fields (right wins)" in {
+    val source = """
+      in a: Candidates<{ id: Int, value: Int }>
+      in b: Candidates<{ value: String, extra: Boolean }>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("id") shouldBe SemanticType.SInt
+    elementType.fields("value") shouldBe SemanticType.SString  // Right wins
+    elementType.fields("extra") shouldBe SemanticType.SBoolean
+  }
+
+  it should "chain multiple Candidates merges" in {
+    val source = """
+      in a: Candidates<{ x: Int }>
+      in b: Candidates<{ y: String }>
+      in c: Candidates<{ z: Boolean }>
+      result = a + b + c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SCandidates]
+    val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
+    elementType.fields should have size 3
+    elementType.fields("x") shouldBe SemanticType.SInt
+    elementType.fields("y") shouldBe SemanticType.SString
+    elementType.fields("z") shouldBe SemanticType.SBoolean
+  }
 }

@@ -431,6 +431,11 @@ object DagCompiler {
           lMap ++ rMap
 
         case (lList: List[?] @unchecked, rList: List[?] @unchecked, CType.CList(lElem), CType.CList(rElem)) =>
+          if (lList.size != rList.size) {
+            throw new IllegalArgumentException(
+              s"Cannot merge Candidates with different lengths: left has ${lList.size} elements, right has ${rList.size} elements"
+            )
+          }
           lList.zip(rList).map { case (l, r) => mergeValues(l, r, lElem, rElem) }
 
         case (lList: List[?] @unchecked, rMap: Map[String, ?] @unchecked, CType.CList(_), _) =>
