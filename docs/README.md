@@ -9,6 +9,8 @@ Constellation Engine is a Scala 3 framework for building and executing ML pipeli
 - [Documentation](#documentation)
 - [Quick Example](#quick-example)
 
+> **New to Constellation?** Start with the [Getting Started Tutorial](getting-started.md) - a comprehensive 2-hour guide covering installation, basic pipelines, custom modules, and real-world examples.
+
 ## Overview
 
 Constellation Engine consists of two main components:
@@ -56,6 +58,7 @@ sbt test       # Run all tests
 
 | Document | Description |
 |----------|-------------|
+| [Getting Started Tutorial](getting-started.md) | Step-by-step tutorial for new users (2 hours) |
 | [constellation-lang Guide](constellation-lang/README.md) | Complete language reference for the DSL |
 | [Standard Library](stdlib.md) | Built-in functions for common operations |
 | [Architecture](architecture.md) | Technical architecture and design decisions |

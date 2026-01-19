@@ -1,0 +1,27 @@
+# candidates-demo.cst - Working with batched data
+# Tutorial Section 4: Working with Candidates
+
+# Define types
+type Item = {
+  id: String,
+  value: Int
+}
+
+type Context = {
+  userId: Int,
+  source: String
+}
+
+in items: Candidates<Item>
+in context: Context
+
+# Merge adds context to EACH item in the batch
+# Result: Candidates<{ id: String, value: Int, userId: Int, source: String }>
+enriched = items + context
+
+# Project selects fields from EACH item
+# Result: Candidates<{ id: String, userId: Int }>
+ids_with_user = enriched[id, userId]
+
+out enriched
+out ids_with_user

@@ -1,0 +1,21 @@
+# simple-pipeline.cst - Working with record types
+# Tutorial Section 4: Building a Simple Pipeline
+
+# Define a record type for user data
+type User = {
+  id: Int,
+  name: String,
+  email: String,
+  score: Int
+}
+
+# Input: a single user record
+in user: User
+
+# Extract and process fields
+user_name = upper(user.name)
+is_high_score = gt(user.score, 100)
+
+# Output the results
+out user_name
+out is_high_score

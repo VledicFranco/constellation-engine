@@ -1,0 +1,20 @@
+# type-algebra.cst - Record merging and projections
+# Tutorial Section 4: Type Algebra
+
+# Define record types
+type Base = { id: Int, name: String }
+type Extra = { name: String, score: Float }
+
+in base: Base
+in extra: Extra
+
+# Merge records (right side wins on conflicts)
+# Result type: { id: Int, name: String, score: Float }
+merged = base + extra
+
+# Project specific fields
+# Result type: { id: Int, score: Float }
+summary = merged[id, score]
+
+out merged
+out summary

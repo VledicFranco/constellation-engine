@@ -1,0 +1,9 @@
+# hello.cst - My first Constellation pipeline
+# Tutorial Section 3: Hello World
+
+in name: String
+
+greeting = concat("Hello, ", name)
+upper_greeting = upper(greeting)
+
+out upper_greeting
