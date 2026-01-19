@@ -258,12 +258,25 @@ export class DagVisualizerPanel {
     const body = `
       ${headerHtml}
 
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search nodes..." />
+        <button class="icon-btn small" id="clearSearchBtn" title="Clear search">✕</button>
+      </div>
+
       <div class="container" id="container">
         <div class="loading-container" id="loadingContainer">
           <div class="spinner"></div>
           <div style="margin-top: 8px; font-size: 12px;">Loading DAG...</div>
         </div>
         <svg id="dagSvg" class="dag-svg"></svg>
+
+        <div class="node-details-panel" id="nodeDetailsPanel" style="display: none;">
+          <div class="details-header">
+            <span class="details-title" id="detailsTitle">Node Details</span>
+            <button class="icon-btn small" id="closeDetailsBtn" title="Close">✕</button>
+          </div>
+          <div class="details-content" id="detailsContent"></div>
+        </div>
       </div>
 
       <div class="error-container" id="errorContainer" style="display: none;">
@@ -416,6 +429,105 @@ export class DagVisualizerPanel {
 
       .error-container {
         padding: var(--spacing-lg);
+      }
+
+      .search-bar {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        gap: 8px;
+        background: var(--vscode-sideBar-background, rgba(30, 30, 30, 0.8));
+        border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+      }
+
+      .search-bar input {
+        flex: 1;
+        padding: 6px 10px;
+        background: var(--vscode-input-background, #3c3c3c);
+        border: 1px solid var(--vscode-input-border, #3c3c3c);
+        border-radius: var(--radius-sm);
+        color: var(--vscode-input-foreground, #cccccc);
+        font-size: 12px;
+      }
+
+      .search-bar input:focus {
+        outline: none;
+        border-color: var(--vscode-focusBorder, #007fd4);
+      }
+
+      .search-bar input::placeholder {
+        color: var(--vscode-input-placeholderForeground, #a0a0a0);
+      }
+
+      .node-details-panel {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        width: 280px;
+        max-height: 300px;
+        background: var(--vscode-editor-background, #1e1e1e);
+        border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+        border-radius: var(--radius-md, 6px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        overflow: hidden;
+        z-index: 50;
+      }
+
+      .details-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        background: var(--vscode-sideBar-background, rgba(30, 30, 30, 0.8));
+        border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+      }
+
+      .details-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--vscode-foreground);
+      }
+
+      .details-content {
+        padding: 12px;
+        font-size: 11px;
+        line-height: 1.5;
+        overflow-y: auto;
+        max-height: 240px;
+      }
+
+      .detail-row {
+        display: flex;
+        margin-bottom: 8px;
+      }
+
+      .detail-label {
+        width: 80px;
+        color: var(--vscode-descriptionForeground, #888);
+        flex-shrink: 0;
+      }
+
+      .detail-value {
+        color: var(--vscode-foreground);
+        word-break: break-word;
+      }
+
+      .detail-value.type-badge {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 10px;
+      }
+
+      .dag-node.search-match rect,
+      .dag-node.search-match ellipse,
+      .dag-node.search-match polygon {
+        stroke-width: 3;
+        filter: drop-shadow(0 0 6px var(--vscode-charts-blue, #3794ff));
+      }
+
+      .dag-node.search-dimmed {
+        opacity: 0.3;
       }
 
       .dag-node {
@@ -615,6 +727,12 @@ export class DagVisualizerPanel {
   var zoomOutBtn = document.getElementById('zoomOutBtn');
   var fitBtn = document.getElementById('fitBtn');
   var zoomLevelEl = document.getElementById('zoomLevel');
+  var searchInput = document.getElementById('searchInput');
+  var clearSearchBtn = document.getElementById('clearSearchBtn');
+  var nodeDetailsPanel = document.getElementById('nodeDetailsPanel');
+  var detailsTitle = document.getElementById('detailsTitle');
+  var detailsContent = document.getElementById('detailsContent');
+  var closeDetailsBtn = document.getElementById('closeDetailsBtn');
 
   var currentDag = null;
   var currentFileName = 'dag';
@@ -680,6 +798,120 @@ export class DagVisualizerPanel {
   fitBtn.onclick = function() {
     fitToView();
   };
+
+  // Search functionality
+  searchInput.oninput = function() {
+    var query = searchInput.value.toLowerCase().trim();
+    filterNodes(query);
+  };
+
+  clearSearchBtn.onclick = function() {
+    searchInput.value = '';
+    filterNodes('');
+  };
+
+  // Details panel
+  closeDetailsBtn.onclick = function() {
+    nodeDetailsPanel.style.display = 'none';
+  };
+
+  function filterNodes(query) {
+    var nodes = document.querySelectorAll('.dag-node');
+    nodes.forEach(function(node) {
+      var nodeId = node.getAttribute('data-node-id');
+      var nodeData = currentDag ? (currentDag.data[nodeId] || currentDag.modules[nodeId]) : null;
+      var name = nodeData ? nodeData.name : '';
+
+      node.classList.remove('search-match', 'search-dimmed');
+
+      if (query === '') {
+        // No search, show all normally
+        return;
+      }
+
+      if (name.toLowerCase().includes(query)) {
+        node.classList.add('search-match');
+      } else {
+        node.classList.add('search-dimmed');
+      }
+    });
+  }
+
+  function showNodeDetails(nodeId) {
+    if (!currentDag) return;
+
+    var nodeData = currentDag.data[nodeId] || currentDag.modules[nodeId];
+    if (!nodeData) return;
+
+    var isModule = !!currentDag.modules[nodeId];
+    var isOutput = (currentDag.declaredOutputs || []).indexOf(nodeId) !== -1;
+    var hasIncoming = currentDag.inEdges.some(function(e) { return e[1] === nodeId; }) ||
+                      currentDag.outEdges.some(function(e) { return e[1] === nodeId; });
+    var isInput = !isModule && !hasIncoming;
+
+    var role = isModule ? 'Operation' : (isInput ? 'Input' : (isOutput ? 'Output' : 'Data'));
+    var stateInfo = executionStates[nodeId];
+
+    detailsTitle.textContent = nodeData.name || 'Unknown';
+
+    var html = '';
+    html += '<div class="detail-row"><span class="detail-label">Role:</span><span class="detail-value">' + role + '</span></div>';
+
+    if (!isModule && nodeData.cType) {
+      var typeColor = getTypeColor(nodeData.cType);
+      html += '<div class="detail-row"><span class="detail-label">Type:</span><span class="detail-value type-badge" style="background:' + typeColor + '; color: #fff;">' + nodeData.cType + '</span></div>';
+    }
+
+    if (isModule) {
+      var inputs = Object.keys(nodeData.consumes || {});
+      var outputs = Object.keys(nodeData.produces || {});
+      if (inputs.length > 0) {
+        html += '<div class="detail-row"><span class="detail-label">Inputs:</span><span class="detail-value">' + inputs.join(', ') + '</span></div>';
+      }
+      if (outputs.length > 0) {
+        html += '<div class="detail-row"><span class="detail-label">Outputs:</span><span class="detail-value">' + outputs.join(', ') + '</span></div>';
+      }
+    }
+
+    if (stateInfo) {
+      html += '<div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">' + (stateInfo.state || 'unknown') + '</span></div>';
+      if (stateInfo.valuePreview) {
+        html += '<div class="detail-row"><span class="detail-label">Value:</span><span class="detail-value" style="font-family: monospace;">' + escapeHtml(stateInfo.valuePreview) + '</span></div>';
+      }
+    }
+
+    // Show connected nodes
+    var connectedFrom = [];
+    var connectedTo = [];
+    currentDag.inEdges.concat(currentDag.outEdges).forEach(function(edge) {
+      if (edge[0] === nodeId) connectedTo.push(edge[1]);
+      if (edge[1] === nodeId) connectedFrom.push(edge[0]);
+    });
+
+    if (connectedFrom.length > 0) {
+      var fromNames = connectedFrom.map(function(id) {
+        var d = currentDag.data[id] || currentDag.modules[id];
+        return d ? d.name : id;
+      });
+      html += '<div class="detail-row"><span class="detail-label">From:</span><span class="detail-value">' + fromNames.join(', ') + '</span></div>';
+    }
+    if (connectedTo.length > 0) {
+      var toNames = connectedTo.map(function(id) {
+        var d = currentDag.data[id] || currentDag.modules[id];
+        return d ? d.name : id;
+      });
+      html += '<div class="detail-row"><span class="detail-label">To:</span><span class="detail-value">' + toNames.join(', ') + '</span></div>';
+    }
+
+    detailsContent.innerHTML = html;
+    nodeDetailsPanel.style.display = 'block';
+  }
+
+  function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
   function zoomBy(factor) {
     var centerX = viewBox.x + viewBox.width / 2;
@@ -1635,6 +1867,7 @@ export class DagVisualizerPanel {
       }
 
       nodeGroup.onclick = function() {
+        showNodeDetails(id);
         vscode.postMessage({ command: 'nodeClick', nodeId: id, nodeType: node.type, nodeRole: node.role });
       };
 
