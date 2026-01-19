@@ -2275,4 +2275,326 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       case other => fail(s"Expected CUnion, got $other")
     }
   }
+
+  // Additional Lambda DAG compilation tests
+
+  it should "compile lambda with conditional expression in body" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => if (x > 0) x < 100 else false)
+      out result
+    """
+
+    val result = compiler.compile(source, "lambda-conditional-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with not operator in body" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => not (x > 0))
+      out result
+    """
+
+    val result = compiler.compile(source, "lambda-not-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with or operator in body" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x < 0 or x > 100)
+      out result
+    """
+
+    val result = compiler.compile(source, "lambda-or-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with addition arithmetic" in {
+    val registry = hofCompiler.functionRegistry
+    registry.register(FunctionSignature(
+      name = "add",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.add",
+      namespace = Some("stdlib.math")
+    ))
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in items: List<Int>
+      result = map(items, (x) => x + 10)
+      out result
+    """
+
+    val result = compiler.compile(source, "lambda-add-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
+    ) shouldBe true
+  }
+
+  it should "compile chained filter then map HOF operations" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      filtered = filter(items, (x) => x > 0)
+      result = map(filtered, (x) => x * 2)
+      out result
+    """
+
+    val result = compiler.compile(source, "chained-hof-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have both FilterTransform and MapTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
+    ) shouldBe true
+  }
+
+  it should "compile filter result fed to all" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      positives = filter(items, (x) => x > 0)
+      result = all(positives, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-all-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have FilterTransform and AllTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
+    ) shouldBe true
+  }
+
+  it should "compile filter result fed to any" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      filtered = filter(items, (x) => x > 0)
+      result = any(filtered, (x) => x > 100)
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-any-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have FilterTransform and AnyTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with literal true predicate" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = all(items, (x) => true)
+      out result
+    """
+
+    val result = compiler.compile(source, "literal-true-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
+    ) shouldBe true
+
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CBoolean
+  }
+
+  it should "compile lambda with literal false predicate" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = any(items, (x) => false)
+      out result
+    """
+
+    val result = compiler.compile(source, "literal-false-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
+    ) shouldBe true
+
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CBoolean
+  }
+
+  it should "compile lambda with integer literal comparison" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 42)
+      out result
+    """
+
+    val result = compiler.compile(source, "literal-int-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile lambda with negative literal comparison" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > -10)
+      out result
+    """
+
+    val result = compiler.compile(source, "negative-literal-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  it should "compile map then filter chain" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      doubled = map(items, (x) => x * 2)
+      result = filter(doubled, (x) => x > 10)
+      out result
+    """
+
+    val result = compiler.compile(source, "map-filter-chain-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have both MapTransform and FilterTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+  }
+
+  it should "compile all then any sequence" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      allPositive = all(items, (x) => x > 0)
+      anyLarge = any(items, (x) => x > 100)
+      out allPositive
+    """
+
+    val result = compiler.compile(source, "all-any-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have both AllTransform and AnyTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
+    ) shouldBe true
+  }
+
+  it should "generate correct data dependencies for HOF nodes" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "hof-deps-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val hofNode = compiled.dagSpec.data.values.find(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ).get
+
+    // HOF node should have transformInputs for the source
+    hofNode.transformInputs should not be empty
+    hofNode.transformInputs.contains("source") shouldBe true
+  }
+
+  it should "compile lambda shadowing outer variable name" in {
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      in x: Int
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "shadow-lambda-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
 }
