@@ -246,13 +246,13 @@ Examples:
 **Before starting work:**
 ```bash
 # 1. Verify worktree (see above)
-# 2. Fetch latest changes
+
+# 2. Sync with latest master (CRITICAL for multi-agent coordination)
 git fetch origin
+git checkout master
+git pull origin master
 
-# 3. Ensure your worktree is based on latest master
-git rebase origin/master
-
-# 4. Create feature branch (if not already on one)
+# 3. Create feature branch from updated master
 git checkout -b agent-<N>/issue-<NUMBER>-<description>
 ```
 
@@ -266,15 +266,16 @@ git checkout -b agent-<N>/issue-<NUMBER>-<description>
 # 1. Run full test suite
 make test
 
-# 2. Ensure branch is up to date
+# 2. Sync with latest master (CRITICAL - other agents may have merged)
 git fetch origin
 git rebase origin/master
 
 # 3. If rebase had conflicts, re-run tests
 make test
 
-# 4. Merge to master and push
+# 4. Pull master again and merge (ensures no race condition with other agents)
 git checkout master
+git pull origin master
 git merge agent-<N>/issue-<NUMBER>-<description>
 git push origin master
 
@@ -783,8 +784,9 @@ Closes #15
 │ 3. Verify issue is OPEN on GitHub (mcp__github__issue_read) │
 │ 4. Check recent commits on master                            │
 │ 5. Claim issue (comment on GitHub issue)                    │
-│ 6. Create feature branch                                     │
-│ 7. Verify build works (make compile && make test)           │
+│ 6. git pull origin master ← SYNC before branch!             │
+│ 7. Create feature branch from master                         │
+│ 8. Verify build works (make compile && make test)           │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -811,10 +813,11 @@ Closes #15
 │                    MERGE TO MASTER                           │
 ├─────────────────────────────────────────────────────────────┤
 │ 1. git checkout master                                       │
-│ 2. git merge agent-<N>/issue-<NUMBER>-<desc>                │
-│ 3. git push origin master                                    │
-│ 4. Ensure final commit has "Closes #<N>"                    │
-│ 5. Delete feature branch locally                             │
+│ 2. git pull origin master  ← SYNC before merge!             │
+│ 3. git merge agent-<N>/issue-<NUMBER>-<desc>                │
+│ 4. git push origin master                                    │
+│ 5. Ensure final commit has "Closes #<N>"                    │
+│ 6. Delete feature branch locally                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
