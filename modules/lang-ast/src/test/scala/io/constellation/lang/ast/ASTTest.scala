@@ -408,7 +408,11 @@ class ASTTest extends AnyFlatSpec with Matchers {
 
   "CompileError.IncompatibleMerge" should "generate descriptive message" in {
     val err = CompileError.IncompatibleMerge("String", "Int", Some(Span(0, 5)))
-    err.message shouldBe "Cannot merge types: String + Int"
+    err.message should include("Cannot merge types: String + Int")
+    err.message should include("The '+' operator requires compatible types")
+    err.message should include("Two records")
+    err.message should include("Two Candidates")
+    err.message should include("Candidates + Record")
   }
 
   "CompileError.UndefinedNamespace" should "generate descriptive message" in {

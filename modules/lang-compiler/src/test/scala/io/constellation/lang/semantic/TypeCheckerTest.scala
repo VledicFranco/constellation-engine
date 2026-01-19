@@ -838,6 +838,12 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    // Int is not mergeable, so this produces UnsupportedArithmetic, not IncompatibleMerge
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+    val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
+    arithError.message should include("Int")
+    arithError.message should include("{ x: String }")
   }
 
   it should "report error for merging record with Int" in {
@@ -849,6 +855,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    // Record + Int: Record is mergeable but Int is not, so UnsupportedArithmetic
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
   }
 
   it should "report error for merging String with String using +" in {
@@ -860,6 +869,11 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    // String is neither mergeable nor numeric, so UnsupportedArithmetic
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+    val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
+    arithError.message should include("String")
   }
 
   it should "report error for merging List with record" in {
@@ -871,6 +885,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    // List is not mergeable (only Candidates is), so UnsupportedArithmetic
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
   }
 
   // Type reference
@@ -1556,7 +1573,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     elementType.fields("z") shouldBe SemanticType.SBoolean
   }
 
-  // Guard expression tests
+// Guard expression tests
 
   it should "type check guard expression returning Optional<T>" in {
     val source = """
@@ -1740,5 +1757,140 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  // Comprehensive error tests for '+' operator on incompatible types
+
+  it should "report UnsupportedArithmetic error for Int + String" in {
+    val source = """
+      in a: Int
+      in b: String
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
+    arithError.message should include("+")
+    arithError.message should include("Int")
+    arithError.message should include("String")
+  }
+
+  it should "report UnsupportedArithmetic error for Boolean + Boolean" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for Float + String" in {
+    val source = """
+      in a: Float
+      in b: String
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for Candidates + Int" in {
+    val source = """
+      in a: Candidates<{ id: Int }>
+      in b: Int
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for Int + Candidates" in {
+    val source = """
+      in a: Int
+      in b: Candidates<{ id: Int }>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for List + List (non-Candidates)" in {
+    val source = """
+      in a: List<Int>
+      in b: List<String>
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for Map + Record" in {
+    val source = """
+      in a: Map<String, Int>
+      in b: { x: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "report UnsupportedArithmetic error for Candidates with non-record inner type + Record" in {
+    val source = """
+      in a: Candidates<Int>
+      in b: { x: String }
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.UnsupportedArithmetic]) shouldBe true
+  }
+
+  it should "include source location in arithmetic error" in {
+    val source = """
+      in a: Int
+      in b: String
+      result = a + b
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    val arithError = errors.collectFirst { case e: CompileError.UnsupportedArithmetic => e }.get
+    arithError.span.isDefined shouldBe true
+  }
+
+  it should "report IncompatibleMerge when merging record with non-record in type definition" in {
+    val source = """
+      type Invalid = { x: Int } + Int
+      in a: Invalid
+      out a
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.IncompatibleMerge]) shouldBe true
   }
 }

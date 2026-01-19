@@ -317,7 +317,13 @@ object CompileError {
     def message: String = s"Invalid field access: field '$field' not found. Available: ${availableFields.mkString(", ")}"
   }
   final case class IncompatibleMerge(leftType: String, rightType: String, span: Option[Span]) extends CompileError {
-    def message: String = s"Cannot merge types: $leftType + $rightType"
+    def message: String =
+      s"""Cannot merge types: $leftType + $rightType
+         |The '+' operator requires compatible types:
+         |  - Two records (fields are merged, right-hand side wins on conflicts)
+         |  - Two Candidates (element-wise merge of inner records)
+         |  - Candidates + Record (broadcast record to each element)
+         |  - Record + Candidates (broadcast record to each element)""".stripMargin
   }
   final case class UndefinedNamespace(namespace: String, span: Option[Span]) extends CompileError {
     def message: String = s"Undefined namespace: $namespace"
