@@ -1467,4 +1467,63 @@ class ParserTest extends AnyFlatSpec with Matchers {
     arith.left.value shouldBe a[Expression.Coalesce]
     arith.right.value shouldBe a[Expression.VarRef]
   }
+
+  // Branch expression tests
+
+  it should "parse simple branch expression" in {
+    val source = """
+      in flag: Boolean
+      in a: Int
+      in b: Int
+      result = branch { flag -> a, otherwise -> b }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(3).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Branch]
+
+    val branch = assignment.value.value.asInstanceOf[Expression.Branch]
+    branch.cases should have size 1
+    branch.cases.head._1.value shouldBe Expression.VarRef("flag")
+    branch.cases.head._2.value shouldBe Expression.VarRef("a")
+    branch.otherwise.value shouldBe Expression.VarRef("b")
+  }
+
+  it should "parse branch expression with multiple cases" in {
+    val source = """
+      in a: Boolean
+      in b: Boolean
+      in x: Int
+      in y: Int
+      in z: Int
+      result = branch { a -> x, b -> y, otherwise -> z }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(5).asInstanceOf[Declaration.Assignment]
+    val branch = assignment.value.value.asInstanceOf[Expression.Branch]
+    branch.cases should have size 2
+  }
+
+  it should "parse branch expression with only otherwise" in {
+    val source = """
+      in x: Int
+      result = branch { otherwise -> x }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val branch = assignment.value.value.asInstanceOf[Expression.Branch]
+    branch.cases should have size 0
+    branch.otherwise.value shouldBe Expression.VarRef("x")
+  }
 }

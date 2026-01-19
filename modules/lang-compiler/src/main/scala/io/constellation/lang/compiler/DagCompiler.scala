@@ -1,6 +1,7 @@
 package io.constellation.lang.compiler
 
 import cats.effect.IO
+import cats.syntax.all.*
 import io.constellation.*
 import io.constellation.lang.semantic.SemanticType
 
@@ -106,6 +107,9 @@ object DagCompiler {
 
       case IRNode.CoalesceNode(id, left, right, resultType, _) =>
         processCoalesceNode(id, left, right, resultType)
+
+      case IRNode.BranchNode(id, cases, otherwise, resultType, _) =>
+        processBranchNode(id, cases, otherwise, resultType)
     }
 
     private def processModuleCall(
@@ -424,6 +428,144 @@ object DagCompiler {
         transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
       ))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    private def processBranchNode(
+      id: UUID,
+      cases: List[(UUID, UUID)],
+      otherwise: UUID,
+      resultType: SemanticType
+    ): Unit = {
+      val moduleId = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      // Get all data IDs for conditions and expressions
+      val caseDataIds = cases.map { case (condId, exprId) =>
+        val condDataId = nodeOutputs.getOrElse(condId,
+          throw new IllegalStateException(s"Condition node $condId not found")
+        )
+        val exprDataId = nodeOutputs.getOrElse(exprId,
+          throw new IllegalStateException(s"Expression node $exprId not found")
+        )
+        (condDataId, exprDataId)
+      }
+
+      val otherwiseDataId = nodeOutputs.getOrElse(otherwise,
+        throw new IllegalStateException(s"Otherwise node $otherwise not found")
+      )
+
+      // Build consumes map with indexed names
+      val consumesMap = caseDataIds.zipWithIndex.flatMap { case ((condDataId, exprDataId), idx) =>
+        List(
+          s"cond$idx" -> dataNodes(condDataId).cType,
+          s"expr$idx" -> dataNodes(exprDataId).cType
+        )
+      }.toMap + ("otherwise" -> dataNodes(otherwiseDataId).cType)
+
+      val outputCType = SemanticType.toCType(resultType)
+
+      // Create synthetic branch module
+      val spec = ModuleNodeSpec(
+        metadata = ComponentMetadata.empty(s"$dagName.branch-${id.toString.take(8)}"),
+        consumes = consumesMap,
+        produces = Map("out" -> outputCType)
+      )
+      moduleNodes = moduleNodes + (moduleId -> spec)
+
+      // Create synthetic module implementation
+      val syntheticModule = createBranchModule(spec, cases.size, outputCType)
+      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+      // Update nicknames for input data nodes
+      caseDataIds.zipWithIndex.foreach { case ((condDataId, exprDataId), idx) =>
+        dataNodes = dataNodes.updatedWith(condDataId) {
+          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"cond$idx")))
+          case None => None
+        }
+        dataNodes = dataNodes.updatedWith(exprDataId) {
+          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"expr$idx")))
+          case None => None
+        }
+      }
+      dataNodes = dataNodes.updatedWith(otherwiseDataId) {
+        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "otherwise")))
+        case None => None
+      }
+
+      // Connect edges
+      caseDataIds.foreach { case (condDataId, exprDataId) =>
+        inEdges = inEdges + ((condDataId, moduleId)) + ((exprDataId, moduleId))
+      }
+      inEdges = inEdges + ((otherwiseDataId, moduleId))
+
+      // Create output data node
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"branch_${id.toString.take(8)}_output",
+        nicknames = Map(moduleId -> "out"),
+        cType = outputCType
+      ))
+
+      // Connect module output to data node
+      outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    /** Create a branch module that evaluates conditions in order.
+      * Returns the first expression whose condition is true, or the otherwise expression.
+      */
+    private def createBranchModule(
+      spec: ModuleNodeSpec,
+      numCases: Int,
+      outputCType: CType
+    ): Module.Uninitialized = {
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) => {
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            // Create deferreds for all conditions and expressions
+            condDeferreds <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
+            exprDeferreds <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
+            otherwiseDeferred <- cats.effect.Deferred[IO, Any]
+            outDeferred <- cats.effect.Deferred[IO, Any]
+            // Get name IDs
+            condIds <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"cond$i"))
+            exprIds <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"expr$i"))
+            otherwiseId <- consumesNs.nameId("otherwise")
+            outId <- producesNs.nameId("out")
+          } yield {
+            val dataMap = (condIds.zip(condDeferreds) ++ exprIds.zip(exprDeferreds) ++
+              List((otherwiseId, otherwiseDeferred), (outId, outDeferred))).toMap
+            Module.Runnable(
+              id = moduleId,
+              data = dataMap,
+              run = runtime => {
+                // Evaluate conditions in order, return first true branch or otherwise
+                def evaluateBranches(idx: Int): IO[Any] = {
+                  if (idx >= numCases) {
+                    // All conditions were false, return otherwise
+                    runtime.getTableData(otherwiseId)
+                  } else {
+                    for {
+                      condValue <- runtime.getTableData(condIds(idx))
+                      result <- if (condValue.asInstanceOf[Boolean]) {
+                        runtime.getTableData(exprIds(idx))
+                      } else {
+                        evaluateBranches(idx + 1)
+                      }
+                    } yield result
+                  }
+                }
+                for {
+                  result <- evaluateBranches(0)
+                  _ <- runtime.setTableData(outId, result)
+                } yield ()
+              }
+            )
+          }
+        }
+      )
     }
   }
 }

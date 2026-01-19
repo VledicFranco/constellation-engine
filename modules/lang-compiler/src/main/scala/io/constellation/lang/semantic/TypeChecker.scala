@@ -142,6 +142,17 @@ object TypedExpression {
   ) extends TypedExpression {
     def semanticType: SemanticType = resultType
   }
+
+  /** Branch expression: multi-way conditional
+    * Evaluates conditions in order, returns first matching expression.
+    * 'otherwise' provides the default case.
+    */
+  final case class Branch(
+    cases: List[(TypedExpression, TypedExpression)],  // condition -> expression pairs
+    otherwise: TypedExpression,
+    semanticType: SemanticType,
+    span: Span
+  ) extends TypedExpression
 }
 
 /** Type checker for constellation-lang */
@@ -514,6 +525,40 @@ object TypeChecker {
           }
         }
         .andThen(identity)
+
+    case Expression.Branch(cases, otherwise) =>
+      // Type check all conditions and expressions
+      val casesResult = cases.traverse { case (cond, expr) =>
+        (checkExpression(cond.value, cond.span, env), checkExpression(expr.value, expr.span, env))
+          .mapN { (typedCond, typedExpr) =>
+            // Verify condition is Boolean
+            if (typedCond.semanticType != SemanticType.SBoolean)
+              CompileError.TypeMismatch("Boolean", typedCond.semanticType.prettyPrint, Some(cond.span)).invalidNel
+            else
+              (typedCond, typedExpr).validNel
+          }
+          .andThen(identity)
+      }
+
+      val otherwiseResult = checkExpression(otherwise.value, otherwise.span, env)
+
+      (casesResult, otherwiseResult).mapN { (typedCases, typedOtherwise) =>
+        // All expressions (cases + otherwise) must have the same type
+        val allExprs = typedCases.map(_._2) :+ typedOtherwise
+        val firstType = allExprs.head.semanticType
+
+        val typeErrors = allExprs.zipWithIndex.drop(1).flatMap { case (expr, idx) =>
+          if (expr.semanticType != firstType)
+            Some(CompileError.TypeMismatch(firstType.prettyPrint, expr.semanticType.prettyPrint, Some(expr.span)))
+          else
+            None
+        }
+
+        if (typeErrors.nonEmpty)
+          typeErrors.head.invalidNel
+        else
+          TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
+      }.andThen(identity)
   }
 
   private def checkProjection(

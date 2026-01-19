@@ -283,6 +283,20 @@ object Expression {
     left: Located[Expression],
     right: Located[Expression]
   ) extends Expression
+
+  /** Branch expression: multi-way conditional
+    * branch {
+    *   condition1 -> expression1,
+    *   condition2 -> expression2,
+    *   otherwise -> defaultExpression
+    * }
+    * Conditions evaluated in order; first match wins.
+    * 'otherwise' is required for exhaustiveness.
+    */
+  final case class Branch(
+    cases: List[(Located[Expression], Located[Expression])],  // condition -> expression pairs
+    otherwise: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */
