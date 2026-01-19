@@ -127,24 +127,22 @@ class LspWebSocketHandler(
   private def parseMessage(message: String): IO[Either[Request, Notification]] = {
     val jsonContent = extractJsonFromLspMessage(message)
 
-    // Skip empty messages
-    if (jsonContent.trim.isEmpty) {
-      IO.raiseError(new Exception("Empty message"))
-    } else {
-      IO.fromEither(
-        parse(jsonContent).flatMap { json =>
-          // Try to parse as Request first (has "id" field)
-          json.hcursor.downField("id").as[String] match {
-            case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
-              // Has "id" field, it's a request
-              json.as[Request].map(Left.apply)
-            case _ =>
-              // No "id" field, it's a notification
-              json.as[Notification].map(Right.apply)
-          }
+    // Note: Empty messages are already filtered out upstream at line 51
+    // .filter(msg => msg.trim.nonEmpty) before messages reach this method
+
+    IO.fromEither(
+      parse(jsonContent).flatMap { json =>
+        // Try to parse as Request first (has "id" field)
+        json.hcursor.downField("id").as[String] match {
+          case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
+            // Has "id" field, it's a request
+            json.as[Request].map(Left.apply)
+          case _ =>
+            // No "id" field, it's a notification
+            json.as[Notification].map(Right.apply)
         }
-      )
-    }
+      }
+    )
   }
 }
 
