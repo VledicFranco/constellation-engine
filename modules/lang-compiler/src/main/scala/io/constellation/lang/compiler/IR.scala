@@ -152,6 +152,20 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = resultType
   }
+
+  /** String interpolation node.
+    * Combines static string parts with evaluated expressions.
+    * parts.length == expressions.length + 1
+    * Example: "Hello, \${name}!" has parts ["Hello, ", "!"] and one expression
+    */
+  final case class StringInterpolationNode(
+      id: UUID,
+      parts: List[String],
+      expressions: List[UUID],
+      debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SString
+  }
 }
 
 /** The complete IR program representing a constellation-lang program */
@@ -178,6 +192,8 @@ final case class IRProgram(
     case Some(IRNode.CoalesceNode(_, left, right, _, _))             => Set(left, right)
     case Some(IRNode.BranchNode(_, cases, otherwise, _, _)) =>
       cases.flatMap { case (cond, expr) => Set(cond, expr) }.toSet + otherwise
+    case Some(IRNode.StringInterpolationNode(_, _, expressions, _)) =>
+      expressions.toSet
     case None => Set.empty
   }
 

@@ -355,9 +355,61 @@ object ConstellationParser {
     }
 
   // Literals
-  private val stringLit: P[Expression.StringLit] =
-    token(P.char('"') *> P.charsWhile0(_ != '"') <* P.char('"'))
-      .map(Expression.StringLit(_))
+
+  // Escape sequences in strings: \n, \t, \r, \\, \", \$
+  private val escapeSequence: P[Char] = P.char('\\') *> P.oneOf(
+    List(
+      P.char('n').as('\n'),
+      P.char('t').as('\t'),
+      P.char('r').as('\r'),
+      P.char('\\').as('\\'),
+      P.char('"').as('"'),
+      P.char('$').as('$')
+    )
+  )
+
+  // Plain string character: anything except ", \, or $ followed by {
+  // Note: .backtrack is required so that when we see '$' followed by '{',
+  // we backtrack and let the interpolation parser handle it
+  private val plainStringChar: P[Char] =
+    P.charWhere(c => c != '"' && c != '\\' && c != '$') |
+      (P.char('$') <* P.not(P.char('{'))).as('$').backtrack
+
+  // String content character: either escape sequence or plain char
+  private val stringContentChar: P[Char] = escapeSequence | plainStringChar
+
+  // Interpolation: ${expression}
+  private lazy val interpolation: P[Located[Expression]] =
+    P.string("${") *> withSpan(P.defer(expression)) <* P.char('}')
+
+  // String part: sequence of non-interpolation characters
+  private val stringPart: Parser0[String] = stringContentChar.rep0.map(_.mkString)
+
+  // Interpolated string content: alternating parts and expressions
+  private lazy val interpolatedStringContent
+      : Parser0[(List[String], List[Located[Expression]])] = {
+    // Start with a string part
+    stringPart.flatMap { firstPart =>
+      // Then zero or more (interpolation, stringPart) pairs
+      (interpolation ~ stringPart).rep0.map { pairs =>
+        if pairs.isEmpty then (List(firstPart), List.empty)
+        else {
+          val parts       = firstPart :: pairs.map(_._2).toList
+          val expressions = pairs.map(_._1).toList
+          (parts, expressions)
+        }
+      }
+    }
+  }
+
+  // Interpolated string: returns StringLit if no interpolations, StringInterpolation otherwise
+  private lazy val interpolatedString: P[Expression] =
+    token(
+      P.char('"') *> interpolatedStringContent <* P.char('"')
+    ).map { case (parts, expressions) =>
+      if expressions.isEmpty then Expression.StringLit(parts.head)
+      else Expression.StringInterpolation(parts, expressions)
+    }
 
   private val floatLit: P[Expression.FloatLit] =
     token(
@@ -371,7 +423,7 @@ object ConstellationParser {
     (trueKw.as(true) | falseKw.as(false)).map(Expression.BoolLit(_))
 
   private val literal: P[Expression] =
-    floatLit.backtrack | intLit | stringLit | boolLit
+    floatLit.backtrack | intLit | interpolatedString | boolLit
 
   // Declarations
   private val typeDef: P[Declaration.TypeDef] =

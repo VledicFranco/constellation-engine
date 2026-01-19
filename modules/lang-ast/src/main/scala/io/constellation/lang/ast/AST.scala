@@ -235,6 +235,15 @@ object Expression {
   /** String literal: "hello" */
   final case class StringLit(value: String) extends Expression
 
+  /** String interpolation: "Hello, ${name}!"
+    * Contains N+1 string parts for N interpolated expressions.
+    * Example: "Hello, ${name}!" has parts ["Hello, ", "!"] and expressions [VarRef("name")]
+    */
+  final case class StringInterpolation(
+    parts: List[String],                    // Static string parts (always parts.length == expressions.length + 1)
+    expressions: List[Located[Expression]]  // Interpolated expressions
+  ) extends Expression
+
   /** Integer literal: 42 */
   final case class IntLit(value: Long) extends Expression
 

@@ -203,4 +203,36 @@ object InlineTransform {
   final case class LiteralTransform(value: Any) extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any = value
   }
+
+  /** String interpolation transform - combines static parts with evaluated expressions.
+    * Converts expression values to strings and interleaves them with the static parts.
+    *
+    * @param parts The static string parts (parts.length == numExpressions + 1)
+    */
+  final case class StringInterpolationTransform(parts: List[String]) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val numExprs = parts.length - 1
+      val sb = new StringBuilder
+
+      for (i <- 0 until numExprs) {
+        sb.append(parts(i))
+        val exprValue = inputs(s"expr$i")
+        sb.append(stringify(exprValue))
+      }
+      sb.append(parts.last)
+
+      sb.toString()
+    }
+
+    private def stringify(value: Any): String = value match {
+      case s: String => s
+      case n: Number => n.toString
+      case b: Boolean => b.toString
+      case None => ""
+      case Some(v) => stringify(v)
+      case list: List[?] => list.map(stringify).mkString("[", ", ", "]")
+      case map: Map[?, ?] @unchecked => map.map { case (k, v) => s"$k: ${stringify(v)}" }.mkString("{", ", ", "}")
+      case other => other.toString
+    }
+  }
 }

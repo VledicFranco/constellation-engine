@@ -114,6 +114,9 @@ object DagCompiler {
 
       case IRNode.BranchNode(id, cases, otherwise, resultType, _) =>
         processBranchNode(id, cases, otherwise, resultType)
+
+      case IRNode.StringInterpolationNode(id, parts, expressions, _) =>
+        processStringInterpolationNode(id, parts, expressions)
     }
 
     private def processModuleCall(
@@ -523,6 +526,33 @@ object DagCompiler {
 
       // Connect module output to data node
       outEdges = outEdges + ((moduleId, outputDataId))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    private def processStringInterpolationNode(
+        id: UUID,
+        parts: List[String],
+        expressions: List[UUID]
+    ): Unit = {
+      val outputDataId = UUID.randomUUID()
+
+      // Get data IDs for all interpolated expressions
+      val exprDataIds = expressions.zipWithIndex.map { case (exprNodeId, idx) =>
+        val dataId = nodeOutputs.getOrElse(
+          exprNodeId,
+          throw new IllegalStateException(s"Expression node $exprNodeId not found")
+        )
+        (s"expr$idx", dataId)
+      }
+
+      // Create data node with inline transform (no synthetic module needed)
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"interpolate_${id.toString.take(8)}_output",
+        nicknames = Map.empty,
+        cType = CType.CString,
+        inlineTransform = Some(InlineTransform.StringInterpolationTransform(parts)),
+        transformInputs = exprDataIds.toMap
+      ))
       nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 

@@ -104,6 +104,17 @@ object TypedExpression {
   final case class Literal(value: Any, semanticType: SemanticType, span: Span)
       extends TypedExpression
 
+  /** String interpolation: "Hello, ${name}!"
+    * Contains N+1 string parts for N interpolated expressions.
+    */
+  final case class StringInterpolation(
+      parts: List[String],
+      expressions: List[TypedExpression],
+      span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SString
+  }
+
   /** Boolean binary expression: and, or */
   final case class BoolBinary(
       left: TypedExpression,
@@ -478,6 +489,15 @@ object TypeChecker {
 
     case Expression.StringLit(v) =>
       TypedExpression.Literal(v, SemanticType.SString, span).validNel
+
+    case Expression.StringInterpolation(parts, expressions) =>
+      // Type check all interpolated expressions
+      // Any type is allowed in interpolations - they'll be converted to strings at runtime
+      expressions.traverse { locExpr =>
+        checkExpression(locExpr.value, locExpr.span, env)
+      }.map { typedExprs =>
+        TypedExpression.StringInterpolation(parts, typedExprs, span)
+      }
 
     case Expression.IntLit(v) =>
       TypedExpression.Literal(v, SemanticType.SInt, span).validNel

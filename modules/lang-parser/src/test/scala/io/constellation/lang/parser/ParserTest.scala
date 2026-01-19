@@ -1526,4 +1526,211 @@ class ParserTest extends AnyFlatSpec with Matchers {
     branch.cases should have size 0
     branch.otherwise.value shouldBe Expression.VarRef("x")
   }
+
+  // String interpolation tests
+
+  it should "parse simple string interpolation" in {
+    val source = """
+      in name: String
+      result = "Hello, ${name}!"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.StringInterpolation]
+
+    val interp = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("Hello, ", "!")
+    interp.expressions should have size 1
+    interp.expressions.head.value shouldBe Expression.VarRef("name")
+  }
+
+  it should "parse string interpolation with multiple expressions" in {
+    val source = """
+      in firstName: String
+      in lastName: String
+      result = "Hello, ${firstName} ${lastName}!"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("Hello, ", " ", "!")
+    interp.expressions should have size 2
+  }
+
+  it should "parse string interpolation with complex expression" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = "Sum: ${a + b}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("Sum: ", "")
+    interp.expressions should have size 1
+    interp.expressions.head.value shouldBe a[Expression.Arithmetic]
+  }
+
+  it should "parse string interpolation with field access" in {
+    val source = """
+      in user: { name: String }
+      result = "User: ${user.name}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.expressions should have size 1
+    interp.expressions.head.value shouldBe a[Expression.FieldAccess]
+  }
+
+  it should "parse string interpolation with function call" in {
+    val source = """
+      in x: Int
+      result = "Result: ${compute(x)}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.expressions should have size 1
+    interp.expressions.head.value shouldBe a[Expression.FunctionCall]
+  }
+
+  it should "parse string with escape sequences" in {
+    val source = """
+      x = "line1\nline2\ttab\\backslash\"quote"
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations.head.asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe Expression.StringLit("line1\nline2\ttab\\backslash\"quote")
+  }
+
+  it should "parse string with escaped dollar sign" in {
+    val source = """
+      x = "Price: \$100"
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations.head.asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe Expression.StringLit("Price: $100")
+  }
+
+  it should "parse plain string without interpolation (regression)" in {
+    val source = """
+      x = "hello world"
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations.head.asInstanceOf[Declaration.Assignment]
+    // Plain strings should still be StringLit, not StringInterpolation
+    assignment.value.value shouldBe Expression.StringLit("hello world")
+  }
+
+  it should "parse string interpolation at start of string" in {
+    val source = """
+      in name: String
+      result = "${name} is here"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("", " is here")
+    interp.expressions should have size 1
+  }
+
+  it should "parse string interpolation at end of string" in {
+    val source = """
+      in name: String
+      result = "Hello ${name}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("Hello ", "")
+    interp.expressions should have size 1
+  }
+
+  it should "parse string with only interpolation" in {
+    val source = """
+      in name: String
+      result = "${name}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.parts shouldBe List("", "")
+    interp.expressions should have size 1
+  }
+
+  it should "parse string interpolation with nested parentheses" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = "Value: ${(a + b) * 2}"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val interp     = assignment.value.value.asInstanceOf[Expression.StringInterpolation]
+    interp.expressions should have size 1
+    interp.expressions.head.value shouldBe a[Expression.Arithmetic]
+  }
+
+  it should "parse dollar sign not followed by brace as literal" in {
+    val source = """
+      x = "Price $100 dollars"
+      out x
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations.head.asInstanceOf[Declaration.Assignment]
+    // Dollar sign not followed by { should be kept as literal
+    assignment.value.value shouldBe Expression.StringLit("Price $100 dollars")
+  }
 }

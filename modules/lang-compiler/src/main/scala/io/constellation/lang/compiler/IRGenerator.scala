@@ -194,5 +194,17 @@ object IRGenerator {
       val id   = UUID.randomUUID()
       val node = IRNode.BranchNode(id, caseIds, otherwiseId, semanticType, Some(span))
       (otherwiseCtx.addNode(node), id)
+
+    case TypedExpression.StringInterpolation(parts, expressions, span) =>
+      // Generate IR for all interpolated expressions
+      val (exprsCtx, exprIds) = expressions.foldLeft((ctx, List.empty[UUID])) {
+        case ((currentCtx, ids), expr) =>
+          val (newCtx, exprId) = generateExpression(expr, currentCtx)
+          (newCtx, ids :+ exprId)
+      }
+
+      val id   = UUID.randomUUID()
+      val node = IRNode.StringInterpolationNode(id, parts, exprIds, Some(span))
+      (exprsCtx.addNode(node), id)
   }
 }
