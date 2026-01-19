@@ -165,8 +165,10 @@ object ConstellationParser {
     }
 
   // Boolean NOT expression: not a (unary prefix)
+  // Note: P.defer is required to break the recursive reference cycle and avoid
+  // cats-parse "infinite loop in function body" warning
   private lazy val exprNot: P[Expression] =
-    ((notKw *> P.caret).with1 ~ withSpan(exprNot)).map { case (startCaret, operand) =>
+    (notKw *> withSpan(P.defer(exprNot))).map { operand =>
       Expression.Not(operand)
     }.backtrack | exprCompare
 
