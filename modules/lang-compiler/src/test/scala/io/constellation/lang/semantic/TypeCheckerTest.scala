@@ -2308,4 +2308,379 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
   }
+
+  // Additional Guard Expression Tests
+
+  it should "type check guard in nested expression (conditional with guard)" in {
+    val source = """
+      in flag: Boolean
+      in value: Int
+      in other: Int
+      in condition: Boolean
+      result = if (flag) value when condition else other when condition
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard with field access expression" in {
+    val source = """
+      in record: { value: Int, active: Boolean }
+      result = record.value when record.active
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard in assignment chain" in {
+    val source = """
+      in x: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      step1 = x when cond1
+      step2 = step1 ?? 0
+      final = step2 when cond2
+      out final
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check guard with List type" in {
+    val source = """
+      in items: List<Int>
+      in hasItems: Boolean
+      result = items when hasItems
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(
+      SemanticType.SList(SemanticType.SInt)
+    )
+  }
+
+  it should "type check guard with Optional value (nested Optional)" in {
+    val source = """
+      in maybeValue: Optional<Int>
+      in condition: Boolean
+      result = maybeValue when condition
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(
+      SemanticType.SOptional(SemanticType.SInt)
+    )
+  }
+
+  // Additional Coalesce Operator Tests
+
+  it should "type check coalesce with multiple guards chained" in {
+    val source = """
+      in a: Int
+      in b: Int
+      in c: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      result = a when cond1 ?? b when cond2 ?? c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check coalesce in field access context" in {
+    val source = """
+      in maybeRecord: Optional<{ name: String, age: Int }>
+      in defaultRecord: { name: String, age: Int }
+      result = maybeRecord ?? defaultRecord
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields("name") shouldBe SemanticType.SString
+    outputType.fields("age") shouldBe SemanticType.SInt
+  }
+
+  it should "type check coalesce with List fallback" in {
+    val source = """
+      in maybeItems: Optional<List<Int>>
+      in defaultItems: List<Int>
+      result = maybeItems ?? defaultItems
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  it should "report error for coalesce with mismatched inner types" in {
+    val source = """
+      in maybeInt: Optional<Int>
+      in maybeString: Optional<String>
+      result = maybeInt ?? maybeString
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  // Branch Expression Tests
+
+  it should "type check branch with guard arms" in {
+    val source = """
+      in score: Int
+      in data: String
+      in high: Boolean
+      in low: Boolean
+      result = branch {
+        high -> data when score > 90,
+        low -> data when score < 10,
+        otherwise -> data when true
+      }
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  it should "type check branch with coalesce in arms" in {
+    val source = """
+      in flag: Boolean
+      in primary: Optional<Int>
+      in secondary: Optional<Int>
+      in fallback: Int
+      result = branch {
+        flag -> primary ?? fallback,
+        otherwise -> secondary ?? fallback
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check branch where arms return Optional types" in {
+    val source = """
+      in flag: Boolean
+      in value: Int
+      in cond: Boolean
+      result = branch {
+        flag -> value when cond,
+        otherwise -> value when not cond
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SInt)
+  }
+
+  it should "type check branch with complex condition using comparisons" in {
+    val source = """
+      in x: Int
+      in y: Int
+      in a: String
+      in b: String
+      in c: String
+      result = branch {
+        x > y and x > 0 -> a,
+        x < y or y < 0 -> b,
+        otherwise -> c
+      }
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check branch with not operator in condition" in {
+    val source = """
+      in flag: Boolean
+      in a: Int
+      in b: Int
+      result = branch {
+        not flag -> a,
+        otherwise -> b
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "report error for branch with inconsistent Optional/non-Optional arms" in {
+    val source = """
+      in flag: Boolean
+      in value: Int
+      in cond: Boolean
+      result = branch {
+        flag -> value when cond,
+        otherwise -> value
+      }
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  // Integration Tests: Combined Patterns
+
+  it should "type check guard + coalesce + conditional pattern" in {
+    val source = """
+      in data: Int
+      in flag: Boolean
+      in condition: Boolean
+      in fallback: Int
+      guarded = data when condition
+      result = if (flag) guarded ?? fallback else fallback
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check branch with guard conditions and coalesce fallbacks" in {
+    val source = """
+      in x: Int
+      in y: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      in default: Int
+      result = branch {
+        cond1 -> x when cond2 ?? default,
+        otherwise -> y when cond2 ?? default
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check nested guards with coalesce unwrapping" in {
+    // Testing simpler chain: multiple Optional values with final non-optional fallback
+    val source = """
+      in value: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      in fallback: Int
+      step1 = value when cond1
+      step2 = value when cond2
+      result = step1 ?? step2 ?? fallback
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    // step1 is Optional<Int>
+    // step2 is Optional<Int>
+    // step1 ?? step2 is Optional<Int>
+    // ... ?? fallback is Int
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check complex orchestration pipeline" in {
+    val source = """
+      in primaryData: Optional<Int>
+      in secondaryData: Optional<Int>
+      in isEnabled: Boolean
+      in threshold: Int
+
+      selected = primaryData ?? secondaryData ?? 0
+      validated = selected when selected > threshold
+      result = validated ?? 0
+      out result
+    """
+    val result = check(source, comparisonRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check guard with merge expression result" in {
+    val source = """
+      in a: { x: Int }
+      in b: { y: String }
+      in cond: Boolean
+      merged = a + b
+      result = merged when cond
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SOptional]
+    outputType.inner shouldBe a[SemanticType.SRecord]
+    val recordType = outputType.inner.asInstanceOf[SemanticType.SRecord]
+    recordType.fields should have size 2
+  }
+
+  it should "type check coalesce with projection" in {
+    val source = """
+      in maybeRecord: Optional<{ name: String, age: Int, extra: String }>
+      in defaultRecord: { name: String, age: Int, extra: String }
+      selected = maybeRecord ?? defaultRecord
+      result = selected[name, age]
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SRecord]
+    outputType.fields should have size 2
+    outputType.fields.keys should contain allOf ("name", "age")
+  }
+
+  it should "type check branch in conditional then branch" in {
+    val source = """
+      in outer: Boolean
+      in inner: Boolean
+      in a: Int
+      in b: Int
+      in c: Int
+      result = if (outer) branch { inner -> a, otherwise -> b } else c
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check guard in branch with function call" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SString,
+        moduleName = "process-module"
+      )
+    )
+
+    val source = """
+      in value: Int
+      in flag: Boolean
+      in isValid: Boolean
+      result = branch {
+        flag -> process(value) when isValid,
+        otherwise -> "default" when true
+      }
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
 }

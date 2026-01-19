@@ -1485,4 +1485,488 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isLeft shouldBe true
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
   }
+
+  // Guard expression DAG compilation tests
+
+  it should "compile guard expression with correct DAG structure" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in value: Int
+      in condition: Boolean
+      result = value when condition
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Guard should create a data node with GuardTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("guard") && d.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+  }
+
+  it should "compile guard with correct Optional output type" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in value: Int
+      in condition: Boolean
+      result = value when condition
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-type-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.COptional(CType.CInt)
+  }
+
+  it should "compile guard with record type" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in person: { name: String, age: Int }
+      in isActive: Boolean
+      result = person when isActive
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-record-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType match {
+      case CType.COptional(CType.CProduct(fields)) =>
+        fields.keys should contain allOf ("name", "age")
+      case other => fail(s"Expected COptional(CProduct(...)), got $other")
+    }
+  }
+
+  it should "compile chained guards correctly" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in value: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      step1 = value when cond1
+      step2 = step1 when cond2
+      out step2
+    """
+
+    val result = compiler.compile(source, "chained-guard-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have two guard transforms
+    val guardNodes = compiled.dagSpec.data.values.filter(d =>
+      d.inlineTransform.contains(InlineTransform.GuardTransform)
+    )
+    guardNodes should have size 2
+  }
+
+  // Coalesce operator DAG compilation tests
+
+  it should "compile coalesce expression with correct DAG structure" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in maybeValue: Optional<Int>
+      in fallback: Int
+      result = maybeValue ?? fallback
+      out result
+    """
+
+    val result = compiler.compile(source, "coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Coalesce should create a data node with CoalesceTransform
+    compiled.dagSpec.data.values.exists(d =>
+      d.name.contains("coalesce") && d.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+  }
+
+  it should "compile coalesce with correct unwrapped output type" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in maybeValue: Optional<Int>
+      in fallback: Int
+      result = maybeValue ?? fallback
+      out result
+    """
+
+    val result = compiler.compile(source, "coalesce-type-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    // Should be Int (unwrapped), not Optional<Int>
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "compile coalesce between two Optionals returning Optional" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in primary: Optional<Int>
+      in secondary: Optional<Int>
+      result = primary ?? secondary
+      out result
+    """
+
+    val result = compiler.compile(source, "coalesce-optional-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    // Optional ?? Optional returns Optional
+    outputNode.get.cType shouldBe CType.COptional(CType.CInt)
+  }
+
+  it should "compile chained coalesce correctly" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in first: Optional<Int>
+      in second: Optional<Int>
+      in last: Int
+      result = first ?? second ?? last
+      out result
+    """
+
+    val result = compiler.compile(source, "chained-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have two coalesce transforms
+    val coalesceNodes = compiled.dagSpec.data.values.filter(d =>
+      d.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    )
+    coalesceNodes should have size 2
+
+    // Final result should be Int
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  // Guard + Coalesce combined DAG tests
+
+  it should "compile guard with coalesce combination" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in value: Int
+      in condition: Boolean
+      in fallback: Int
+      result = value when condition ?? fallback
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have both guard and coalesce transforms
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+
+    // Final result should be Int (unwrapped by coalesce)
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "compile multiple guards with single coalesce fallback" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: Int
+      in b: Int
+      in cond1: Boolean
+      in cond2: Boolean
+      in fallback: Int
+      result = a when cond1 ?? b when cond2 ?? fallback
+      out result
+    """
+
+    val result = compiler.compile(source, "multi-guard-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have two guards and two coalesce operations
+    val guardNodes = compiled.dagSpec.data.values.filter(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    )
+    guardNodes should have size 2
+
+    val coalesceNodes = compiled.dagSpec.data.values.filter(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    )
+    coalesceNodes should have size 2
+  }
+
+  // Branch with guard/coalesce DAG tests
+
+  it should "compile branch with guard in arms" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in flag: Boolean
+      in value: Int
+      in condition: Boolean
+      result = branch {
+        flag -> value when condition,
+        otherwise -> value when not condition
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-guard-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a branch module
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    // Should have guard transforms
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+  }
+
+  it should "compile branch with coalesce in arms" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in flag: Boolean
+      in primary: Optional<Int>
+      in secondary: Optional<Int>
+      in fallback: Int
+      result = branch {
+        flag -> primary ?? fallback,
+        otherwise -> secondary ?? fallback
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have a branch module
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    // Should have coalesce transforms
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+  }
+
+  it should "compile branch with guard + coalesce in arms" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in selector: Boolean
+      in value: Int
+      in cond: Boolean
+      in fallback: Int
+      result = branch {
+        selector -> value when cond ?? fallback,
+        otherwise -> fallback
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-guard-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have branch, guard, and coalesce
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+  }
+
+  // Complex orchestration DAG tests
+
+  it should "compile complex orchestration pipeline DAG" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "gt"
+      )
+    )
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in primaryData: Optional<Int>
+      in secondaryData: Optional<Int>
+      in threshold: Int
+
+      selected = primaryData ?? secondaryData ?? 0
+      validated = selected when selected > threshold
+      result = validated ?? 0
+      out result
+    """
+
+    val result = compiler.compile(source, "orchestration-pipeline-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+
+    // Verify DAG has coalesce nodes for primary ?? secondary ?? 0
+    val coalesceNodes = compiled.dagSpec.data.values.filter(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ).toList
+    coalesceNodes.size should be >= 2
+
+    // Verify DAG has guard node for `selected when selected > threshold`
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+
+    // Verify comparison module for `selected > threshold`
+    compiled.dagSpec.modules should not be empty
+
+    // Final output should be Int
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "compile nested branch with guards and coalesce" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in outer: Boolean
+      in inner: Boolean
+      in value: Int
+      in cond: Boolean
+      in fallback: Int
+      result = branch {
+        outer -> branch {
+          inner -> value when cond ?? fallback,
+          otherwise -> fallback
+        },
+        otherwise -> value when not cond ?? fallback
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "nested-branch-guard-coalesce-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+
+    // Should have 2 branch modules (nested)
+    val branchModules = compiled.dagSpec.modules.values.filter(_.name.contains("branch"))
+    branchModules should have size 2
+
+    // Should have guard and coalesce transforms
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+  }
+
+  it should "compile guard with Candidates type" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Item = { id: Int, name: String }
+      in items: Candidates<Item>
+      in hasItems: Boolean
+      result = items when hasItems
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType match {
+      case CType.COptional(CType.CList(CType.CProduct(fields))) =>
+        fields.keys should contain allOf ("id", "name")
+      case other => fail(s"Expected COptional(CList(CProduct(...))), got $other")
+    }
+  }
+
+  it should "compile coalesce with Candidates fallback" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Item = { id: Int }
+      in maybeItems: Optional<Candidates<Item>>
+      in defaultItems: Candidates<Item>
+      result = maybeItems ?? defaultItems
+      out result
+    """
+
+    val result = compiler.compile(source, "coalesce-candidates-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.get.cType match {
+      case CType.CList(CType.CProduct(fields)) =>
+        fields.keys should contain("id")
+      case other => fail(s"Expected CList(CProduct(...)), got $other")
+    }
+  }
+
+  it should "compile guard with merge expression" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in a: { x: Int }
+      in b: { y: String }
+      in cond: Boolean
+      merged = a + b
+      result = merged when cond
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-merge-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have merge and guard
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(
+      _.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+  }
 }
