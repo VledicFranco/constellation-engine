@@ -383,23 +383,40 @@ export class DagVisualizerPanel {
         cursor: pointer;
       }
 
-      .dag-node rect, .dag-node ellipse {
+      .dag-node rect, .dag-node ellipse, .dag-node polygon, .dag-node path {
         fill: var(--vscode-editor-background);
         stroke-width: 2;
         transition: stroke-width 0.15s ease;
       }
 
-      .dag-node:hover rect, .dag-node:hover ellipse {
+      .dag-node:hover rect, .dag-node:hover ellipse, .dag-node:hover polygon, .dag-node:hover path {
         stroke-width: 3;
       }
 
+      /* Input nodes: pill/ellipse shape with green border */
+      .dag-node-input ellipse {
+        stroke: var(--vscode-charts-green, #3fb950);
+      }
+
+      /* Output nodes: hexagon shape with purple border */
+      .dag-node-output polygon {
+        stroke: var(--vscode-charts-purple, #a371f7);
+      }
+
+      /* Intermediate data nodes: rounded rectangle with blue border */
       .dag-node-data rect {
         stroke: var(--node-data-border);
         rx: 8;
         ry: 8;
       }
 
-      .dag-node-module rect {
+      /* Module/operation nodes: rectangle with header bar */
+      .dag-node-module rect.node-body {
+        stroke: var(--node-module-border);
+      }
+
+      .dag-node-module rect.node-header {
+        fill: var(--node-module-border);
         stroke: var(--node-module-border);
       }
 
@@ -415,6 +432,13 @@ export class DagVisualizerPanel {
       .dag-node .node-type {
         font-size: 10px;
         fill: var(--vscode-descriptionForeground);
+      }
+
+      .dag-node .node-role {
+        font-size: 9px;
+        fill: var(--vscode-descriptionForeground);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
 
       .dag-edge path {
@@ -439,23 +463,31 @@ export class DagVisualizerPanel {
         opacity: 1;
       }
 
-      /* Execution state styles */
-      .dag-node.state-pending rect {
+      /* Execution state styles - apply to all shape types */
+      .dag-node.state-pending rect,
+      .dag-node.state-pending ellipse,
+      .dag-node.state-pending polygon {
         stroke: var(--state-pending) !important;
         opacity: 0.6;
       }
 
-      .dag-node.state-running rect {
+      .dag-node.state-running rect,
+      .dag-node.state-running ellipse,
+      .dag-node.state-running polygon {
         stroke: var(--state-running) !important;
         stroke-width: 3;
         animation: pulse 1.5s ease-in-out infinite;
       }
 
-      .dag-node.state-completed rect {
+      .dag-node.state-completed rect,
+      .dag-node.state-completed ellipse,
+      .dag-node.state-completed polygon {
         stroke: var(--state-completed) !important;
       }
 
-      .dag-node.state-failed rect {
+      .dag-node.state-failed rect,
+      .dag-node.state-failed ellipse,
+      .dag-node.state-failed polygon {
         stroke: var(--state-failed) !important;
       }
 
@@ -625,9 +657,29 @@ export class DagVisualizerPanel {
       }
 
       if (stateInfo.valuePreview && stateInfo.state === 'completed') {
-        var rect = nodeGroup.querySelector('rect');
-        var width = rect ? parseFloat(rect.getAttribute('width')) : 160;
-        var height = rect ? parseFloat(rect.getAttribute('height')) : 40;
+        // Find the main shape to get dimensions
+        var shape = nodeGroup.querySelector('rect, ellipse, polygon');
+        var width = 160;
+        var height = 40;
+        if (shape) {
+          if (shape.tagName === 'rect') {
+            width = parseFloat(shape.getAttribute('width')) || 160;
+            height = parseFloat(shape.getAttribute('height')) || 40;
+          } else if (shape.tagName === 'ellipse') {
+            width = (parseFloat(shape.getAttribute('rx')) || 80) * 2;
+            height = (parseFloat(shape.getAttribute('ry')) || 20) * 2;
+          } else if (shape.tagName === 'polygon') {
+            // For polygon, estimate from points
+            var points = shape.getAttribute('points');
+            if (points) {
+              var coords = points.split(' ').map(function(p) { return p.split(',').map(parseFloat); });
+              var maxX = Math.max.apply(null, coords.map(function(c) { return c[0]; }));
+              var maxY = Math.max.apply(null, coords.map(function(c) { return c[1]; }));
+              width = maxX || 160;
+              height = maxY || 40;
+            }
+          }
+        }
 
         var previewText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         previewText.setAttribute('class', 'value-preview');
@@ -643,6 +695,21 @@ export class DagVisualizerPanel {
     if (!value) return '';
     if (value.length <= maxLen) return value;
     return value.substring(0, maxLen - 3) + '...';
+  }
+
+  // Create hexagon points for output nodes
+  function createHexagonPoints(width, height) {
+    var inset = 12; // How much the left/right points are inset
+    // Points: top-left, top-right, right-point, bottom-right, bottom-left, left-point
+    var points = [
+      [inset, 0],                    // top-left
+      [width - inset, 0],            // top-right
+      [width, height / 2],           // right point
+      [width - inset, height],       // bottom-right
+      [inset, height],               // bottom-left
+      [0, height / 2]                // left point
+    ];
+    return points.map(function(p) { return p[0] + ',' + p[1]; }).join(' ');
   }
 
   function exportAsSvg() {
@@ -740,6 +807,8 @@ export class DagVisualizerPanel {
     var descForeground = styles.getPropertyValue('--vscode-descriptionForeground') || '#888888';
     var dataBorder = styles.getPropertyValue('--node-data-border') || '#3794ff';
     var moduleBorder = styles.getPropertyValue('--node-module-border') || '#d18616';
+    var inputBorder = styles.getPropertyValue('--vscode-charts-green') || '#3fb950';
+    var outputBorder = styles.getPropertyValue('--vscode-charts-purple') || '#a371f7';
     var edgeColor = styles.getPropertyValue('--edge-color') || '#cca700';
     var statePending = styles.getPropertyValue('--state-pending') || '#6e7681';
     var stateRunning = styles.getPropertyValue('--state-running') || '#3794ff';
@@ -747,17 +816,20 @@ export class DagVisualizerPanel {
     var stateFailed = styles.getPropertyValue('--state-failed') || '#f85149';
 
     return '\\n' +
-      '.dag-node rect { fill: ' + editorBg + '; stroke-width: 2; }\\n' +
+      '.dag-node rect, .dag-node ellipse, .dag-node polygon { fill: ' + editorBg + '; stroke-width: 2; }\\n' +
+      '.dag-node-input ellipse { stroke: ' + inputBorder + '; }\\n' +
+      '.dag-node-output polygon { stroke: ' + outputBorder + '; }\\n' +
       '.dag-node-data rect { stroke: ' + dataBorder + '; rx: 8; ry: 8; }\\n' +
-      '.dag-node-module rect { stroke: ' + moduleBorder + '; }\\n' +
+      '.dag-node-operation rect.node-body { stroke: ' + moduleBorder + '; }\\n' +
+      '.dag-node-operation rect.node-header { fill: ' + moduleBorder + '; stroke: ' + moduleBorder + '; }\\n' +
       '.dag-node text { fill: ' + foreground + '; font-family: monospace; font-size: 12px; text-anchor: middle; dominant-baseline: middle; }\\n' +
       '.dag-node .node-type { font-size: 10px; fill: ' + descForeground + '; }\\n' +
       '.dag-edge path { fill: none; stroke: ' + edgeColor + '; stroke-width: 1.5; opacity: 0.8; }\\n' +
       '.dag-edge polygon { fill: ' + edgeColor + '; opacity: 0.8; }\\n' +
-      '.dag-node.state-pending rect { stroke: ' + statePending + '; opacity: 0.6; }\\n' +
-      '.dag-node.state-running rect { stroke: ' + stateRunning + '; stroke-width: 3; }\\n' +
-      '.dag-node.state-completed rect { stroke: ' + stateCompleted + '; }\\n' +
-      '.dag-node.state-failed rect { stroke: ' + stateFailed + '; }\\n' +
+      '.dag-node.state-pending rect, .dag-node.state-pending ellipse, .dag-node.state-pending polygon { stroke: ' + statePending + '; opacity: 0.6; }\\n' +
+      '.dag-node.state-running rect, .dag-node.state-running ellipse, .dag-node.state-running polygon { stroke: ' + stateRunning + '; stroke-width: 3; }\\n' +
+      '.dag-node.state-completed rect, .dag-node.state-completed ellipse, .dag-node.state-completed polygon { stroke: ' + stateCompleted + '; }\\n' +
+      '.dag-node.state-failed rect, .dag-node.state-failed ellipse, .dag-node.state-failed polygon { stroke: ' + stateFailed + '; }\\n' +
       '.dag-node .state-icon { font-size: 14px; }\\n' +
       '.dag-node.state-completed .state-icon { fill: ' + stateCompleted + '; }\\n' +
       '.dag-node.state-failed .state-icon { fill: ' + stateFailed + '; }\\n' +
@@ -841,6 +913,20 @@ export class DagVisualizerPanel {
     var nodeWidth = 160;
     var moduleHeight = 60;
     var dataHeight = 40;
+    var inputHeight = 36;  // Smaller for pill shape
+    var outputHeight = 44; // Slightly taller for hexagon
+
+    // First pass: identify which data nodes have incoming edges
+    var dataNodesWithIncoming = new Set();
+    dag.inEdges.forEach(function(edge) {
+      dataNodesWithIncoming.add(edge[1]);
+    });
+    dag.outEdges.forEach(function(edge) {
+      dataNodesWithIncoming.add(edge[1]);
+    });
+
+    // Create a set of declared outputs for quick lookup
+    var declaredOutputsSet = new Set(dag.declaredOutputs || []);
 
     // Create nodes for modules
     Object.keys(dag.modules).forEach(function(uuid) {
@@ -848,6 +934,7 @@ export class DagVisualizerPanel {
       nodes[uuid] = {
         id: uuid,
         type: 'module',
+        role: 'operation',
         name: spec.name,
         width: nodeWidth,
         height: moduleHeight,
@@ -856,16 +943,32 @@ export class DagVisualizerPanel {
       };
     });
 
-    // Create nodes for data
+    // Create nodes for data with role classification
     Object.keys(dag.data).forEach(function(uuid) {
       var spec = dag.data[uuid];
+      var role = 'intermediate'; // default
+
+      // Check if this is an input (no incoming edges)
+      if (!dataNodesWithIncoming.has(uuid)) {
+        role = 'input';
+      }
+      // Check if this is a declared output
+      else if (declaredOutputsSet.has(uuid)) {
+        role = 'output';
+      }
+
+      var height = dataHeight;
+      if (role === 'input') height = inputHeight;
+      if (role === 'output') height = outputHeight;
+
       nodes[uuid] = {
         id: uuid,
         type: 'data',
+        role: role,
         name: spec.name,
         cType: spec.cType,
         width: nodeWidth,
-        height: dataHeight
+        height: height
       };
     });
 
@@ -1060,26 +1163,68 @@ export class DagVisualizerPanel {
       var node = layout.nodes[id];
       var nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       var stateClass = executionStates[id] ? ' state-' + executionStates[id].state : '';
-      nodeGroup.setAttribute('class', 'dag-node dag-node-' + node.type + stateClass);
+
+      // Determine CSS class based on role
+      var roleClass = node.role || node.type;
+      nodeGroup.setAttribute('class', 'dag-node dag-node-' + roleClass + stateClass);
       nodeGroup.setAttribute('data-node-id', id);
       nodeGroup.setAttribute('transform', 'translate(' + (node.x - node.width/2) + ',' + (node.y - node.height/2) + ')');
 
-      var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-      rect.setAttribute('width', node.width);
-      rect.setAttribute('height', node.height);
-      nodeGroup.appendChild(rect);
+      // Create shape based on node role
+      if (node.role === 'input') {
+        // Input nodes: pill/ellipse shape
+        var ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+        ellipse.setAttribute('cx', node.width / 2);
+        ellipse.setAttribute('cy', node.height / 2);
+        ellipse.setAttribute('rx', node.width / 2);
+        ellipse.setAttribute('ry', node.height / 2);
+        nodeGroup.appendChild(ellipse);
+      } else if (node.role === 'output') {
+        // Output nodes: hexagon shape
+        var hexPoints = createHexagonPoints(node.width, node.height);
+        var hexagon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        hexagon.setAttribute('points', hexPoints);
+        nodeGroup.appendChild(hexagon);
+      } else if (node.type === 'module') {
+        // Module nodes: rectangle with colored header bar
+        var headerHeight = 8;
+        var headerRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        headerRect.setAttribute('class', 'node-header');
+        headerRect.setAttribute('width', node.width);
+        headerRect.setAttribute('height', headerHeight);
+        headerRect.setAttribute('rx', '4');
+        headerRect.setAttribute('ry', '4');
+        nodeGroup.appendChild(headerRect);
 
+        var bodyRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bodyRect.setAttribute('class', 'node-body');
+        bodyRect.setAttribute('y', headerHeight - 2);
+        bodyRect.setAttribute('width', node.width);
+        bodyRect.setAttribute('height', node.height - headerHeight + 2);
+        nodeGroup.appendChild(bodyRect);
+      } else {
+        // Intermediate data nodes: rounded rectangle
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('width', node.width);
+        rect.setAttribute('height', node.height);
+        nodeGroup.appendChild(rect);
+      }
+
+      // Add node label text
       var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', node.width / 2);
-      text.setAttribute('y', node.height / 2);
+      var textY = node.height / 2;
+      if (node.type === 'module') textY = node.height / 2 + 4; // Adjust for header
+      text.setAttribute('y', textY);
       text.textContent = node.name;
       nodeGroup.appendChild(text);
 
+      // Add type info for data nodes
       if (node.type === 'data' && node.cType) {
         var typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         typeText.setAttribute('class', 'node-type');
         typeText.setAttribute('x', node.width / 2);
-        typeText.setAttribute('y', node.height / 2 + 14);
+        typeText.setAttribute('y', textY + 12);
         typeText.textContent = node.cType;
         nodeGroup.appendChild(typeText);
       }
@@ -1113,7 +1258,7 @@ export class DagVisualizerPanel {
       }
 
       nodeGroup.onclick = function() {
-        vscode.postMessage({ command: 'nodeClick', nodeId: id, nodeType: node.type });
+        vscode.postMessage({ command: 'nodeClick', nodeId: id, nodeType: node.type, nodeRole: node.role });
       };
 
       nodesGroup.appendChild(nodeGroup);
