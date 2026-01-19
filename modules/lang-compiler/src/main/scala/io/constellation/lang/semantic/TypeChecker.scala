@@ -167,6 +167,25 @@ object TypedExpression {
       semanticType: SemanticType,
       span: Span
   ) extends TypedExpression
+
+  /** String interpolation expression: s"Hello, ${name}!" */
+  final case class StringInterpolation(
+    parts: List[String],
+    expressions: List[TypedExpression],
+    span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SString
+  }
+
+  /** Lambda expression: (x, y) => x + y
+    * A function literal with typed parameters and a body.
+    */
+  final case class Lambda(
+    params: List[(String, SemanticType)],  // parameter name -> type
+    body: TypedExpression,
+    semanticType: SemanticType.SFunction,
+    span: Span
+  ) extends TypedExpression
 }
 
 /** Type checker for constellation-lang */
@@ -364,24 +383,28 @@ object TypeChecker {
               )
               .invalidNel
           } else {
-            args
-              .zip(sig.params)
-              .traverse { case (argExpr, (paramName, paramType)) =>
-                checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
-                  if isAssignable(typedArg.semanticType, paramType) then typedArg.validNel
-                  else
-                    CompileError
-                      .TypeMismatch(
+            args.zip(sig.params).traverse { case (argExpr, (paramName, paramType)) =>
+              // Check if argument is a lambda and parameter expects a function type
+              (argExpr.value, paramType) match {
+                case (lambda: Expression.Lambda, funcType: SemanticType.SFunction) =>
+                  // Use type-directed inference for lambda
+                  checkLambdaWithExpected(lambda, funcType, argExpr.span, env)
+                case _ =>
+                  // Regular expression type checking
+                  checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
+                    if (isAssignable(typedArg.semanticType, paramType))
+                      typedArg.validNel
+                    else
+                      CompileError.TypeMismatch(
                         paramType.prettyPrint,
                         typedArg.semanticType.prettyPrint,
                         Some(argExpr.span)
-                      )
-                      .invalidNel
-                }
+                      ).invalidNel
+                  }
               }
-              .map { typedArgs =>
-                TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
-              }
+            }.map { typedArgs =>
+              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
+            }
           }
         case Left(error) =>
           error.invalidNel
@@ -641,6 +664,102 @@ object TypeChecker {
           else TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
         }
         .andThen(identity)
+
+    case Expression.StringInterpolation(parts, expressions) =>
+      // Type check all expressions - they can be any type (will be converted to string at runtime)
+      expressions.traverse(e => checkExpression(e.value, e.span, env)).map { typedExprs =>
+        TypedExpression.StringInterpolation(parts, typedExprs, span)
+      }
+
+    case Expression.Lambda(params, body) =>
+      // Lambda expressions can only be type-checked in the context of a function call
+      // where we know the expected function type. If we get here without context,
+      // it means the lambda is used in an unsupported context.
+      // For now, require explicit type annotations on all parameters
+      val paramTypesResult = params.traverse { param =>
+        param.typeAnnotation match {
+          case Some(typeExpr) =>
+            resolveTypeExpr(typeExpr.value, typeExpr.span, env).map(t => param.name.value -> t)
+          case None =>
+            CompileError.TypeError(
+              s"Lambda parameter '${param.name.value}' requires a type annotation in this context",
+              Some(param.name.span)
+            ).invalidNel
+        }
+      }
+
+      paramTypesResult.andThen { paramTypes =>
+        // Create environment with lambda parameters bound
+        val lambdaEnv = paramTypes.foldLeft(env) { case (e, (name, typ)) =>
+          e.addVariable(name, typ)
+        }
+        // Type check the body
+        checkExpression(body.value, body.span, lambdaEnv).map { typedBody =>
+          val funcType = SemanticType.SFunction(paramTypes.map(_._2), typedBody.semanticType)
+          TypedExpression.Lambda(paramTypes, typedBody, funcType, span)
+        }
+      }
+  }
+
+  /** Type check a lambda expression with expected type context for type inference */
+  private def checkLambdaWithExpected(
+    lambda: Expression.Lambda,
+    expectedType: SemanticType.SFunction,
+    span: Span,
+    env: TypeEnvironment
+  ): TypeResult[TypedExpression.Lambda] = {
+    val params = lambda.params
+    val body = lambda.body
+
+    // Validate parameter count
+    if (params.size != expectedType.paramTypes.size) {
+      return CompileError.TypeError(
+        s"Lambda has ${params.size} parameters but expected ${expectedType.paramTypes.size}",
+        Some(span)
+      ).invalidNel
+    }
+
+    // Infer parameter types from expected type, or use explicit annotations
+    val paramTypesResult = params.zip(expectedType.paramTypes).traverse { case (param, expectedParamType) =>
+      param.typeAnnotation match {
+        case Some(typeExpr) =>
+          // Explicit type annotation - validate it matches expected
+          resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { annotatedType =>
+            if (annotatedType == expectedParamType)
+              (param.name.value -> annotatedType).validNel
+            else
+              CompileError.TypeMismatch(
+                expectedParamType.prettyPrint,
+                annotatedType.prettyPrint,
+                Some(typeExpr.span)
+              ).invalidNel
+          }
+        case None =>
+          // Infer from expected type
+          (param.name.value -> expectedParamType).validNel
+      }
+    }
+
+    paramTypesResult.andThen { paramTypes =>
+      // Create environment with lambda parameters bound
+      val lambdaEnv = paramTypes.foldLeft(env) { case (e, (name, typ)) =>
+        e.addVariable(name, typ)
+      }
+      // Type check the body
+      checkExpression(body.value, body.span, lambdaEnv).andThen { typedBody =>
+        // Validate return type matches expected
+        if (typedBody.semanticType == expectedType.returnType) {
+          val funcType = SemanticType.SFunction(paramTypes.map(_._2), typedBody.semanticType)
+          TypedExpression.Lambda(paramTypes, typedBody, funcType, span).validNel
+        } else {
+          CompileError.TypeMismatch(
+            expectedType.returnType.prettyPrint,
+            typedBody.semanticType.prettyPrint,
+            Some(body.span)
+          ).invalidNel
+        }
+      }
+    }
   }
 
   private def checkProjection(

@@ -91,24 +91,31 @@ object IRGenerator {
       }
 
     case TypedExpression.FunctionCall(name, signature, args, span) =>
-      // Generate IR for each argument
-      val (argsCtx, argIds) = args.foldLeft((ctx, List.empty[(String, UUID)])) {
-        case ((currentCtx, ids), arg) =>
-          val (newCtx, argId) = generateExpression(arg, currentCtx)
-          val paramName       = signature.params(ids.size)._1
-          (newCtx, ids :+ (paramName -> argId))
-      }
+      // Check if this is a higher-order function call (has lambda argument)
+      val lambdaArgIndex = args.indexWhere(_.isInstanceOf[TypedExpression.Lambda])
+      if (lambdaArgIndex >= 0 && isHigherOrderFunction(signature.moduleName)) {
+        // Generate higher-order node
+        generateHigherOrderCall(name, signature, args, lambdaArgIndex, span, ctx)
+      } else {
+        // Regular function call - generate IR for each argument
+        val (argsCtx, argIds) = args.foldLeft((ctx, List.empty[(String, UUID)])) {
+          case ((currentCtx, ids), arg) =>
+            val (newCtx, argId) = generateExpression(arg, currentCtx)
+            val paramName = signature.params(ids.size)._1
+            (newCtx, ids :+ (paramName -> argId))
+        }
 
-      val id = UUID.randomUUID()
-      val node = IRNode.ModuleCall(
-        id = id,
-        moduleName = signature.moduleName,
-        languageName = name,
-        inputs = argIds.toMap,
-        outputType = signature.returns,
-        debugSpan = Some(span)
-      )
-      (argsCtx.addNode(node), id)
+        val id = UUID.randomUUID()
+        val node = IRNode.ModuleCall(
+          id = id,
+          moduleName = signature.moduleName,
+          languageName = name,
+          inputs = argIds.toMap,
+          outputType = signature.returns,
+          debugSpan = Some(span)
+        )
+        (argsCtx.addNode(node), id)
+      }
 
     case TypedExpression.Merge(left, right, semanticType, span) =>
       val (leftCtx, leftId)   = generateExpression(left, ctx)
@@ -206,5 +213,86 @@ object IRGenerator {
       val id   = UUID.randomUUID()
       val node = IRNode.StringInterpolationNode(id, parts, exprIds, Some(span))
       (exprsCtx.addNode(node), id)
+
+    case TypedExpression.Lambda(params, body, funcType, span) =>
+      // Lambdas shouldn't appear standalone - they should only appear as arguments
+      // to higher-order functions, which are handled in FunctionCall case.
+      // If we reach here, it's an error (lambda used in invalid context).
+      throw new IllegalStateException(
+        s"Lambda expression at $span cannot be used in this context. " +
+        "Lambdas can only be used as arguments to higher-order functions like filter, map, etc."
+      )
+  }
+
+  /** Check if a module name corresponds to a higher-order function */
+  private def isHigherOrderFunction(moduleName: String): Boolean =
+    moduleName.startsWith("stdlib.hof.")
+
+  /** Determine the higher-order operation from module name */
+  private def getHigherOrderOp(moduleName: String): HigherOrderOp = moduleName match {
+    case n if n.contains("filter") => HigherOrderOp.Filter
+    case n if n.contains("map")    => HigherOrderOp.Map
+    case n if n.contains("all")    => HigherOrderOp.All
+    case n if n.contains("any")    => HigherOrderOp.Any
+    case n if n.contains("sortBy") => HigherOrderOp.SortBy
+    case _ => throw new IllegalArgumentException(s"Unknown higher-order function: $moduleName")
+  }
+
+  /** Generate IR for a higher-order function call with a lambda argument */
+  private def generateHigherOrderCall(
+    name: String,
+    signature: FunctionSignature,
+    args: List[TypedExpression],
+    lambdaArgIndex: Int,
+    span: io.constellation.lang.ast.Span,
+    ctx: GenContext
+  ): (GenContext, UUID) = {
+    // Extract the source collection (first non-lambda argument)
+    val sourceArg = args.head  // Assuming source is always first
+    val (sourceCtx, sourceId) = generateExpression(sourceArg, ctx)
+
+    // Extract the lambda argument
+    val lambdaArg = args(lambdaArgIndex).asInstanceOf[TypedExpression.Lambda]
+
+    // Generate IR for the lambda body in a fresh context
+    // The lambda parameters will be bound to input nodes in the body context
+    val lambdaIR = generateLambdaIR(lambdaArg)
+
+    val id = UUID.randomUUID()
+    val node = IRNode.HigherOrderNode(
+      id = id,
+      operation = getHigherOrderOp(signature.moduleName),
+      source = sourceId,
+      lambda = lambdaIR,
+      outputType = signature.returns,
+      debugSpan = Some(span)
+    )
+    (sourceCtx.addNode(node), id)
+  }
+
+  /** Generate IR representation of a lambda (body nodes + output) */
+  private def generateLambdaIR(lambda: TypedExpression.Lambda): TypedLambda = {
+    // Create input nodes for lambda parameters
+    val paramInputs = lambda.params.map { case (name, paramType) =>
+      val paramId = UUID.randomUUID()
+      val inputNode = IRNode.Input(paramId, name, paramType, None)
+      (name, paramId, inputNode)
+    }
+
+    // Create context with parameter bindings
+    val lambdaCtx = paramInputs.foldLeft(GenContext.empty) { case (ctx, (name, paramId, node)) =>
+      ctx.addNode(node).bind(name, paramId)
+    }
+
+    // Generate IR for the lambda body
+    val (bodyCtx, bodyOutputId) = generateExpression(lambda.body, lambdaCtx)
+
+    TypedLambda(
+      paramNames = lambda.params.map(_._1),
+      paramTypes = lambda.params.map(_._2),
+      bodyNodes = bodyCtx.nodes,
+      bodyOutputId = bodyOutputId,
+      returnType = lambda.semanticType.returnType
+    )
   }
 }

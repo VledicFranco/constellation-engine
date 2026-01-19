@@ -235,4 +235,58 @@ object InlineTransform {
       case other => other.toString
     }
   }
+
+  /** Filter transform - filters a list based on a predicate.
+    * The predicate function is evaluated for each element.
+    *
+    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    */
+  final case class FilterTransform(
+      predicateEvaluator: Any => Boolean
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source = inputs("source").asInstanceOf[List[?]]
+      source.filter(predicateEvaluator)
+    }
+  }
+
+  /** Map transform - transforms each element of a list.
+    * The transform function is evaluated for each element.
+    *
+    * @param transformEvaluator A function that takes an element and returns the transformed value
+    */
+  final case class MapTransform(
+      transformEvaluator: Any => Any
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source = inputs("source").asInstanceOf[List[?]]
+      source.map(transformEvaluator)
+    }
+  }
+
+  /** All transform - checks if all elements satisfy a predicate.
+    *
+    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    */
+  final case class AllTransform(
+      predicateEvaluator: Any => Boolean
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source = inputs("source").asInstanceOf[List[?]]
+      source.forall(predicateEvaluator)
+    }
+  }
+
+  /** Any transform - checks if any element satisfies a predicate.
+    *
+    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    */
+  final case class AnyTransform(
+      predicateEvaluator: Any => Boolean
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source = inputs("source").asInstanceOf[List[?]]
+      source.exists(predicateEvaluator)
+    }
+  }
 }

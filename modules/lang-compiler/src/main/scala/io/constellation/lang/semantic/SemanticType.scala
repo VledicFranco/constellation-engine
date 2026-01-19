@@ -52,6 +52,17 @@ object SemanticType {
     def prettyPrint: String = s"Optional<${inner.prettyPrint}>"
   }
 
+  /** Function type: (A, B) => C
+    * Used for lambda expressions and higher-order function parameters.
+    * Function types exist only at compile-time and have no runtime CType representation.
+    */
+  final case class SFunction(paramTypes: List[SemanticType], returnType: SemanticType) extends SemanticType {
+    def prettyPrint: String = {
+      val params = paramTypes.map(_.prettyPrint).mkString(", ")
+      s"($params) => ${returnType.prettyPrint}"
+    }
+  }
+
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
     case SString           => CType.CString
@@ -63,6 +74,8 @@ object SemanticType {
     case SList(elem)       => CType.CList(toCType(elem))
     case SMap(k, v)        => CType.CMap(toCType(k), toCType(v))
     case SOptional(inner)  => CType.COptional(toCType(inner))
+    case SFunction(_, _)   =>
+      throw new IllegalArgumentException("Function types cannot be converted to CType - they exist only at compile time")
   }
 
   /** Convert Constellation CType to SemanticType */

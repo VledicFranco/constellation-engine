@@ -303,6 +303,27 @@ object Expression {
       cases: List[(Located[Expression], Located[Expression])], // condition -> expression pairs
       otherwise: Located[Expression]
   ) extends Expression
+
+  /** String interpolation: s"Hello, ${name}!"
+    * parts.length == expressions.length + 1
+    * Example: s"Hello, ${name}!" has parts ["Hello, ", "!"] and expressions [name]
+    */
+  final case class StringInterpolation(
+    parts: List[String],
+    expressions: List[Located[Expression]]
+  ) extends Expression
+
+  /** Lambda parameter */
+  final case class LambdaParam(
+    name: Located[String],
+    typeAnnotation: Option[Located[TypeExpr]]
+  )
+
+  /** Lambda expression: (x, y) => x + y */
+  final case class Lambda(
+    params: List[LambdaParam],
+    body: Located[Expression]
+  ) extends Expression
 }
 
 /** Compile errors with span information */

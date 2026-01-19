@@ -117,6 +117,9 @@ object DagCompiler {
 
       case IRNode.StringInterpolationNode(id, parts, expressions, _) =>
         processStringInterpolationNode(id, parts, expressions)
+
+      case IRNode.HigherOrderNode(id, operation, source, lambda, outputType, _) =>
+        processHigherOrderNode(id, operation, source, lambda, outputType)
     }
 
     private def processModuleCall(
@@ -611,5 +614,158 @@ object DagCompiler {
             )
           }
       )
+
+    private def processHigherOrderNode(
+      id: UUID,
+      operation: HigherOrderOp,
+      source: UUID,
+      lambda: TypedLambda,
+      outputType: SemanticType
+    ): Unit = {
+      val outputDataId = UUID.randomUUID()
+
+      val sourceDataId = nodeOutputs.getOrElse(source,
+        throw new IllegalStateException(s"Source node $source not found")
+      )
+
+      val outputCType = SemanticType.toCType(outputType)
+
+      // Create the lambda evaluator function
+      val lambdaEvaluator = createLambdaEvaluator(lambda)
+
+      // Create appropriate inline transform based on operation
+      val transform = operation match {
+        case HigherOrderOp.Filter =>
+          InlineTransform.FilterTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
+        case HigherOrderOp.Map =>
+          InlineTransform.MapTransform(lambdaEvaluator)
+        case HigherOrderOp.All =>
+          InlineTransform.AllTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
+        case HigherOrderOp.Any =>
+          InlineTransform.AnyTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
+        case HigherOrderOp.SortBy =>
+          throw new UnsupportedOperationException("SortBy not yet implemented")
+      }
+
+      // Create data node with inline transform
+      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+        name = s"hof_${id.toString.take(8)}_output",
+        nicknames = Map.empty,
+        cType = outputCType,
+        inlineTransform = Some(transform),
+        transformInputs = Map("source" -> sourceDataId)
+      ))
+      nodeOutputs = nodeOutputs + (id -> outputDataId)
+    }
+
+    /** Create a lambda evaluator function from a TypedLambda */
+    private def createLambdaEvaluator(lambda: TypedLambda): Any => Any = {
+      (element: Any) => {
+        // Bind parameter to element value
+        val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap
+
+        // Evaluate the lambda body
+        evaluateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId, paramBindings)
+      }
+    }
+
+    /** Evaluate lambda body nodes with given parameter bindings */
+    private def evaluateLambdaBody(
+      nodes: Map[UUID, IRNode],
+      outputId: UUID,
+      paramBindings: Map[String, Any]
+    ): Any = {
+      // Simple interpreter for lambda body nodes
+      var evaluatedNodes: Map[UUID, Any] = Map.empty
+
+      def evaluateNode(nodeId: UUID): Any = {
+        evaluatedNodes.get(nodeId) match {
+          case Some(value) => value
+          case None =>
+            val node = nodes(nodeId)
+            val value = evaluateLambdaNode(node, nodes, paramBindings, evaluateNode)
+            evaluatedNodes = evaluatedNodes + (nodeId -> value)
+            value
+        }
+      }
+
+      evaluateNode(outputId)
+    }
+
+    /** Evaluate a single IR node in lambda context */
+    private def evaluateLambdaNode(
+      node: IRNode,
+      nodes: Map[UUID, IRNode],
+      paramBindings: Map[String, Any],
+      evaluateNode: UUID => Any
+    ): Any = node match {
+      case IRNode.Input(_, name, _, _) =>
+        // Lambda parameter - look up in bindings
+        paramBindings.getOrElse(name,
+          throw new IllegalStateException(s"Lambda parameter $name not bound"))
+
+      case IRNode.LiteralNode(_, value, _, _) =>
+        value
+
+      case IRNode.FieldAccessNode(_, source, field, _, _) =>
+        val sourceValue = evaluateNode(source)
+        sourceValue match {
+          case m: Map[String, ?] @unchecked => m(field)
+          case _ => throw new IllegalStateException(s"Cannot access field $field on non-record")
+        }
+
+      case IRNode.AndNode(_, left, right, _) =>
+        val leftVal = evaluateNode(left).asInstanceOf[Boolean]
+        if (!leftVal) false else evaluateNode(right).asInstanceOf[Boolean]
+
+      case IRNode.OrNode(_, left, right, _) =>
+        val leftVal = evaluateNode(left).asInstanceOf[Boolean]
+        if (leftVal) true else evaluateNode(right).asInstanceOf[Boolean]
+
+      case IRNode.NotNode(_, operand, _) =>
+        !evaluateNode(operand).asInstanceOf[Boolean]
+
+      case IRNode.ModuleCall(_, moduleName, _, inputs, outputType, _) =>
+        // For simple comparison/arithmetic operations in lambda bodies
+        val inputValues = inputs.map { case (name, nodeId) => name -> evaluateNode(nodeId) }
+        evaluateBuiltinFunction(moduleName, inputValues)
+
+      case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
+        val condVal = evaluateNode(cond).asInstanceOf[Boolean]
+        if (condVal) evaluateNode(thenBr) else evaluateNode(elseBr)
+
+      case other =>
+        throw new IllegalStateException(s"Unsupported node type in lambda body: $other")
+    }
+
+    /** Evaluate a built-in function for use in lambda bodies */
+    private def evaluateBuiltinFunction(moduleName: String, inputs: Map[String, Any]): Any = {
+      moduleName match {
+        // Comparison operations
+        case n if n.contains("gt") =>
+          inputs("a").asInstanceOf[Long] > inputs("b").asInstanceOf[Long]
+        case n if n.contains("lt") =>
+          inputs("a").asInstanceOf[Long] < inputs("b").asInstanceOf[Long]
+        case n if n.contains("gte") =>
+          inputs("a").asInstanceOf[Long] >= inputs("b").asInstanceOf[Long]
+        case n if n.contains("lte") =>
+          inputs("a").asInstanceOf[Long] <= inputs("b").asInstanceOf[Long]
+        case n if n.contains("eq-int") =>
+          inputs("a").asInstanceOf[Long] == inputs("b").asInstanceOf[Long]
+        case n if n.contains("eq-string") =>
+          inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
+        // Arithmetic operations
+        case n if n.contains("add-int") =>
+          inputs("a").asInstanceOf[Long] + inputs("b").asInstanceOf[Long]
+        case n if n.contains("sub-int") =>
+          inputs("a").asInstanceOf[Long] - inputs("b").asInstanceOf[Long]
+        case n if n.contains("mul-int") =>
+          inputs("a").asInstanceOf[Long] * inputs("b").asInstanceOf[Long]
+        case n if n.contains("div-int") =>
+          inputs("a").asInstanceOf[Long] / inputs("b").asInstanceOf[Long]
+        case _ =>
+          throw new IllegalStateException(s"Unsupported function in lambda body: $moduleName")
+      }
+    }
   }
 }

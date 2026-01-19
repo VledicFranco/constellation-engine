@@ -2119,4 +2119,193 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val errors = result.left.toOption.get
     errors.exists(_.isInstanceOf[CompileError.IncompatibleMerge]) shouldBe true
   }
+
+  // Lambda expression tests
+
+  private def hofRegistry: FunctionRegistry = {
+    val registry = FunctionRegistry.empty
+    // filter: (List<Int>, (Int) => Boolean) => List<Int>
+    registry.register(FunctionSignature(
+      name = "filter",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SList(SemanticType.SInt),
+      moduleName = "stdlib.hof.filter-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // map: (List<Int>, (Int) => Int) => List<Int>
+    registry.register(FunctionSignature(
+      name = "map",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+      ),
+      returns = SemanticType.SList(SemanticType.SInt),
+      moduleName = "stdlib.hof.map-int-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // all: (List<Int>, (Int) => Boolean) => Boolean
+    registry.register(FunctionSignature(
+      name = "all",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.hof.all-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // any: (List<Int>, (Int) => Boolean) => Boolean
+    registry.register(FunctionSignature(
+      name = "any",
+      params = List(
+        "items" -> SemanticType.SList(SemanticType.SInt),
+        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+      ),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.hof.any-int",
+      namespace = Some("stdlib.collection")
+    ))
+    // Comparison functions for use in lambda bodies
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt",
+      namespace = Some("stdlib.compare")
+    ))
+    registry
+  }
+
+  it should "type check lambda expression in filter function" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+    val result = check(source, hofRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  it should "infer lambda parameter type from function context" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+    val result = check(source, hofRegistry)
+    result.isRight shouldBe true
+    // If inference works, the lambda type-checks correctly
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  it should "type check lambda with explicit type annotation" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x: Int) => x > 0)
+      out result
+    """
+    val result = check(source, hofRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  it should "type check map function with lambda" in {
+    val source = """
+      in items: List<Int>
+      result = map(items, (x) => x * 2)
+      out result
+    """
+    // Need arithmetic for x * 2 (desugars to multiply(x, 2))
+    val registry = hofRegistry
+    registry.register(FunctionSignature(
+      name = "multiply",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SInt,
+      moduleName = "stdlib.multiply",
+      namespace = Some("stdlib.math")
+    ))
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  it should "type check all function with lambda predicate" in {
+    val source = """
+      in items: List<Int>
+      result = all(items, (x) => x > 0)
+      out result
+    """
+    val result = check(source, hofRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check any function with lambda predicate" in {
+    val source = """
+      in items: List<Int>
+      result = any(items, (x) => x > 0)
+      out result
+    """
+    val result = check(source, hofRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "report error when lambda body type does not match expected return type" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x)
+      out result
+    """
+    // filter expects (Int) => Boolean, but lambda returns Int
+    val result = check(source, hofRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "report error when lambda has wrong parameter types" in {
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x: String) => true)
+      out result
+    """
+    // filter expects (Int) => Boolean, but lambda has String parameter
+    val result = check(source, hofRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+  }
+
+  it should "type check SFunction type" in {
+    // Verify that SFunction.prettyPrint works correctly
+    val funcType = SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+    funcType.prettyPrint shouldBe "(Int) => Boolean"
+  }
+
+  it should "type check SFunction with multiple parameters" in {
+    val funcType = SemanticType.SFunction(List(SemanticType.SInt, SemanticType.SString), SemanticType.SBoolean)
+    funcType.prettyPrint shouldBe "(Int, String) => Boolean"
+  }
+
+  it should "type check lambda with boolean operators in body" in {
+    val registry = hofRegistry
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0 and x < 100)
+      out result
+    """
+    registry.register(FunctionSignature(
+      name = "lt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.lt",
+      namespace = Some("stdlib.compare")
+    ))
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
+  }
 }
