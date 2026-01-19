@@ -38,13 +38,14 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
   }
 
-  it should "compile programs with boolean functions" in {
+  it should "compile programs with boolean operators" in {
     val compiler = StdLib.compiler
 
+    // Note: and, or, not are now built-in operators, not stdlib functions
     val source = """
       in a: Boolean
       in b: Boolean
-      result = and(a, b)
+      result = a and b
       out result
     """
 
@@ -121,10 +122,10 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val compiler = builder.build
 
     // Should be able to use all functions
+    // Note: and, or, not are now built-in operators (keywords), not stdlib functions
     val functions = List(
       "add", "subtract", "multiply", "divide", "max", "min",
       "concat", "upper", "lower", "string-length",
-      "and", "or", "not",
       "gt", "lt", "gte", "lte", "eq-int", "eq-string",
       "list-length", "list-first", "list-last", "list-is-empty",
       "log", "identity"
@@ -139,10 +140,6 @@ class StdLibTest extends AnyFlatSpec with Matchers {
           s"in a: String\nin b: String\nresult = $funcName(a, b)\nout result"
         case "upper" | "lower" | "string-length" | "identity" | "log" =>
           s"in s: String\nresult = $funcName(s)\nout result"
-        case "and" | "or" =>
-          s"in a: Boolean\nin b: Boolean\nresult = $funcName(a, b)\nout result"
-        case "not" =>
-          s"in b: Boolean\nresult = $funcName(b)\nout result"
         case "gt" | "lt" | "gte" | "lte" | "eq-int" =>
           s"in a: Int\nin b: Int\nresult = $funcName(a, b)\nout result"
         case "eq-string" =>
