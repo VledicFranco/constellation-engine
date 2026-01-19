@@ -1,5 +1,6 @@
 package io.constellation.lang.semantic
 
+import io.constellation.CType
 import io.constellation.lang.ast.*
 import io.constellation.lang.parser.ConstellationParser
 import org.scalatest.flatspec.AnyFlatSpec
@@ -2682,5 +2683,253 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source, registry)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SOptional(SemanticType.SString)
+  }
+
+  // Union type tests
+
+  it should "type check simple union type declaration" in {
+    val source = """
+      in x: String | Int
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    union.members should contain allOf (SemanticType.SString, SemanticType.SInt)
+  }
+
+  it should "type check multi-member union type" in {
+    val source = """
+      in x: String | Int | Boolean
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 3
+    union.members should contain allOf (SemanticType.SString, SemanticType.SInt, SemanticType.SBoolean)
+  }
+
+  it should "type check union type in type definition" in {
+    val source = """
+      type Result = String | Int
+      in x: Result
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+  }
+
+  it should "type check union type with records" in {
+    val source = """
+      type Success = { value: Int }
+      type Error = { message: String }
+      type Result = Success | Error
+      in x: Result
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    union.members.forall(_.isInstanceOf[SemanticType.SRecord]) shouldBe true
+  }
+
+  it should "flatten nested unions into a single union" in {
+    val source = """
+      type A = String | Int
+      type B = Boolean | Float
+      type Combined = A | B
+      in x: Combined
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    // Should be flattened to 4 members, not nested unions
+    union.members should have size 4
+    union.members should contain allOf (SemanticType.SString, SemanticType.SInt, SemanticType.SBoolean, SemanticType.SFloat)
+  }
+
+  it should "simplify single-member union to the member type" in {
+    val source = """
+      type Single = String | String
+      in x: Single
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    // A union with only one unique member should simplify to that member
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check union type as function return type" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "maybe-process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString)),
+        moduleName = "maybe-process"
+      )
+    )
+
+    val source = """
+      in x: Int
+      result = maybe-process(x)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+  }
+
+  it should "type check union type as function parameter" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "handle-either",
+        params = List("x" -> SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))),
+        returns = SemanticType.SBoolean,
+        moduleName = "handle-either"
+      )
+    )
+
+    val source = """
+      in x: String | Int
+      result = handle-either(x)
+      out result
+    """
+    val result = check(source, registry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SBoolean
+  }
+
+  it should "type check union type with Optional member" in {
+    val source = """
+      in x: Optional<Int> | String
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    union.members should contain(SemanticType.SOptional(SemanticType.SInt))
+    union.members should contain(SemanticType.SString)
+  }
+
+  it should "type check union type with List member" in {
+    val source = """
+      in x: List<Int> | String
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    union.members should contain(SemanticType.SList(SemanticType.SInt))
+    union.members should contain(SemanticType.SString)
+  }
+
+  it should "type check union type with Candidates member" in {
+    val source = """
+      type Item = { id: Int }
+      in x: Candidates<Item> | String
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    union.members should contain(SemanticType.SString)
+    union.members.exists(_.isInstanceOf[SemanticType.SCandidates]) shouldBe true
+  }
+
+  it should "preserve union type through assignment" in {
+    val source = """
+      in x: String | Int
+      y = x
+      out y
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+  }
+
+  it should "type check union with merge type expression" in {
+    val source = """
+      type A = { x: Int }
+      type B = { y: String }
+      type Extended = A + B | { z: Boolean }
+      in x: Extended
+      out x
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SUnion]
+
+    val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
+    union.members should have size 2
+    // One member should be the merged A + B record
+    union.members.exists {
+      case SemanticType.SRecord(fields) =>
+        fields.contains("x") && fields.contains("y")
+      case _ => false
+    } shouldBe true
+  }
+
+  it should "report error when union member type is undefined" in {
+    val source = """
+      in x: String | UndefinedType
+      out x
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.UndefinedType]) shouldBe true
+  }
+
+  it should "format union type with prettyPrint" in {
+    val union = SemanticType.SUnion(Set(SemanticType.SString, SemanticType.SInt))
+    // Members are sorted alphabetically in prettyPrint
+    union.prettyPrint should (equal("Int | String") or equal("String | Int"))
+  }
+
+  it should "convert union SemanticType to CType correctly" in {
+    val union = SemanticType.SUnion(Set(SemanticType.SString, SemanticType.SInt))
+    val cType = SemanticType.toCType(union)
+
+    cType shouldBe a[CType.CUnion]
+    val cUnion = cType.asInstanceOf[CType.CUnion]
+    cUnion.structure.keys should contain allOf ("String", "Int")
+    cUnion.structure("String") shouldBe CType.CString
+    cUnion.structure("Int") shouldBe CType.CInt
+  }
+
+  it should "convert CType.CUnion to SemanticType correctly" in {
+    val cUnion = CType.CUnion(Map("String" -> CType.CString, "Int" -> CType.CInt))
+    val semType = SemanticType.fromCType(cUnion)
+
+    semType shouldBe a[SemanticType.SUnion]
+    val union = semType.asInstanceOf[SemanticType.SUnion]
+    union.members should contain allOf (SemanticType.SString, SemanticType.SInt)
   }
 }

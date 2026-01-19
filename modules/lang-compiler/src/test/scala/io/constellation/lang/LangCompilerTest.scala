@@ -1969,4 +1969,310 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
   }
+
+  // Union type compilation tests
+
+  it should "compile program with simple union type input" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: String | Int
+      out x
+    """
+
+    val result = compiler.compile(source, "union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.data should have size 1
+
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure.keys should contain allOf ("String", "Int")
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile program with multi-member union type" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: String | Int | Boolean
+      out x
+    """
+
+    val result = compiler.compile(source, "multi-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 3
+        structure.keys should contain allOf ("String", "Int", "Boolean")
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile program with union type definition" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Result = String | Int
+      in x: Result
+      out x
+    """
+
+    val result = compiler.compile(source, "typedef-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType shouldBe a[CType.CUnion]
+  }
+
+  it should "compile program with union of record types" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Success = { value: Int }
+      type Error = { message: String }
+      type Result = Success | Error
+      in x: Result
+      out x
+    """
+
+    val result = compiler.compile(source, "record-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.values.forall(_.isInstanceOf[CType.CProduct]) shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union type with function that returns union" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "parse-result",
+        params = List("input" -> SemanticType.SString),
+        returns = SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString)),
+        moduleName = "parse-result"
+      )
+    )
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in input: String
+      result = parse-result(input)
+      out result
+    """
+
+    val result = compiler.compile(source, "func-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe a[CType.CUnion]
+  }
+
+  it should "compile union type with function that accepts union parameter" in {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "handle-either",
+        params = List("x" -> SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))),
+        returns = SemanticType.SBoolean,
+        moduleName = "handle-either"
+      )
+    )
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in x: Int | String
+      result = handle-either(x)
+      out result
+    """
+
+    val result = compiler.compile(source, "param-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.dagSpec.modules should not be empty
+
+    val resultBinding = compiled.dagSpec.outputBindings.get("result")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CBoolean
+  }
+
+  it should "compile union type preserving correct structure through assignment" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: String | Int
+      y = x
+      out y
+    """
+
+    val result = compiler.compile(source, "assign-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val resultBinding = compiled.dagSpec.outputBindings.get("y")
+    resultBinding.isDefined shouldBe true
+
+    val outputNode = compiled.dagSpec.data.get(resultBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType match {
+      case CType.CUnion(structure) =>
+        structure.keys should contain allOf ("String", "Int")
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union with Optional member" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: Optional<Int> | String
+      out x
+    """
+
+    val result = compiler.compile(source, "optional-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.keys should contain("String")
+        // Should have an Optional<Int> member
+        structure.values.exists {
+          case CType.COptional(CType.CInt) => true
+          case _ => false
+        } shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union with List member" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in x: List<Int> | String
+      out x
+    """
+
+    val result = compiler.compile(source, "list-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.keys should contain("String")
+        // Should have a List<Int> member
+        structure.values.exists {
+          case CType.CList(CType.CInt) => true
+          case _ => false
+        } shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "compile union with Candidates member" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Item = { id: Int }
+      in x: Candidates<Item> | String
+      out x
+    """
+
+    val result = compiler.compile(source, "candidates-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        structure.keys should contain("String")
+        // Should have a Candidates<Item> member (represented as CList)
+        structure.values.exists {
+          case CType.CList(CType.CProduct(_)) => true
+          case _ => false
+        } shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
+
+  it should "flatten nested union types in compilation" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type A = String | Int
+      type B = Boolean | Float
+      type Combined = A | B
+      in x: Combined
+      out x
+    """
+
+    val result = compiler.compile(source, "nested-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        // Should be flattened to 4 members
+        structure should have size 4
+        structure.keys should contain allOf ("String", "Int", "Boolean", "Float")
+      case other => fail(s"Expected CUnion with 4 members, got $other")
+    }
+  }
+
+  it should "generate correct CUnion tag names for record types" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      type Success = { value: Int }
+      type Failure = { error: String }
+      type Result = Success | Failure
+      in x: Result
+      out x
+    """
+
+    val result = compiler.compile(source, "tagged-union-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    val inputNode = compiled.dagSpec.data.values.head
+    inputNode.cType match {
+      case CType.CUnion(structure) =>
+        structure should have size 2
+        // Record types should have generated tag names
+        structure.values.forall(_.isInstanceOf[CType.CProduct]) shouldBe true
+      case other => fail(s"Expected CUnion, got $other")
+    }
+  }
 }
