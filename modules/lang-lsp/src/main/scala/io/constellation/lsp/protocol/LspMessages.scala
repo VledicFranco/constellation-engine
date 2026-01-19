@@ -386,4 +386,104 @@ object LspMessages {
 
   given Encoder[DagExecutionBatchUpdateParams] = deriveEncoder
   given Decoder[DagExecutionBatchUpdateParams] = deriveDecoder
+
+  // ========== Custom: Step-through Execution ==========
+
+  /** Start step-through execution - returns session ID and initial state */
+  case class StepStartParams(
+    uri: String,
+    inputs: Map[String, Json]
+  )
+
+  case class StepStartResult(
+    success: Boolean,
+    sessionId: Option[String],
+    totalBatches: Option[Int],
+    initialState: Option[StepState],
+    error: Option[String]
+  )
+
+  /** Execute next batch */
+  case class StepNextParams(
+    sessionId: String
+  )
+
+  case class StepNextResult(
+    success: Boolean,
+    state: Option[StepState],
+    isComplete: Boolean,
+    error: Option[String]
+  )
+
+  /** Continue to completion */
+  case class StepContinueParams(
+    sessionId: String
+  )
+
+  case class StepContinueResult(
+    success: Boolean,
+    state: Option[StepState],
+    outputs: Option[Map[String, Json]],
+    executionTimeMs: Option[Long],
+    error: Option[String]
+  )
+
+  /** Abort execution */
+  case class StepStopParams(
+    sessionId: String
+  )
+
+  case class StepStopResult(
+    success: Boolean
+  )
+
+  /** State after each step */
+  case class StepState(
+    currentBatch: Int,
+    totalBatches: Int,
+    batchNodes: List[String],         // Node IDs in current batch
+    completedNodes: List[CompletedNode],
+    pendingNodes: List[String]        // Node IDs still pending
+  )
+
+  /** Information about a completed node */
+  case class CompletedNode(
+    nodeId: String,
+    nodeName: String,
+    nodeType: String,                 // "module" or "data"
+    valuePreview: String,
+    durationMs: Option[Long]
+  )
+
+  // JSON encoders/decoders for step-through execution
+
+  given Encoder[StepStartParams] = deriveEncoder
+  given Decoder[StepStartParams] = deriveDecoder
+
+  given Encoder[StepStartResult] = deriveEncoder
+  given Decoder[StepStartResult] = deriveDecoder
+
+  given Encoder[StepNextParams] = deriveEncoder
+  given Decoder[StepNextParams] = deriveDecoder
+
+  given Encoder[StepNextResult] = deriveEncoder
+  given Decoder[StepNextResult] = deriveDecoder
+
+  given Encoder[StepContinueParams] = deriveEncoder
+  given Decoder[StepContinueParams] = deriveDecoder
+
+  given Encoder[StepContinueResult] = deriveEncoder
+  given Decoder[StepContinueResult] = deriveDecoder
+
+  given Encoder[StepStopParams] = deriveEncoder
+  given Decoder[StepStopParams] = deriveDecoder
+
+  given Encoder[StepStopResult] = deriveEncoder
+  given Decoder[StepStopResult] = deriveDecoder
+
+  given Encoder[StepState] = deriveEncoder
+  given Decoder[StepState] = deriveDecoder
+
+  given Encoder[CompletedNode] = deriveEncoder
+  given Decoder[CompletedNode] = deriveDecoder
 }

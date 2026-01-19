@@ -6,6 +6,8 @@ trait Constellation {
 
   def getModules: IO[List[ModuleNodeSpec]]
 
+  def getModuleByName(name: String): IO[Option[Module.Uninitialized]]
+
   def setModule(module: Module.Uninitialized): IO[Unit]
 
   def dagExists(name: String): IO[Boolean]

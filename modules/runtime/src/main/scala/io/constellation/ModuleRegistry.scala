@@ -10,5 +10,7 @@ trait ModuleRegistry {
 
   def register(name: String, node: Module.Uninitialized): IO[Unit]
 
+  def get(name: String): IO[Option[Module.Uninitialized]]
+
   def initModules(spec: DagSpec): IO[Map[UUID, Module.Uninitialized]]
 }

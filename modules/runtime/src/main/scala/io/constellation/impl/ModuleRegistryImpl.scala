@@ -14,6 +14,15 @@ class ModuleRegistryImpl(refMap: Ref[IO, Map[String, Module.Uninitialized]]) ext
 
   override def register(name: String, node: Module.Uninitialized): IO[Unit] = refMap.update(_ + (name -> node))
 
+  override def get(name: String): IO[Option[Module.Uninitialized]] = {
+    for {
+      store <- refMap.get
+      // Try exact name first, then try stripping dag name prefix (e.g., "test.Uppercase" -> "Uppercase")
+      exactMatch = store.get(name)
+      strippedMatch = name.split('.').lastOption.flatMap(store.get)
+    } yield exactMatch.orElse(strippedMatch)
+  }
+
   override def initModules(dagSpec: DagSpec): IO[Map[UUID, Module.Uninitialized]] = {
     for {
       store <- refMap.get

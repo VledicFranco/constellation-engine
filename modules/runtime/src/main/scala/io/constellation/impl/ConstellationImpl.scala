@@ -8,6 +8,9 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
   def getModules: IO[List[ModuleNodeSpec]] =
     moduleRegistry.listModules
 
+  def getModuleByName(name: String): IO[Option[Module.Uninitialized]] =
+    moduleRegistry.get(name)
+
   def setModule(factory: Module.Uninitialized): IO[Unit] =
     moduleRegistry.register(factory.spec.name, factory)
 

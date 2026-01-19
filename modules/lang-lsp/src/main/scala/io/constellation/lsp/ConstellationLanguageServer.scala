@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.implicits._
 import io.circe._
 import io.circe.syntax._
-import io.constellation.Constellation
+import io.constellation.{Constellation, CValue, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.ast.{CompileError, Declaration, TypeExpr, Span, SourceFile}
 import io.constellation.lang.semantic.FunctionRegistry
@@ -20,6 +20,7 @@ class ConstellationLanguageServer(
   constellation: Constellation,
   compiler: LangCompiler,
   documentManager: DocumentManager,
+  debugSessionManager: DebugSessionManager,
   publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
 ) {
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
@@ -48,6 +49,18 @@ class ConstellationLanguageServer(
 
       case "constellation/getDagStructure" =>
         handleGetDagStructure(request)
+
+      case "constellation/stepStart" =>
+        handleStepStart(request)
+
+      case "constellation/stepNext" =>
+        handleStepNext(request)
+
+      case "constellation/stepContinue" =>
+        handleStepContinue(request)
+
+      case "constellation/stepStop" =>
+        handleStepStop(request)
 
       case method =>
         IO.pure(Response(
@@ -413,6 +426,270 @@ class ConstellationLanguageServer(
             RecordField("_merged_right", rightDesc)
           ))
       }
+  }
+
+  // ========== Step-through Execution Handlers ==========
+
+  private def handleStepStart(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[StepStartParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            documentManager.getDocument(params.uri).flatMap {
+              case Some(document) =>
+                startStepExecution(document, params.inputs).map { result =>
+                  Response(id = request.id, result = Some(result.asJson))
+                }
+              case None =>
+                IO.pure(Response(
+                  id = request.id,
+                  result = Some(StepStartResult(
+                    success = false,
+                    sessionId = None,
+                    totalBatches = None,
+                    initialState = None,
+                    error = Some("Document not found")
+                  ).asJson)
+                ))
+            }
+        }
+    }
+  }
+
+  private def handleStepNext(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[StepNextParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            stepNext(params.sessionId).map { result =>
+              Response(id = request.id, result = Some(result.asJson))
+            }
+        }
+    }
+  }
+
+  private def handleStepContinue(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[StepContinueParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            stepContinue(params.sessionId).map { result =>
+              Response(id = request.id, result = Some(result.asJson))
+            }
+        }
+    }
+  }
+
+  private def handleStepStop(request: Request): IO[Response] = {
+    request.params match {
+      case None =>
+        IO.pure(Response(
+          id = request.id,
+          error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+        ))
+      case Some(json) =>
+        json.as[StepStopParams] match {
+          case Left(decodeError) =>
+            IO.pure(Response(
+              id = request.id,
+              error = Some(ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}"))
+            ))
+          case Right(params) =>
+            debugSessionManager.stopSession(params.sessionId).map { success =>
+              Response(id = request.id, result = Some(StepStopResult(success).asJson))
+            }
+        }
+    }
+  }
+
+  private def startStepExecution(document: DocumentState, inputs: Map[String, Json]): IO[StepStartResult] = {
+    val dagName = s"lsp-step-${document.uri.hashCode.abs}"
+
+    compiler.compile(document.text, dagName) match {
+      case Right(compiled) =>
+        val cvalueInputs: Map[String, CValue] = inputs.flatMap { case (name, json) =>
+          jsonToCValue(json).map(name -> _)
+        }
+
+        // Build module map from compiled DAG
+        // First, merge synthetic modules with registered modules looked up by name
+        val moduleMapIO: IO[Map[java.util.UUID, Module.Uninitialized]] = compiled.dagSpec.modules.toList.traverse {
+          case (uuid, spec) =>
+            // First check if this is a synthetic module (keyed by uuid)
+            compiled.syntheticModules.get(uuid) match {
+              case Some(mod) => IO.pure(uuid -> mod)
+              case None =>
+                // Otherwise look up by name from constellation's registered modules
+                constellation.getModuleByName(spec.name).flatMap {
+                  case Some(mod) => IO.pure(uuid -> mod)
+                  case None => IO.raiseError(new RuntimeException(s"Module ${spec.name} not found"))
+                }
+            }
+        }.map(_.toMap)
+
+        (for {
+          moduleMap <- moduleMapIO
+          session <- debugSessionManager.createSession(
+            compiled.dagSpec,
+            compiled.syntheticModules,
+            moduleMap,
+            cvalueInputs
+          )
+        } yield StepStartResult(
+          success = true,
+          sessionId = Some(session.sessionId),
+          totalBatches = Some(session.batches.length),
+          initialState = Some(buildStepState(session)),
+          error = None
+        )).handleError { error =>
+          StepStartResult(
+            success = false,
+            sessionId = None,
+            totalBatches = None,
+            initialState = None,
+            error = Some(error.getMessage)
+          )
+        }
+
+      case Left(errors) =>
+        IO.pure(StepStartResult(
+          success = false,
+          sessionId = None,
+          totalBatches = None,
+          initialState = None,
+          error = Some(errors.map(_.message).mkString("; "))
+        ))
+    }
+  }
+
+  private def stepNext(sessionId: String): IO[StepNextResult] = {
+    debugSessionManager.stepNext(sessionId).map {
+      case Some((session, isComplete)) =>
+        StepNextResult(
+          success = true,
+          state = Some(buildStepState(session)),
+          isComplete = isComplete,
+          error = None
+        )
+      case None =>
+        StepNextResult(
+          success = false,
+          state = None,
+          isComplete = false,
+          error = Some("Session not found")
+        )
+    }.handleError { error =>
+      StepNextResult(
+        success = false,
+        state = None,
+        isComplete = false,
+        error = Some(error.getMessage)
+      )
+    }
+  }
+
+  private def stepContinue(sessionId: String): IO[StepContinueResult] = {
+    debugSessionManager.stepContinue(sessionId).map {
+      case Some(session) =>
+        val outputs = SteppedExecution.getOutputs(session)
+        val outputsJson = outputs.map { case (name, value) => name -> cvalueToJson(value) }
+        val executionTime = System.currentTimeMillis() - session.startTime
+
+        StepContinueResult(
+          success = true,
+          state = Some(buildStepState(session)),
+          outputs = Some(outputsJson),
+          executionTimeMs = Some(executionTime),
+          error = None
+        )
+      case None =>
+        StepContinueResult(
+          success = false,
+          state = None,
+          outputs = None,
+          executionTimeMs = None,
+          error = Some("Session not found")
+        )
+    }.handleError { error =>
+      StepContinueResult(
+        success = false,
+        state = None,
+        outputs = None,
+        executionTimeMs = None,
+        error = Some(error.getMessage)
+      )
+    }
+  }
+
+  private def buildStepState(session: SteppedExecution.SessionState): StepState = {
+    val dagSpec = session.dagSpec
+    val currentBatch = if (session.currentBatchIndex < session.batches.length) {
+      session.batches(session.currentBatchIndex)
+    } else {
+      session.batches.lastOption.getOrElse(
+        SteppedExecution.ExecutionBatch(0, List.empty, List.empty)
+      )
+    }
+
+    val completedNodes = session.nodeStates.collect {
+      case (nodeId, SteppedExecution.NodeState.Completed(value, durationMs)) =>
+        val (nodeName, nodeType) = dagSpec.modules.get(nodeId) match {
+          case Some(spec) => (spec.name, "module")
+          case None => dagSpec.data.get(nodeId) match {
+            case Some(spec) => (spec.name, "data")
+            case None => (nodeId.toString.take(8), "unknown")
+          }
+        }
+        CompletedNode(
+          nodeId = nodeId.toString,
+          nodeName = nodeName,
+          nodeType = nodeType,
+          valuePreview = SteppedExecution.valuePreview(value),
+          durationMs = if (durationMs > 0) Some(durationMs) else None
+        )
+    }.toList
+
+    val pendingNodeIds = session.nodeStates.collect {
+      case (nodeId, SteppedExecution.NodeState.Pending) => nodeId.toString
+    }.toList
+
+    StepState(
+      currentBatch = session.currentBatchIndex,
+      totalBatches = session.batches.length,
+      batchNodes = (currentBatch.moduleIds ++ currentBatch.dataIds).map(_.toString),
+      completedNodes = completedNodes,
+      pendingNodes = pendingNodeIds
+    )
   }
 
   // ========== Notification Handlers ==========
@@ -932,7 +1209,8 @@ object ConstellationLanguageServer {
     compiler: LangCompiler,
     publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
   ): IO[ConstellationLanguageServer] =
-    DocumentManager.create.map { docManager =>
-      new ConstellationLanguageServer(constellation, compiler, docManager, publishDiagnostics)
-    }
+    for {
+      docManager <- DocumentManager.create
+      debugManager <- DebugSessionManager.create
+    } yield new ConstellationLanguageServer(constellation, compiler, docManager, debugManager, publishDiagnostics)
 }
