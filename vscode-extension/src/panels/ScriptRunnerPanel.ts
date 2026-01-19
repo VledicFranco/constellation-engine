@@ -60,11 +60,53 @@ interface ExecutePipelineResult {
   executionTimeMs?: number;
 }
 
+// Step-through execution interfaces
+interface StepStartResult {
+  success: boolean;
+  sessionId?: string;
+  totalBatches?: number;
+  initialState?: StepState;
+  error?: string;
+}
+
+interface StepNextResult {
+  success: boolean;
+  state?: StepState;
+  isComplete: boolean;
+  error?: string;
+}
+
+interface StepContinueResult {
+  success: boolean;
+  state?: StepState;
+  outputs?: { [key: string]: any };
+  executionTimeMs?: number;
+  error?: string;
+}
+
+interface StepState {
+  currentBatch: number;
+  totalBatches: number;
+  batchNodes: string[];
+  completedNodes: CompletedNode[];
+  pendingNodes: string[];
+}
+
+interface CompletedNode {
+  nodeId: string;
+  nodeName: string;
+  nodeType: string;
+  valuePreview: string;
+  durationMs?: number;
+}
+
 export class ScriptRunnerPanel {
   public static currentPanel: ScriptRunnerPanel | undefined;
   public static readonly viewType = 'constellationScriptRunner';
 
   private readonly _state: PanelState;
+  private _steppingSessionId: string | undefined;
+  private _isStepping: boolean = false;
 
   public static createOrShow(
     extensionUri: vscode.Uri,
@@ -119,6 +161,18 @@ export class ScriptRunnerPanel {
             break;
           case 'execute':
             await this._executePipeline(message.inputs);
+            break;
+          case 'stepStart':
+            await this._stepStart(message.inputs);
+            break;
+          case 'stepNext':
+            await this._stepNext();
+            break;
+          case 'stepContinue':
+            await this._stepContinue();
+            break;
+          case 'stepStop':
+            await this._stepStop();
             break;
           case 'navigateToError':
             await this._navigateToError(message.line, message.column);
@@ -228,6 +282,227 @@ export class ScriptRunnerPanel {
     }
   }
 
+  // ========== Step-through Execution Methods ==========
+
+  private async _stepStart(inputs: { [key: string]: any }) {
+    if (!this._state.client || !this._state.currentUri) {
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: 'Language server not connected'
+      });
+      return;
+    }
+
+    this._isStepping = true;
+    this._state.panel.webview.postMessage({ type: 'stepStarting' });
+
+    // Notify DAG visualizer that stepping is starting
+    DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
+
+    try {
+      const result = await this._state.client.sendRequest<StepStartResult>(
+        'constellation/stepStart',
+        { uri: this._state.currentUri, inputs }
+      );
+
+      if (result.success && result.sessionId) {
+        this._steppingSessionId = result.sessionId;
+
+        // Notify DAG visualizer about initial step state
+        if (result.initialState && this._state.currentUri) {
+          const updates: Array<{nodeId: string, state: string, valuePreview?: string}> = [];
+
+          // Mark completed nodes
+          result.initialState.completedNodes.forEach(node => {
+            updates.push({ nodeId: node.nodeId, state: 'completed', valuePreview: node.valuePreview });
+          });
+
+          // Mark pending nodes
+          result.initialState.pendingNodes.forEach(nodeId => {
+            updates.push({ nodeId, state: 'pending' });
+          });
+
+          DagVisualizerPanel.notifyBatchUpdate(this._state.currentUri, updates);
+        }
+
+        this._state.panel.webview.postMessage({
+          type: 'stepStarted',
+          sessionId: result.sessionId,
+          totalBatches: result.totalBatches,
+          state: result.initialState
+        });
+      } else {
+        this._isStepping = false;
+        this._steppingSessionId = undefined;
+        if (this._state.currentUri) {
+          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+        }
+
+        this._state.panel.webview.postMessage({
+          type: 'stepError',
+          error: result.error || 'Failed to start stepping'
+        });
+      }
+    } catch (error: any) {
+      this._isStepping = false;
+      this._steppingSessionId = undefined;
+      if (this._state.currentUri) {
+        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+      }
+
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: error.message || 'Failed to start stepping'
+      });
+    }
+  }
+
+  private async _stepNext() {
+    if (!this._state.client || !this._steppingSessionId) {
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: 'No active stepping session'
+      });
+      return;
+    }
+
+    this._state.panel.webview.postMessage({ type: 'stepExecuting' });
+
+    try {
+      const result = await this._state.client.sendRequest<StepNextResult>(
+        'constellation/stepNext',
+        { sessionId: this._steppingSessionId }
+      );
+
+      if (result.success && result.state) {
+        // Notify DAG visualizer about the updated state
+        if (this._state.currentUri) {
+          const updates: Array<{nodeId: string, state: string, valuePreview?: string}> = [];
+
+          // Mark completed nodes
+          result.state.completedNodes.forEach(node => {
+            updates.push({ nodeId: node.nodeId, state: 'completed', valuePreview: node.valuePreview });
+          });
+
+          // Mark currently running batch nodes
+          result.state.batchNodes.forEach(nodeId => {
+            updates.push({ nodeId, state: 'running' });
+          });
+
+          // Mark pending nodes
+          result.state.pendingNodes.forEach(nodeId => {
+            updates.push({ nodeId, state: 'pending' });
+          });
+
+          DagVisualizerPanel.notifyBatchUpdate(this._state.currentUri, updates);
+        }
+
+        if (result.isComplete) {
+          this._isStepping = false;
+          if (this._state.currentUri) {
+            DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
+          }
+        }
+
+        this._state.panel.webview.postMessage({
+          type: 'stepResult',
+          state: result.state,
+          isComplete: result.isComplete
+        });
+      } else {
+        this._state.panel.webview.postMessage({
+          type: 'stepError',
+          error: result.error || 'Step execution failed'
+        });
+      }
+    } catch (error: any) {
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: error.message || 'Step execution failed'
+      });
+    }
+  }
+
+  private async _stepContinue() {
+    if (!this._state.client || !this._steppingSessionId) {
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: 'No active stepping session'
+      });
+      return;
+    }
+
+    this._state.panel.webview.postMessage({ type: 'stepContinuing' });
+
+    try {
+      const result = await this._state.client.sendRequest<StepContinueResult>(
+        'constellation/stepContinue',
+        { sessionId: this._steppingSessionId }
+      );
+
+      this._isStepping = false;
+      this._steppingSessionId = undefined;
+
+      if (result.success) {
+        if (this._state.currentUri) {
+          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
+        }
+
+        this._state.panel.webview.postMessage({
+          type: 'stepComplete',
+          state: result.state,
+          outputs: result.outputs || {},
+          executionTimeMs: result.executionTimeMs
+        });
+      } else {
+        if (this._state.currentUri) {
+          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+        }
+
+        this._state.panel.webview.postMessage({
+          type: 'stepError',
+          error: result.error || 'Continue execution failed'
+        });
+      }
+    } catch (error: any) {
+      this._isStepping = false;
+      this._steppingSessionId = undefined;
+      if (this._state.currentUri) {
+        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+      }
+
+      this._state.panel.webview.postMessage({
+        type: 'stepError',
+        error: error.message || 'Continue execution failed'
+      });
+    }
+  }
+
+  private async _stepStop() {
+    if (!this._state.client || !this._steppingSessionId) {
+      this._isStepping = false;
+      this._steppingSessionId = undefined;
+      this._state.panel.webview.postMessage({ type: 'stepStopped' });
+      return;
+    }
+
+    try {
+      await this._state.client.sendRequest<{ success: boolean }>(
+        'constellation/stepStop',
+        { sessionId: this._steppingSessionId }
+      );
+    } catch (error) {
+      console.error('[ScriptRunner] Failed to stop stepping session:', error);
+    } finally {
+      this._isStepping = false;
+      this._steppingSessionId = undefined;
+      if (this._state.currentUri) {
+        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
+      }
+      this._state.panel.webview.postMessage({ type: 'stepStopped' });
+    }
+  }
+
   private async _navigateToError(line: number, column: number) {
     if (!this._state.currentUri) {
       return;
@@ -283,10 +558,37 @@ export class ScriptRunnerPanel {
         </div>
       </section>
 
-      <button class="primary-btn run-btn" id="runBtn" disabled>
-        <span>▶</span>
-        <span>Run Script</span>
-      </button>
+      <div class="action-buttons">
+        <button class="primary-btn run-btn" id="runBtn" disabled>
+          <span>▶</span>
+          <span>Run Script</span>
+        </button>
+        <button class="secondary-btn step-btn" id="stepBtn" disabled title="Start step-through debugging">
+          <span>⏸</span>
+          <span>Step</span>
+        </button>
+      </div>
+
+      <section class="step-panel" id="stepPanel">
+        <div class="step-header">
+          <div class="section-title">Step-through Execution</div>
+          <span class="step-progress" id="stepProgress">Batch 0/0</span>
+        </div>
+        <div class="step-controls">
+          <button class="step-control-btn" id="stepNextBtn" title="Execute next batch">
+            <span>→</span> Step Next
+          </button>
+          <button class="step-control-btn" id="stepContinueBtn" title="Continue to completion">
+            <span>▶▶</span> Continue
+          </button>
+          <button class="step-control-btn stop" id="stepStopBtn" title="Stop execution">
+            <span>■</span> Stop
+          </button>
+        </div>
+        <div class="step-state" id="stepState">
+          <div class="completed-nodes" id="completedNodes"></div>
+        </div>
+      </section>
 
       <section class="output-section" id="outputSection">
         <div class="output-header">
@@ -359,9 +661,146 @@ export class ScriptRunnerPanel {
         cursor: pointer;
       }
 
-      .run-btn {
-        width: 100%;
+      .action-buttons {
+        display: flex;
+        gap: var(--spacing-md);
         margin-bottom: var(--spacing-xl);
+      }
+
+      .run-btn { flex: 1; }
+      .step-btn { flex: 0 0 auto; padding: 0 var(--spacing-lg); }
+
+      .secondary-btn {
+        background: var(--vscode-button-secondaryBackground, #3a3d41);
+        color: var(--vscode-button-secondaryForeground, #fff);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        transition: background 0.15s;
+      }
+      .secondary-btn:hover:not(:disabled) {
+        background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      }
+      .secondary-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* Step Panel Styles */
+      .step-panel {
+        display: none;
+        background: var(--vscode-input-background);
+        border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.35));
+        border-left: 3px solid var(--vscode-textLink-foreground, #3794ff);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+      }
+      .step-panel.visible { display: block; }
+
+      .step-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--spacing-md);
+      }
+
+      .step-progress {
+        font-size: 12px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        color: var(--vscode-textLink-foreground, #3794ff);
+        background: rgba(55, 148, 255, 0.15);
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+
+      .step-controls {
+        display: flex;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+      }
+
+      .step-control-btn {
+        flex: 1;
+        background: var(--vscode-button-secondaryBackground, #3a3d41);
+        color: var(--vscode-button-secondaryForeground, #fff);
+        border: none;
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--spacing-xs);
+        transition: background 0.15s;
+      }
+      .step-control-btn:hover:not(:disabled) {
+        background: var(--vscode-button-secondaryHoverBackground, #45494e);
+      }
+      .step-control-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .step-control-btn.stop {
+        background: rgba(241, 76, 76, 0.2);
+        color: var(--vscode-errorForeground, #f14c4c);
+      }
+      .step-control-btn.stop:hover {
+        background: rgba(241, 76, 76, 0.3);
+      }
+
+      .step-state {
+        background: var(--vscode-textCodeBlock-background, rgba(10, 10, 10, 0.4));
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-md);
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .completed-nodes {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+      }
+
+      .completed-node {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        background: rgba(78, 201, 176, 0.1);
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+      }
+
+      .completed-node .node-icon { color: var(--vscode-terminal-ansiGreen, #4ec9b0); }
+      .completed-node .node-name { font-weight: 500; flex: 1; }
+      .completed-node .node-type {
+        font-size: 10px;
+        text-transform: uppercase;
+        color: var(--vscode-descriptionForeground);
+        background: rgba(128, 128, 128, 0.2);
+        padding: 1px 4px;
+        border-radius: 2px;
+      }
+      .completed-node .node-value {
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .completed-node .node-duration {
+        font-size: 10px;
+        color: var(--vscode-descriptionForeground);
       }
 
       .output-section { display: none; }
@@ -546,23 +985,53 @@ export class ScriptRunnerPanel {
   var vscode = acquireVsCodeApi();
   var currentSchema = [];
   var isExecuting = false;
+  var isStepping = false;
 
   var inputsCard = document.getElementById('inputsCard');
   var outputSection = document.getElementById('outputSection');
   var outputContainer = document.getElementById('outputContainer');
   var executionTime = document.getElementById('executionTime');
   var runBtn = document.getElementById('runBtn');
+  var stepBtn = document.getElementById('stepBtn');
   var refreshBtn = document.getElementById('refreshBtn');
   var fileNameEl = document.getElementById('fileName');
+
+  // Step panel elements
+  var stepPanel = document.getElementById('stepPanel');
+  var stepProgress = document.getElementById('stepProgress');
+  var stepNextBtn = document.getElementById('stepNextBtn');
+  var stepContinueBtn = document.getElementById('stepContinueBtn');
+  var stepStopBtn = document.getElementById('stepStopBtn');
+  var completedNodesEl = document.getElementById('completedNodes');
 
   refreshBtn.onclick = function() {
     vscode.postMessage({ command: 'refresh' });
   };
 
   runBtn.onclick = function() {
-    if (isExecuting) return;
+    if (isExecuting || isStepping) return;
     var inputs = collectInputs();
     vscode.postMessage({ command: 'execute', inputs: inputs });
+  };
+
+  stepBtn.onclick = function() {
+    if (isExecuting || isStepping) return;
+    var inputs = collectInputs();
+    vscode.postMessage({ command: 'stepStart', inputs: inputs });
+  };
+
+  stepNextBtn.onclick = function() {
+    if (!isStepping) return;
+    vscode.postMessage({ command: 'stepNext' });
+  };
+
+  stepContinueBtn.onclick = function() {
+    if (!isStepping) return;
+    vscode.postMessage({ command: 'stepContinue' });
+  };
+
+  stepStopBtn.onclick = function() {
+    vscode.postMessage({ command: 'stepStop' });
   };
 
   window.addEventListener('message', function(event) {
@@ -573,6 +1042,7 @@ export class ScriptRunnerPanel {
       fileNameEl.textContent = message.fileName || 'script.cst';
       renderInputs(currentSchema);
       runBtn.disabled = false;
+      stepBtn.disabled = false;
     } else if (message.type === 'schemaError') {
       if (message.errors && message.errors.length > 0) {
         inputsCard.innerHTML = renderStructuredErrors(message.errors);
@@ -580,13 +1050,16 @@ export class ScriptRunnerPanel {
         inputsCard.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
       }
       runBtn.disabled = true;
+      stepBtn.disabled = true;
     } else if (message.type === 'executing') {
       isExecuting = true;
       runBtn.disabled = true;
+      stepBtn.disabled = true;
       runBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span><span>Running...</span>';
     } else if (message.type === 'executeResult') {
       isExecuting = false;
       runBtn.disabled = false;
+      stepBtn.disabled = false;
       runBtn.innerHTML = '<span>▶</span><span>Run Script</span>';
       outputSection.classList.add('visible');
       executionTime.textContent = message.executionTimeMs + 'ms';
@@ -594,6 +1067,7 @@ export class ScriptRunnerPanel {
     } else if (message.type === 'executeError') {
       isExecuting = false;
       runBtn.disabled = false;
+      stepBtn.disabled = false;
       runBtn.innerHTML = '<span>▶</span><span>Run Script</span>';
       outputSection.classList.add('visible');
       executionTime.textContent = '';
@@ -603,7 +1077,100 @@ export class ScriptRunnerPanel {
         outputContainer.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
       }
     }
+    // Step-through execution message handlers
+    else if (message.type === 'stepStarting') {
+      isStepping = true;
+      runBtn.disabled = true;
+      stepBtn.disabled = true;
+      stepBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span><span>Starting...</span>';
+    } else if (message.type === 'stepStarted') {
+      isStepping = true;
+      stepBtn.innerHTML = '<span>⏸</span><span>Step</span>';
+      stepPanel.classList.add('visible');
+      outputSection.classList.remove('visible');
+      updateStepState(message.state);
+    } else if (message.type === 'stepExecuting') {
+      stepNextBtn.disabled = true;
+      stepContinueBtn.disabled = true;
+      stepNextBtn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;"></span> Executing...';
+    } else if (message.type === 'stepResult') {
+      stepNextBtn.disabled = false;
+      stepContinueBtn.disabled = false;
+      stepNextBtn.innerHTML = '<span>→</span> Step Next';
+      updateStepState(message.state);
+      if (message.isComplete) {
+        showStepComplete(message.state);
+      }
+    } else if (message.type === 'stepContinuing') {
+      stepNextBtn.disabled = true;
+      stepContinueBtn.disabled = true;
+      stepContinueBtn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;"></span> Running...';
+    } else if (message.type === 'stepComplete') {
+      isStepping = false;
+      runBtn.disabled = false;
+      stepBtn.disabled = false;
+      stepPanel.classList.remove('visible');
+      outputSection.classList.add('visible');
+      executionTime.textContent = message.executionTimeMs + 'ms';
+      outputContainer.innerHTML = '<div class="output-box success">' + escapeHtml(JSON.stringify(message.outputs, null, 2)) + '</div>';
+    } else if (message.type === 'stepStopped') {
+      isStepping = false;
+      runBtn.disabled = false;
+      stepBtn.disabled = false;
+      stepBtn.innerHTML = '<span>⏸</span><span>Step</span>';
+      stepPanel.classList.remove('visible');
+      resetStepControls();
+    } else if (message.type === 'stepError') {
+      isStepping = false;
+      runBtn.disabled = false;
+      stepBtn.disabled = false;
+      stepBtn.innerHTML = '<span>⏸</span><span>Step</span>';
+      stepPanel.classList.remove('visible');
+      outputSection.classList.add('visible');
+      executionTime.textContent = '';
+      outputContainer.innerHTML = '<div class="error-box">' + escapeHtml(message.error) + '</div>';
+      resetStepControls();
+    }
   });
+
+  function updateStepState(state) {
+    if (!state) return;
+    stepProgress.textContent = 'Batch ' + state.currentBatch + '/' + state.totalBatches;
+
+    var html = '';
+    for (var i = 0; i < state.completedNodes.length; i++) {
+      var node = state.completedNodes[i];
+      html += '<div class="completed-node">';
+      html += '<span class="node-icon">✓</span>';
+      html += '<span class="node-name">' + escapeHtml(node.nodeName) + '</span>';
+      html += '<span class="node-type">' + escapeHtml(node.nodeType) + '</span>';
+      html += '<span class="node-value" title="' + escapeHtml(node.valuePreview) + '">' + escapeHtml(node.valuePreview) + '</span>';
+      if (node.durationMs) {
+        html += '<span class="node-duration">' + node.durationMs + 'ms</span>';
+      }
+      html += '</div>';
+    }
+    completedNodesEl.innerHTML = html;
+  }
+
+  function showStepComplete(state) {
+    stepNextBtn.disabled = true;
+    stepContinueBtn.disabled = true;
+    stepProgress.textContent = 'Complete!';
+    stepProgress.style.background = 'rgba(78, 201, 176, 0.15)';
+    stepProgress.style.color = 'var(--vscode-terminal-ansiGreen, #4ec9b0)';
+  }
+
+  function resetStepControls() {
+    stepNextBtn.disabled = false;
+    stepContinueBtn.disabled = false;
+    stepNextBtn.innerHTML = '<span>→</span> Step Next';
+    stepContinueBtn.innerHTML = '<span>▶▶</span> Continue';
+    stepProgress.textContent = 'Batch 0/0';
+    stepProgress.style.background = '';
+    stepProgress.style.color = '';
+    completedNodesEl.innerHTML = '';
+  }
 
   function renderInputs(inputs) {
     if (!inputs || inputs.length === 0) {
