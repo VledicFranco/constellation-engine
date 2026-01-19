@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean
+.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean coverage coverage-report coverage-html
 
 # Default target
 help:
@@ -33,6 +33,11 @@ help:
 	@echo "  make test-compiler  - Test compiler module only"
 	@echo "  make test-lsp       - Test LSP module only"
 	@echo "  make test-fast      - Run tests without recompilation"
+	@echo ""
+	@echo "Code Coverage:"
+	@echo "  make coverage       - Run tests with coverage and generate reports"
+	@echo "  make coverage-report- Generate coverage report (after running tests)"
+	@echo "  make coverage-html  - Open HTML coverage report in browser"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -153,6 +158,37 @@ test-http:
 
 test-stdlib:
 	sbt "langStdlib/test"
+
+# =============================================================================
+# Code Coverage
+# =============================================================================
+
+# Run tests with coverage and generate reports
+coverage:
+	@echo "Running tests with coverage..."
+	sbt clean coverage test coverageReport coverageAggregate
+	@echo ""
+	@echo "Coverage reports generated:"
+	@echo "  - HTML: target/scala-3.3.1/scoverage-report/index.html"
+	@echo "  - XML:  target/scala-3.3.1/scoverage-report/scoverage.xml"
+	@echo "  - Aggregate: target/scala-3.3.1/scoverage-report/index.html"
+
+# Generate coverage report (run after 'sbt coverage test')
+coverage-report:
+	@echo "Generating coverage reports..."
+	sbt coverageReport coverageAggregate
+
+# Open HTML coverage report in browser
+coverage-html:
+	@echo "Opening coverage report..."
+	@if [ -f target/scala-3.3.1/scoverage-report/index.html ]; then \
+		xdg-open target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
+		open target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
+		start target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
+		echo "Please open target/scala-3.3.1/scoverage-report/index.html in your browser"; \
+	else \
+		echo "Coverage report not found. Run 'make coverage' first."; \
+	fi
 
 # =============================================================================
 # Setup

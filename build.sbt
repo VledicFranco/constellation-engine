@@ -8,6 +8,13 @@ ThisBuild / scalacOptions ++= Seq(
   "-unchecked",
 )
 
+// Code coverage settings
+ThisBuild / coverageEnabled := false // Enable via `sbt coverage` command
+ThisBuild / coverageHighlighting := true
+ThisBuild / coverageFailOnMinimum := false // Set to true in CI to enforce thresholds
+ThisBuild / coverageMinimumStmtTotal := 60
+ThisBuild / coverageMinimumBranchTotal := 50
+
 // Logging dependencies (shared across modules)
 val log4catsVersion = "2.6.0"
 val logbackVersion = "1.4.11"
@@ -23,6 +30,8 @@ lazy val core = project
   .in(file("modules/core"))
   .settings(
     name := "constellation-core",
+    coverageMinimumStmtTotal := 80,
+    coverageMinimumBranchTotal := 70,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
@@ -39,6 +48,8 @@ lazy val runtime = project
   .dependsOn(core)
   .settings(
     name := "constellation-runtime",
+    coverageMinimumStmtTotal := 75,
+    coverageMinimumBranchTotal := 65,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
@@ -51,6 +62,8 @@ lazy val langAst = (project in file("modules/lang-ast"))
   .dependsOn(core)
   .settings(
     name := "constellation-lang-ast",
+    coverageMinimumStmtTotal := 70,
+    coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     )
@@ -61,6 +74,8 @@ lazy val langParser = (project in file("modules/lang-parser"))
   .dependsOn(langAst)
   .settings(
     name := "constellation-lang-parser",
+    coverageMinimumStmtTotal := 80,
+    coverageMinimumBranchTotal := 70,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-parse" % "1.0.0",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
@@ -72,6 +87,8 @@ lazy val langCompiler = (project in file("modules/lang-compiler"))
   .dependsOn(langAst, langParser, runtime)
   .settings(
     name := "constellation-lang-compiler",
+    coverageMinimumStmtTotal := 75,
+    coverageMinimumBranchTotal := 65,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
@@ -84,6 +101,8 @@ lazy val langStdlib = (project in file("modules/lang-stdlib"))
   .dependsOn(runtime, langCompiler)
   .settings(
     name := "constellation-lang-stdlib",
+    coverageMinimumStmtTotal := 70,
+    coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     )
@@ -94,6 +113,8 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
   .dependsOn(runtime, langCompiler)
   .settings(
     name := "constellation-lang-lsp",
+    coverageMinimumStmtTotal := 60,
+    coverageMinimumBranchTotal := 50,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
@@ -109,6 +130,8 @@ lazy val httpApi = (project in file("modules/http-api"))
   .dependsOn(runtime, langCompiler, langStdlib, langLsp)
   .settings(
     name := "constellation-http-api",
+    coverageMinimumStmtTotal := 60,
+    coverageMinimumBranchTotal := 50,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-ember-server" % "0.23.25",
       "org.http4s" %% "http4s-ember-client" % "0.23.25",
@@ -123,6 +146,8 @@ lazy val exampleApp = (project in file("modules/example-app"))
   .dependsOn(runtime, langCompiler, langStdlib, httpApi)
   .settings(
     name := "constellation-example-app",
+    coverageMinimumStmtTotal := 70,
+    coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     ) ++ loggingDeps

@@ -1,5 +1,8 @@
 # Constellation Engine
 
+[![CI](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/VledicFranco/constellation-engine/graph/badge.svg)](https://codecov.io/gh/VledicFranco/constellation-engine)
+
 A Scala 3 framework for building type-safe ML pipeline DAGs with a declarative domain-specific language.
 
 ## What is Constellation Engine?
