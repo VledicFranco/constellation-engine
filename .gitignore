@@ -42,6 +42,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# MCP Server
+constellation-repo-dev-mcp/dist/
+constellation-repo-dev-mcp/node_modules/
+.mcp-cache/
+
 # =============================================================================
 # OS Files
 # =============================================================================
