@@ -603,4 +603,711 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     dagResponse.result shouldBe defined
     execResponse.result shouldBe defined
   }
+
+  // ========== Additional Coverage Tests ==========
+
+  it should "handle completion at various positions" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = ")
+        ).asJson)
+      ))
+
+      // Completion at beginning of line
+      response1 <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "textDocument/completion",
+        params = Some(CompletionParams(
+          textDocument = TextDocumentIdentifier("file:///test.cst"),
+          position = Position(1, 0)
+        ).asJson)
+      ))
+
+      // Completion at end of line
+      response2 <- server.handleRequest(Request(
+        id = StringId("2"),
+        method = "textDocument/completion",
+        params = Some(CompletionParams(
+          textDocument = TextDocumentIdentifier("file:///test.cst"),
+          position = Position(1, 9)
+        ).asJson)
+      ))
+    } yield (response1, response2)
+
+    val (response1, response2) = result.unsafeRunSync()
+    response1.error shouldBe None
+    response2.error shouldBe None
+  }
+
+  it should "handle hover at variable position" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///test.cst", "constellation", 1, "in myVariable: String\nresult = Uppercase(myVariable)\nout result")
+        ).asJson)
+      ))
+
+      // Hover over variable
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "textDocument/hover",
+        params = Some(HoverParams(
+          textDocument = TextDocumentIdentifier("file:///test.cst"),
+          position = Position(1, 22) // Position at myVariable
+        ).asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe None
+  }
+
+  it should "handle getInputSchema with syntax error" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///error.cst", "constellation", 1, "in text: String\nresult = InvalidSyntax(((\nout result")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///error.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle executePipeline with missing input" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/executePipeline",
+        params = Some(ExecutePipelineParams(
+          uri = "file:///test.cst",
+          inputs = Map.empty // Missing required input
+        ).asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    // Should indicate an error about missing input
+  }
+
+  it should "handle step-through execution workflow" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///step.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
+        ).asJson)
+      ))
+
+      // Start step execution
+      startResponse <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStart",
+        params = Some(StepStartParams(
+          uri = "file:///step.cst",
+          inputs = Map("text" -> Json.fromString("test"))
+        ).asJson)
+      ))
+
+      // Extract session ID
+      sessionIdOpt = for {
+        result <- startResponse.result
+        obj <- result.asObject
+        sessionId <- obj("sessionId").flatMap(_.asString)
+      } yield sessionId
+
+      // Step next (if we have a session)
+      nextResponse <- sessionIdOpt match {
+        case Some(sessionId) =>
+          server.handleRequest(Request(
+            id = StringId("2"),
+            method = "constellation/stepNext",
+            params = Some(StepNextParams(sessionId).asJson)
+          ))
+        case None =>
+          IO.pure(Response(id = StringId("2"), result = None))
+      }
+
+      // Continue to end (if we have a session)
+      continueResponse <- sessionIdOpt match {
+        case Some(sessionId) =>
+          server.handleRequest(Request(
+            id = StringId("3"),
+            method = "constellation/stepContinue",
+            params = Some(StepContinueParams(sessionId).asJson)
+          ))
+        case None =>
+          IO.pure(Response(id = StringId("3"), result = None))
+      }
+
+      // Stop session (if we have one)
+      stopResponse <- sessionIdOpt match {
+        case Some(sessionId) =>
+          server.handleRequest(Request(
+            id = StringId("4"),
+            method = "constellation/stepStop",
+            params = Some(StepStopParams(sessionId).asJson)
+          ))
+        case None =>
+          IO.pure(Response(id = StringId("4"), result = None))
+      }
+    } yield (startResponse, nextResponse, continueResponse, stopResponse)
+
+    val (startResponse, nextResponse, continueResponse, stopResponse) = result.unsafeRunSync()
+    startResponse.result shouldBe defined
+  }
+
+  it should "handle didChange with invalid params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didChange",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  it should "handle getDagStructure with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getDagStructure",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle executePipeline with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/executePipeline",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepStart with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStart",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepContinue with invalid session" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepContinue",
+        params = Some(StepContinueParams("non-existent-session").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+  }
+
+  it should "handle request with numeric ID" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = NumberId(12345),
+        method = "shutdown",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.id shouldBe NumberId(12345)
+    response.result shouldBe Some(Json.Null)
+  }
+
+  // ========== Input Schema with Various Types ==========
+
+  it should "handle getInputSchema with Int type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in count: Int\nout count")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+  }
+
+  it should "handle getInputSchema with Float type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in value: Float\nout value")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle getInputSchema with Boolean type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in flag: Boolean\nout flag")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle getInputSchema with List type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in items: List<String>\nout items")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle getInputSchema with Map type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in mapping: Map<String, Int>\nout mapping")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle getInputSchema with record type" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///types.cst", "constellation", 1, "in person: { name: String, age: Int }\nout person")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+  }
+
+  it should "handle getInputSchema for document not found" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///notfound.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain("Document not found")
+  }
+
+  it should "handle getInputSchema with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  // ========== Execute Pipeline Error Cases ==========
+
+  it should "handle executePipeline for document not found" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/executePipeline",
+        params = Some(ExecutePipelineParams(
+          uri = "file:///notfound.cst",
+          inputs = Map("text" -> Json.fromString("test"))
+        ).asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain("Document not found")
+  }
+
+  // ========== getDagStructure Error Cases ==========
+
+  it should "handle getDagStructure with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getDagStructure",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle getDagStructure with compile error" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///error.cst", "constellation", 1, "in text: String\nresult = UnknownModule(text)\nout result")
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getDagStructure",
+        params = Some(GetDagStructureParams("file:///error.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+  }
+
+  // ========== Step Execution Error Cases ==========
+
+  it should "handle stepStart with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStart",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepStart for document not found" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStart",
+        params = Some(StepStartParams(
+          uri = "file:///notfound.cst",
+          inputs = Map("text" -> Json.fromString("test"))
+        ).asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+  }
+
+  it should "handle stepNext with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepNext",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepNext with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepNext",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepContinue with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepContinue",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepContinue with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepContinue",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepStop with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStop",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle stepStop with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/stepStop",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  // ========== Notification Edge Cases ==========
+
+  it should "handle didOpen with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  it should "handle didClose with malformed params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didClose",
+        params = Some(Json.obj("invalid" -> Json.fromString("params")))
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  it should "handle didOpen with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = None
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  it should "handle didChange with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didChange",
+        params = None
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  it should "handle didClose with missing params" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didClose",
+        params = None
+      ))
+    } yield ()
+
+    // Should complete without throwing
+    result.unsafeRunSync()
+  }
+
+  // ========== Multiple Input Types ==========
+
+  it should "handle getInputSchema with multiple inputs of different types" in {
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///multi.cst", "constellation", 1,
+            """in name: String
+              |in count: Int
+              |in factor: Float
+              |in enabled: Boolean
+              |out name""".stripMargin)
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("1"),
+        method = "constellation/getInputSchema",
+        params = Some(GetInputSchemaParams("file:///multi.cst").asJson)
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+  }
 }

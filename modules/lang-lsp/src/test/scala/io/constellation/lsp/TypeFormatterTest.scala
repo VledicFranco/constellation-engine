@@ -45,6 +45,31 @@ class TypeFormatterTest extends AnyFlatSpec with Matchers {
     TypeFormatter.formatCType(nested) shouldBe "List<Map<String, Int>>"
   }
 
+  it should "format optional types" in {
+    TypeFormatter.formatCType(CType.COptional(CType.CString)) shouldBe "Optional<String>"
+    TypeFormatter.formatCType(CType.COptional(CType.CInt)) shouldBe "Optional<Int>"
+  }
+
+  it should "format nested optional types" in {
+    val nested = CType.COptional(CType.CList(CType.CString))
+    TypeFormatter.formatCType(nested) shouldBe "Optional<List<String>>"
+  }
+
+  it should "format deeply nested types" in {
+    val deep = CType.CList(CType.COptional(CType.CMap(CType.CString, CType.CList(CType.CInt))))
+    TypeFormatter.formatCType(deep) shouldBe "List<Optional<Map<String, List<Int>>>>"
+  }
+
+  it should "format empty product type" in {
+    val emptyProduct = CType.CProduct(Map.empty)
+    TypeFormatter.formatCType(emptyProduct) shouldBe "{  }"
+  }
+
+  it should "format empty union type" in {
+    val emptyUnion = CType.CUnion(Map.empty)
+    TypeFormatter.formatCType(emptyUnion) shouldBe "()"
+  }
+
   "TypeFormatter.formatSignature" should "format simple function signature" in {
     val sig = TypeFormatter.formatSignature(
       "Uppercase",

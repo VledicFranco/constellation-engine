@@ -244,6 +244,22 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
     result.isLeft shouldBe true
   }
 
+  it should "fail on zero severity value" in {
+    val result = Json.fromInt(0).as[DiagnosticSeverity]
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Unknown diagnostic severity")
+  }
+
+  it should "fail on negative severity value" in {
+    val result = Json.fromInt(-1).as[DiagnosticSeverity]
+    result.isLeft shouldBe true
+  }
+
+  it should "fail on non-integer JSON values" in {
+    val result = Json.fromString("Error").as[DiagnosticSeverity]
+    result.isLeft shouldBe true
+  }
+
   // ========== Diagnostic Tests ==========
 
   "Diagnostic" should "serialize with all fields" in {
@@ -309,6 +325,31 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "fail on unknown kind value" in {
     val result = Json.fromInt(999).as[CompletionItemKind]
+    result.isLeft shouldBe true
+  }
+
+  it should "serialize all completion item kinds" in {
+    CompletionItemKind.Method.asJson shouldBe Json.fromInt(2)
+    CompletionItemKind.Constructor.asJson shouldBe Json.fromInt(4)
+    CompletionItemKind.Field.asJson shouldBe Json.fromInt(5)
+    CompletionItemKind.Variable.asJson shouldBe Json.fromInt(6)
+    CompletionItemKind.Class.asJson shouldBe Json.fromInt(7)
+    CompletionItemKind.Property.asJson shouldBe Json.fromInt(10)
+    CompletionItemKind.Snippet.asJson shouldBe Json.fromInt(15)
+  }
+
+  it should "deserialize all completion item kinds" in {
+    Json.fromInt(2).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Method)
+    Json.fromInt(4).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Constructor)
+    Json.fromInt(5).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Field)
+    Json.fromInt(6).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Variable)
+    Json.fromInt(7).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Class)
+    Json.fromInt(10).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Property)
+    Json.fromInt(15).as[CompletionItemKind] shouldBe Right(CompletionItemKind.Snippet)
+  }
+
+  it should "fail for non-integer JSON values" in {
+    val result = Json.fromString("Text").as[CompletionItemKind]
     result.isLeft shouldBe true
   }
 
@@ -518,5 +559,250 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
     json should include("\"relatedInformation\":")
     json should include("\"Declared here\"")
+  }
+
+  it should "round-trip with multiple related information items" in {
+    val original = Diagnostic(
+      range = Range(Position(1, 0), Position(1, 15)),
+      severity = Some(DiagnosticSeverity.Warning),
+      code = Some("W001"),
+      source = Some("compiler"),
+      message = "Warning message",
+      relatedInformation = Some(List(
+        DiagnosticRelatedInformation(
+          location = Location("file:///a.cst", Range(Position(0, 0), Position(0, 5))),
+          message = "First related"
+        ),
+        DiagnosticRelatedInformation(
+          location = Location("file:///b.cst", Range(Position(10, 0), Position(10, 10))),
+          message = "Second related"
+        ),
+        DiagnosticRelatedInformation(
+          location = Location("file:///c.cst", Range(Position(20, 5), Position(20, 15))),
+          message = "Third related"
+        )
+      ))
+    )
+    val json = original.asJson
+    val parsed = json.as[Diagnostic]
+
+    parsed shouldBe Right(original)
+  }
+
+  // ========== Additional Coverage Tests ==========
+
+  "Diagnostic" should "round-trip with Information severity" in {
+    val original = Diagnostic(
+      range = Range(Position(0, 0), Position(0, 10)),
+      severity = Some(DiagnosticSeverity.Information),
+      code = Some("I001"),
+      source = Some("lsp"),
+      message = "Information diagnostic"
+    )
+    val json = original.asJson
+    val parsed = json.as[Diagnostic]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with Hint severity" in {
+    val original = Diagnostic(
+      range = Range(Position(5, 5), Position(5, 15)),
+      severity = Some(DiagnosticSeverity.Hint),
+      code = Some("H001"),
+      source = Some("lsp"),
+      message = "Hint diagnostic"
+    )
+    val json = original.asJson
+    val parsed = json.as[Diagnostic]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with empty relatedInformation list" in {
+    val original = Diagnostic(
+      range = Range(Position(0, 0), Position(0, 5)),
+      severity = Some(DiagnosticSeverity.Error),
+      code = Some("E001"),
+      source = Some("test"),
+      message = "Test message",
+      relatedInformation = Some(List.empty)
+    )
+    val json = original.asJson
+    val parsed = json.as[Diagnostic]
+
+    parsed shouldBe Right(original)
+  }
+
+  "CompletionItem" should "serialize with Module kind" in {
+    val item = CompletionItem(
+      label = "MyModule",
+      kind = Some(CompletionItemKind.Module),
+      detail = Some("A module"),
+      documentation = None,
+      insertText = None,
+      filterText = None,
+      sortText = None
+    )
+    val json = item.asJson.noSpaces
+
+    json should include("\"kind\":9")
+  }
+
+  it should "round-trip with all completion kinds" in {
+    val kinds = List(
+      CompletionItemKind.Text,
+      CompletionItemKind.Method,
+      CompletionItemKind.Function,
+      CompletionItemKind.Constructor,
+      CompletionItemKind.Field,
+      CompletionItemKind.Variable,
+      CompletionItemKind.Class,
+      CompletionItemKind.Module,
+      CompletionItemKind.Property,
+      CompletionItemKind.Keyword,
+      CompletionItemKind.Snippet
+    )
+
+    kinds.foreach { kind =>
+      val original = CompletionItem(
+        label = s"Item_$kind",
+        kind = Some(kind),
+        detail = Some(s"Detail for $kind"),
+        documentation = None,
+        insertText = None,
+        filterText = None,
+        sortText = None
+      )
+      val json = original.asJson
+      val parsed = json.as[CompletionItem]
+
+      parsed shouldBe Right(original)
+    }
+  }
+
+  it should "round-trip with no kind" in {
+    val original = CompletionItem(
+      label = "NoKind",
+      kind = None,
+      detail = None,
+      documentation = None,
+      insertText = None,
+      filterText = None,
+      sortText = None
+    )
+    val json = original.asJson
+    val parsed = json.as[CompletionItem]
+
+    parsed shouldBe Right(original)
+  }
+
+  "CompletionList" should "round-trip with large item list" in {
+    val items = (1 to 20).map { i =>
+      CompletionItem(
+        label = s"Item$i",
+        kind = Some(CompletionItemKind.Function),
+        detail = Some(s"Function $i"),
+        documentation = Some(s"Documentation for function $i"),
+        insertText = Some(s"Item$i()"),
+        filterText = Some(s"item$i"),
+        sortText = Some(f"$i%03d")
+      )
+    }.toList
+
+    val original = CompletionList(
+      isIncomplete = false,
+      items = items
+    )
+    val json = original.asJson
+    val parsed = json.as[CompletionList]
+
+    parsed shouldBe Right(original)
+  }
+
+  "TextDocumentContentChangeEvent" should "round-trip with range and no rangeLength" in {
+    val original = TextDocumentContentChangeEvent(
+      range = Some(Range(Position(5, 10), Position(5, 20))),
+      rangeLength = None,
+      text = "new text"
+    )
+    val json = original.asJson
+    val parsed = json.as[TextDocumentContentChangeEvent]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with large text content" in {
+    val largeText = "x" * 10000
+    val original = TextDocumentContentChangeEvent(
+      range = None,
+      rangeLength = None,
+      text = largeText
+    )
+    val json = original.asJson
+    val parsed = json.as[TextDocumentContentChangeEvent]
+
+    parsed shouldBe Right(original)
+  }
+
+  "Position" should "handle large line numbers" in {
+    val original = Position(1000000, 5000)
+    val json = original.asJson
+    val parsed = json.as[Position]
+
+    parsed shouldBe Right(original)
+  }
+
+  "Range" should "handle same start and end position" in {
+    val pos = Position(5, 10)
+    val original = Range(pos, pos)
+    val json = original.asJson
+    val parsed = json.as[Range]
+
+    parsed shouldBe Right(original)
+  }
+
+  "Location" should "handle URI with special characters" in {
+    val original = Location(
+      uri = "file:///path%20with%20spaces/test.cst",
+      range = Range(Position(0, 0), Position(0, 5))
+    )
+    val json = original.asJson
+    val parsed = json.as[Location]
+
+    parsed shouldBe Right(original)
+  }
+
+  "Hover" should "round-trip with None range" in {
+    val original = Hover(
+      contents = MarkupContent("plaintext", "Some hover text"),
+      range = None
+    )
+    val json = original.asJson
+    val parsed = json.as[Hover]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "handle multi-line markdown content" in {
+    val content = """# Header
+                    |
+                    |## Subheader
+                    |
+                    |- Item 1
+                    |- Item 2
+                    |
+                    |```scala
+                    |def foo(): Unit = ()
+                    |```""".stripMargin
+
+    val original = Hover(
+      contents = MarkupContent("markdown", content),
+      range = Some(Range(Position(0, 0), Position(10, 0)))
+    )
+    val json = original.asJson
+    val parsed = json.as[Hover]
+
+    parsed shouldBe Right(original)
   }
 }

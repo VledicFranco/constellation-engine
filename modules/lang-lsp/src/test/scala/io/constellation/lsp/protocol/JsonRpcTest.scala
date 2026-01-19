@@ -46,6 +46,64 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
     parsed shouldBe Right(original)
   }
 
+  "RequestId.NullId" should "serialize to JSON null" in {
+    val id = NullId
+    id.asJson shouldBe Json.Null
+  }
+
+  it should "deserialize from JSON null" in {
+    val json = Json.Null
+    json.as[RequestId] shouldBe Right(NullId)
+  }
+
+  it should "round-trip through JSON" in {
+    val original: RequestId = NullId
+    val json = original.asJson
+    val parsed = json.as[RequestId]
+    parsed shouldBe Right(original)
+  }
+
+  "RequestId decoding" should "fail for boolean values" in {
+    val json = Json.fromBoolean(true)
+    val result = json.as[RequestId]
+    result.isLeft shouldBe true
+    result.left.toOption.get.message should include("must be string, number, or null")
+  }
+
+  it should "fail for object values" in {
+    val json = Json.obj("id" -> Json.fromInt(1))
+    val result = json.as[RequestId]
+    result.isLeft shouldBe true
+  }
+
+  it should "fail for array values" in {
+    val json = Json.arr(Json.fromInt(1), Json.fromInt(2))
+    val result = json.as[RequestId]
+    result.isLeft shouldBe true
+  }
+
+  it should "handle negative number IDs" in {
+    val json = Json.fromInt(-42)
+    json.as[RequestId] shouldBe Right(NumberId(-42))
+  }
+
+  it should "handle empty string IDs" in {
+    val json = Json.fromString("")
+    json.as[RequestId] shouldBe Right(StringId(""))
+  }
+
+  it should "handle very long string IDs" in {
+    val longId = "x" * 10000
+    val json = Json.fromString(longId)
+    json.as[RequestId] shouldBe Right(StringId(longId))
+  }
+
+  it should "handle large number IDs" in {
+    val largeNumber = Long.MaxValue
+    val json = Json.fromLong(largeNumber)
+    json.as[RequestId] shouldBe Right(NumberId(largeNumber))
+  }
+
   // ========== Request Tests ==========
 
   "Request" should "serialize with all fields" in {
