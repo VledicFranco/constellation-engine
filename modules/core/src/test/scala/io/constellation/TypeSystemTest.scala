@@ -154,6 +154,110 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     CValue.CNone(CType.CInt).ctype shouldBe CType.COptional(CType.CInt)
   }
 
+// Test case classes for type derivation
+  case class SimpleRecord(name: String, age: Long)
+  case class NestedRecord(id: Long, data: SimpleRecord)
+  case class WithCollections(items: List[Long], mapping: Map[String, String])
+  case class WithOptional(value: Option[String])
+  case class EmptyRecord()
+  case class AllPrimitives(s: String, l: Long, d: Double, b: Boolean)
+
+  "deriveType" should "derive CType for simple case class" in {
+    val ctype = deriveType[SimpleRecord]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "name" -> CType.CString,
+        "age"  -> CType.CInt
+      )
+    )
+  }
+
+  it should "derive CType for nested case class" in {
+    val ctype = deriveType[NestedRecord]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "id" -> CType.CInt,
+        "data" -> CType.CProduct(
+          Map("name" -> CType.CString, "age" -> CType.CInt)
+        )
+      )
+    )
+  }
+
+  it should "derive CType with collection fields" in {
+    val ctype = deriveType[WithCollections]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "items"   -> CType.CList(CType.CInt),
+        "mapping" -> CType.CMap(CType.CString, CType.CString)
+      )
+    )
+  }
+
+  it should "derive CType with Optional field" in {
+    val ctype = deriveType[WithOptional]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "value" -> CType.COptional(CType.CString)
+      )
+    )
+  }
+
+  it should "derive CType for empty case class" in {
+    val ctype = deriveType[EmptyRecord]
+    ctype shouldBe CType.CProduct(Map.empty)
+  }
+
+  it should "derive CType with all primitive types" in {
+    val ctype = deriveType[AllPrimitives]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "s" -> CType.CString,
+        "l" -> CType.CInt,
+        "d" -> CType.CFloat,
+        "b" -> CType.CBoolean
+      )
+    )
+  }
+
+  "CTypeTag.productTag" should "be summoned for case class" in {
+    val tag = summon[CTypeTag[SimpleRecord]]
+    tag.cType shouldBe CType.CProduct(
+      Map(
+        "name" -> CType.CString,
+        "age"  -> CType.CInt
+      )
+    )
+  }
+
+  it should "not interfere with primitive type tags" in {
+    // Verify primitive types still work correctly (no ambiguity)
+    summon[CTypeTag[String]].cType shouldBe CType.CString
+    summon[CTypeTag[Long]].cType shouldBe CType.CInt
+    summon[CTypeTag[Double]].cType shouldBe CType.CFloat
+    summon[CTypeTag[Boolean]].cType shouldBe CType.CBoolean
+    summon[CTypeTag[List[String]]].cType shouldBe CType.CList(CType.CString)
+    summon[CTypeTag[Map[String, Long]]].cType shouldBe CType.CMap(CType.CString, CType.CInt)
+    summon[CTypeTag[Option[String]]].cType shouldBe CType.COptional(CType.CString)
+  }
+
+  it should "work with deeply nested structures" in {
+    case class DeepNest(inner: NestedRecord)
+    val ctype = deriveType[DeepNest]
+    ctype shouldBe CType.CProduct(
+      Map(
+        "inner" -> CType.CProduct(
+          Map(
+            "id" -> CType.CInt,
+            "data" -> CType.CProduct(
+              Map("name" -> CType.CString, "age" -> CType.CInt)
+            )
+          )
+        )
+      )
+    )
+  }
+
   "Roundtrip" should "inject and extract values correctly" in {
     def roundtrip[A](value: A)(using
         injector: CValueInjector[A],

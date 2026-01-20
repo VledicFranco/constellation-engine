@@ -2,6 +2,8 @@ package io.constellation
 
 import cats.effect.IO
 import cats.implicits.toTraverseOps
+import scala.deriving.Mirror
+import scala.compiletime.{constValue, erasedValue, summonInline}
 
 /** Constellation Type System
   *
@@ -164,7 +166,70 @@ object CTypeTag {
 
   given optionTag[A](using innerTag: CTypeTag[A]): CTypeTag[Option[A]] =
     of[Option[A]](CType.COptional(innerTag.cType))
+
+  /** Derive CTypeTag for a case class using Scala 3 Mirrors.
+    *
+    * This given has lower priority than primitive type tags, ensuring that primitive types like
+    * String, Long, Double, Boolean are resolved correctly without ambiguity.
+    *
+    * @tparam T
+    *   A case class type (Product)
+    * @return
+    *   CTypeTag[T] with CType.CProduct containing the field structure
+    */
+  inline given productTag[T <: Product](using m: Mirror.ProductOf[T]): CTypeTag[T] = {
+    val fieldNames = getLabels[m.MirroredElemLabels]
+    val fieldTypes = getTypes[m.MirroredElemTypes]
+    val structure  = fieldNames.zip(fieldTypes).toMap
+    of[T](CType.CProduct(structure))
+  }
+
+  private inline def getLabels[T <: Tuple]: List[String] =
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (h *: t)   => constValue[h].asInstanceOf[String] :: getLabels[t]
+    }
+
+  private inline def getTypes[T <: Tuple]: List[CType] =
+    inline erasedValue[T] match {
+      case _: EmptyTuple => Nil
+      case _: (h *: t)   => summonInline[CTypeTag[h]].cType :: getTypes[t]
+    }
 }
+
+/** Convenience function to derive CType from a Scala type.
+  *
+  * This function uses the CTypeTag type class to convert Scala types to their corresponding CType
+  * representation. It works with primitive types, collections, and case classes (via Scala 3
+  * Mirrors).
+  *
+  * ==Examples==
+  * {{{
+  * // Primitive types
+  * deriveType[String]  // => CType.CString
+  * deriveType[Long]    // => CType.CInt
+  *
+  * // Collections
+  * deriveType[List[String]]        // => CType.CList(CType.CString)
+  * deriveType[Map[String, Long]]   // => CType.CMap(CType.CString, CType.CInt)
+  *
+  * // Case classes
+  * case class Person(name: String, age: Long)
+  * deriveType[Person]  // => CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
+  *
+  * // Nested case classes
+  * case class Team(leader: Person, size: Long)
+  * deriveType[Team]    // => CType.CProduct(Map("leader" -> CType.CProduct(...), "size" -> CType.CInt))
+  * }}}
+  *
+  * @tparam T
+  *   The Scala type to derive CType from
+  * @param tag
+  *   Implicit CTypeTag instance (resolved at compile time)
+  * @return
+  *   The CType representation of type T
+  */
+inline def deriveType[T](using tag: CTypeTag[T]): CType = tag.cType
 
 trait CValueExtractor[A] {
 

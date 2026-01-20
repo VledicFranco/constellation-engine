@@ -645,8 +645,8 @@ object Module {
         .map(Namespace(_))
   }
 
-  // TODO: Phase 4 - Implement with Scala 3 Mirrors
-  // This will replace the shapeless-based implementation
+  // Type derivation using Scala 3 Mirrors
+  // User-facing API: TypeSystem.deriveType[T] and CTypeTag.productTag
   inline def uninitialized[I <: Product, O <: Product](
       partialSpec: ModuleNodeSpec,
       run0: I => IO[Module.Produces[O]]
