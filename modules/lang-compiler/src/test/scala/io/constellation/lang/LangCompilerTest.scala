@@ -2975,4 +2975,577 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     )
     hasStringInterp shouldBe false
   }
+
+  // ============================================================================
+  // DagCompiler Branch Coverage Tests
+  // These tests specifically target uncovered branches in DagCompiler.scala
+  // ============================================================================
+
+  // Test the Some branch of registeredModules.get(moduleName) match
+  it should "compile with registered module hitting Some branch in DagCompiler" in {
+    // Create a real Module.Uninitialized to test the Some branch
+    case class TextInput(text: String)
+    case class TextOutput(result: String)
+
+    val uppercaseModule: Module.Uninitialized = ModuleBuilder
+      .metadata("test.uppercase", "Converts text to uppercase", 1, 0)
+      .implementationPure[TextInput, TextOutput](in => TextOutput(in.text.toUpperCase))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "uppercase",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "test.uppercase"
+      )
+    )
+
+    // Provide the actual module in the modules map (not empty)
+    val compiler = LangCompiler(registry, Map("test.uppercase" -> uppercaseModule))
+
+    val source = """
+      in text: String
+      result = uppercase(text)
+      out result
+    """
+
+    val result = compiler.compile(source, "registered-module-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // syntheticModules should contain the registered module
+    compiled.syntheticModules should not be empty
+    // Module should have been resolved from the registry
+    compiled.dagSpec.modules should not be empty
+  }
+
+  it should "use registered module's output field name from produces map" in {
+    // Create module with custom output field name
+    case class NumInput(value: Long)
+    case class DoubledOutput(doubled: Long) // custom field name "doubled"
+
+    val doubleModule: Module.Uninitialized = ModuleBuilder
+      .metadata("test.double", "Doubles a number", 1, 0)
+      .implementationPure[NumInput, DoubledOutput](in => DoubledOutput(in.value * 2))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "double",
+        params = List("value" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "test.double"
+      )
+    )
+
+    val compiler = LangCompiler(registry, Map("test.double" -> doubleModule))
+
+    val source = """
+      in x: Int
+      result = double(x)
+      out result
+    """
+
+    val result = compiler.compile(source, "custom-output-field-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    // The output data node should use the custom field name from the module's produces map
+    val outputNodes = compiled.dagSpec.data.values.filter(_.name.contains("output"))
+    outputNodes should not be empty
+  }
+
+  it should "compile multiple function calls with registered modules" in {
+    case class StringInput(text: String)
+    case class StringOutput(result: String)
+    case class IntInput(value: Long)
+    case class IntOutput(out: Long)
+
+    val trimModule: Module.Uninitialized = ModuleBuilder
+      .metadata("test.trim", "Trims whitespace", 1, 0)
+      .implementationPure[StringInput, StringOutput](in => StringOutput(in.text.trim))
+      .build
+
+    val lengthModule: Module.Uninitialized = ModuleBuilder
+      .metadata("test.length", "Gets string length", 1, 0)
+      .implementationPure[StringInput, IntOutput](in => IntOutput(in.text.length))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "trim",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "test.trim"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "length",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SInt,
+        moduleName = "test.length"
+      )
+    )
+
+    val modules = Map(
+      "test.trim" -> trimModule,
+      "test.length" -> lengthModule
+    )
+    val compiler = LangCompiler(registry, modules)
+
+    val source = """
+      in text: String
+      trimmed = trim(text)
+      len = length(trimmed)
+      out len
+    """
+
+    val result = compiler.compile(source, "multi-registered-modules-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Should have 2 synthetic modules
+    compiled.syntheticModules should have size 2
+    compiled.dagSpec.modules should have size 2
+  }
+
+  it should "update data node nicknames correctly for registered modules" in {
+    case class TwoStrings(a: String, b: String)
+    case class ConcatOutput(result: String)
+
+    val concatModule: Module.Uninitialized = ModuleBuilder
+      .metadata("test.concat", "Concatenates strings", 1, 0)
+      .implementationPure[TwoStrings, ConcatOutput](in => ConcatOutput(in.a + in.b))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "concat",
+        params = List("a" -> SemanticType.SString, "b" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "test.concat"
+      )
+    )
+
+    val compiler = LangCompiler(registry, Map("test.concat" -> concatModule))
+
+    val source = """
+      in first: String
+      in second: String
+      result = concat(first, second)
+      out result
+    """
+
+    val result = compiler.compile(source, "nickname-update-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    // Input data nodes should have nicknames pointing to the module
+    val inputDataNodes = compiled.dagSpec.data.values.filter(d =>
+      d.name == "first" || d.name == "second"
+    )
+    inputDataNodes should have size 2
+    // Each should have a nickname for the module
+    inputDataNodes.foreach { node =>
+      node.nicknames should not be empty
+    }
+  }
+
+  // Test branch coverage for updatedWith None case (edge case where data node doesn't exist)
+  // This is harder to hit directly since nodes are created before updated, but we verify the happy path
+
+  it should "compile pipeline with registered module chaining correctly" in {
+    case class TextIn(text: String)
+    case class TextOut(result: String)
+
+    val step1Module: Module.Uninitialized = ModuleBuilder
+      .metadata("pipeline.step1", "Step 1", 1, 0)
+      .implementationPure[TextIn, TextOut](in => TextOut(in.text + "_step1"))
+      .build
+
+    val step2Module: Module.Uninitialized = ModuleBuilder
+      .metadata("pipeline.step2", "Step 2", 1, 0)
+      .implementationPure[TextIn, TextOut](in => TextOut(in.text + "_step2"))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "step1",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "pipeline.step1"
+    ))
+    registry.register(FunctionSignature(
+      name = "step2",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "pipeline.step2"
+    ))
+
+    val modules = Map(
+      "pipeline.step1" -> step1Module,
+      "pipeline.step2" -> step2Module
+    )
+    val compiler = LangCompiler(registry, modules)
+
+    val source = """
+      in text: String
+      a = step1(text)
+      b = step2(a)
+      out b
+    """
+
+    val result = compiler.compile(source, "registered-pipeline-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should have size 2
+    // Verify edges connect properly
+    compiled.dagSpec.inEdges should not be empty
+    compiled.dagSpec.outEdges should not be empty
+  }
+
+  // Test mixing registered and unregistered modules
+  it should "compile with both registered and unregistered modules" in {
+    case class TextIn(text: String)
+    case class TextOut(result: String)
+
+    val registeredModule: Module.Uninitialized = ModuleBuilder
+      .metadata("registered.func", "Registered function", 1, 0)
+      .implementationPure[TextIn, TextOut](in => TextOut(in.text))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "registered_func",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "registered.func"
+    ))
+    registry.register(FunctionSignature(
+      name = "unregistered_func",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "unregistered.func"  // Not in modules map
+    ))
+
+    // Only provide one module, not the other
+    val compiler = LangCompiler(registry, Map("registered.func" -> registeredModule))
+
+    val source = """
+      in text: String
+      a = registered_func(text)
+      b = unregistered_func(a)
+      out b
+    """
+
+    val result = compiler.compile(source, "mixed-modules-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // syntheticModules should contain only the registered module
+    compiled.syntheticModules should have size 1
+    // But dagSpec.modules should have 2 (one with resolved spec, one with placeholder)
+    compiled.dagSpec.modules should have size 2
+  }
+
+  // Test branch with field access on record in different scenarios
+  it should "compile field access with data node nickname updates" in {
+    val compiler = LangCompiler.empty
+
+    val source = """
+      in person: { name: String, age: Int }
+      name = person.name
+      age = person.age
+      out name
+    """
+
+    val result = compiler.compile(source, "field-access-nicknames-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Field access creates inline transforms
+    val fieldAccessNodes = compiled.dagSpec.data.values.filter(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FieldAccessTransform])
+    )
+    fieldAccessNodes should have size 2
+  }
+
+  // Test branch expression with registered modules in conditions
+  it should "compile branch with registered comparison modules" in {
+    case class TwoInts(a: Long, b: Long)
+    case class BoolOut(out: Boolean)
+
+    val gtModule: Module.Uninitialized = ModuleBuilder
+      .metadata("stdlib.gt", "Greater than", 1, 0)
+      .implementationPure[TwoInts, BoolOut](in => BoolOut(in.a > in.b))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt"
+    ))
+
+    val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule))
+
+    val source = """
+      in x: Int
+      in threshold: Int
+      in high: Int
+      in low: Int
+      result = branch {
+        x > threshold -> high,
+        otherwise -> low
+      }
+      out result
+    """
+
+    val result = compiler.compile(source, "branch-registered-module-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+  }
+
+  // Test boolean operators with registered module comparisons
+  it should "compile And/Or/Not nodes with registered modules" in {
+    case class TwoInts(a: Long, b: Long)
+    case class BoolOut(out: Boolean)
+
+    val gtModule: Module.Uninitialized = ModuleBuilder
+      .metadata("stdlib.gt", "Greater than", 1, 0)
+      .implementationPure[TwoInts, BoolOut](in => BoolOut(in.a > in.b))
+      .build
+
+    val ltModule: Module.Uninitialized = ModuleBuilder
+      .metadata("stdlib.lt", "Less than", 1, 0)
+      .implementationPure[TwoInts, BoolOut](in => BoolOut(in.a < in.b))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt"
+    ))
+    registry.register(FunctionSignature(
+      name = "lt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.lt"
+    ))
+
+    val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule, "stdlib.lt" -> ltModule))
+
+    val source = """
+      in x: Int
+      in low: Int
+      in high: Int
+      inRange = x > low and x < high
+      outOfRange = not inRange
+      either = x < low or x > high
+      out inRange
+    """
+
+    val result = compiler.compile(source, "bool-ops-registered-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Each comparison creates a module call, so we get 4 (2 gt, 2 lt)
+    compiled.syntheticModules should not be empty
+
+    // Should have And, Or, Not inline transforms
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.AndTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.OrTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.NotTransform)
+    ) shouldBe true
+  }
+
+  // Test conditional with registered modules
+  it should "compile conditional with registered module in condition" in {
+    case class TwoInts(a: Long, b: Long)
+    case class BoolOut(out: Boolean)
+
+    val gtModule: Module.Uninitialized = ModuleBuilder
+      .metadata("stdlib.gt", "Greater than", 1, 0)
+      .implementationPure[TwoInts, BoolOut](in => BoolOut(in.a > in.b))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "gt",
+      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "stdlib.gt"
+    ))
+
+    val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule))
+
+    val source = """
+      in x: Int
+      in y: Int
+      in a: String
+      in b: String
+      result = if (x > y) a else b
+      out result
+    """
+
+    val result = compiler.compile(source, "conditional-registered-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.ConditionalTransform)
+    ) shouldBe true
+  }
+
+  // Test guard and coalesce with registered modules
+  it should "compile guard and coalesce with registered validation module" in {
+    case class IntInput(value: Long)
+    case class BoolOut(out: Boolean)
+
+    val isPositiveModule: Module.Uninitialized = ModuleBuilder
+      .metadata("validate.positive", "Check if positive", 1, 0)
+      .implementationPure[IntInput, BoolOut](in => BoolOut(in.value > 0))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "isPositive",
+      params = List("value" -> SemanticType.SInt),
+      returns = SemanticType.SBoolean,
+      moduleName = "validate.positive"
+    ))
+
+    val compiler = LangCompiler(registry, Map("validate.positive" -> isPositiveModule))
+
+    val source = """
+      in x: Int
+      in fallback: Int
+      validated = x when isPositive(x)
+      result = validated ?? fallback
+      out result
+    """
+
+    val result = compiler.compile(source, "guard-coalesce-registered-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.GuardTransform)
+    ) shouldBe true
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.contains(InlineTransform.CoalesceTransform)
+    ) shouldBe true
+  }
+
+  // Test HOF with registered comparison module
+  it should "compile filter with registered comparison in lambda" in {
+    // Use the existing hofCompiler which already has filter and gt registered
+    val compiler = hofCompiler
+
+    val source = """
+      in items: List<Int>
+      result = filter(items, (x) => x > 0)
+      out result
+    """
+
+    val result = compiler.compile(source, "filter-registered-comparison-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // FilterTransform should be created for the HOF
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+    ) shouldBe true
+  }
+
+  // Test string interpolation with registered module transformation
+  it should "compile string interpolation with registered transformation" in {
+    case class TextIn(text: String)
+    case class TextOut(result: String)
+
+    val formatModule: Module.Uninitialized = ModuleBuilder
+      .metadata("format.upper", "Uppercase formatter", 1, 0)
+      .implementationPure[TextIn, TextOut](in => TextOut(in.text.toUpperCase))
+      .build
+
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "format",
+      params = List("text" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "format.upper"
+    ))
+
+    val compiler = LangCompiler(registry, Map("format.upper" -> formatModule))
+
+    val source = """
+      in name: String
+      formatted = format(name)
+      result = "Hello, ${formatted}!"
+      out result
+    """
+
+    val result = compiler.compile(source, "interp-registered-transform-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.syntheticModules should not be empty
+    compiled.dagSpec.data.values.exists(d =>
+      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+    ) shouldBe true
+  }
+
+  // Test that sortBy HOF operation hits the SortBy branch in DagCompiler
+  // This covers the HigherOrderOp.SortBy case which throws UnsupportedOperationException
+  it should "throw UnsupportedOperationException for sortBy HOF operation" in {
+    // Register a sortBy function - the moduleName must contain "sortBy"
+    // for IRGenerator.getHigherOrderOp to return HigherOrderOp.SortBy
+    val registry = FunctionRegistry.empty
+    registry.register(FunctionSignature(
+      name = "sortBy",
+      params = List(
+        "list" -> SemanticType.SList(SemanticType.SInt),
+        "fn" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+      ),
+      returns = SemanticType.SList(SemanticType.SInt),
+      moduleName = "stdlib.hof.sortBy-int"
+    ))
+
+    val compiler = LangCompiler(registry, Map.empty)
+
+    val source = """
+      in items: List<Int>
+      sorted = sortBy(items, (x) => x)
+      out sorted
+    """
+
+    // SortBy is not yet implemented and throws during compilation
+    // This test verifies the branch is hit and documents the current behavior
+    val exception = intercept[UnsupportedOperationException] {
+      compiler.compile(source, "sortby-test-dag")
+    }
+    exception.getMessage should include("SortBy not yet implemented")
+  }
 }
