@@ -127,7 +127,9 @@ object Runtime {
 
       // Create deferreds for data nodes with inline transforms
       inlineTransformTable <- initInlineTransformTable(dag)
-      dataTable = moduleDataTable ++ inlineTransformTable
+      // Create deferreds for user input data nodes (so inline transforms can read from them)
+      userInputTable <- initUserInputDataTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable ++ userInputTable
 
       contextRef <- initState(dag)
       runtime = Runtime(state = contextRef, table = dataTable)
@@ -176,7 +178,9 @@ object Runtime {
 
       // Create deferreds for data nodes with inline transforms
       inlineTransformTable <- initInlineTransformTable(dag)
-      dataTable = moduleDataTable ++ inlineTransformTable
+      // Create deferreds for user input data nodes (so inline transforms can read from them)
+      userInputTable <- initUserInputDataTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable ++ userInputTable
 
       contextRef <- initState(dag)
       runtime = Runtime(state = contextRef, table = dataTable)
@@ -232,7 +236,9 @@ object Runtime {
 
       // Create deferreds for inline transforms using pool
       inlineTransformTable <- initInlineTransformTablePooled(dag, pool.deferredPool)
-      dataTable = moduleDataTable ++ inlineTransformTable
+      // Create deferreds for user input data nodes (so inline transforms can read from them)
+      userInputTable <- initUserInputDataTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable ++ userInputTable
 
       // Use pooled state
       contextRef <- initState(dag)
@@ -273,7 +279,7 @@ object Runtime {
       dag: DagSpec,
       initData: Map[String, CValue]
   ): ValidatedNel[String, Unit] = {
-    val topLevelSpecs = dag.topLevelDataNodes.values
+    val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
       val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
@@ -305,7 +311,7 @@ object Runtime {
       initData: Map[String, RawValue],
       inputTypes: Map[String, CType]
   ): ValidatedNel[String, Unit] = {
-    val topLevelSpecs = dag.topLevelDataNodes.values
+    val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
       val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
@@ -386,7 +392,7 @@ object Runtime {
       initData: Map[String, CValue],
       runtime: Runtime
   ): IO[Unit] =
-    dag.topLevelDataNodes.toList.traverse { case (uuid, spec) =>
+    dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
       val nicknames = spec.nicknames.values.toList
       val optCValue = initData.collectFirst {
         case (name, cValue) if nicknames.contains(name) => cValue
@@ -410,7 +416,7 @@ object Runtime {
       inputTypes: Map[String, CType],
       runtime: Runtime
   ): IO[Unit] =
-    dag.topLevelDataNodes.toList.traverse { case (uuid, spec) =>
+    dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
       val nicknames = spec.nicknames.values.toList
       val optRawValue = initData.collectFirst {
         case (name, rawValue) if nicknames.contains(name) => (name, rawValue)
@@ -441,6 +447,14 @@ object Runtime {
         Deferred[IO, Any].map(dataId -> _)
       }
       .map(_.toMap)
+
+  /** Create deferreds for user input data nodes. These are needed so that inline transforms
+    * can read from user inputs (which may not be consumed by any module).
+    */
+  private def initUserInputDataTable(dag: DagSpec): IO[MutableDataTable] =
+    dag.userInputDataNodes.toList.traverse { case (dataId, _) =>
+      Deferred[IO, Any].map(dataId -> _)
+    }.map(_.toMap)
 
   /** Create deferreds for inline transforms using pooled Deferreds. This reduces allocation
     * overhead by acquiring Deferreds from the pool.
@@ -493,12 +507,84 @@ object Runtime {
 
           // Complete the output deferred
           _ <- runtime.setTableData(dataId, result)
+
+          // Also store result in state for output retrieval
+          cValue = anyToCValue(result, spec.cType)
+          _ <- runtime.setStateData(dataId, cValue)
         } yield ()
 
       case None =>
         // Should not happen - we filter for inlineTransform.isDefined above
         IO.unit
     }
+
+  /** Convert an Any value to CValue based on the expected CType.
+    * Used by inline transforms to store results in the state.
+    */
+  private def anyToCValue(value: Any, cType: CType): CValue = cType match {
+    case CType.CString =>
+      CValue.CString(value.asInstanceOf[String])
+
+    case CType.CInt =>
+      value match {
+        case i: Long              => CValue.CInt(i)
+        case i: Int               => CValue.CInt(i.toLong)
+        case i: java.lang.Long    => CValue.CInt(i.longValue())
+        case i: java.lang.Integer => CValue.CInt(i.longValue())
+        case _                    => CValue.CInt(value.toString.toLong)
+      }
+
+    case CType.CFloat =>
+      value match {
+        case d: Double            => CValue.CFloat(d)
+        case f: Float             => CValue.CFloat(f.toDouble)
+        case d: java.lang.Double  => CValue.CFloat(d.doubleValue())
+        case f: java.lang.Float   => CValue.CFloat(f.doubleValue())
+        case _                    => CValue.CFloat(value.toString.toDouble)
+      }
+
+    case CType.CBoolean =>
+      value match {
+        case b: Boolean           => CValue.CBoolean(b)
+        case b: java.lang.Boolean => CValue.CBoolean(b.booleanValue())
+        case _                    => CValue.CBoolean(value.toString.toBoolean)
+      }
+
+    case CType.CList(elemType) =>
+      val list = value match {
+        case l: List[?]   => l
+        case v: Vector[?] => v.toList
+        case _            => List(value)
+      }
+      val cValues = list.map(elem => anyToCValue(elem, elemType)).toVector
+      CValue.CList(cValues, elemType)
+
+    case CType.CProduct(fieldTypes) =>
+      val stringMap = value.asInstanceOf[Map[String, Any]]
+      val cValueFields = fieldTypes.map { case (name, fieldType) =>
+        name -> anyToCValue(stringMap.getOrElse(name, ()), fieldType)
+      }
+      CValue.CProduct(cValueFields, fieldTypes)
+
+    case CType.CMap(keyType, valueType) =>
+      val map = value.asInstanceOf[Map[Any, Any]]
+      val pairs = map.toVector.map { case (k, v) =>
+        (anyToCValue(k, keyType), anyToCValue(v, valueType))
+      }
+      CValue.CMap(pairs, keyType, valueType)
+
+    case CType.COptional(innerType) =>
+      value match {
+        case Some(inner) => CValue.CSome(anyToCValue(inner, innerType), innerType)
+        case None        => CValue.CNone(innerType)
+        case _           => CValue.CSome(anyToCValue(value, innerType), innerType)
+      }
+
+    case CType.CUnion(variants) =>
+      val (tag, inner) = value.asInstanceOf[(String, Any)]
+      val innerType = variants.getOrElse(tag, CType.CString)
+      CValue.CUnion(anyToCValue(inner, innerType), variants, tag)
+  }
 }
 
 object Module {

@@ -740,31 +740,37 @@ object DagCompiler {
 
     /** Evaluate a built-in function for use in lambda bodies */
     private def evaluateBuiltinFunction(moduleName: String, inputs: Map[String, Any]): Any = {
-      moduleName match {
-        // Comparison operations
-        case n if n.contains("gt") =>
-          inputs("a").asInstanceOf[Long] > inputs("b").asInstanceOf[Long]
-        case n if n.contains("lt") =>
-          inputs("a").asInstanceOf[Long] < inputs("b").asInstanceOf[Long]
-        case n if n.contains("gte") =>
-          inputs("a").asInstanceOf[Long] >= inputs("b").asInstanceOf[Long]
-        case n if n.contains("lte") =>
-          inputs("a").asInstanceOf[Long] <= inputs("b").asInstanceOf[Long]
-        case n if n.contains("eq-int") =>
-          inputs("a").asInstanceOf[Long] == inputs("b").asInstanceOf[Long]
-        case n if n.contains("eq-string") =>
-          inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
+      // Extract function name from module name (e.g., "stdlib.multiply" -> "multiply")
+      val funcName = moduleName.split('.').last
+
+      funcName match {
         // Arithmetic operations
-        case n if n.contains("add-int") =>
+        case "add" | "add-int" =>
           inputs("a").asInstanceOf[Long] + inputs("b").asInstanceOf[Long]
-        case n if n.contains("sub-int") =>
+        case "subtract" | "sub-int" =>
           inputs("a").asInstanceOf[Long] - inputs("b").asInstanceOf[Long]
-        case n if n.contains("mul-int") =>
+        case "multiply" | "mul-int" =>
           inputs("a").asInstanceOf[Long] * inputs("b").asInstanceOf[Long]
-        case n if n.contains("div-int") =>
-          inputs("a").asInstanceOf[Long] / inputs("b").asInstanceOf[Long]
+        case "divide" | "div-int" =>
+          val b = inputs("b").asInstanceOf[Long]
+          if (b != 0) inputs("a").asInstanceOf[Long] / b else 0L
+
+        // Comparison operations
+        case "gt" =>
+          inputs("a").asInstanceOf[Long] > inputs("b").asInstanceOf[Long]
+        case "lt" =>
+          inputs("a").asInstanceOf[Long] < inputs("b").asInstanceOf[Long]
+        case "gte" =>
+          inputs("a").asInstanceOf[Long] >= inputs("b").asInstanceOf[Long]
+        case "lte" =>
+          inputs("a").asInstanceOf[Long] <= inputs("b").asInstanceOf[Long]
+        case "eq-int" =>
+          inputs("a").asInstanceOf[Long] == inputs("b").asInstanceOf[Long]
+        case "eq-string" =>
+          inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
+
         case _ =>
-          throw new IllegalStateException(s"Unsupported function in lambda body: $moduleName")
+          throw new IllegalStateException(s"Unsupported function in lambda body: $moduleName (funcName=$funcName)")
       }
     }
   }

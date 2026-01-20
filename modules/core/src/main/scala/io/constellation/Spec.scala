@@ -31,6 +31,10 @@ case class DagSpec(
     data.filter { case (dataUuid, _) => !producedByModules.contains(dataUuid) }
   }
 
+  /** Data nodes that are user inputs (top-level nodes without inline transforms) */
+  def userInputDataNodes: Map[UUID, DataNodeSpec] =
+    topLevelDataNodes.filter { case (_, spec) => spec.inlineTransform.isEmpty }
+
   /** Data nodes that are outputs of the DAG (not consumed by any module) */
   def bottomLevelDataNodes: Map[UUID, DataNodeSpec] = {
     val consumedByModules = inEdges.map(_._1)

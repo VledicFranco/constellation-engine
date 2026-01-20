@@ -1252,12 +1252,6 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     interpNodes.size should be > 0
   }
 
-  // NOTE: String interpolation execution tests are commented out until runtime support for
-  // InlineTransform data nodes is fully implemented. The compilation tests above verify
-  // correct DAG structure. TODO: Re-enable when runtime InlineTransform execution is working.
-  // The tests below fail with "Failed to find data node in init data" which is a runtime issue.
-
-  /*
   "String interpolation execution" should "execute simple string interpolation" in {
     val test = for {
       constellation <- createConstellation
@@ -1526,14 +1520,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Message: Hello, World!")
   }
-  */
 
-  // NOTE: Lambda execution tests are commented out until runtime support for HOF inline transforms
-  // is fully implemented. The compilation tests above verify correct DAG structure.
-  // TODO: Re-enable when runtime HOF execution is working. See follow-up issue.
-  // The tests below fail with "Failed to find data node in init data" which is a runtime issue.
-
-  /*
   "Lambda filter execution" should "execute filter with positive number predicate" in {
     val test = for {
       constellation <- createConstellation
@@ -2056,5 +2043,4 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(1L, 3L, 5L)
   }
-  */
 }

@@ -84,7 +84,7 @@ object SteppedExecution {
     var batchIndex = 0
 
     // First batch: Input data nodes (level 0)
-    val inputDataIds = dagSpec.topLevelDataNodes.keys.toList
+    val inputDataIds = dagSpec.userInputDataNodes.keys.toList
     batches += ExecutionBatch(
       batchIndex = batchIndex,
       moduleIds = List.empty,
@@ -181,7 +181,7 @@ object SteppedExecution {
       _ <- completeTopLevelDataNodes(dag, session.inputs, rt)
 
       // Mark input data nodes as completed
-      topLevelNodeStates = dag.topLevelDataNodes.map { case (dataId, spec) =>
+      topLevelNodeStates = dag.userInputDataNodes.map { case (dataId, spec) =>
         val nicknames = spec.nicknames.values.toList
         val value = session.inputs
           .collectFirst {
@@ -333,7 +333,7 @@ object SteppedExecution {
       initData: Map[String, CValue],
       rt: Runtime
   ): IO[Unit] =
-    dag.topLevelDataNodes.toList.traverse { case (uuid, spec) =>
+    dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
       val nicknames = spec.nicknames.values.toList
       val optCValue = initData.collectFirst {
         case (name, cValue) if nicknames.contains(name) => cValue
@@ -350,7 +350,7 @@ object SteppedExecution {
     }.void
 
   private def validateRunIO(dag: DagSpec, initData: Map[String, CValue]): IO[Unit] = {
-    val topLevelSpecs = dag.topLevelDataNodes.values
+    val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
       val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {

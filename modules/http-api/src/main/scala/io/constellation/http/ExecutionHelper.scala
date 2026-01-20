@@ -29,7 +29,7 @@ object ExecutionHelper {
       inputs: Map[String, Json],
       dagSpec: DagSpec
   ): IO[Map[String, CValue]] =
-    dagSpec.topLevelDataNodes.toList
+    dagSpec.userInputDataNodes.toList
       .traverse { case (uuid, dataSpec) =>
         // Get input name from nicknames (use first nickname as the canonical name)
         val inputName = dataSpec.nicknames.values.headOption.getOrElse(dataSpec.name)
