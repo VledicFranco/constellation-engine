@@ -40,7 +40,12 @@ object RawValueConverter {
       while i < values.length do {
         values(i) match {
           case CValue.CInt(v) => arr(i) = v
-          case other => throw new TypeMismatchException(s"Expected CInt in list, got $other")
+          case other =>
+            throw TypeMismatchError(
+              expected = "CInt",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "list element")
+            )
         }
         i += 1
       }
@@ -52,7 +57,12 @@ object RawValueConverter {
       while i < values.length do {
         values(i) match {
           case CValue.CFloat(v) => arr(i) = v
-          case other => throw new TypeMismatchException(s"Expected CFloat in list, got $other")
+          case other =>
+            throw TypeMismatchError(
+              expected = "CFloat",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "list element")
+            )
         }
         i += 1
       }
@@ -64,7 +74,12 @@ object RawValueConverter {
       while i < values.length do {
         values(i) match {
           case CValue.CString(v) => arr(i) = v
-          case other => throw new TypeMismatchException(s"Expected CString in list, got $other")
+          case other =>
+            throw TypeMismatchError(
+              expected = "CString",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "list element")
+            )
         }
         i += 1
       }
@@ -76,7 +91,12 @@ object RawValueConverter {
       while i < values.length do {
         values(i) match {
           case CValue.CBoolean(v) => arr(i) = v
-          case other => throw new TypeMismatchException(s"Expected CBoolean in list, got $other")
+          case other =>
+            throw TypeMismatchError(
+              expected = "CBoolean",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "list element")
+            )
         }
         i += 1
       }
@@ -97,7 +117,11 @@ object RawValueConverter {
         .map { name =>
           fields.getOrElse(
             name,
-            throw new TypeMismatchException(s"Missing field '$name' in product")
+            throw TypeMismatchError(
+              expected = s"field '$name' in product",
+              actual = "missing field",
+              context = Map("field" -> name, "availableFields" -> fields.keys.mkString(", "))
+            )
           )
         }
         .map(fromCValue)

@@ -17,48 +17,48 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getField(raw, "age") shouldBe RawValue.RInt(30)
   }
 
-  it should "throw TypeMismatchException for non-existent field" in {
+  it should "throw TypeMismatchError for non-existent field" in {
     val structure = Map("name" -> CType.CString)
     val accessor = TypedValueAccessor(CType.CProduct(structure))
     val raw = RawValue.RProduct(Array(RawValue.RString("Alice")))
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "nonexistent")
     }
-    exception.getMessage should include("Field 'nonexistent' not found")
+    exception.getMessage should include("field 'nonexistent'")
   }
 
-  it should "throw TypeMismatchException when called on non-product type" in {
+  it should "throw TypeMismatchError when called on non-product type" in {
     val accessor = TypedValueAccessor(CType.CInt)
     val raw = RawValue.RInt(42)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "field")
     }
-    exception.getMessage should include("Cannot get field from")
+    exception.getMessage should include("Expected CProduct type")
   }
 
-  it should "throw TypeMismatchException when raw value is not RProduct" in {
+  it should "throw TypeMismatchError when raw value is not RProduct" in {
     val structure = Map("name" -> CType.CString)
     val accessor = TypedValueAccessor(CType.CProduct(structure))
     val raw = RawValue.RString("not a product")
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "name")
     }
     exception.getMessage should include("Expected RProduct")
   }
 
-  it should "throw TypeMismatchException when field index out of bounds" in {
+  it should "throw TypeMismatchError when field index out of bounds" in {
     val structure = Map("a" -> CType.CInt, "b" -> CType.CInt, "c" -> CType.CInt)
     val accessor = TypedValueAccessor(CType.CProduct(structure))
     // Only provide 2 values, but structure expects 3
     val raw = RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RInt(2)))
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "c") // "c" is at index 2
     }
-    exception.getMessage should include("out of bounds")
+    exception.getMessage should include("product with")
   }
 
   // ========== getFieldType Tests ==========
@@ -71,23 +71,23 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getFieldType("age") shouldBe CType.CInt
   }
 
-  it should "throw TypeMismatchException for non-existent field" in {
+  it should "throw TypeMismatchError for non-existent field" in {
     val structure = Map("name" -> CType.CString)
     val accessor = TypedValueAccessor(CType.CProduct(structure))
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getFieldType("nonexistent")
     }
-    exception.getMessage should include("Field 'nonexistent' not found")
+    exception.getMessage should include("field 'nonexistent'")
   }
 
-  it should "throw TypeMismatchException for non-product type" in {
+  it should "throw TypeMismatchError for non-product type" in {
     val accessor = TypedValueAccessor(CType.CInt)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getFieldType("field")
     }
-    exception.getMessage should include("Cannot get field type from")
+    exception.getMessage should include("Expected CProduct type")
   }
 
   // ========== fieldAccessor Tests ==========
@@ -107,10 +107,10 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     val structure = Map("name" -> CType.CString)
     val accessor = TypedValueAccessor(CType.CProduct(structure))
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.fieldAccessor("missing")
     }
-    exception.getMessage should include("Field 'missing' not found")
+    exception.getMessage should include("field 'missing'")
   }
 
   // ========== elementAccessor Tests ==========
@@ -129,13 +129,13 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     elemAccessor.cType shouldBe CType.CList(CType.CString)
   }
 
-  it should "throw TypeMismatchException for non-list type" in {
+  it should "throw TypeMismatchError for non-list type" in {
     val accessor = TypedValueAccessor(CType.CInt)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.elementAccessor
     }
-    exception.getMessage should include("Cannot get element type from")
+    exception.getMessage should include("Expected CList type")
   }
 
   // ========== innerAccessor Tests ==========
@@ -154,13 +154,13 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     innerAcc.cType shouldBe CType.COptional(CType.CInt)
   }
 
-  it should "throw TypeMismatchException for non-optional type" in {
+  it should "throw TypeMismatchError for non-optional type" in {
     val accessor = TypedValueAccessor(CType.CString)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.innerAccessor
     }
-    exception.getMessage should include("Cannot get inner type from")
+    exception.getMessage should include("Expected COptional type")
   }
 
   // ========== getInt Tests ==========
@@ -173,10 +173,10 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getInt(RawValue.RInt(0)) shouldBe 0L
   }
 
-  it should "throw TypeMismatchException for non-int types" in {
+  it should "throw TypeMismatchError for non-int types" in {
     val accessor = TypedValueAccessor(CType.CInt)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getInt(RawValue.RString("not an int"))
     }
     exception.getMessage should include("Expected RInt")
@@ -191,10 +191,10 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getFloat(RawValue.RFloat(0.0)) shouldBe 0.0
   }
 
-  it should "throw TypeMismatchException for non-float types" in {
+  it should "throw TypeMismatchError for non-float types" in {
     val accessor = TypedValueAccessor(CType.CFloat)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getFloat(RawValue.RInt(42))
     }
     exception.getMessage should include("Expected RFloat")
@@ -209,10 +209,10 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getString(RawValue.RString("with\nnewline")) shouldBe "with\nnewline"
   }
 
-  it should "throw TypeMismatchException for non-string types" in {
+  it should "throw TypeMismatchError for non-string types" in {
     val accessor = TypedValueAccessor(CType.CString)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getString(RawValue.RBool(true))
     }
     exception.getMessage should include("Expected RString")
@@ -226,10 +226,10 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     accessor.getBool(RawValue.RBool(false)) shouldBe false
   }
 
-  it should "throw TypeMismatchException for non-bool types" in {
+  it should "throw TypeMismatchError for non-bool types" in {
     val accessor = TypedValueAccessor(CType.CBoolean)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.getBool(RawValue.RFloat(1.0))
     }
     exception.getMessage should include("Expected RBool")
@@ -407,21 +407,21 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     val accessor = TypedValueAccessor(CType.CUnion(structure))
     val raw = RawValue.RUnion("Unknown", RawValue.RString("test"))
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.toCValue(raw)
     }
-    exception.getMessage should include("Unknown union variant 'Unknown'")
+    exception.getMessage should include("unknown variant 'Unknown'")
   }
 
   // ========== toCValue Tests - Type Mismatches ==========
 
-  it should "throw TypeMismatchException for incompatible raw/type combinations" in {
+  it should "throw TypeMismatchError for incompatible raw/type combinations" in {
     val accessor = TypedValueAccessor(CType.CString)
 
-    val exception = intercept[TypeMismatchException] {
+    val exception = intercept[TypeMismatchError] {
       accessor.toCValue(RawValue.RInt(42))
     }
-    exception.getMessage should include("Cannot convert")
+    exception.getMessage should include("Expected CString")
   }
 
   // ========== Companion Object Tests ==========

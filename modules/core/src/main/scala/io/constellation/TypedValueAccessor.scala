@@ -21,21 +21,34 @@ final class TypedValueAccessor(val cType: CType) {
     case CType.CProduct(structure) =>
       val fieldIndex = structure.keys.toList.sorted.indexOf(fieldName)
       if fieldIndex < 0 then {
-        throw new TypeMismatchException(s"Field '$fieldName' not found in product type")
+        throw TypeMismatchError(
+          expected = s"field '$fieldName' in product",
+          actual = s"product without field '$fieldName'",
+          context = Map("field" -> fieldName, "availableFields" -> structure.keys.mkString(", "))
+        )
       }
       raw match {
         case RawValue.RProduct(values) =>
           if fieldIndex >= values.length then {
-            throw new TypeMismatchException(
-              s"Field index $fieldIndex out of bounds (${values.length} fields)"
+            throw TypeMismatchError(
+              expected = s"product with at least ${fieldIndex + 1} fields",
+              actual = s"product with ${values.length} fields",
+              context = Map("fieldIndex" -> fieldIndex.toString, "fieldCount" -> values.length.toString)
             )
           }
           values(fieldIndex)
         case other =>
-          throw new TypeMismatchException(s"Expected RProduct, got ${other.getClass.getSimpleName}")
+          throw TypeMismatchError(
+            expected = "RProduct",
+            actual = other.getClass.getSimpleName
+          )
       }
     case other =>
-      throw new TypeMismatchException(s"Cannot get field from $other")
+      throw TypeMismatchError(
+        expected = "CProduct type",
+        actual = other.toString,
+        context = Map("operation" -> "getField")
+      )
   }
 
   /** Get the CType for a field in a product type.
@@ -44,10 +57,18 @@ final class TypedValueAccessor(val cType: CType) {
     case CType.CProduct(structure) =>
       structure.getOrElse(
         fieldName,
-        throw new TypeMismatchException(s"Field '$fieldName' not found in product type")
+        throw TypeMismatchError(
+          expected = s"field '$fieldName' in product",
+          actual = s"product without field '$fieldName'",
+          context = Map("field" -> fieldName, "availableFields" -> structure.keys.mkString(", "))
+        )
       )
     case other =>
-      throw new TypeMismatchException(s"Cannot get field type from $other")
+      throw TypeMismatchError(
+        expected = "CProduct type",
+        actual = other.toString,
+        context = Map("operation" -> "getFieldType")
+      )
   }
 
   /** Get an accessor for a field in a product type.
@@ -59,14 +80,24 @@ final class TypedValueAccessor(val cType: CType) {
     */
   def elementAccessor: TypedValueAccessor = cType match {
     case CType.CList(elementType) => new TypedValueAccessor(elementType)
-    case other => throw new TypeMismatchException(s"Cannot get element type from $other")
+    case other =>
+      throw TypeMismatchError(
+        expected = "CList type",
+        actual = other.toString,
+        context = Map("operation" -> "elementAccessor")
+      )
   }
 
   /** Get an accessor for optional inner type.
     */
   def innerAccessor: TypedValueAccessor = cType match {
     case CType.COptional(innerType) => new TypedValueAccessor(innerType)
-    case other => throw new TypeMismatchException(s"Cannot get inner type from $other")
+    case other =>
+      throw TypeMismatchError(
+        expected = "COptional type",
+        actual = other.toString,
+        context = Map("operation" -> "innerAccessor")
+      )
   }
 
   /** Extract a Long from a RawValue.
@@ -74,7 +105,10 @@ final class TypedValueAccessor(val cType: CType) {
   def getInt(raw: RawValue): Long = raw match {
     case RawValue.RInt(v) => v
     case other =>
-      throw new TypeMismatchException(s"Expected RInt, got ${other.getClass.getSimpleName}")
+      throw TypeMismatchError(
+        expected = "RInt",
+        actual = other.getClass.getSimpleName
+      )
   }
 
   /** Extract a Double from a RawValue.
@@ -82,7 +116,10 @@ final class TypedValueAccessor(val cType: CType) {
   def getFloat(raw: RawValue): Double = raw match {
     case RawValue.RFloat(v) => v
     case other =>
-      throw new TypeMismatchException(s"Expected RFloat, got ${other.getClass.getSimpleName}")
+      throw TypeMismatchError(
+        expected = "RFloat",
+        actual = other.getClass.getSimpleName
+      )
   }
 
   /** Extract a String from a RawValue.
@@ -90,7 +127,10 @@ final class TypedValueAccessor(val cType: CType) {
   def getString(raw: RawValue): String = raw match {
     case RawValue.RString(v) => v
     case other =>
-      throw new TypeMismatchException(s"Expected RString, got ${other.getClass.getSimpleName}")
+      throw TypeMismatchError(
+        expected = "RString",
+        actual = other.getClass.getSimpleName
+      )
   }
 
   /** Extract a Boolean from a RawValue.
@@ -98,7 +138,10 @@ final class TypedValueAccessor(val cType: CType) {
   def getBool(raw: RawValue): Boolean = raw match {
     case RawValue.RBool(v) => v
     case other =>
-      throw new TypeMismatchException(s"Expected RBool, got ${other.getClass.getSimpleName}")
+      throw TypeMismatchError(
+        expected = "RBool",
+        actual = other.getClass.getSimpleName
+      )
   }
 
   /** Convert a RawValue back to CValue when needed (e.g., for JSON output).
@@ -156,12 +199,21 @@ final class TypedValueAccessor(val cType: CType) {
 
     // Union
     case (RawValue.RUnion(tag, value), CType.CUnion(structure)) =>
-      val variantType =
-        structure.getOrElse(tag, throw new TypeMismatchException(s"Unknown union variant '$tag'"))
+      val variantType = structure.getOrElse(
+        tag,
+        throw TypeMismatchError(
+          expected = s"known union variant",
+          actual = s"unknown variant '$tag'",
+          context = Map("tag" -> tag, "knownVariants" -> structure.keys.mkString(", "))
+        )
+      )
       CValue.CUnion(new TypedValueAccessor(variantType).toCValue(value), structure, tag)
 
     case (raw, expected) =>
-      throw new TypeMismatchException(s"Cannot convert ${raw.getClass.getSimpleName} to $expected")
+      throw TypeMismatchError(
+        expected = expected.toString,
+        actual = raw.getClass.getSimpleName
+      )
   }
 }
 
@@ -169,7 +221,3 @@ object TypedValueAccessor {
 
   def apply(cType: CType): TypedValueAccessor = new TypedValueAccessor(cType)
 }
-
-/** Exception thrown when a type mismatch occurs during RawValue operations.
-  */
-class TypeMismatchException(message: String) extends RuntimeException(message)
