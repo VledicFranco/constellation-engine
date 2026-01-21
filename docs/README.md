@@ -64,6 +64,7 @@ sbt test       # Run all tests
 | [Architecture](architecture.md) | Technical architecture and design decisions |
 | [API Guide](api-guide.md) | Programmatic API usage and module creation |
 | [LSP Integration](LSP_INTEGRATION.md) | Language Server Protocol setup and features |
+| [Troubleshooting](troubleshooting.md) | Common issues and solutions |
 
 ### HTTP API
 
