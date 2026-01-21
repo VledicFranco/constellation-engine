@@ -130,7 +130,8 @@ object Declaration {
   /** Input declaration: in communications: Candidates<Communication> */
   final case class InputDecl(
       name: Located[String],
-      typeExpr: Located[TypeExpr]
+      typeExpr: Located[TypeExpr],
+      annotations: List[Annotation] = Nil
   ) extends Declaration
 
   /** Variable assignment: embeddings = embed-model(communications) */
@@ -149,6 +150,18 @@ object Declaration {
       path: Located[QualifiedName],
       alias: Option[Located[String]]
   ) extends Declaration
+}
+
+/** Annotations provide metadata for declarations */
+sealed trait Annotation
+
+object Annotation {
+
+  /** @example(value) - provides example value for input declarations.
+    * Used by tooling (e.g., VSCode extension) to pre-populate run widgets.
+    * Does not affect compilation or runtime behavior.
+    */
+  final case class Example(value: Located[Expression]) extends Annotation
 }
 
 /** Type expressions */

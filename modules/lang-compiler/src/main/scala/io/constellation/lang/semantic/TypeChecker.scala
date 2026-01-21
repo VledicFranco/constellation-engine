@@ -223,7 +223,7 @@ object TypeChecker {
         (newEnv, TypedDeclaration.TypeDef(name.value, semType, span))
       }
 
-    case Declaration.InputDecl(name, typeExpr) =>
+    case Declaration.InputDecl(name, typeExpr, _) =>
       resolveTypeExpr(typeExpr.value, typeExpr.span, env).map { semType =>
         val newEnv = env.addVariable(name.value, semType)
         val span   = Span(name.span.start, typeExpr.span.end)

@@ -293,7 +293,7 @@ class ConstellationLanguageServer(
       case Right(program) =>
         val sourceFile = document.sourceFile
         val inputFields = program.declarations.collect {
-          case Declaration.InputDecl(name, typeExpr) =>
+          case Declaration.InputDecl(name, typeExpr, _) =>
             val (startLC, _) = sourceFile.spanToLineCol(name.span)
             InputField(
               name = name.value,
