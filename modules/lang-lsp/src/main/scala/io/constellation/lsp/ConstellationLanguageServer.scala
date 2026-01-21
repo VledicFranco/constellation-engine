@@ -800,7 +800,9 @@ class ConstellationLanguageServer(
       )
       _ <- validateDocument(params.textDocument.uri)
     } yield ()
-  }.handleErrorWith(_ => IO.unit)
+  }.handleErrorWith { error =>
+    logger.warn(s"Error in handleDidOpen: ${error.getMessage}") *> IO.unit
+  }
 
   private def handleDidChange(notification: Notification): IO[Unit] = {
     for {
@@ -824,7 +826,9 @@ class ConstellationLanguageServer(
       }
       _ <- validateDocument(params.textDocument.uri)
     } yield ()
-  }.handleErrorWith(_ => IO.unit)
+  }.handleErrorWith { error =>
+    logger.warn(s"Error in handleDidChange: ${error.getMessage}") *> IO.unit
+  }
 
   private def handleDidClose(notification: Notification): IO[Unit] = {
     for {
@@ -841,7 +845,9 @@ class ConstellationLanguageServer(
       // Clear diagnostics
       _ <- publishDiagnostics(PublishDiagnosticsParams(params.textDocument.uri, List.empty))
     } yield ()
-  }.handleErrorWith(_ => IO.unit)
+  }.handleErrorWith { error =>
+    logger.warn(s"Error in handleDidClose: ${error.getMessage}") *> IO.unit
+  }
 
   // ========== Language Features ==========
 
