@@ -59,6 +59,7 @@ sbt test       # Run all tests
 | Document | Description |
 |----------|-------------|
 | [Getting Started Tutorial](getting-started.md) | Step-by-step tutorial for new users (2 hours) |
+| [Pipeline Examples](examples/README.md) | Real-world pipeline examples with explanations |
 | [constellation-lang Guide](constellation-lang/README.md) | Complete language reference for the DSL |
 | [Standard Library](stdlib.md) | Built-in functions for common operations |
 | [Architecture](architecture.md) | Technical architecture and design decisions |

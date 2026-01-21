@@ -847,6 +847,7 @@ Congratulations! You've learned the fundamentals of Constellation Engine.
 
 | Resource | Description |
 |----------|-------------|
+| [Pipeline Examples](examples/README.md) | Real-world pipeline examples with explanations |
 | [constellation-lang Reference](constellation-lang/README.md) | Complete language syntax and semantics |
 | [Standard Library](stdlib.md) | All built-in functions |
 | [Architecture Guide](architecture.md) | Deep dive into internals |
@@ -857,6 +858,7 @@ Congratulations! You've learned the fundamentals of Constellation Engine.
 
 Explore the example code in:
 
+- `docs/examples/` - Real-world pipeline examples with detailed explanations
 - `modules/example-app/examples/` - Example pipeline files
 - `modules/example-app/src/` - Example module implementations
 - `modules/lang-stdlib/` - Standard library implementation

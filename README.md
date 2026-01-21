@@ -197,6 +197,7 @@ sbt "testOnly io.constellation.lang.runtime.LangCompilerTest"
 See the [docs](docs/) directory for detailed documentation:
 
 - [Documentation Index](docs/README.md)
+- [Pipeline Examples](docs/examples/README.md) - Real-world pipeline examples
 - [constellation-lang Reference](docs/constellation-lang/README.md)
 - [Standard Library](docs/stdlib.md)
 - [Architecture Guide](docs/architecture.md)
