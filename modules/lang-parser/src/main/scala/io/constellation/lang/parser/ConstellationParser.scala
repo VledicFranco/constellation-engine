@@ -457,9 +457,23 @@ object ConstellationParser {
     (typeKw *> withSpan(typeIdentifier) ~ (equals *> withSpan(typeExpr)))
       .map { case (name, defn) => Declaration.TypeDef(name, defn) }
 
+  // Annotation: @example(expression)
+  private lazy val exampleAnnotation: P[Annotation.Example] =
+    (token(P.char('@')) *> P.string("example") *> openParen *> withSpan(expression) <* closeParen)
+      .map(expr => Annotation.Example(expr))
+
+  // Input declaration with one or more annotations
+  private val inputDeclWithAnnotations: P[Declaration.InputDecl] =
+    (exampleAnnotation.rep.map(_.toList) ~ (inKw *> withSpan(identifier)) ~ (colon *> withSpan(typeExpr)))
+      .map { case ((annots, name), typ) => Declaration.InputDecl(name, typ, annots) }
+
+  // Input declaration without annotations
+  private val inputDeclWithoutAnnotations: P[Declaration.InputDecl] =
+    ((inKw *> withSpan(identifier)) ~ (colon *> withSpan(typeExpr)))
+      .map { case (name, typ) => Declaration.InputDecl(name, typ, Nil) }
+
   private val inputDecl: P[Declaration.InputDecl] =
-    (inKw *> withSpan(identifier) ~ (colon *> withSpan(typeExpr)))
-      .map { case (name, typ) => Declaration.InputDecl(name, typ) }
+    inputDeclWithAnnotations.backtrack | inputDeclWithoutAnnotations
 
   private val assignment: P[Declaration.Assignment] =
     (withSpan(identifier) ~ (equals *> withSpan(expression)))
