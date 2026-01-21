@@ -800,9 +800,7 @@ class ConstellationLanguageServer(
       )
       _ <- validateDocument(params.textDocument.uri)
     } yield ()
-  }.handleErrorWith { error =>
-    logger.warn(s"Error in handleDidOpen: ${error.getMessage}") *> IO.unit
-  }
+  }.handleErrorWith(e => logger.warn(s"Error in didOpen: ${e.getMessage}"))
 
   private def handleDidChange(notification: Notification): IO[Unit] = {
     for {
@@ -826,9 +824,7 @@ class ConstellationLanguageServer(
       }
       _ <- validateDocument(params.textDocument.uri)
     } yield ()
-  }.handleErrorWith { error =>
-    logger.warn(s"Error in handleDidChange: ${error.getMessage}") *> IO.unit
-  }
+  }.handleErrorWith(e => logger.warn(s"Error in didChange: ${e.getMessage}"))
 
   private def handleDidClose(notification: Notification): IO[Unit] = {
     for {
@@ -845,9 +841,7 @@ class ConstellationLanguageServer(
       // Clear diagnostics
       _ <- publishDiagnostics(PublishDiagnosticsParams(params.textDocument.uri, List.empty))
     } yield ()
-  }.handleErrorWith { error =>
-    logger.warn(s"Error in handleDidClose: ${error.getMessage}") *> IO.unit
-  }
+  }.handleErrorWith(e => logger.warn(s"Error in didClose: ${e.getMessage}"))
 
   // ========== Language Features ==========
 

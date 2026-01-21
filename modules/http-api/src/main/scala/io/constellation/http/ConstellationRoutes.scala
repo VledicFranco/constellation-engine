@@ -1,12 +1,14 @@
 package io.constellation.http
 
+import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation}
+import io.constellation.{CValue, Constellation, Runtime}
 import io.constellation.http.ApiModels.*
+import io.constellation.errors.{ApiError, ErrorHandling}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
 import io.circe.syntax.*
@@ -50,77 +52,20 @@ class ConstellationRoutes(
     case req @ POST -> Root / "execute" =>
       (for {
         execReq <- req.as[ExecuteRequest]
-        dagOpt  <- constellation.getDag(execReq.dagName)
-
-        response <- dagOpt match {
-          case Some(dagSpec) =>
-            for {
-              // Convert inputs: JSON → CValue
-              convertResult <- ExecutionHelper.convertInputs(execReq.inputs, dagSpec).attempt
-              response <- convertResult match {
-                case Left(error) =>
-                  BadRequest(
-                    ExecuteResponse(
-                      success = false,
-                      error = Some(s"Input error: ${error.getMessage}")
-                    )
-                  )
-
-                case Right(cValueInputs) =>
-                  for {
-                    // Execute DAG
-                    execResult <- constellation.runDag(execReq.dagName, cValueInputs).attempt
-                    response <- execResult match {
-                      case Left(error) =>
-                        InternalServerError(
-                          ExecuteResponse(
-                            success = false,
-                            error = Some(s"Execution failed: ${error.getMessage}")
-                          )
-                        )
-
-                      case Right(state) =>
-                        for {
-                          // Extract outputs: CValue → JSON
-                          outputResult <- ExecutionHelper.extractOutputs(state).attempt
-                          response <- outputResult match {
-                            case Left(error) =>
-                              InternalServerError(
-                                ExecuteResponse(
-                                  success = false,
-                                  error = Some(s"Output error: ${error.getMessage}")
-                                )
-                              )
-
-                            case Right(outputs) =>
-                              Ok(
-                                ExecuteResponse(
-                                  success = true,
-                                  outputs = outputs,
-                                  error = None
-                                )
-                              )
-                          }
-                        } yield response
-                    }
-                  } yield response
-              }
-            } yield response
-
-          case None =>
-            NotFound(
-              ErrorResponse(
-                error = "DagNotFound",
-                message = s"DAG '${execReq.dagName}' not found"
-              )
-            )
+        result  <- executeStoredDag(execReq).value
+        response <- result match {
+          case Right(outputs) =>
+            Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
+          case Left(ApiError.NotFoundError(_, name)) =>
+            NotFound(ErrorResponse(error = "DagNotFound", message = s"DAG '$name' not found"))
+          case Left(ApiError.InputError(msg)) =>
+            BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
+          case Left(error) =>
+            InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
         }
       } yield response).handleErrorWith { error =>
         InternalServerError(
-          ExecuteResponse(
-            success = false,
-            error = Some(s"Unexpected error: ${error.getMessage}")
-          )
+          ExecuteResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
         )
       }
 
@@ -128,81 +73,20 @@ class ConstellationRoutes(
     case req @ POST -> Root / "run" =>
       (for {
         runReq <- req.as[RunRequest]
-
-        // Compile the source
-        compileResult = compiler.compile(runReq.source, "ephemeral")
-
-        response <- compileResult match {
-          case Left(errors) =>
-            BadRequest(
-              RunResponse(
-                success = false,
-                compilationErrors = errors.map(_.message)
-              )
-            )
-
-          case Right(compiled) =>
-            val dagSpec = compiled.dagSpec
-            for {
-              // Convert inputs: JSON → CValue
-              convertResult <- ExecutionHelper.convertInputs(runReq.inputs, dagSpec).attempt
-              response <- convertResult match {
-                case Left(error) =>
-                  BadRequest(
-                    RunResponse(
-                      success = false,
-                      error = Some(s"Input error: ${error.getMessage}")
-                    )
-                  )
-
-                case Right(cValueInputs) =>
-                  for {
-                    // Execute DAG with pre-resolved synthetic modules from compilation
-                    execResult <- constellation
-                      .runDagWithModules(dagSpec, cValueInputs, compiled.syntheticModules)
-                      .attempt
-                    response <- execResult match {
-                      case Left(error) =>
-                        InternalServerError(
-                          RunResponse(
-                            success = false,
-                            error = Some(s"Execution failed: ${error.getMessage}")
-                          )
-                        )
-
-                      case Right(state) =>
-                        for {
-                          // Extract outputs: CValue → JSON
-                          outputResult <- ExecutionHelper.extractOutputs(state).attempt
-                          response <- outputResult match {
-                            case Left(error) =>
-                              InternalServerError(
-                                RunResponse(
-                                  success = false,
-                                  error = Some(s"Output error: ${error.getMessage}")
-                                )
-                              )
-
-                            case Right(outputs) =>
-                              Ok(
-                                RunResponse(
-                                  success = true,
-                                  outputs = outputs
-                                )
-                              )
-                          }
-                        } yield response
-                    }
-                  } yield response
-              }
-            } yield response
+        result <- compileAndRunDag(runReq).value
+        response <- result match {
+          case Right(outputs) =>
+            Ok(RunResponse(success = true, outputs = outputs))
+          case Left(ApiError.CompilationError(errors)) =>
+            BadRequest(RunResponse(success = false, compilationErrors = errors))
+          case Left(ApiError.InputError(msg)) =>
+            BadRequest(RunResponse(success = false, error = Some(s"Input error: $msg")))
+          case Left(error) =>
+            InternalServerError(RunResponse(success = false, error = Some(error.message)))
         }
       } yield response).handleErrorWith { error =>
         InternalServerError(
-          RunResponse(
-            success = false,
-            error = Some(s"Unexpected error: ${error.getMessage}")
-          )
+          RunResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
         )
       }
 
@@ -285,6 +169,69 @@ class ConstellationRoutes(
     case GET -> Root / "health" =>
       Ok(Json.obj("status" -> Json.fromString("ok")))
   }
+
+  // ========== Private Helper Methods ==========
+
+  /** Execute a stored DAG using EitherT for clean error handling */
+  private def executeStoredDag(req: ExecuteRequest): EitherT[IO, ApiError, Map[String, Json]] =
+    for {
+      dagSpec <- EitherT(
+        constellation.getDag(req.dagName).map {
+          case Some(spec) => Right(spec)
+          case None       => Left(ApiError.NotFoundError("DAG", req.dagName))
+        }
+      )
+      inputs  <- convertInputs(req.inputs, dagSpec)
+      state   <- executeDag(req.dagName, inputs)
+      outputs <- extractOutputs(state)
+    } yield outputs
+
+  /** Compile and run a DAG in one step using EitherT */
+  private def compileAndRunDag(req: RunRequest): EitherT[IO, ApiError, Map[String, Json]] =
+    for {
+      compiled <- EitherT.fromEither[IO](
+        compiler.compile(req.source, "ephemeral").leftMap { errors =>
+          ApiError.CompilationError(errors.map(_.message))
+        }
+      )
+      inputs  <- convertInputs(req.inputs, compiled.dagSpec)
+      state   <- executeDagWithModules(compiled.dagSpec, inputs, compiled.syntheticModules)
+      outputs <- extractOutputs(state)
+    } yield outputs
+
+  /** Convert JSON inputs to CValue, wrapping errors */
+  private def convertInputs(
+      inputs: Map[String, Json],
+      dagSpec: io.constellation.DagSpec
+  ): EitherT[IO, ApiError, Map[String, CValue]] =
+    ErrorHandling.liftIO(ExecutionHelper.convertInputs(inputs, dagSpec)) { t =>
+      ApiError.InputError(t.getMessage)
+    }
+
+  /** Execute a stored DAG by name */
+  private def executeDag(
+      dagName: String,
+      inputs: Map[String, CValue]
+  ): EitherT[IO, ApiError, Runtime.State] =
+    ErrorHandling.liftIO(constellation.runDag(dagName, inputs)) { t =>
+      ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+    }
+
+  /** Execute a DAG with pre-resolved modules */
+  private def executeDagWithModules(
+      dagSpec: io.constellation.DagSpec,
+      inputs: Map[String, CValue],
+      modules: Map[java.util.UUID, io.constellation.Module.Uninitialized]
+  ): EitherT[IO, ApiError, Runtime.State] =
+    ErrorHandling.liftIO(constellation.runDagWithModules(dagSpec, inputs, modules)) { t =>
+      ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+    }
+
+  /** Extract outputs from execution state */
+  private def extractOutputs(state: Runtime.State): EitherT[IO, ApiError, Map[String, Json]] =
+    ErrorHandling.liftIO(ExecutionHelper.extractOutputs(state)) { t =>
+      ApiError.OutputError(t.getMessage)
+    }
 }
 
 object ConstellationRoutes {

@@ -311,6 +311,105 @@ npm run compile
 
 ---
 
+## Error Handling Patterns
+
+The codebase uses standardized error handling patterns for consistency and maintainability.
+
+### HTTP Routes (EitherT Pattern)
+
+For HTTP endpoints that execute multiple operations, use `EitherT` to chain operations cleanly:
+
+```scala
+import cats.data.EitherT
+import io.constellation.errors.{ApiError, ErrorHandling}
+
+// Define a chain of operations using EitherT
+private def executeStoredDag(req: ExecuteRequest): EitherT[IO, ApiError, Map[String, Json]] =
+  for {
+    dagSpec <- EitherT(constellation.getDag(req.dagName).map {
+      case Some(spec) => Right(spec)
+      case None       => Left(ApiError.NotFoundError("DAG", req.dagName))
+    })
+    inputs  <- ErrorHandling.liftIO(convertInputs(req.inputs, dagSpec))(t => ApiError.InputError(t.getMessage))
+    state   <- ErrorHandling.liftIO(constellation.runDag(req.dagName, inputs))(t => ApiError.ExecutionError(t.getMessage))
+    outputs <- ErrorHandling.liftIO(extractOutputs(state))(t => ApiError.OutputError(t.getMessage))
+  } yield outputs
+
+// In the route handler, pattern match on the result
+case req @ POST -> Root / "execute" =>
+  (for {
+    execReq <- req.as[ExecuteRequest]
+    result  <- executeStoredDag(execReq).value
+    response <- result match {
+      case Right(outputs) => Ok(ExecuteResponse(success = true, outputs = outputs))
+      case Left(ApiError.NotFoundError(_, name)) => NotFound(...)
+      case Left(ApiError.InputError(msg)) => BadRequest(...)
+      case Left(error) => InternalServerError(...)
+    }
+  } yield response).handleErrorWith { error =>
+    InternalServerError(...)  // Catch-all for unexpected errors
+  }
+```
+
+**Key principles:**
+- Use `ApiError` sealed trait for typed errors
+- Use `ErrorHandling.liftIO` to wrap IO operations with error mapping
+- Keep outer `handleErrorWith` as catch-all for unexpected errors
+- Pattern match on specific error types to return appropriate HTTP status codes
+
+### LSP Notification Handlers (Logging Pattern)
+
+For LSP notification handlers (didOpen, didChange, didClose), log errors instead of silently swallowing:
+
+```scala
+private def handleDidOpen(notification: Notification): IO[Unit] = {
+  for {
+    params <- IO.fromEither(...)
+    _ <- documentManager.openDocument(...)
+    _ <- validateDocument(...)
+  } yield ()
+}.handleErrorWith(e => logger.warn(s"Error in didOpen: ${e.getMessage}"))
+```
+
+**Key principles:**
+- Never silently swallow errors with `handleErrorWith(_ => IO.unit)`
+- Log errors with context (operation name, error message)
+- Notification handlers should complete successfully even on error (LSP protocol requirement)
+- Use `logger.warn` for recoverable errors
+
+### API Error Types
+
+The `io.constellation.errors.ApiError` sealed trait provides typed errors:
+
+```scala
+sealed trait ApiError { def message: String }
+
+object ApiError {
+  case class InputError(message: String) extends ApiError       // JSON -> CValue conversion errors
+  case class ExecutionError(message: String) extends ApiError   // DAG execution errors
+  case class OutputError(message: String) extends ApiError      // CValue -> JSON conversion errors
+  case class NotFoundError(resource: String, name: String) extends ApiError
+  case class CompilationError(errors: List[String]) extends ApiError
+}
+```
+
+### ErrorHandling Utilities
+
+The `io.constellation.errors.ErrorHandling` object provides helpers:
+
+```scala
+// Wrap an IO operation, mapping exceptions to typed errors
+ErrorHandling.liftIO(riskyOperation)(t => ApiError.InputError(t.getMessage))
+
+// Convert Either to EitherT
+ErrorHandling.fromEither(either)
+
+// Convert Option to EitherT with error for None
+ErrorHandling.fromOption(opt, ApiError.NotFoundError("DAG", name))
+```
+
+---
+
 ## Getting Help
 
 - Check existing issues on GitHub
