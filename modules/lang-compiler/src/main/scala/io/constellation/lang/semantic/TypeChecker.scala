@@ -223,11 +223,28 @@ object TypeChecker {
         (newEnv, TypedDeclaration.TypeDef(name.value, semType, span))
       }
 
-    case Declaration.InputDecl(name, typeExpr, _) =>
-      resolveTypeExpr(typeExpr.value, typeExpr.span, env).map { semType =>
-        val newEnv = env.addVariable(name.value, semType)
-        val span   = Span(name.span.start, typeExpr.span.end)
-        (newEnv, TypedDeclaration.InputDecl(name.value, semType, span))
+    case Declaration.InputDecl(name, typeExpr, annotations) =>
+      resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { semType =>
+        // Validate @example annotations - example type must match input type
+        val annotationValidation: TypeResult[Unit] = annotations.traverse {
+          case Annotation.Example(exprLoc) =>
+            checkExpression(exprLoc.value, exprLoc.span, env).andThen { typedExpr =>
+              if (isAssignable(typedExpr.semanticType, semType))
+                ().validNel
+              else
+                CompileError.TypeMismatch(
+                  semType.prettyPrint,
+                  typedExpr.semanticType.prettyPrint,
+                  Some(exprLoc.span)
+                ).invalidNel
+            }
+        }.void
+
+        annotationValidation.map { _ =>
+          val newEnv = env.addVariable(name.value, semType)
+          val span   = Span(name.span.start, typeExpr.span.end)
+          (newEnv, TypedDeclaration.InputDecl(name.value, semType, span))
+        }
       }
 
     case Declaration.Assignment(target, value) =>
