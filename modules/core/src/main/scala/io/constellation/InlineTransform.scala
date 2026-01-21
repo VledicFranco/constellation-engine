@@ -6,8 +6,24 @@ package io.constellation
   * These are used for simple synthetic operations like record merging, field projection, field
   * access, and conditionals.
   *
+  * ==Type Safety Note==
+  *
+  * The `asInstanceOf` casts in this file are **safe by construction**:
+  *
+  *   - All inline transforms receive inputs from the compiled DAG
+  *   - The DagCompiler type-checks all expressions before generating transforms
+  *   - Boolean operations (And, Or, Not, Conditional, Guard) only receive Boolean inputs
+  *     because the type checker verifies operand types during compilation
+  *   - List operations (Filter, Map, All, Any) only receive List inputs because the
+  *     type checker verifies the source expression has a List type
+  *
+  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for
+  * development and debugging purposes. See [[io.constellation.DebugMode]].
+  *
   * @see
   *   docs/dev/optimizations/04-inline-synthetic-modules.md
+  * @see
+  *   [[io.constellation.DebugMode]] for optional runtime type validation
   */
 sealed trait InlineTransform {
 
