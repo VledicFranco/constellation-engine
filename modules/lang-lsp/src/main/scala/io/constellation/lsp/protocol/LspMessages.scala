@@ -99,6 +99,7 @@ object LspMessages {
     case Type      // Type mismatches, unknown types
     case Reference // Undefined variables, unknown modules
     case Runtime   // Execution failures, module exceptions
+    case Internal  // Internal compiler errors (DAG compilation failures)
 
   /** Structured error information with source location and context */
   case class ErrorInfo(
@@ -272,6 +273,7 @@ object LspMessages {
     case ErrorCategory.Type      => "type"
     case ErrorCategory.Reference => "reference"
     case ErrorCategory.Runtime   => "runtime"
+    case ErrorCategory.Internal  => "internal"
   }
 
   given Decoder[ErrorCategory] = Decoder.decodeString.emap {
@@ -279,6 +281,7 @@ object LspMessages {
     case "type"      => Right(ErrorCategory.Type)
     case "reference" => Right(ErrorCategory.Reference)
     case "runtime"   => Right(ErrorCategory.Runtime)
+    case "internal"  => Right(ErrorCategory.Internal)
     case other       => Left(s"Unknown error category: $other")
   }
 

@@ -3518,8 +3518,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
   }
 
   // Test that sortBy HOF operation hits the SortBy branch in DagCompiler
-  // This covers the HigherOrderOp.SortBy case which throws UnsupportedOperationException
-  it should "throw UnsupportedOperationException for sortBy HOF operation" in {
+  // This covers the HigherOrderOp.SortBy case which returns an UnsupportedOperation error
+  it should "return UnsupportedOperation error for sortBy HOF operation" in {
     // Register a sortBy function - the moduleName must contain "sortBy"
     // for IRGenerator.getHigherOrderOp to return HigherOrderOp.SortBy
     val registry = FunctionRegistry.empty
@@ -3541,11 +3541,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       out sorted
     """
 
-    // SortBy is not yet implemented and throws during compilation
+    // SortBy is not yet implemented and returns an error during compilation
     // This test verifies the branch is hit and documents the current behavior
-    val exception = intercept[UnsupportedOperationException] {
-      compiler.compile(source, "sortby-test-dag")
-    }
-    exception.getMessage should include("SortBy not yet implemented")
+    val result = compiler.compile(source, "sortby-test-dag")
+    result.isLeft shouldBe true
+    val errors = result.swap.toOption.get
+    errors.head.message should include("SortBy")
+    errors.head.message should include("not yet implemented")
   }
 }

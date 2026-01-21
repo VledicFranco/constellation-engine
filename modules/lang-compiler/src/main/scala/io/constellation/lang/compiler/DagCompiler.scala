@@ -21,7 +21,7 @@ object DagCompiler {
       program: IRProgram,
       dagName: String,
       registeredModules: Map[String, Module.Uninitialized]
-  ): CompileResult = {
+  ): Either[CompilerError, CompileResult] = {
     val compiler = new DagCompilerState(dagName, registeredModules)
     compiler.compile(program)
   }
@@ -41,43 +41,55 @@ object DagCompiler {
     // Maps IR node ID -> its output data node UUID
     private var nodeOutputs: Map[UUID, UUID] = Map.empty
 
-    def compile(program: IRProgram): CompileResult = {
+    /** Helper to look up a node output with proper error handling */
+    private def getNodeOutput(nodeId: UUID, context: String): Either[CompilerError, UUID] =
+      nodeOutputs.get(nodeId).toRight(CompilerError.NodeNotFound(nodeId, context))
+
+    def compile(program: IRProgram): Either[CompilerError, CompileResult] = {
       // Process nodes in topological order
-      program.topologicalOrder.foreach { nodeId =>
-        program.nodes.get(nodeId).foreach(processNode)
+      val processResult = program.topologicalOrder.foldLeft[Either[CompilerError, Unit]](Right(())) {
+        case (Right(_), nodeId) =>
+          program.nodes.get(nodeId) match {
+            case Some(node) => processNode(node)
+            case None       => Right(()) // Skip missing nodes
+          }
+        case (left @ Left(_), _) => left
       }
 
-      // Build output bindings: map output variable names to data node UUIDs
-      val outputBindings: Map[String, UUID] = program.declaredOutputs.flatMap { outputName =>
-        // Look up the IR node ID for this variable
-        program.variableBindings.get(outputName).flatMap { irNodeId =>
-          // Look up the data node UUID for this IR node
-          nodeOutputs.get(irNodeId).map { dataNodeId =>
-            outputName -> dataNodeId
+      processResult.map { _ =>
+        // Build output bindings: map output variable names to data node UUIDs
+        val outputBindings: Map[String, UUID] = program.declaredOutputs.flatMap { outputName =>
+          // Look up the IR node ID for this variable
+          program.variableBindings.get(outputName).flatMap { irNodeId =>
+            // Look up the data node UUID for this IR node
+            nodeOutputs.get(irNodeId).map { dataNodeId =>
+              outputName -> dataNodeId
+            }
           }
-        }
-      }.toMap
+        }.toMap
 
-      val dagSpec = DagSpec(
-        metadata = ComponentMetadata.empty(dagName),
-        modules = moduleNodes,
-        data = dataNodes,
-        inEdges = inEdges,
-        outEdges = outEdges,
-        declaredOutputs = program.declaredOutputs,
-        outputBindings = outputBindings
-      )
+        val dagSpec = DagSpec(
+          metadata = ComponentMetadata.empty(dagName),
+          modules = moduleNodes,
+          data = dataNodes,
+          inEdges = inEdges,
+          outEdges = outEdges,
+          declaredOutputs = program.declaredOutputs,
+          outputBindings = outputBindings
+        )
 
-      CompileResult(dagSpec, syntheticModules)
+        CompileResult(dagSpec, syntheticModules)
+      }
     }
 
-    private def processNode(node: IRNode): Unit = node match {
+    private def processNode(node: IRNode): Either[CompilerError, Unit] = node match {
       case IRNode.Input(id, name, outputType, _) =>
         // Input nodes become top-level data nodes
         val dataId = UUID.randomUUID()
         val cType  = SemanticType.toCType(outputType)
         dataNodes = dataNodes + (dataId -> DataNodeSpec(name, Map(dataId -> name), cType))
         nodeOutputs = nodeOutputs + (id -> dataId)
+        Right(())
 
       case IRNode.ModuleCall(id, moduleName, languageName, inputs, outputType, _) =>
         processModuleCall(id, moduleName, languageName, inputs, outputType)
@@ -96,6 +108,7 @@ object DagCompiler {
 
       case IRNode.LiteralNode(id, value, outputType, _) =>
         processLiteralNode(id, value, outputType)
+        Right(())
 
       case IRNode.AndNode(id, left, right, _) =>
         processAndNode(id, left, right)
@@ -128,7 +141,7 @@ object DagCompiler {
         languageName: String,
         inputs: Map[String, UUID],
         outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val moduleId     = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
@@ -157,28 +170,28 @@ object DagCompiler {
       }
 
       // Connect input data nodes to the module and update nicknames
-      inputs.foreach { case (paramName, inputNodeId) =>
-        val inputDataId = nodeOutputs.getOrElse(
-          inputNodeId,
-          throw new IllegalStateException(s"Input node $inputNodeId not found")
-        )
-        inEdges = inEdges + ((inputDataId, moduleId))
-        // Update the data node's nicknames to include this module's parameter name
-        dataNodes = dataNodes.updatedWith(inputDataId) {
-          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> paramName)))
-          case None       => None
+      val inputResults = inputs.toList.traverse { case (paramName, inputNodeId) =>
+        getNodeOutput(inputNodeId, s"input to module $languageName").map { inputDataId =>
+          inEdges = inEdges + ((inputDataId, moduleId))
+          // Update the data node's nicknames to include this module's parameter name
+          dataNodes = dataNodes.updatedWith(inputDataId) {
+            case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> paramName)))
+            case None       => None
+          }
         }
       }
 
-      // Create output data node using the module's actual output field name
-      val cType = SemanticType.toCType(outputType)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = languageName + "_output",
-        nicknames = Map(moduleId -> outputFieldName),
-        cType = cType
-      ))
-      outEdges = outEdges + ((moduleId, outputDataId))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      inputResults.map { _ =>
+        // Create output data node using the module's actual output field name
+        val cType = SemanticType.toCType(outputType)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = languageName + "_output",
+          nicknames = Map(moduleId -> outputFieldName),
+          cType = cType
+        ))
+        outEdges = outEdges + ((moduleId, outputDataId))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processMergeNode(
@@ -186,29 +199,27 @@ object DagCompiler {
         left: UUID,
         right: UUID,
         outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val leftDataId =
-        nodeOutputs.getOrElse(left, throw new IllegalStateException(s"Left node $left not found"))
-      val rightDataId = nodeOutputs.getOrElse(
-        right,
-        throw new IllegalStateException(s"Right node $right not found")
-      )
+      for {
+        leftDataId  <- getNodeOutput(left, "left operand of merge")
+        rightDataId <- getNodeOutput(right, "right operand of merge")
+      } yield {
+        val leftCType   = dataNodes(leftDataId).cType
+        val rightCType  = dataNodes(rightDataId).cType
+        val outputCType = SemanticType.toCType(outputType)
 
-      val leftCType   = dataNodes(leftDataId).cType
-      val rightCType  = dataNodes(rightDataId).cType
-      val outputCType = SemanticType.toCType(outputType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"merge_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.MergeTransform(leftCType, rightCType)),
-        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"merge_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.MergeTransform(leftCType, rightCType)),
+          transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processProjectNode(
@@ -216,26 +227,23 @@ object DagCompiler {
         source: UUID,
         fields: List[String],
         outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val sourceDataId = nodeOutputs.getOrElse(
-        source,
-        throw new IllegalStateException(s"Source node $source not found")
-      )
+      getNodeOutput(source, "source of projection").map { sourceDataId =>
+        val sourceCType = dataNodes(sourceDataId).cType
+        val outputCType = SemanticType.toCType(outputType)
 
-      val sourceCType = dataNodes(sourceDataId).cType
-      val outputCType = SemanticType.toCType(outputType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"project_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.ProjectTransform(fields, sourceCType)),
-        transformInputs = Map("source" -> sourceDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"project_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.ProjectTransform(fields, sourceCType)),
+          transformInputs = Map("source" -> sourceDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processFieldAccessNode(
@@ -243,26 +251,23 @@ object DagCompiler {
         source: UUID,
         field: String,
         outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val sourceDataId = nodeOutputs.getOrElse(
-        source,
-        throw new IllegalStateException(s"Source node $source not found")
-      )
+      getNodeOutput(source, s"source of field access '.$field'").map { sourceDataId =>
+        val sourceCType = dataNodes(sourceDataId).cType
+        val outputCType = SemanticType.toCType(outputType)
 
-      val sourceCType = dataNodes(sourceDataId).cType
-      val outputCType = SemanticType.toCType(outputType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"field_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.FieldAccessTransform(field, sourceCType)),
-        transformInputs = Map("source" -> sourceDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"field_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.FieldAccessTransform(field, sourceCType)),
+          transformInputs = Map("source" -> sourceDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processConditionalNode(
@@ -271,33 +276,26 @@ object DagCompiler {
         thenBranch: UUID,
         elseBranch: UUID,
         outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val condDataId = nodeOutputs.getOrElse(
-        condition,
-        throw new IllegalStateException(s"Condition node $condition not found")
-      )
-      val thenDataId = nodeOutputs.getOrElse(
-        thenBranch,
-        throw new IllegalStateException(s"Then branch node $thenBranch not found")
-      )
-      val elseDataId = nodeOutputs.getOrElse(
-        elseBranch,
-        throw new IllegalStateException(s"Else branch node $elseBranch not found")
-      )
+      for {
+        condDataId <- getNodeOutput(condition, "condition of if-then-else")
+        thenDataId <- getNodeOutput(thenBranch, "then branch of if-then-else")
+        elseDataId <- getNodeOutput(elseBranch, "else branch of if-then-else")
+      } yield {
+        val outputCType = SemanticType.toCType(outputType)
 
-      val outputCType = SemanticType.toCType(outputType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"conditional_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.ConditionalTransform),
-        transformInputs = Map("cond" -> condDataId, "thenBr" -> thenDataId, "elseBr" -> elseDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"conditional_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.ConditionalTransform),
+          transformInputs = Map("cond" -> condDataId, "thenBr" -> thenDataId, "elseBr" -> elseDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processLiteralNode(
@@ -322,72 +320,65 @@ object DagCompiler {
         id: UUID,
         left: UUID,
         right: UUID
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val leftDataId =
-        nodeOutputs.getOrElse(left, throw new IllegalStateException(s"Left node $left not found"))
-      val rightDataId = nodeOutputs.getOrElse(
-        right,
-        throw new IllegalStateException(s"Right node $right not found")
-      )
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"and_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = CType.CBoolean,
-        inlineTransform = Some(InlineTransform.AndTransform),
-        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      for {
+        leftDataId  <- getNodeOutput(left, "left operand of 'and'")
+        rightDataId <- getNodeOutput(right, "right operand of 'and'")
+      } yield {
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"and_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = CType.CBoolean,
+          inlineTransform = Some(InlineTransform.AndTransform),
+          transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processOrNode(
         id: UUID,
         left: UUID,
         right: UUID
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val leftDataId =
-        nodeOutputs.getOrElse(left, throw new IllegalStateException(s"Left node $left not found"))
-      val rightDataId = nodeOutputs.getOrElse(
-        right,
-        throw new IllegalStateException(s"Right node $right not found")
-      )
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"or_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = CType.CBoolean,
-        inlineTransform = Some(InlineTransform.OrTransform),
-        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      for {
+        leftDataId  <- getNodeOutput(left, "left operand of 'or'")
+        rightDataId <- getNodeOutput(right, "right operand of 'or'")
+      } yield {
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"or_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = CType.CBoolean,
+          inlineTransform = Some(InlineTransform.OrTransform),
+          transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processNotNode(
         id: UUID,
         operand: UUID
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val operandDataId = nodeOutputs.getOrElse(
-        operand,
-        throw new IllegalStateException(s"Operand node $operand not found")
-      )
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"not_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = CType.CBoolean,
-        inlineTransform = Some(InlineTransform.NotTransform),
-        transformInputs = Map("operand" -> operandDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      getNodeOutput(operand, "operand of 'not'").map { operandDataId =>
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"not_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = CType.CBoolean,
+          inlineTransform = Some(InlineTransform.NotTransform),
+          transformInputs = Map("operand" -> operandDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processGuardNode(
@@ -395,30 +386,26 @@ object DagCompiler {
         expr: UUID,
         condition: UUID,
         innerType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val exprDataId = nodeOutputs.getOrElse(
-        expr,
-        throw new IllegalStateException(s"Expression node $expr not found")
-      )
-      val condDataId = nodeOutputs.getOrElse(
-        condition,
-        throw new IllegalStateException(s"Condition node $condition not found")
-      )
+      for {
+        exprDataId <- getNodeOutput(expr, "expression of guard (when)")
+        condDataId <- getNodeOutput(condition, "condition of guard (when)")
+      } yield {
+        val exprCType   = dataNodes(exprDataId).cType
+        val outputCType = CType.COptional(exprCType)
 
-      val exprCType   = dataNodes(exprDataId).cType
-      val outputCType = CType.COptional(exprCType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"guard_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.GuardTransform),
-        transformInputs = Map("expr" -> exprDataId, "cond" -> condDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"guard_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.GuardTransform),
+          transformInputs = Map("expr" -> exprDataId, "cond" -> condDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processCoalesceNode(
@@ -426,27 +413,25 @@ object DagCompiler {
         left: UUID,
         right: UUID,
         resultType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val leftDataId =
-        nodeOutputs.getOrElse(left, throw new IllegalStateException(s"Left node $left not found"))
-      val rightDataId = nodeOutputs.getOrElse(
-        right,
-        throw new IllegalStateException(s"Right node $right not found")
-      )
+      for {
+        leftDataId  <- getNodeOutput(left, "left operand of coalesce (??)")
+        rightDataId <- getNodeOutput(right, "right operand of coalesce (??)")
+      } yield {
+        val outputCType = SemanticType.toCType(resultType)
 
-      val outputCType = SemanticType.toCType(resultType)
-
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"coalesce_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(InlineTransform.CoalesceTransform),
-        transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"coalesce_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.CoalesceTransform),
+          transformInputs = Map("left" -> leftDataId, "right" -> rightDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     private def processBranchNode(
@@ -454,109 +439,104 @@ object DagCompiler {
         cases: List[(UUID, UUID)],
         otherwise: UUID,
         resultType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val moduleId     = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       // Get all data IDs for conditions and expressions
-      val caseDataIds = cases.map { case (condId, exprId) =>
-        val condDataId = nodeOutputs.getOrElse(
-          condId,
-          throw new IllegalStateException(s"Condition node $condId not found")
-        )
-        val exprDataId = nodeOutputs.getOrElse(
-          exprId,
-          throw new IllegalStateException(s"Expression node $exprId not found")
-        )
-        (condDataId, exprDataId)
+      val caseDataIdsResult = cases.zipWithIndex.traverse { case ((condId, exprId), idx) =>
+        for {
+          condDataId <- getNodeOutput(condId, s"condition of branch case $idx")
+          exprDataId <- getNodeOutput(exprId, s"expression of branch case $idx")
+        } yield (condDataId, exprDataId)
       }
 
-      val otherwiseDataId = nodeOutputs.getOrElse(
-        otherwise,
-        throw new IllegalStateException(s"Otherwise node $otherwise not found")
-      )
+      for {
+        caseDataIds     <- caseDataIdsResult
+        otherwiseDataId <- getNodeOutput(otherwise, "otherwise branch")
+      } yield {
+        // Build consumes map with indexed names
+        val consumesMap = caseDataIds.zipWithIndex.flatMap { case ((condDataId, exprDataId), idx) =>
+          List(
+            s"cond$idx" -> dataNodes(condDataId).cType,
+            s"expr$idx" -> dataNodes(exprDataId).cType
+          )
+        }.toMap + ("otherwise" -> dataNodes(otherwiseDataId).cType)
 
-      // Build consumes map with indexed names
-      val consumesMap = caseDataIds.zipWithIndex.flatMap { case ((condDataId, exprDataId), idx) =>
-        List(
-          s"cond$idx" -> dataNodes(condDataId).cType,
-          s"expr$idx" -> dataNodes(exprDataId).cType
+        val outputCType = SemanticType.toCType(resultType)
+
+        // Create synthetic branch module
+        val spec = ModuleNodeSpec(
+          metadata = ComponentMetadata.empty(s"$dagName.branch-${id.toString.take(8)}"),
+          consumes = consumesMap,
+          produces = Map("out" -> outputCType)
         )
-      }.toMap + ("otherwise" -> dataNodes(otherwiseDataId).cType)
+        moduleNodes = moduleNodes + (moduleId -> spec)
 
-      val outputCType = SemanticType.toCType(resultType)
+        // Create synthetic module implementation
+        val syntheticModule = createBranchModule(spec, cases.size, outputCType)
+        syntheticModules = syntheticModules + (moduleId -> syntheticModule)
 
-      // Create synthetic branch module
-      val spec = ModuleNodeSpec(
-        metadata = ComponentMetadata.empty(s"$dagName.branch-${id.toString.take(8)}"),
-        consumes = consumesMap,
-        produces = Map("out" -> outputCType)
-      )
-      moduleNodes = moduleNodes + (moduleId -> spec)
-
-      // Create synthetic module implementation
-      val syntheticModule = createBranchModule(spec, cases.size, outputCType)
-      syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-      // Update nicknames for input data nodes
-      caseDataIds.zipWithIndex.foreach { case ((condDataId, exprDataId), idx) =>
-        dataNodes = dataNodes.updatedWith(condDataId) {
-          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"cond$idx")))
+        // Update nicknames for input data nodes
+        caseDataIds.zipWithIndex.foreach { case ((condDataId, exprDataId), idx) =>
+          dataNodes = dataNodes.updatedWith(condDataId) {
+            case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"cond$idx")))
+            case None       => None
+          }
+          dataNodes = dataNodes.updatedWith(exprDataId) {
+            case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"expr$idx")))
+            case None       => None
+          }
+        }
+        dataNodes = dataNodes.updatedWith(otherwiseDataId) {
+          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "otherwise")))
           case None       => None
         }
-        dataNodes = dataNodes.updatedWith(exprDataId) {
-          case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"expr$idx")))
-          case None       => None
+
+        // Connect edges
+        caseDataIds.foreach { case (condDataId, exprDataId) =>
+          inEdges = inEdges + ((condDataId, moduleId)) + ((exprDataId, moduleId))
         }
-      }
-      dataNodes = dataNodes.updatedWith(otherwiseDataId) {
-        case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "otherwise")))
-        case None       => None
-      }
+        inEdges = inEdges + ((otherwiseDataId, moduleId))
 
-      // Connect edges
-      caseDataIds.foreach { case (condDataId, exprDataId) =>
-        inEdges = inEdges + ((condDataId, moduleId)) + ((exprDataId, moduleId))
+        // Create output data node
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"branch_${id.toString.take(8)}_output",
+          nicknames = Map(moduleId -> "out"),
+          cType = outputCType
+        ))
+
+        // Connect module output to data node
+        outEdges = outEdges + ((moduleId, outputDataId))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
       }
-      inEdges = inEdges + ((otherwiseDataId, moduleId))
-
-      // Create output data node
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"branch_${id.toString.take(8)}_output",
-        nicknames = Map(moduleId -> "out"),
-        cType = outputCType
-      ))
-
-      // Connect module output to data node
-      outEdges = outEdges + ((moduleId, outputDataId))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
     }
 
     private def processStringInterpolationNode(
         id: UUID,
         parts: List[String],
         expressions: List[UUID]
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
       // Get data IDs for all interpolated expressions
-      val exprDataIds = expressions.zipWithIndex.map { case (exprNodeId, idx) =>
-        val dataId = nodeOutputs.getOrElse(
-          exprNodeId,
-          throw new IllegalStateException(s"Expression node $exprNodeId not found")
-        )
-        (s"expr$idx", dataId)
+      val exprDataIdsResult = expressions.zipWithIndex.traverse { case (exprNodeId, idx) =>
+        getNodeOutput(exprNodeId, s"expression $idx in string interpolation").map { dataId =>
+          (s"expr$idx", dataId)
+        }
       }
 
-      // Create data node with inline transform (no synthetic module needed)
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"interpolate_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = CType.CString,
-        inlineTransform = Some(InlineTransform.StringInterpolationTransform(parts)),
-        transformInputs = exprDataIds.toMap
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      exprDataIdsResult.map { exprDataIds =>
+        // Create data node with inline transform (no synthetic module needed)
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"interpolate_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = CType.CString,
+          inlineTransform = Some(InlineTransform.StringInterpolationTransform(parts)),
+          transformInputs = exprDataIds.toMap
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
     }
 
     /** Create a branch module that evaluates conditions in order. Returns the first expression
@@ -621,56 +601,116 @@ object DagCompiler {
       source: UUID,
       lambda: TypedLambda,
       outputType: SemanticType
-    ): Unit = {
+    ): Either[CompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
-      val sourceDataId = nodeOutputs.getOrElse(source,
-        throw new IllegalStateException(s"Source node $source not found")
+      for {
+        sourceDataId <- getNodeOutput(source, s"source of ${operation.toString.toLowerCase}")
+        transform    <- createHigherOrderTransform(operation, lambda)
+      } yield {
+        val outputCType = SemanticType.toCType(outputType)
+
+        // Create data node with inline transform
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"hof_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(transform),
+          transformInputs = Map("source" -> sourceDataId)
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
+    }
+
+    /** Create the appropriate inline transform for a higher-order operation */
+    private def createHigherOrderTransform(
+        operation: HigherOrderOp,
+        lambda: TypedLambda
+    ): Either[CompilerError, InlineTransform] = {
+      // Create the lambda evaluator function - this can fail
+      createLambdaEvaluator(lambda).flatMap { lambdaEvaluator =>
+        operation match {
+          case HigherOrderOp.Filter =>
+            Right(InlineTransform.FilterTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+          case HigherOrderOp.Map =>
+            Right(InlineTransform.MapTransform(lambdaEvaluator))
+          case HigherOrderOp.All =>
+            Right(InlineTransform.AllTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+          case HigherOrderOp.Any =>
+            Right(InlineTransform.AnyTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+          case HigherOrderOp.SortBy =>
+            Left(CompilerError.UnsupportedOperation("SortBy"))
+        }
+      }
+    }
+
+    /** Create a lambda evaluator function from a TypedLambda.
+      * Returns Either to handle potential errors in lambda body structure.
+      */
+    private def createLambdaEvaluator(lambda: TypedLambda): Either[CompilerError, Any => Any] = {
+      // Validate the lambda body structure upfront
+      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map { _ =>
+        (element: Any) => {
+          // Bind parameter to element value
+          val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap
+
+          // Evaluate the lambda body - errors here become runtime exceptions
+          // since the structure was validated at compile time
+          evaluateLambdaBodyUnsafe(lambda.bodyNodes, lambda.bodyOutputId, paramBindings)
+        }
+      }
+    }
+
+    /** Validate lambda body structure at compile time */
+    private def validateLambdaBody(
+        nodes: Map[UUID, IRNode],
+        outputId: UUID
+    ): Either[CompilerError, Unit] = {
+      def validateNode(nodeId: UUID): Either[CompilerError, Unit] = {
+        nodes.get(nodeId) match {
+          case None => Left(CompilerError.NodeNotFound(nodeId, "lambda body"))
+          case Some(node) => node match {
+            case IRNode.Input(_, _, _, _) => Right(())
+            case IRNode.LiteralNode(_, _, _, _) => Right(())
+            case IRNode.FieldAccessNode(_, source, _, _, _) => validateNode(source)
+            case IRNode.AndNode(_, left, right, _) =>
+              validateNode(left).flatMap(_ => validateNode(right))
+            case IRNode.OrNode(_, left, right, _) =>
+              validateNode(left).flatMap(_ => validateNode(right))
+            case IRNode.NotNode(_, operand, _) => validateNode(operand)
+            case IRNode.ModuleCall(_, moduleName, _, inputs, _, _) =>
+              validateBuiltinFunction(moduleName).flatMap { _ =>
+                inputs.values.toList.traverse(validateNode).map(_ => ())
+              }
+            case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
+              for {
+                _ <- validateNode(cond)
+                _ <- validateNode(thenBr)
+                _ <- validateNode(elseBr)
+              } yield ()
+            case other =>
+              Left(CompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body"))
+          }
+        }
+      }
+      validateNode(outputId)
+    }
+
+    /** Validate that a function is supported in lambda bodies */
+    private def validateBuiltinFunction(moduleName: String): Either[CompilerError, Unit] = {
+      val funcName = moduleName.split('.').last
+      val supported = Set(
+        "add", "add-int", "subtract", "sub-int", "multiply", "mul-int", "divide", "div-int",
+        "gt", "lt", "gte", "lte", "eq-int", "eq-string"
       )
-
-      val outputCType = SemanticType.toCType(outputType)
-
-      // Create the lambda evaluator function
-      val lambdaEvaluator = createLambdaEvaluator(lambda)
-
-      // Create appropriate inline transform based on operation
-      val transform = operation match {
-        case HigherOrderOp.Filter =>
-          InlineTransform.FilterTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
-        case HigherOrderOp.Map =>
-          InlineTransform.MapTransform(lambdaEvaluator)
-        case HigherOrderOp.All =>
-          InlineTransform.AllTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
-        case HigherOrderOp.Any =>
-          InlineTransform.AnyTransform(lambdaEvaluator.asInstanceOf[Any => Boolean])
-        case HigherOrderOp.SortBy =>
-          throw new UnsupportedOperationException("SortBy not yet implemented")
-      }
-
-      // Create data node with inline transform
-      dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
-        name = s"hof_${id.toString.take(8)}_output",
-        nicknames = Map.empty,
-        cType = outputCType,
-        inlineTransform = Some(transform),
-        transformInputs = Map("source" -> sourceDataId)
-      ))
-      nodeOutputs = nodeOutputs + (id -> outputDataId)
+      if (supported.contains(funcName)) Right(())
+      else Left(CompilerError.UnsupportedFunction(moduleName, funcName))
     }
 
-    /** Create a lambda evaluator function from a TypedLambda */
-    private def createLambdaEvaluator(lambda: TypedLambda): Any => Any = {
-      (element: Any) => {
-        // Bind parameter to element value
-        val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap
-
-        // Evaluate the lambda body
-        evaluateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId, paramBindings)
-      }
-    }
-
-    /** Evaluate lambda body nodes with given parameter bindings */
-    private def evaluateLambdaBody(
+    /** Evaluate lambda body nodes with given parameter bindings.
+      * This is called at runtime after validation, so errors become exceptions.
+      */
+    private def evaluateLambdaBodyUnsafe(
       nodes: Map[UUID, IRNode],
       outputId: UUID,
       paramBindings: Map[String, Any]
@@ -683,7 +723,7 @@ object DagCompiler {
           case Some(value) => value
           case None =>
             val node = nodes(nodeId)
-            val value = evaluateLambdaNode(node, nodes, paramBindings, evaluateNode)
+            val value = evaluateLambdaNodeUnsafe(node, nodes, paramBindings, evaluateNode)
             evaluatedNodes = evaluatedNodes + (nodeId -> value)
             value
         }
@@ -692,8 +732,10 @@ object DagCompiler {
       evaluateNode(outputId)
     }
 
-    /** Evaluate a single IR node in lambda context */
-    private def evaluateLambdaNode(
+    /** Evaluate a single IR node in lambda context.
+      * Called at runtime after compile-time validation.
+      */
+    private def evaluateLambdaNodeUnsafe(
       node: IRNode,
       nodes: Map[UUID, IRNode],
       paramBindings: Map[String, Any],
@@ -702,7 +744,7 @@ object DagCompiler {
       case IRNode.Input(_, name, _, _) =>
         // Lambda parameter - look up in bindings
         paramBindings.getOrElse(name,
-          throw new IllegalStateException(s"Lambda parameter $name not bound"))
+          throw CompilerError.toException(CompilerError.LambdaParameterNotBound(name)))
 
       case IRNode.LiteralNode(_, value, _, _) =>
         value
@@ -711,7 +753,9 @@ object DagCompiler {
         val sourceValue = evaluateNode(source)
         sourceValue match {
           case m: Map[String, ?] @unchecked => m(field)
-          case _ => throw new IllegalStateException(s"Cannot access field $field on non-record")
+          case _ =>
+            throw CompilerError.toException(
+              CompilerError.InvalidFieldAccess(field, sourceValue.getClass.getSimpleName))
         }
 
       case IRNode.AndNode(_, left, right, _) =>
@@ -725,21 +769,24 @@ object DagCompiler {
       case IRNode.NotNode(_, operand, _) =>
         !evaluateNode(operand).asInstanceOf[Boolean]
 
-      case IRNode.ModuleCall(_, moduleName, _, inputs, outputType, _) =>
+      case IRNode.ModuleCall(_, moduleName, _, inputs, _, _) =>
         // For simple comparison/arithmetic operations in lambda bodies
         val inputValues = inputs.map { case (name, nodeId) => name -> evaluateNode(nodeId) }
-        evaluateBuiltinFunction(moduleName, inputValues)
+        evaluateBuiltinFunctionUnsafe(moduleName, inputValues)
 
       case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
         val condVal = evaluateNode(cond).asInstanceOf[Boolean]
         if (condVal) evaluateNode(thenBr) else evaluateNode(elseBr)
 
       case other =>
-        throw new IllegalStateException(s"Unsupported node type in lambda body: $other")
+        throw CompilerError.toException(
+          CompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body"))
     }
 
-    /** Evaluate a built-in function for use in lambda bodies */
-    private def evaluateBuiltinFunction(moduleName: String, inputs: Map[String, Any]): Any = {
+    /** Evaluate a built-in function for use in lambda bodies.
+      * Called at runtime after compile-time validation.
+      */
+    private def evaluateBuiltinFunctionUnsafe(moduleName: String, inputs: Map[String, Any]): Any = {
       // Extract function name from module name (e.g., "stdlib.multiply" -> "multiply")
       val funcName = moduleName.split('.').last
 
@@ -770,7 +817,7 @@ object DagCompiler {
           inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
 
         case _ =>
-          throw new IllegalStateException(s"Unsupported function in lambda body: $moduleName (funcName=$funcName)")
+          throw CompilerError.toException(CompilerError.UnsupportedFunction(moduleName, funcName))
       }
     }
   }

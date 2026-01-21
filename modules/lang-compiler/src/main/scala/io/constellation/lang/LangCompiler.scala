@@ -94,7 +94,9 @@ private class LangCompilerImpl(
       irProgram = IRGenerator.generate(typedProgram)
 
       // Phase 4: Compile to DagSpec
-      result = DagCompiler.compile(irProgram, dagName, modules)
+      result <- DagCompiler.compile(irProgram, dagName, modules).left.map { err =>
+        List(CompileError.InternalError(err.message))
+      }
     } yield result
 }
 

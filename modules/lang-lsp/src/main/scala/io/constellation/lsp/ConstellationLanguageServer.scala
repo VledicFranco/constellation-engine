@@ -1276,6 +1276,8 @@ class ConstellationLanguageServer(
         ErrorCategory.Reference
       case _: CompileError.UnsupportedComparison | _: CompileError.UnsupportedArithmetic =>
         ErrorCategory.Type
+      case _: CompileError.InternalError =>
+        ErrorCategory.Internal
     }
 
     val (line, column, endLine, endColumn, codeContext) = error.span match {

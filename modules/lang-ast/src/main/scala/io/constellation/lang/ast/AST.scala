@@ -408,4 +408,9 @@ object CompileError {
     def message: String =
       s"Arithmetic operator '$op' is not supported for types $leftType and $rightType"
   }
+
+  /** Internal compiler error during DAG compilation (IR -> DagSpec) */
+  final case class InternalError(details: String, span: Option[Span] = None) extends CompileError {
+    def message: String = s"Internal compiler error: $details"
+  }
 }
