@@ -186,6 +186,15 @@ out upper_greeting
 | `upper_greeting = upper(...)` | Call `upper` function on the greeting |
 | `out upper_greeting` | Declare the output of the pipeline |
 
+**Tip:** You can add example values to inputs using the `@example` annotation:
+
+```
+@example("World")
+in name: String
+```
+
+The example value pre-populates the run widget in VSCode. See [Input Annotations](constellation-lang/declarations.md#input-annotations) for details.
+
 ### Run in VSCode
 
 1. Open `hello.cst` in VSCode (with the Constellation extension installed)

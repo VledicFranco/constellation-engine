@@ -9,6 +9,7 @@ constellation-lang is a domain-specific language for defining ML pipeline DAGs. 
 - [Program Structure](./program-structure.md) - Overall program organization
 - [Types](./types.md) - Primitive, record, union, optional, and parameterized types
 - [Declarations](./declarations.md) - Type definitions, inputs, assignments, outputs
+  - [Input Annotations](./declarations.md#input-annotations) - `@example` for input metadata
 - [Expressions](./expressions.md) - Variables, function calls, projections, conditionals
 - [Type Algebra](./type-algebra.md) - Merging types with the `+` operator
 - [Comments](./comments.md) - Line comments syntax
