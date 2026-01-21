@@ -17,6 +17,7 @@ interface InputField {
   name: string;
   type: TypeDescriptor;
   line: number;
+  example?: any;  // Example value from @example annotation
 }
 
 interface TypeDescriptor {
@@ -632,6 +633,19 @@ export class ScriptRunnerPanel {
       .input-group { margin-bottom: var(--spacing-lg); }
       .input-group:last-child { margin-bottom: 0; }
 
+      .example-hint {
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground);
+        margin-bottom: var(--spacing-xs);
+      }
+      .example-hint code {
+        background: var(--vscode-textCodeBlock-background, rgba(10, 10, 10, 0.4));
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: var(--vscode-editor-font-family, monospace);
+        font-size: 11px;
+      }
+
       .input-label {
         display: flex;
         align-items: baseline;
@@ -1179,23 +1193,31 @@ export class ScriptRunnerPanel {
     }
     var html = '';
     for (var i = 0; i < inputs.length; i++) {
-      html += renderInputGroup(inputs[i].name, inputs[i].type, inputs[i].name);
+      html += renderInputGroup(inputs[i].name, inputs[i].type, inputs[i].name, inputs[i].example);
     }
     inputsCard.innerHTML = html;
   }
 
-  function renderInputGroup(name, type, path) {
+  function renderInputGroup(name, type, path, example) {
     var typeStr = formatType(type);
     var inputHtml = '';
+    var exampleHint = '';
+
+    // Show example hint if available
+    if (example !== undefined && example !== null) {
+      var exampleStr = typeof example === 'string' ? example : JSON.stringify(example);
+      exampleHint = '<div class="example-hint">Example: <code>' + escapeHtml(exampleStr) + '</code></div>';
+    }
 
     if (type.kind === 'primitive') {
-      inputHtml = renderPrimitiveInput(type.name, path);
+      inputHtml = renderPrimitiveInput(type.name, path, example);
     } else if (type.kind === 'list') {
       inputHtml = renderListInput(type, path);
     } else if (type.kind === 'record') {
       inputHtml = renderRecordInput(type, path);
     } else {
-      inputHtml = '<input type="text" data-path="' + path + '" data-type="json" placeholder="Enter JSON value">';
+      var defaultVal = example !== undefined ? JSON.stringify(example) : '';
+      inputHtml = '<input type="text" data-path="' + path + '" data-type="json" placeholder="Enter JSON value" value="' + escapeHtml(defaultVal) + '">';
     }
 
     return '<div class="input-group">' +
@@ -1203,21 +1225,26 @@ export class ScriptRunnerPanel {
         '<span class="input-name">' + escapeHtml(name) + '</span>' +
         '<span class="type-badge">' + escapeHtml(typeStr) + '</span>' +
       '</div>' +
+      exampleHint +
       inputHtml +
     '</div>';
   }
 
-  function renderPrimitiveInput(typeName, path) {
+  function renderPrimitiveInput(typeName, path, example) {
+    var defaultVal = example !== undefined && example !== null ? example : '';
     if (typeName === 'String') {
-      return '<input type="text" data-path="' + path + '" data-type="string" placeholder="Enter text">';
+      return '<input type="text" data-path="' + path + '" data-type="string" placeholder="Enter text" value="' + escapeHtml(String(defaultVal)) + '">';
     } else if (typeName === 'Int') {
-      return '<input type="number" data-path="' + path + '" data-type="int" step="1" placeholder="0">';
+      var intVal = example !== undefined && example !== null ? example : '';
+      return '<input type="number" data-path="' + path + '" data-type="int" step="1" placeholder="0" value="' + intVal + '">';
     } else if (typeName === 'Float') {
-      return '<input type="number" data-path="' + path + '" data-type="float" step="any" placeholder="0.0">';
+      var floatVal = example !== undefined && example !== null ? example : '';
+      return '<input type="number" data-path="' + path + '" data-type="float" step="any" placeholder="0.0" value="' + floatVal + '">';
     } else if (typeName === 'Boolean') {
-      return '<label class="checkbox-wrapper"><input type="checkbox" data-path="' + path + '" data-type="boolean"><span>Enabled</span></label>';
+      var isChecked = example === true ? ' checked' : '';
+      return '<label class="checkbox-wrapper"><input type="checkbox" data-path="' + path + '" data-type="boolean"' + isChecked + '><span>Enabled</span></label>';
     } else {
-      return '<input type="text" data-path="' + path + '" data-type="string" placeholder="Enter value">';
+      return '<input type="text" data-path="' + path + '" data-type="string" placeholder="Enter value" value="' + escapeHtml(String(defaultVal)) + '">';
     }
   }
 
