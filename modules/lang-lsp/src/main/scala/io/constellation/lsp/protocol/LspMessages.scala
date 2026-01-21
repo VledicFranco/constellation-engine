@@ -175,7 +175,8 @@ object LspMessages {
   case class InputField(
       name: String,
       `type`: TypeDescriptor,
-      line: Int
+      line: Int,
+      example: Option[Json] = None // Example value from @example annotation
   )
 
   // ========== Custom: DAG Execution Updates ==========
