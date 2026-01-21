@@ -13,7 +13,30 @@ final case class CompileResult(
     syntheticModules: Map[UUID, Module.Uninitialized]
 )
 
-/** Compiles IR to Constellation DagSpec */
+/** Compiles IR to Constellation DagSpec.
+  *
+  * ==Type Safety Note==
+  *
+  * The `asInstanceOf` casts in this file are **safe by construction**:
+  *
+  *   - '''Lambda casts''': HOF lambda arguments are always TypedExpression.Lambda because
+  *     the IR generator only produces lambda arguments for higher-order functions
+  *
+  *   - '''Boolean casts''' (in evaluateLambdaBody): Logical operations (And, Or, Not)
+  *     and conditionals receive Boolean operands because the type checker verifies
+  *     all operand types during semantic analysis before IR generation
+  *
+  *   - '''Numeric casts''' (in evaluateLambdaBody): Arithmetic operations receive
+  *     numeric operands because the type checker verifies operand types
+  *
+  *   - '''Condition result cast''' (in ConditionalModule): WhenNode conditions are
+  *     type-checked to be Boolean during semantic analysis
+  *
+  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for
+  * development and debugging purposes. See [[io.constellation.DebugMode]].
+  *
+  * @see [[io.constellation.DebugMode]] for optional runtime type validation
+  */
 object DagCompiler {
 
   /** Compile an IR program to a DagSpec and synthetic modules */
