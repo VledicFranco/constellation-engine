@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: Constellation Engine API
+  version: 0.1.0
+  description: |
+    REST API for the Constellation Engine - a type-safe, composable ML orchestration framework.
+
+    This API allows you to:
+    - Compile constellation-lang source code into executable DAGs
+    - Execute stored DAGs with input data
+    - Compile and run scripts in a single request
+    - Query available modules, DAGs, and namespaces
+
+    ## Quick Start
+
+    1. Compile a script: `POST /compile`
+    2. Execute it: `POST /execute`
+
+    Or use the combined endpoint: `POST /run`
+
+    ## WebSocket
+
+    For IDE integration via Language Server Protocol (LSP), connect to `ws://host:port/lsp`.
+    See the LSP documentation for message formats.
+  contact:
+    name: Constellation Engine
+    url: https://github.com/VledicFranco/constellation-engine
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Compilation
+    description: Compile constellation-lang source code
+  - name: Execution
+    description: Execute compiled DAGs
+  - name: DAGs
+    description: Query and manage DAGs
+  - name: Modules
+    description: Query available modules
+  - name: Namespaces
+    description: Query function namespaces
+  - name: Health
+    description: Server health check
+
+paths:
+  /compile:
+    post:
+      tags:
+        - Compilation
+      summary: Compile constellation-lang source code
+      description: |
+        Compiles constellation-lang source code and stores the resulting DAG
+        with the specified name. The DAG can then be executed via `/execute`.
+      operationId: compile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompileRequest'
+            example:
+              source: |
+                in text: String
+                result = Uppercase(text)
+                out result
+              dagName: "my-pipeline"
+      responses:
+        '200':
+          description: Compilation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompileResponse'
+              example:
+                success: true
+                dagName: "my-pipeline"
+                errors: []
+        '400':
+          description: Compilation errors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompileResponse'
+              example:
+                success: false
+                dagName: null
+                errors:
+                  - "Undefined function: Upppercase"
+                  - "Type mismatch: expected String, got Int"
+
+  /execute:
+    post:
+      tags:
+        - Execution
+      summary: Execute a stored DAG
+      description: |
+        Executes a previously compiled DAG with the provided inputs.
+        The DAG must have been stored via `/compile` first.
+      operationId: execute
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteRequest'
+            example:
+              dagName: "my-pipeline"
+              inputs:
+                text: "hello world"
+      responses:
+        '200':
+          description: Execution successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+              example:
+                success: true
+                outputs:
+                  result: "HELLO WORLD"
+                error: null
+        '400':
+          description: Input validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+              example:
+                success: false
+                outputs: {}
+                error: "Input error: Missing required input 'text'"
+        '404':
+          description: DAG not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "DagNotFound"
+                message: "DAG 'unknown-pipeline' not found"
+        '500':
+          description: Execution error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+              example:
+                success: false
+                outputs: {}
+                error: "Execution failed: Module 'ExternalAPI' threw exception"
+
+  /run:
+    post:
+      tags:
+        - Compilation
+        - Execution
+      summary: Compile and run a script in one step
+      description: |
+        Compiles constellation-lang source code and executes it immediately
+        without storing the DAG. Useful for one-off executions and testing.
+      operationId: run
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunRequest'
+            example:
+              source: |
+                in name: String
+                in count: Int
+                greeting = Concat("Hello, ", name)
+                repeated = Repeat(greeting, count)
+                out repeated
+              inputs:
+                name: "World"
+                count: 3
+      responses:
+        '200':
+          description: Compilation and execution successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+              example:
+                success: true
+                outputs:
+                  repeated: "Hello, World Hello, World Hello, World"
+                compilationErrors: []
+                error: null
+        '400':
+          description: Compilation or input error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+              example:
+                success: false
+                outputs: {}
+                compilationErrors:
+                  - "Undefined function: Repeatt"
+                error: null
+        '500':
+          description: Execution error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunResponse'
+              example:
+                success: false
+                outputs: {}
+                compilationErrors: []
+                error: "Execution failed: Division by zero"
+
+  /dags:
+    get:
+      tags:
+        - DAGs
+      summary: List all stored DAGs
+      description: |
+        Returns a list of all DAGs that have been compiled and stored.
+        Each entry includes the DAG name and its metadata.
+      operationId: listDags
+      responses:
+        '200':
+          description: List of DAGs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DagListResponse'
+              example:
+                dags:
+                  my-pipeline:
+                    name: "my-pipeline"
+                    description: "Text processing pipeline"
+                    tags: ["text", "processing"]
+                    majorVersion: 1
+                    minorVersion: 0
+                  lead-scorer:
+                    name: "lead-scorer"
+                    description: "Lead scoring pipeline"
+                    tags: ["ml", "scoring"]
+                    majorVersion: 2
+                    minorVersion: 1
+
+  /dags/{dagName}:
+    get:
+      tags:
+        - DAGs
+      summary: Get a specific DAG
+      description: Returns details about a specific DAG by name.
+      operationId: getDag
+      parameters:
+        - name: dagName
+          in: path
+          required: true
+          description: Name of the DAG
+          schema:
+            type: string
+          example: "my-pipeline"
+      responses:
+        '200':
+          description: DAG found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DagResponse'
+              example:
+                name: "my-pipeline"
+                metadata:
+                  name: "my-pipeline"
+                  description: "Text processing pipeline"
+                  tags: ["text", "processing"]
+                  majorVersion: 1
+                  minorVersion: 0
+        '404':
+          description: DAG not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "DagNotFound"
+                message: "DAG 'unknown-pipeline' not found"
+
+  /modules:
+    get:
+      tags:
+        - Modules
+      summary: List all available modules
+      description: |
+        Returns a list of all registered modules that can be used in
+        constellation-lang scripts. Includes module signatures and descriptions.
+      operationId: listModules
+      responses:
+        '200':
+          description: List of modules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModuleListResponse'
+              example:
+                modules:
+                  - name: "Uppercase"
+                    description: "Converts text to uppercase"
+                    version: "1.0"
+                    inputs:
+                      text: "CString"
+                    outputs:
+                      result: "CString"
+                  - name: "WordCount"
+                    description: "Counts words in text"
+                    version: "1.0"
+                    inputs:
+                      text: "CString"
+                    outputs:
+                      count: "CInt"
+
+  /namespaces:
+    get:
+      tags:
+        - Namespaces
+      summary: List all available namespaces
+      description: |
+        Returns a list of all function namespaces available for import
+        in constellation-lang scripts using `use` statements.
+      operationId: listNamespaces
+      responses:
+        '200':
+          description: List of namespaces
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceListResponse'
+              example:
+                namespaces:
+                  - "stdlib"
+                  - "stdlib.math"
+                  - "stdlib.string"
+                  - "stdlib.boolean"
+
+  /namespaces/{namespace}:
+    get:
+      tags:
+        - Namespaces
+      summary: List functions in a namespace
+      description: |
+        Returns all functions available in a specific namespace.
+        Includes function signatures and parameter types.
+      operationId: getNamespaceFunctions
+      parameters:
+        - name: namespace
+          in: path
+          required: true
+          description: Namespace name
+          schema:
+            type: string
+          example: "stdlib.math"
+      responses:
+        '200':
+          description: Namespace functions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NamespaceFunctionsResponse'
+              example:
+                namespace: "stdlib.math"
+                functions:
+                  - name: "Add"
+                    qualifiedName: "stdlib.math.Add"
+                    params:
+                      - "a: Int"
+                      - "b: Int"
+                    returns: "Int"
+                  - name: "Multiply"
+                    qualifiedName: "stdlib.math.Multiply"
+                    params:
+                      - "a: Int"
+                      - "b: Int"
+                    returns: "Int"
+        '404':
+          description: Namespace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "NamespaceNotFound"
+                message: "Namespace 'stdlib.unknown' not found or has no functions"
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Returns server health status. Use for readiness/liveness probes.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+              example:
+                status: "ok"
+
+components:
+  schemas:
+    CompileRequest:
+      type: object
+      required:
+        - source
+        - dagName
+      properties:
+        source:
+          type: string
+          description: Constellation-lang source code
+          example: |
+            in text: String
+            result = Uppercase(text)
+            out result
+        dagName:
+          type: string
+          description: Name to assign to the compiled DAG
+          example: "my-pipeline"
+
+    CompileResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: Whether compilation succeeded
+        dagName:
+          type: string
+          nullable: true
+          description: Name of the compiled DAG (if successful)
+        errors:
+          type: array
+          items:
+            type: string
+          description: List of compilation error messages
+          default: []
+
+    ExecuteRequest:
+      type: object
+      required:
+        - dagName
+        - inputs
+      properties:
+        dagName:
+          type: string
+          description: Name of the DAG to execute
+        inputs:
+          type: object
+          additionalProperties: true
+          description: Input values as JSON (keys must match DAG input declarations)
+
+    ExecuteResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: Whether execution succeeded
+        outputs:
+          type: object
+          additionalProperties: true
+          description: Output values as JSON
+          default: {}
+        error:
+          type: string
+          nullable: true
+          description: Error message if execution failed
+
+    RunRequest:
+      type: object
+      required:
+        - source
+        - inputs
+      properties:
+        source:
+          type: string
+          description: Constellation-lang source code
+        inputs:
+          type: object
+          additionalProperties: true
+          description: Input values as JSON
+
+    RunResponse:
+      type: object
+      required:
+        - success
+      properties:
+        success:
+          type: boolean
+          description: Whether compilation and execution succeeded
+        outputs:
+          type: object
+          additionalProperties: true
+          description: Output values as JSON
+          default: {}
+        compilationErrors:
+          type: array
+          items:
+            type: string
+          description: List of compilation error messages
+          default: []
+        error:
+          type: string
+          nullable: true
+          description: Runtime error message if execution failed
+
+    DagListResponse:
+      type: object
+      required:
+        - dags
+      properties:
+        dags:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ComponentMetadata'
+          description: Map of DAG names to their metadata
+
+    DagResponse:
+      type: object
+      required:
+        - name
+        - metadata
+      properties:
+        name:
+          type: string
+          description: DAG name
+        metadata:
+          $ref: '#/components/schemas/ComponentMetadata'
+
+    ComponentMetadata:
+      type: object
+      required:
+        - name
+        - description
+        - tags
+        - majorVersion
+        - minorVersion
+      properties:
+        name:
+          type: string
+          description: Component name
+        description:
+          type: string
+          description: Human-readable description
+        tags:
+          type: array
+          items:
+            type: string
+          description: Classification tags
+        majorVersion:
+          type: integer
+          description: Major version number
+        minorVersion:
+          type: integer
+          description: Minor version number
+
+    ModuleListResponse:
+      type: object
+      required:
+        - modules
+      properties:
+        modules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModuleInfo'
+
+    ModuleInfo:
+      type: object
+      required:
+        - name
+        - description
+        - version
+        - inputs
+        - outputs
+      properties:
+        name:
+          type: string
+          description: Module name (use in constellation-lang scripts)
+        description:
+          type: string
+          description: Module description
+        version:
+          type: string
+          description: Version string (major.minor)
+        inputs:
+          type: object
+          additionalProperties:
+            type: string
+          description: Input parameter names and types
+        outputs:
+          type: object
+          additionalProperties:
+            type: string
+          description: Output names and types
+
+    NamespaceListResponse:
+      type: object
+      required:
+        - namespaces
+      properties:
+        namespaces:
+          type: array
+          items:
+            type: string
+          description: List of available namespace names
+
+    NamespaceFunctionsResponse:
+      type: object
+      required:
+        - namespace
+        - functions
+      properties:
+        namespace:
+          type: string
+          description: Namespace name
+        functions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FunctionInfo'
+
+    FunctionInfo:
+      type: object
+      required:
+        - name
+        - qualifiedName
+        - params
+        - returns
+      properties:
+        name:
+          type: string
+          description: Function name
+        qualifiedName:
+          type: string
+          description: Fully qualified name including namespace
+        params:
+          type: array
+          items:
+            type: string
+          description: Parameter signatures (e.g., "name: Type")
+        returns:
+          type: string
+          description: Return type
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: "DagNotFound"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "DAG 'unknown-pipeline' not found"

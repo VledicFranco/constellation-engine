@@ -65,6 +65,13 @@ sbt test       # Run all tests
 | [API Guide](api-guide.md) | Programmatic API usage and module creation |
 | [LSP Integration](LSP_INTEGRATION.md) | Language Server Protocol setup and features |
 
+### HTTP API
+
+| Document | Description |
+|----------|-------------|
+| [OpenAPI Specification](api/openapi.yaml) | REST API specification (OpenAPI 3.0) |
+| [LSP WebSocket Protocol](api/lsp-websocket.md) | WebSocket protocol for IDE integration |
+
 ### Development
 
 | Document | Description |
