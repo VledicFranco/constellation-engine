@@ -1,0 +1,15 @@
+# Test script with mixed @example annotations
+# Some inputs have examples, some don't
+
+@example("test input")
+in text: String
+
+in count: Int
+
+@example(false)
+in verbose: Boolean
+
+# Process
+result = Uppercase(text)
+
+out result

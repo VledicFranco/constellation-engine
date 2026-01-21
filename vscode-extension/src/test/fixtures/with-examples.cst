@@ -1,0 +1,19 @@
+# Test script with @example annotations
+# Used to verify Script Runner pre-populates input fields
+
+@example("hello world")
+in text: String
+
+@example(42)
+in count: Int
+
+@example(3.14)
+in ratio: Float
+
+@example(true)
+in enabled: Boolean
+
+# Process inputs
+upper = Uppercase(text)
+
+out upper
