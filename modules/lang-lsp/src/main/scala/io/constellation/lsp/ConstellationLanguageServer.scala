@@ -6,7 +6,7 @@ import io.circe.*
 import io.circe.syntax.*
 import io.constellation.{CValue, Constellation, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.ast.{CompileError, Declaration, SourceFile, Span, TypeExpr}
+import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc.*
@@ -293,12 +293,19 @@ class ConstellationLanguageServer(
       case Right(program) =>
         val sourceFile = document.sourceFile
         val inputFields = program.declarations.collect {
-          case Declaration.InputDecl(name, typeExpr, _) =>
+          case Declaration.InputDecl(name, typeExpr, annotations) =>
             val (startLC, _) = sourceFile.spanToLineCol(name.span)
+
+            // Extract example from annotations
+            val example = annotations.collectFirst { case Annotation.Example(exprLoc) =>
+              evaluateExampleToJson(exprLoc.value)
+            }.flatten
+
             InputField(
               name = name.value,
               `type` = typeExprToDescriptor(typeExpr.value),
-              line = startLC.line
+              line = startLC.line,
+              example = example
             )
         }
         GetInputSchemaResult(
@@ -316,6 +323,23 @@ class ConstellationLanguageServer(
           error = Some(error.message),
           errors = Some(List(errorInfo))
         )
+    }
+
+  /** Convert an example expression to JSON for LSP transport.
+    * Supports literal values only (strings, numbers, booleans).
+    * Complex expressions (function calls, references) return None.
+    */
+  private def evaluateExampleToJson(expr: Expression): Option[Json] =
+    try {
+      expr match {
+        case Expression.StringLit(value) => Some(Json.fromString(value))
+        case Expression.IntLit(value)    => Some(Json.fromLong(value))
+        case Expression.FloatLit(value)  => Some(Json.fromDoubleOrNull(value))
+        case Expression.BoolLit(value)   => Some(Json.fromBoolean(value))
+        case _                           => None // Complex expressions not supported
+      }
+    } catch {
+      case _: Exception => None // Fail gracefully
     }
 
   private def handleGetDagStructure(request: Request): IO[Response] =
