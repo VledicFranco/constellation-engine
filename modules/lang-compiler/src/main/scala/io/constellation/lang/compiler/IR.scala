@@ -178,6 +178,16 @@ object IRNode {
       outputType: SemanticType,
       debugSpan: Option[Span] = None
   ) extends IRNode
+
+  /** A list literal node containing multiple element expressions */
+  final case class ListLiteralNode(
+      id: UUID,
+      elements: List[UUID],
+      elementType: SemanticType,
+      debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = SemanticType.SList(elementType)
+  }
 }
 
 /** Higher-order operation types */
@@ -228,7 +238,8 @@ final case class IRProgram(
       expressions.toSet
     case Some(IRNode.HigherOrderNode(_, _, source, _, _, _)) =>
       Set(source) // Lambda body nodes are evaluated separately per element
-    case None => Set.empty
+    case Some(IRNode.ListLiteralNode(_, elements, _, _)) => elements.toSet
+    case None                                            => Set.empty
   }
 
   /** Topologically sort nodes for execution order */

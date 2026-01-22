@@ -449,8 +449,13 @@ object ConstellationParser {
   private val boolLit: P[Expression.BoolLit] =
     (trueKw.as(true) | falseKw.as(false)).map(Expression.BoolLit(_))
 
+  // List literal: [1, 2, 3] or ["a", "b", "c"]
+  private lazy val listLit: P[Expression.ListLit] =
+    (openBracket *> withSpan(P.defer(expression)).repSep0(comma) <* closeBracket)
+      .map(elements => Expression.ListLit(elements.toList))
+
   private val literal: P[Expression] =
-    floatLit.backtrack | intLit | interpolatedString | boolLit
+    floatLit.backtrack | intLit | interpolatedString | boolLit | listLit
 
   // Declarations
   private val typeDef: P[Declaration.TypeDef] =

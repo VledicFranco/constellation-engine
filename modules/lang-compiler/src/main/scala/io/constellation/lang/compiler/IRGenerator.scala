@@ -214,6 +214,18 @@ object IRGenerator {
       val node = IRNode.StringInterpolationNode(id, parts, exprIds, Some(span))
       (exprsCtx.addNode(node), id)
 
+    case TypedExpression.ListLiteral(elements, elementType, span) =>
+      // Generate IR for all element expressions
+      val (elemCtx, elemIds) = elements.foldLeft((ctx, List.empty[UUID])) {
+        case ((currentCtx, ids), elem) =>
+          val (newCtx, elemId) = generateExpression(elem, currentCtx)
+          (newCtx, ids :+ elemId)
+      }
+
+      val id   = UUID.randomUUID()
+      val node = IRNode.ListLiteralNode(id, elemIds, elementType, Some(span))
+      (elemCtx.addNode(node), id)
+
     case TypedExpression.Lambda(params, body, funcType, span) =>
       // Lambdas shouldn't appear standalone - they should only appear as arguments
       // to higher-order functions, which are handled in FunctionCall case.

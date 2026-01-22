@@ -305,4 +305,13 @@ object InlineTransform {
       source.exists(predicateEvaluator)
     }
   }
+
+  /** List literal transform - assembles multiple values into a list.
+    * Input names are "elem0", "elem1", etc.
+    */
+  final case class ListLiteralTransform(numElements: Int) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      (0 until numElements).map(i => inputs(s"elem$i")).toList
+    }
+  }
 }

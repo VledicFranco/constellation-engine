@@ -326,7 +326,7 @@ class ConstellationLanguageServer(
     }
 
   /** Convert an example expression to JSON for LSP transport.
-    * Supports literal values only (strings, numbers, booleans).
+    * Supports literal values only (strings, numbers, booleans, lists of literals).
     * Complex expressions (function calls, references) return None.
     */
   private def evaluateExampleToJson(expr: Expression): Option[Json] =
@@ -336,7 +336,14 @@ class ConstellationLanguageServer(
         case Expression.IntLit(value)    => Some(Json.fromLong(value))
         case Expression.FloatLit(value)  => Some(Json.fromDoubleOrNull(value))
         case Expression.BoolLit(value)   => Some(Json.fromBoolean(value))
-        case _                           => None // Complex expressions not supported
+        case Expression.ListLit(elements) =>
+          // Recursively convert each element; if any fails, the whole list fails
+          val convertedElements = elements.map(loc => evaluateExampleToJson(loc.value))
+          if convertedElements.forall(_.isDefined) then
+            Some(Json.arr(convertedElements.flatten*))
+          else
+            None
+        case _ => None // Complex expressions not supported
       }
     } catch {
       case _: Exception => None // Fail gracefully

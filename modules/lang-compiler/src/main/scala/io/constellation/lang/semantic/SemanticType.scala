@@ -24,6 +24,11 @@ object SemanticType {
     def prettyPrint: String = "Boolean"
   }
 
+  /** Bottom type - subtype of all types. Used for empty collections. */
+  case object SNothing extends SemanticType {
+    def prettyPrint: String = "Nothing"
+  }
+
   /** Record type with named fields */
   final case class SRecord(fields: Map[String, SemanticType]) extends SemanticType {
     def prettyPrint: String = {
@@ -74,6 +79,7 @@ object SemanticType {
     case SInt              => CType.CInt
     case SFloat            => CType.CFloat
     case SBoolean          => CType.CBoolean
+    case SNothing          => CType.CString // Bottom type - use String as default for runtime
     case SRecord(fields)   => CType.CProduct(fields.view.mapValues(toCType).toMap)
     case SCandidates(elem) => CType.CList(toCType(elem))
     case SList(elem)       => CType.CList(toCType(elem))

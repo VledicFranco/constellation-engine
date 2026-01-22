@@ -157,6 +157,9 @@ object DagCompiler {
 
       case IRNode.HigherOrderNode(id, operation, source, lambda, outputType, _) =>
         processHigherOrderNode(id, operation, source, lambda, outputType)
+
+      case IRNode.ListLiteralNode(id, elements, elementType, _) =>
+        processListLiteralNode(id, elements, elementType)
     }
 
     private def processModuleCall(
@@ -646,6 +649,35 @@ object DagCompiler {
       }
     }
 
+    private def processListLiteralNode(
+        id: UUID,
+        elements: List[UUID],
+        elementType: SemanticType
+    ): Either[DagCompilerError, Unit] = {
+      val outputDataId = UUID.randomUUID()
+
+      // Get data IDs for all element expressions
+      val elemDataIdsResult = elements.zipWithIndex.traverse { case (elemNodeId, idx) =>
+        getNodeOutput(elemNodeId, s"element $idx in list literal").map { dataId =>
+          (s"elem$idx", dataId)
+        }
+      }
+
+      elemDataIdsResult.map { elemDataIds =>
+        val outputCType = CType.CList(SemanticType.toCType(elementType))
+
+        // Create data node with inline transform
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"list_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.ListLiteralTransform(elements.size)),
+          transformInputs = elemDataIds.toMap
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
+    }
+
     /** Create the appropriate inline transform for a higher-order operation */
     private def createHigherOrderTransform(
         operation: HigherOrderOp,
@@ -712,6 +744,8 @@ object DagCompiler {
                 _ <- validateNode(thenBr)
                 _ <- validateNode(elseBr)
               } yield ()
+            case IRNode.ListLiteralNode(_, elems, _, _) =>
+              elems.traverse(validateNode).map(_ => ())
             case other =>
               Left(DagCompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body"))
           }
@@ -801,6 +835,9 @@ object DagCompiler {
       case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
         val condVal = evaluateNode(cond).asInstanceOf[Boolean]
         if (condVal) evaluateNode(thenBr) else evaluateNode(elseBr)
+
+      case IRNode.ListLiteralNode(_, elems, _, _) =>
+        elems.map(evaluateNode).toList
 
       case other =>
         throw DagCompilerError.toException(

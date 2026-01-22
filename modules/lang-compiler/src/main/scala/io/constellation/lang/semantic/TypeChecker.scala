@@ -104,6 +104,17 @@ object TypedExpression {
   final case class Literal(value: Any, semanticType: SemanticType, span: Span)
       extends TypedExpression
 
+  /** List literal: [1, 2, 3] or ["a", "b", "c"]
+    * Contains typed element expressions.
+    */
+  final case class ListLiteral(
+      elements: List[TypedExpression],
+      elementType: SemanticType,
+      span: Span
+  ) extends TypedExpression {
+    def semanticType: SemanticType = SemanticType.SList(elementType)
+  }
+
   /** String interpolation: "Hello, ${name}!"
     * Contains N+1 string parts for N interpolated expressions.
     */
@@ -552,6 +563,24 @@ object TypeChecker {
 
     case Expression.BoolLit(v) =>
       TypedExpression.Literal(v, SemanticType.SBoolean, span).validNel
+
+    case Expression.ListLit(elements) =>
+      if elements.isEmpty then
+        // Empty list literal - use SNothing as element type (compatible with any List<T>)
+        TypedExpression.ListLiteral(Nil, SemanticType.SNothing, span).validNel
+      else
+        // Type check each element
+        elements.traverse(elem => checkExpression(elem.value, elem.span, env)).andThen { typedElements =>
+          // All elements must have the same type
+          val elementTypes = typedElements.map(_.semanticType).distinct
+          if elementTypes.size == 1 then
+            TypedExpression.ListLiteral(typedElements, elementTypes.head, span).validNel
+          else
+            CompileError.TypeError(
+              s"List literal has mixed element types: ${elementTypes.map(_.prettyPrint).mkString(", ")}",
+              Some(span)
+            ).invalidNel
+        }
 
     case Expression.Compare(left, op, right) =>
       (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))
