@@ -1,7 +1,7 @@
 # Complex Example: Data Analysis Pipeline
 # Demonstrates a multi-step data processing workflow with branching
 
-# Note: @example not supported for List<Int> - use Script Runner form
+@example([2,4,6])
 in numbers: List<Int>
 
 @example(5)
