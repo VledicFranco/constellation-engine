@@ -1212,7 +1212,7 @@ export class ScriptRunnerPanel {
     if (type.kind === 'primitive') {
       inputHtml = renderPrimitiveInput(type.name, path, example);
     } else if (type.kind === 'list') {
-      inputHtml = renderListInput(type, path);
+      inputHtml = renderListInput(type, path, example);
     } else if (type.kind === 'record') {
       inputHtml = renderRecordInput(type, path);
     } else {
@@ -1248,13 +1248,48 @@ export class ScriptRunnerPanel {
     }
   }
 
-  function renderListInput(type, path) {
+  function renderListInput(type, path, example) {
     var elementType = type.elementType || { kind: 'primitive', name: 'String' };
     var elementTypeJson = JSON.stringify(elementType).replace(/"/g, '&quot;');
+
+    // Pre-populate list items from example if available
+    var itemsHtml = '';
+    if (Array.isArray(example) && example.length > 0) {
+      for (var i = 0; i < example.length; i++) {
+        itemsHtml += renderListItem(elementType, path, i, example[i]);
+      }
+    }
+
     return '<div class="list-container" data-path="' + path + '" data-type="list" data-element-type="' + elementTypeJson + '">' +
-      '<div class="list-items"></div>' +
+      '<div class="list-items">' + itemsHtml + '</div>' +
       '<button type="button" class="add-item-btn" onclick="addListItem(this.parentNode)">+ Add item</button>' +
     '</div>';
+  }
+
+  function renderListItem(elementType, path, index, value) {
+    var inputHtml = '';
+    var valueAttr = value !== undefined && value !== null ? value : '';
+
+    if (elementType.kind === 'primitive') {
+      if (elementType.name === 'String') {
+        inputHtml = '<input type="text" data-path="' + path + '[' + index + ']" data-type="string" placeholder="Item ' + (index + 1) + '" value="' + escapeHtml(String(valueAttr)) + '">';
+      } else if (elementType.name === 'Int') {
+        inputHtml = '<input type="number" data-path="' + path + '[' + index + ']" data-type="int" step="1" placeholder="0" value="' + valueAttr + '">';
+      } else if (elementType.name === 'Float') {
+        inputHtml = '<input type="number" data-path="' + path + '[' + index + ']" data-type="float" step="any" placeholder="0.0" value="' + valueAttr + '">';
+      } else if (elementType.name === 'Boolean') {
+        var isChecked = valueAttr === true ? ' checked' : '';
+        inputHtml = '<input type="checkbox" data-path="' + path + '[' + index + ']" data-type="boolean"' + isChecked + '>';
+      } else {
+        inputHtml = '<input type="text" data-path="' + path + '[' + index + ']" data-type="string" placeholder="Item ' + (index + 1) + '" value="' + escapeHtml(String(valueAttr)) + '">';
+      }
+    } else {
+      // For complex types, use JSON input
+      var jsonVal = value !== undefined ? JSON.stringify(value) : '';
+      inputHtml = '<input type="text" data-path="' + path + '[' + index + ']" data-type="json" placeholder="Enter JSON" value="' + escapeHtml(jsonVal) + '">';
+    }
+
+    return '<div class="list-item">' + inputHtml + '<button type="button" class="remove-item-btn" onclick="removeListItem(this)">×</button></div>';
   }
 
   function renderRecordInput(type, path) {
