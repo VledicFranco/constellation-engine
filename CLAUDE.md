@@ -202,6 +202,80 @@ When adding a module to example-app:
 
 ---
 
+## Release Management
+
+**Creating releases with semantic versioning:**
+
+| Release Type | Version Change | Command |
+|--------------|----------------|---------|
+| Patch | 0.1.0 → 0.1.1 | `.\scripts\release.ps1 -Type patch` |
+| Minor | 0.1.0 → 0.2.0 | `.\scripts\release.ps1 -Type minor` |
+| Major | 0.1.0 → 1.0.0 | `.\scripts\release.ps1 -Type major` |
+
+**Unix/macOS:**
+```bash
+./scripts/release.sh patch
+./scripts/release.sh minor
+./scripts/release.sh major
+```
+
+### What the Release Script Does
+
+1. **Prerequisites check**: Verifies `gh` CLI is installed and authenticated
+2. **Working directory check**: Ensures no uncommitted changes (excludes `agents/`)
+3. **Branch check**: Must be on `master` branch
+4. **Remote sync**: Verifies local is up-to-date with `origin/master`
+5. **Version bump**: Updates version in:
+   - `build.sbt` (Scala version)
+   - `vscode-extension/package.json` (Extension version)
+6. **Changelog update**: Replaces `[Unreleased]` with version and date
+7. **Tests**: Runs full test suite (`sbt test`)
+8. **Git operations**: Commits, tags, and pushes to origin
+9. **GitHub release**: Creates release via `gh release create`
+
+### Dry Run Mode
+
+**Always test with dry-run first:**
+```powershell
+.\scripts\release.ps1 -Type patch -DryRun    # Windows
+./scripts/release.sh patch --dry-run          # Unix/macOS
+```
+
+Dry-run shows what would happen without making any changes.
+
+### Prerequisites
+
+- **GitHub CLI (`gh`)**: Install from https://cli.github.com/
+- **Authenticated**: Run `gh auth login` first
+- **Clean working directory**: Commit or stash changes before releasing
+- **On master branch**: Releases are only created from master
+
+### CHANGELOG.md Format
+
+Keep an `[Unreleased]` section at the top of `CHANGELOG.md`:
+```markdown
+## [Unreleased]
+
+### Added
+- New feature description
+
+### Changed
+- Change description
+
+### Fixed
+- Bug fix description
+```
+
+The release script converts this to:
+```markdown
+## [0.1.1] - 2026-01-22
+
+### Added
+...
+```
+
+---
+
 ## Multi-Agent Workflow (CRITICAL)
 
 This repository uses multiple Claude agents working in parallel. **Follow these rules strictly to avoid conflicts.**
