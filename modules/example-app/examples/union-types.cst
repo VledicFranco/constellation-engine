@@ -50,7 +50,10 @@ in state: ProcessingState
 # Regular Inputs for Demonstration
 # =============================================================================
 
+@example("Operation failed - using fallback")
 in fallbackMessage: String
+
+@example(42)
 in defaultValue: Int
 
 # =============================================================================

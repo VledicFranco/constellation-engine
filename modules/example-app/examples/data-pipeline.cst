@@ -1,8 +1,13 @@
 # Complex Example: Data Analysis Pipeline
 # Demonstrates a multi-step data processing workflow with branching
 
+# Note: @example not supported for List<Int> - use Script Runner form
 in numbers: List<Int>
+
+@example(5)
 in threshold: Int
+
+@example(2)
 in multiplier: Int
 
 # Step 1: Filter - keep only numbers above threshold

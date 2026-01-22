@@ -1,7 +1,10 @@
 # Example showing namespace features in constellation-lang
 
 # Declare inputs
+@example(10)
 in a: Int
+
+@example(5)
 in b: Int
 
 # Method 1: Use stdlib.math namespace
@@ -13,6 +16,8 @@ result2 = stdlib.math.multiply(a, b)
 
 # Method 3: Use namespace with alias
 use stdlib.string as str
+
+@example("Hello from namespace!")
 in greeting: String
 upper_greeting = str.upper(greeting)
 

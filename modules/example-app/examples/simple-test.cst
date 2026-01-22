@@ -1,6 +1,7 @@
 # Simple Example: Text Transformation
 # Demonstrates basic module usage with a single transformation
 
+@example("Hello, World!")
 in message: String
 
 # Transform the message to uppercase

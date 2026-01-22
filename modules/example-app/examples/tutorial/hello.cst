@@ -1,6 +1,7 @@
 # hello.cst - My first Constellation pipeline
 # Tutorial Section 3: Hello World
 
+@example("Alice")
 in name: String
 
 greeting = concat("Hello, ", name)

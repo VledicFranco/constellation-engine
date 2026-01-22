@@ -1,6 +1,7 @@
 # Text Analysis Pipeline
 # Analyzes text input and produces multiple metrics
 
+@example("The quick brown fox jumps over the lazy dog.\nThis is a sample document for analysis.")
 in document: String
 
 # Clean the input

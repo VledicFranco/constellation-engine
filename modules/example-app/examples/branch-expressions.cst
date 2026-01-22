@@ -16,8 +16,13 @@
 # Input Declarations
 # =============================================================================
 
+@example("high")
 in priority: String
+
+@example(85)
 in score: Int
+
+@example("technical")
 in category: String
 
 # =============================================================================

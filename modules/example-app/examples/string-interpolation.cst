@@ -2,8 +2,13 @@
 # Demonstrates the string interpolation syntax: "Hello, ${expression}!"
 
 # Input: User profile data
+@example("Alice")
 in userName: String
+
+@example(28)
 in userAge: Int
+
+@example(1500)
 in accountBalance: Int
 
 # Simple variable interpolation

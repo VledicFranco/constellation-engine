@@ -15,9 +15,16 @@
 # Input Declarations
 # =============================================================================
 
+@example(75)
 in score: Int
+
+@example(50)
 in threshold: Int
+
+@example(true)
 in enabled: Boolean
+
+@example("Default fallback message")
 in defaultMessage: String
 
 # =============================================================================

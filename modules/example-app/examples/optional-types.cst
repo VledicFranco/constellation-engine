@@ -21,8 +21,13 @@ in maybeName: Optional<String>
 in maybeMultiplier: Optional<Int>
 
 # Regular (required) inputs
+@example(100)
 in defaultValue: Int
+
+@example("Anonymous")
 in defaultName: String
+
+@example(85)
 in score: Int
 
 # =============================================================================

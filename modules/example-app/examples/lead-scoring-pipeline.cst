@@ -63,8 +63,14 @@ use stdlib.compare
 
 in company: CompanyInfo
 in engagement: EngagementData
+
+@example("technology,software,AI")
 in industryKeywords: String
+
+@example(60)
 in minScoreThreshold: Int
+
+@example(2)
 in scoreMultiplier: Int
 
 # =============================================================================
