@@ -596,4 +596,171 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     inputObj("line") shouldBe defined // Line number
     inputObj("example").flatMap(_.asString) shouldBe Some("test value")
   }
+
+  // ==========================================================================
+  // List Literal Examples
+  // ==========================================================================
+
+  it should "return example for empty list literal" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([])
+          in items: List<Int>
+          out items
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr())
+  }
+
+  it should "return example for list of integers" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([1, 2, 3])
+          in numbers: List<Int>
+          out numbers
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3)))
+  }
+
+  it should "return example for list of strings" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example(["Alice", "Bob", "Charlie"])
+          in names: List<String>
+          out names
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(
+      Json.fromString("Alice"),
+      Json.fromString("Bob"),
+      Json.fromString("Charlie")
+    ))
+  }
+
+  it should "return example for list of booleans" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([true, false, true])
+          in flags: List<Boolean>
+          out flags
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(
+      Json.fromBoolean(true),
+      Json.fromBoolean(false),
+      Json.fromBoolean(true)
+    ))
+  }
+
+  it should "return example for list of floats" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([1.5, 2.5, 3.5])
+          in values: List<Float>
+          out values
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(
+      Json.fromDoubleOrNull(1.5),
+      Json.fromDoubleOrNull(2.5),
+      Json.fromDoubleOrNull(3.5)
+    ))
+  }
+
+  it should "return example for single element list" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([42])
+          in data: List<Int>
+          out data
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(Json.fromInt(42)))
+  }
+
+  it should "return example for list with negative integers" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example([-1, -2, -3])
+          in offsets: List<Int>
+          out offsets
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    val example = extractFirstExample(schemaJson)
+    example shouldBe Some(Json.arr(Json.fromInt(-1), Json.fromInt(-2), Json.fromInt(-3)))
+  }
+
+  it should "handle multiple inputs with list and non-list examples" in {
+    val result = for {
+      server <- createTestServer()
+      schema <- openDocumentAndGetSchema(
+        server,
+        """
+          @example("hello")
+          in text: String
+          @example([1, 2, 3])
+          in numbers: List<Int>
+          @example(42)
+          in count: Int
+          out text
+        """
+      )
+    } yield schema
+
+    val schemaJson = result.unsafeRunSync()
+    (schemaJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+
+    extractExampleAtIndex(schemaJson, 0) shouldBe Some(Json.fromString("hello"))
+    extractExampleAtIndex(schemaJson, 1) shouldBe Some(Json.arr(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3)))
+    extractExampleAtIndex(schemaJson, 2) shouldBe Some(Json.fromInt(42))
+  }
 }

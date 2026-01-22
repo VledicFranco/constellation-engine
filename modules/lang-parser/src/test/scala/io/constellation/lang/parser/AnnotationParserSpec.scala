@@ -807,4 +807,177 @@ out value"""
     val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
     annotation.value.value shouldBe a[Expression.StringInterpolation]
   }
+
+  // ==========================================================================
+  // List Literal Examples
+  // ==========================================================================
+
+  it should "parse @example with empty list literal" in {
+    val source = """
+      @example([])
+      in items: List<Int>
+      out items
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements shouldBe empty
+  }
+
+  it should "parse @example with list of integers" in {
+    val source = """
+      @example([1, 2, 3])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements should have size 3
+    listLit.elements.map(_.value) shouldBe List(
+      Expression.IntLit(1),
+      Expression.IntLit(2),
+      Expression.IntLit(3)
+    )
+  }
+
+  it should "parse @example with list of strings" in {
+    val source = """
+      @example(["Alice", "Bob", "Charlie"])
+      in names: List<String>
+      out names
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements should have size 3
+    listLit.elements.map(_.value) shouldBe List(
+      Expression.StringLit("Alice"),
+      Expression.StringLit("Bob"),
+      Expression.StringLit("Charlie")
+    )
+  }
+
+  it should "parse @example with list of booleans" in {
+    val source = """
+      @example([true, false, true])
+      in flags: List<Boolean>
+      out flags
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements should have size 3
+  }
+
+  it should "parse @example with list of floats" in {
+    val source = """
+      @example([1.5, 2.7, 3.14])
+      in values: List<Float>
+      out values
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements should have size 3
+  }
+
+  it should "parse @example with single element list" in {
+    val source = """
+      @example([42])
+      in data: List<Int>
+      out data
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements should have size 1
+    listLit.elements.head.value shouldBe Expression.IntLit(42)
+  }
+
+  it should "parse @example with list containing negative integers" in {
+    val source = """
+      @example([-1, -2, -3])
+      in offsets: List<Int>
+      out offsets
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+
+    val listLit = annotation.value.value.asInstanceOf[Expression.ListLit]
+    listLit.elements.map(_.value) shouldBe List(
+      Expression.IntLit(-1),
+      Expression.IntLit(-2),
+      Expression.IntLit(-3)
+    )
+  }
+
+  it should "parse @example with list with extra whitespace" in {
+    val source = """
+      @example([  1  ,  2  ,  3  ])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+    annotation.value.value shouldBe a[Expression.ListLit]
+  }
+
+  it should "track source location of list literal annotation" in {
+    val source = "@example([1, 2, 3])\nin nums: List<Int>\nout nums"
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val inputDecl  = program.declarations.head.asInstanceOf[Declaration.InputDecl]
+    val annotation = inputDecl.annotations.head.asInstanceOf[Annotation.Example]
+
+    annotation.value.span.start should be >= 0
+    annotation.value.span.end should be > annotation.value.span.start
+  }
 }

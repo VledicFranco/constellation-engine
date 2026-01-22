@@ -822,7 +822,16 @@ object TypeChecker {
       .map(_.toMap)
 
   private def isAssignable(actual: SemanticType, expected: SemanticType): Boolean =
-    actual == expected // Strict equality for now; can extend with subtyping
+    (actual, expected) match {
+      // SNothing (bottom type) is assignable to any type
+      case (SemanticType.SNothing, _) => true
+      // List<SNothing> is assignable to any List<T>
+      case (SemanticType.SList(SemanticType.SNothing), SemanticType.SList(_)) => true
+      // Candidates<SNothing> is assignable to any Candidates<T>
+      case (SemanticType.SCandidates(SemanticType.SNothing), SemanticType.SCandidates(_)) => true
+      // Default: strict equality
+      case _ => actual == expected
+    }
 
   /** Desugar comparison operator to stdlib function call */
   private def desugarComparison(

@@ -633,4 +633,144 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     val result = check(source, registry)
     result.isLeft shouldBe true
   }
+
+  // ==========================================================================
+  // List Literal Examples
+  // ==========================================================================
+
+  it should "accept list literal example for List<Int> input" in {
+    val source = """
+      @example([1, 2, 3])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "accept list literal example for List<String> input" in {
+    val source = """
+      @example(["a", "b", "c"])
+      in names: List<String>
+      out names
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "accept list literal example for List<Boolean> input" in {
+    val source = """
+      @example([true, false, true])
+      in flags: List<Boolean>
+      out flags
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "accept list literal example for List<Float> input" in {
+    val source = """
+      @example([1.5, 2.5, 3.5])
+      in values: List<Float>
+      out values
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "accept empty list literal for any List type" in {
+    val source = """
+      @example([])
+      in items: List<Int>
+      out items
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "accept single element list literal" in {
+    val source = """
+      @example([42])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "reject list literal with wrong element type" in {
+    val source = """
+      @example(["a", "b", "c"])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    result.left.get.head.message should include("List<Int>")
+    result.left.get.head.message should include("List<String>")
+  }
+
+  it should "reject list literal with mixed element types" in {
+    val source = """
+      @example([1, "two", 3])
+      in items: List<Int>
+      out items
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    // Should fail because list has mixed element types
+    result.left.get.head.message should include("mixed element types")
+  }
+
+  it should "reject list literal for non-list input type" in {
+    val source = """
+      @example([1, 2, 3])
+      in count: Int
+      out count
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "reject Int literal for List<Int> input" in {
+    val source = """
+      @example(42)
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "accept list literal with negative integers" in {
+    val source = """
+      @example([-1, -2, -3])
+      in offsets: List<Int>
+      out offsets
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "validate multiple list literal examples" in {
+    val source = """
+      @example([1, 2, 3])
+      @example([4, 5, 6])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+  }
+
+  it should "reject if any list literal example has wrong element type" in {
+    val source = """
+      @example([1, 2, 3])
+      @example(["a", "b"])
+      in numbers: List<Int>
+      out numbers
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
 }
