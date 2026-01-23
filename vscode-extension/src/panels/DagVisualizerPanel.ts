@@ -35,6 +35,85 @@ interface GetDagStructureResult {
   error?: string;
 }
 
+// ========== New DagVizIR Types (from server-side layout) ==========
+
+type NodeKind =
+  | 'Input' | 'Output' | 'Operation' | 'Literal' | 'Merge' | 'Project'
+  | 'FieldAccess' | 'Conditional' | 'Guard' | 'Branch' | 'Coalesce'
+  | 'HigherOrder' | 'ListLiteral' | 'BooleanOp' | 'StringInterp';
+
+type EdgeKind = 'Data' | 'Optional' | 'Control';
+
+type ExecutionStatus = 'Pending' | 'Running' | 'Completed' | 'Failed';
+
+interface DagVizPosition {
+  x: number;
+  y: number;
+}
+
+interface DagVizBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+interface DagVizExecutionState {
+  status: ExecutionStatus;
+  value?: any;
+  durationMs?: number;
+  error?: string;
+}
+
+interface DagVizNode {
+  id: string;
+  kind: NodeKind;
+  label: string;
+  typeSignature: string;
+  position?: DagVizPosition;
+  executionState?: DagVizExecutionState;
+}
+
+interface DagVizEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  kind: EdgeKind;
+}
+
+interface DagVizGroup {
+  id: string;
+  label: string;
+  nodeIds: string[];
+  collapsed: boolean;
+}
+
+interface DagVizMetadata {
+  title?: string;
+  layoutDirection: string;
+  bounds?: DagVizBounds;
+}
+
+interface DagVisualization {
+  nodes: DagVizNode[];
+  edges: DagVizEdge[];
+  groups: DagVizGroup[];
+  metadata: DagVizMetadata;
+}
+
+interface GetDagVisualizationParams {
+  uri: string;
+  direction?: string;
+  executionId?: string;
+}
+
+interface GetDagVisualizationResult {
+  success: boolean;
+  dag?: DagVisualization;
+  error?: string;
+}
+
 export class DagVisualizerPanel {
   public static currentPanel: DagVisualizerPanel | undefined;
   public static readonly viewType = 'constellationDagVisualizer';
@@ -124,6 +203,9 @@ export class DagVisualizerPanel {
       disposables: []
     };
 
+    // Load saved layout direction preference
+    this._layoutDirection = vscode.workspace.getConfiguration('constellation').get<string>('dagLayoutDirection', 'TB');
+
     this._update();
 
     this._state.panel.onDidDispose(() => this.dispose(), null, this._state.disposables);
@@ -145,12 +227,15 @@ export class DagVisualizerPanel {
             console.log('Node clicked:', message.nodeId, message.nodeType);
             break;
           case 'setLayoutDirection':
-            // Persist layout direction preference
+            // Update local state and persist layout direction preference
+            this._layoutDirection = message.direction || 'TB';
             vscode.workspace.getConfiguration('constellation').update(
               'dagLayoutDirection',
               message.direction,
               vscode.ConfigurationTarget.Global
             );
+            // Re-fetch DAG with new direction (server will re-layout)
+            await this._refreshDag();
             break;
         }
       },
@@ -158,6 +243,8 @@ export class DagVisualizerPanel {
       this._state.disposables
     );
   }
+
+  private _layoutDirection: string = 'TB';
 
   private async _refreshDag() {
     if (!this._state.client || !this._state.currentUri) {
@@ -170,6 +257,34 @@ export class DagVisualizerPanel {
 
     this._state.panel.webview.postMessage({ type: 'loading', loading: true });
 
+    const fileName = getFileNameFromUri(this._state.currentUri);
+
+    // Try the new getDagVisualization endpoint first (server-side layout)
+    try {
+      const vizResult = await this._state.client.sendRequest<GetDagVisualizationResult>(
+        'constellation/getDagVisualization',
+        {
+          uri: this._state.currentUri,
+          direction: this._layoutDirection
+        } as GetDagVisualizationParams
+      );
+
+      if (vizResult.success && vizResult.dag) {
+        this._state.panel.webview.postMessage({
+          type: 'dagVizData',
+          dag: vizResult.dag,
+          fileName: fileName
+        });
+        return;
+      }
+      // If new endpoint returned error, fall through to legacy endpoint
+      console.log('getDagVisualization returned error, falling back to getDagStructure:', vizResult.error);
+    } catch (vizError: any) {
+      // New endpoint not available or failed, fall back to legacy
+      console.log('getDagVisualization failed, falling back to getDagStructure:', vizError.message);
+    }
+
+    // Fallback: Use legacy getDagStructure endpoint (client-side layout)
     try {
       const result = await this._state.client.sendRequest<GetDagStructureResult>(
         'constellation/getDagStructure',
@@ -177,7 +292,6 @@ export class DagVisualizerPanel {
       );
 
       if (result.success && result.dag) {
-        const fileName = getFileNameFromUri(this._state.currentUri);
         this._state.panel.webview.postMessage({
           type: 'dagData',
           dag: result.dag,
@@ -700,6 +814,93 @@ export class DagVisualizerPanel {
         font-size: 9px;
         fill: var(--vscode-descriptionForeground);
         opacity: 0.8;
+      }
+
+      /* ========== New DagVizIR Node Kind Styles ========== */
+
+      /* Node icon styles */
+      .dag-node .node-icon {
+        font-size: 12px;
+        text-anchor: start;
+        dominant-baseline: hanging;
+      }
+
+      /* Node kind specific styles */
+      .dag-node-input path,
+      .dag-node-input rect {
+        stroke: #22c55e;
+      }
+
+      .dag-node-output path,
+      .dag-node-output rect {
+        stroke: #3b82f6;
+      }
+
+      .dag-node-literal rect {
+        stroke: #14b8a6;
+      }
+
+      .dag-node-merge rect {
+        stroke: #a855f7;
+      }
+
+      .dag-node-project rect,
+      .dag-node-field rect {
+        stroke: #f97316;
+      }
+
+      .dag-node-guard rect {
+        stroke: #eab308;
+      }
+
+      .dag-node-branch rect,
+      .dag-node-cond rect {
+        stroke: #6366f1;
+      }
+
+      .dag-node-coalesce rect {
+        stroke: #a855f7;
+      }
+
+      .dag-node-higher rect {
+        stroke: #ec4899;
+      }
+
+      .dag-node-list rect {
+        stroke: #14b8a6;
+      }
+
+      .dag-node-bool rect {
+        stroke: #c678dd;
+      }
+
+      .dag-node-string rect {
+        stroke: #98c379;
+      }
+
+      /* Edge kind styles */
+      .dag-edge-data path {
+        stroke: var(--edge-color);
+        stroke-width: 1.5;
+      }
+
+      .dag-edge-optional path {
+        stroke: var(--edge-color);
+        stroke-width: 1.5;
+        stroke-dasharray: 5, 5;
+        opacity: 0.7;
+      }
+
+      .dag-edge-control path {
+        stroke: var(--vscode-charts-purple, #a371f7);
+        stroke-width: 1.5;
+        stroke-dasharray: 3, 3;
+      }
+
+      .edge-label {
+        font-size: 9px;
+        fill: var(--vscode-descriptionForeground);
+        text-anchor: middle;
       }
     `;
   }
@@ -1391,14 +1592,15 @@ export class DagVisualizerPanel {
       '.value-preview { font-size: 9px; fill: ' + descForeground + '; opacity: 0.8; }\\n';
   }
 
+  var currentVizDag = null; // For new DagVizIR format
+  var useNewVisualization = false; // Track which format is being used
+
   function setLayoutDirection(direction) {
     layoutDirection = direction;
     tbBtn.classList.toggle('active', direction === 'TB');
     lrBtn.classList.toggle('active', direction === 'LR');
+    // Send to extension to re-fetch with new direction from server
     vscode.postMessage({ command: 'setLayoutDirection', direction: direction });
-    if (currentDag) {
-      renderDag(currentDag);
-    }
   }
 
   window.addEventListener('message', function(event) {
@@ -1407,12 +1609,30 @@ export class DagVisualizerPanel {
     if (message.type === 'loading') {
       loadingContainer.style.display = message.loading ? 'flex' : 'none';
       errorContainer.style.display = 'none';
+    } else if (message.type === 'dagVizData') {
+      // New visualization format with server-provided layout
+      loadingContainer.style.display = 'none';
+      errorContainer.style.display = 'none';
+      currentFileName = message.fileName || 'script.cst';
+      fileNameEl.textContent = currentFileName;
+      currentVizDag = message.dag;
+      currentDag = null; // Clear old format
+      useNewVisualization = true;
+      // Update layout direction buttons based on server response
+      var serverDirection = message.dag.metadata && message.dag.metadata.layoutDirection || 'TB';
+      tbBtn.classList.toggle('active', serverDirection === 'TB');
+      lrBtn.classList.toggle('active', serverDirection === 'LR');
+      layoutDirection = serverDirection;
+      renderVizDag(message.dag);
     } else if (message.type === 'dagData') {
+      // Legacy format with client-side layout
       loadingContainer.style.display = 'none';
       errorContainer.style.display = 'none';
       currentFileName = message.fileName || 'script.cst';
       fileNameEl.textContent = currentFileName;
       currentDag = message.dag;
+      currentVizDag = null; // Clear new format
+      useNewVisualization = false;
       renderDag(message.dag);
     } else if (message.type === 'error') {
       loadingContainer.style.display = 'none';
@@ -1462,6 +1682,399 @@ export class DagVisualizerPanel {
     renderSvg(layout, dag);
     setupPanZoom();
   }
+
+  // ========== New DagVizIR Rendering (server-provided layout) ==========
+
+  // Node dimensions for VizIR rendering
+  var vizNodeWidth = 180;
+  var vizNodeHeight = 60;
+  var vizInputHeight = 44;
+  var vizOutputHeight = 48;
+
+  // Map NodeKind to display properties
+  function getNodeKindInfo(kind) {
+    var kindMap = {
+      'Input':       { role: 'input',     color: '#22c55e', icon: '▶' },
+      'Output':      { role: 'output',    color: '#3b82f6', icon: '▶' },
+      'Operation':   { role: 'operation', color: '#6b7280', icon: '⚙' },
+      'Literal':     { role: 'literal',   color: '#14b8a6', icon: '#' },
+      'Merge':       { role: 'merge',     color: '#a855f7', icon: '⊕' },
+      'Project':     { role: 'project',   color: '#f97316', icon: '▣' },
+      'FieldAccess': { role: 'field',     color: '#f97316', icon: '.' },
+      'Conditional': { role: 'cond',      color: '#6366f1', icon: '?' },
+      'Guard':       { role: 'guard',     color: '#eab308', icon: '?' },
+      'Branch':      { role: 'branch',    color: '#6366f1', icon: '⑂' },
+      'Coalesce':    { role: 'coalesce',  color: '#a855f7', icon: '|' },
+      'HigherOrder': { role: 'higher',    color: '#ec4899', icon: 'λ' },
+      'ListLiteral': { role: 'list',      color: '#14b8a6', icon: '[]' },
+      'BooleanOp':   { role: 'bool',      color: '#c678dd', icon: '∧' },
+      'StringInterp':{ role: 'string',    color: '#98c379', icon: '$' }
+    };
+    return kindMap[kind] || { role: 'data', color: '#64748b', icon: '?' };
+  }
+
+  function renderVizDag(dag) {
+    dagSvg.innerHTML = '';
+
+    // Use metadata bounds if available, otherwise compute from node positions
+    var bounds = dag.metadata && dag.metadata.bounds;
+    var padding = 40;
+
+    if (!bounds) {
+      // Compute bounds from node positions
+      var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      dag.nodes.forEach(function(node) {
+        if (node.position) {
+          minX = Math.min(minX, node.position.x - vizNodeWidth / 2);
+          maxX = Math.max(maxX, node.position.x + vizNodeWidth / 2);
+          minY = Math.min(minY, node.position.y - vizNodeHeight / 2);
+          maxY = Math.max(maxY, node.position.y + vizNodeHeight / 2);
+        }
+      });
+      if (minX === Infinity) { minX = 0; maxX = 800; minY = 0; maxY = 600; }
+      bounds = { minX: minX - padding, maxX: maxX + padding, minY: minY - padding, maxY: maxY + padding };
+    }
+
+    var width = bounds.maxX - bounds.minX;
+    var height = bounds.maxY - bounds.minY;
+
+    viewBox = { x: bounds.minX, y: bounds.minY, width: width, height: height };
+    originalViewBox = { x: bounds.minX, y: bounds.minY, width: width, height: height };
+    dagSvg.setAttribute('viewBox', viewBox.x + ' ' + viewBox.y + ' ' + viewBox.width + ' ' + viewBox.height);
+    updateZoomLevel();
+
+    // Create defs for arrow markers
+    var defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+
+    // Standard arrowhead
+    var marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', 'arrowhead');
+    marker.setAttribute('markerWidth', '10');
+    marker.setAttribute('markerHeight', '7');
+    marker.setAttribute('refX', '9');
+    marker.setAttribute('refY', '3.5');
+    marker.setAttribute('orient', 'auto');
+    var polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    polygon.setAttribute('points', '0 0, 10 3.5, 0 7');
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+    dagSvg.appendChild(defs);
+
+    // Build node lookup for edge rendering
+    var nodeById = {};
+    dag.nodes.forEach(function(node) {
+      nodeById[node.id] = node;
+    });
+
+    // Render edges first (behind nodes)
+    var edgesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    edgesGroup.setAttribute('class', 'edges-group');
+
+    dag.edges.forEach(function(edge) {
+      var fromNode = nodeById[edge.source];
+      var toNode = nodeById[edge.target];
+      if (!fromNode || !toNode || !fromNode.position || !toNode.position) return;
+
+      var edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      var edgeClass = 'dag-edge dag-edge-' + (edge.kind || 'Data').toLowerCase();
+      edgeGroup.setAttribute('class', edgeClass);
+      edgeGroup.setAttribute('data-from', edge.source);
+      edgeGroup.setAttribute('data-to', edge.target);
+
+      var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+      // Calculate edge path
+      var dir = dag.metadata && dag.metadata.layoutDirection || 'TB';
+      var d;
+      if (dir === 'TB') {
+        var startY = fromNode.position.y + vizNodeHeight / 2;
+        var endY = toNode.position.y - vizNodeHeight / 2;
+        var midY = (startY + endY) / 2;
+        d = 'M ' + fromNode.position.x + ' ' + startY +
+            ' C ' + fromNode.position.x + ' ' + midY +
+            ', ' + toNode.position.x + ' ' + midY +
+            ', ' + toNode.position.x + ' ' + endY;
+      } else {
+        var startX = fromNode.position.x + vizNodeWidth / 2;
+        var endX = toNode.position.x - vizNodeWidth / 2;
+        var midX = (startX + endX) / 2;
+        d = 'M ' + startX + ' ' + fromNode.position.y +
+            ' C ' + midX + ' ' + fromNode.position.y +
+            ', ' + midX + ' ' + toNode.position.y +
+            ', ' + endX + ' ' + toNode.position.y;
+      }
+
+      path.setAttribute('d', d);
+      path.setAttribute('marker-end', 'url(#arrowhead)');
+
+      // Edge styling based on kind
+      if (edge.kind === 'Optional') {
+        path.setAttribute('stroke-dasharray', '5,5');
+      }
+
+      edgeGroup.appendChild(path);
+
+      // Edge label if present
+      if (edge.label) {
+        var labelText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        labelText.setAttribute('class', 'edge-label');
+        var labelX = (fromNode.position.x + toNode.position.x) / 2;
+        var labelY = (fromNode.position.y + toNode.position.y) / 2 - 8;
+        labelText.setAttribute('x', labelX);
+        labelText.setAttribute('y', labelY);
+        labelText.textContent = edge.label;
+        edgeGroup.appendChild(labelText);
+      }
+
+      // Hover highlighting
+      edgeGroup.addEventListener('mouseenter', function() {
+        highlightConnection(edge.source, edge.target, true);
+      });
+      edgeGroup.addEventListener('mouseleave', function() {
+        highlightConnection(edge.source, edge.target, false);
+      });
+
+      edgesGroup.appendChild(edgeGroup);
+    });
+
+    dagSvg.appendChild(edgesGroup);
+
+    // Render nodes
+    var nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    nodesGroup.setAttribute('class', 'nodes-group');
+
+    dag.nodes.forEach(function(node) {
+      if (!node.position) return;
+
+      var kindInfo = getNodeKindInfo(node.kind);
+      var nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+      // Determine execution state class
+      var stateClass = '';
+      if (node.executionState) {
+        stateClass = ' state-' + node.executionState.status.toLowerCase();
+      } else if (executionStates[node.id]) {
+        stateClass = ' state-' + executionStates[node.id].state;
+      }
+
+      var nodeClass = 'dag-node dag-node-' + kindInfo.role + stateClass;
+      nodeGroup.setAttribute('class', nodeClass);
+      nodeGroup.setAttribute('data-node-id', node.id);
+
+      var nodeHeight = node.kind === 'Input' ? vizInputHeight :
+                       node.kind === 'Output' ? vizOutputHeight : vizNodeHeight;
+
+      nodeGroup.setAttribute('transform', 'translate(' + (node.position.x - vizNodeWidth/2) + ',' + (node.position.y - nodeHeight/2) + ')');
+
+      // Create shape based on node kind
+      if (node.kind === 'Input') {
+        // Input: pill shape (rounded left edge)
+        var inputPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var r = nodeHeight / 2;
+        var pw = vizNodeWidth;
+        var ph = nodeHeight;
+        // Rounded left edge, straight right
+        inputPath.setAttribute('d',
+          'M ' + r + ' 0 ' +
+          'L ' + pw + ' 0 ' +
+          'L ' + pw + ' ' + ph + ' ' +
+          'L ' + r + ' ' + ph + ' ' +
+          'A ' + r + ' ' + r + ' 0 0 1 ' + r + ' 0 Z'
+        );
+        inputPath.setAttribute('style', 'stroke: ' + kindInfo.color);
+        nodeGroup.appendChild(inputPath);
+      } else if (node.kind === 'Output') {
+        // Output: pill shape (rounded right edge)
+        var outputPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        var r = nodeHeight / 2;
+        var pw = vizNodeWidth;
+        var ph = nodeHeight;
+        // Straight left, rounded right edge
+        outputPath.setAttribute('d',
+          'M 0 0 ' +
+          'L ' + (pw - r) + ' 0 ' +
+          'A ' + r + ' ' + r + ' 0 0 1 ' + (pw - r) + ' ' + ph + ' ' +
+          'L 0 ' + ph + ' Z'
+        );
+        outputPath.setAttribute('style', 'stroke: ' + kindInfo.color);
+        nodeGroup.appendChild(outputPath);
+      } else if (node.kind === 'Operation') {
+        // Operation: rectangle with header bar
+        var headerHeight = 8;
+        var headerRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        headerRect.setAttribute('class', 'node-header');
+        headerRect.setAttribute('width', vizNodeWidth);
+        headerRect.setAttribute('height', headerHeight);
+        headerRect.setAttribute('rx', '4');
+        headerRect.setAttribute('ry', '4');
+        headerRect.setAttribute('fill', kindInfo.color);
+        headerRect.setAttribute('stroke', kindInfo.color);
+        nodeGroup.appendChild(headerRect);
+
+        var bodyRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bodyRect.setAttribute('class', 'node-body');
+        bodyRect.setAttribute('y', headerHeight - 2);
+        bodyRect.setAttribute('width', vizNodeWidth);
+        bodyRect.setAttribute('height', nodeHeight - headerHeight + 2);
+        bodyRect.setAttribute('style', 'stroke: ' + kindInfo.color);
+        nodeGroup.appendChild(bodyRect);
+      } else {
+        // Default: rounded rectangle
+        var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('width', vizNodeWidth);
+        rect.setAttribute('height', nodeHeight);
+        rect.setAttribute('rx', '8');
+        rect.setAttribute('ry', '8');
+        rect.setAttribute('style', 'stroke: ' + kindInfo.color);
+        nodeGroup.appendChild(rect);
+      }
+
+      // Add tooltip
+      var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+      titleEl.textContent = node.label + '\\n' + node.kind + '\\nType: ' + (node.typeSignature || 'unknown');
+      nodeGroup.appendChild(titleEl);
+
+      // Node icon (top-left)
+      var iconText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      iconText.setAttribute('class', 'node-icon');
+      iconText.setAttribute('x', '8');
+      iconText.setAttribute('y', '16');
+      iconText.setAttribute('fill', kindInfo.color);
+      iconText.setAttribute('font-size', '12');
+      iconText.setAttribute('text-anchor', 'start');
+      iconText.textContent = kindInfo.icon;
+      nodeGroup.appendChild(iconText);
+
+      // Node label
+      var displayName = simplifyLabel(node.label, 20);
+      var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', vizNodeWidth / 2);
+      text.setAttribute('y', nodeHeight / 2 - 4);
+      text.textContent = displayName;
+      nodeGroup.appendChild(text);
+
+      // Type signature (below label, smaller)
+      if (node.typeSignature) {
+        var typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        typeText.setAttribute('class', 'node-type');
+        typeText.setAttribute('x', vizNodeWidth / 2);
+        typeText.setAttribute('y', nodeHeight / 2 + 12);
+        // Truncate long type signatures
+        var displayType = node.typeSignature.length > 25 ?
+          node.typeSignature.substring(0, 22) + '...' : node.typeSignature;
+        typeText.textContent = displayType;
+        nodeGroup.appendChild(typeText);
+      }
+
+      // Execution state indicator
+      var execState = node.executionState || executionStates[node.id];
+      if (execState) {
+        var icon = '';
+        if (execState.status === 'Completed' || execState.state === 'completed') icon = '✓';
+        else if (execState.status === 'Failed' || execState.state === 'failed') icon = '✗';
+        else if (execState.status === 'Running' || execState.state === 'running') icon = '⟳';
+
+        if (icon) {
+          var stateIcon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          stateIcon.setAttribute('class', 'state-icon');
+          stateIcon.setAttribute('x', vizNodeWidth - 14);
+          stateIcon.setAttribute('y', '14');
+          stateIcon.textContent = icon;
+          nodeGroup.appendChild(stateIcon);
+        }
+
+        // Value preview for completed nodes
+        var value = execState.value || execState.valuePreview;
+        if (value && (execState.status === 'Completed' || execState.state === 'completed')) {
+          var previewText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          previewText.setAttribute('class', 'value-preview');
+          previewText.setAttribute('x', vizNodeWidth / 2);
+          previewText.setAttribute('y', nodeHeight - 6);
+          previewText.textContent = formatValuePreview(value, 22);
+          nodeGroup.appendChild(previewText);
+        }
+      }
+
+      // Click handler
+      nodeGroup.onclick = function() {
+        showVizNodeDetails(node);
+        vscode.postMessage({ command: 'nodeClick', nodeId: node.id, nodeKind: node.kind });
+      };
+
+      // Hover highlighting
+      nodeGroup.addEventListener('mouseenter', function() {
+        highlightNodeConnections(node.id, true);
+      });
+      nodeGroup.addEventListener('mouseleave', function() {
+        highlightNodeConnections(node.id, false);
+      });
+
+      nodesGroup.appendChild(nodeGroup);
+    });
+
+    dagSvg.appendChild(nodesGroup);
+    setupPanZoom();
+  }
+
+  function showVizNodeDetails(node) {
+    detailsTitle.textContent = node.label || 'Unknown';
+
+    var html = '';
+    html += '<div class="detail-row"><span class="detail-label">Kind:</span><span class="detail-value">' + node.kind + '</span></div>';
+
+    if (node.typeSignature) {
+      html += '<div class="detail-row"><span class="detail-label">Type:</span><span class="detail-value" style="font-family: monospace; font-size: 10px;">' + escapeHtml(node.typeSignature) + '</span></div>';
+    }
+
+    var execState = node.executionState || executionStates[node.id];
+    if (execState) {
+      var status = execState.status || execState.state || 'unknown';
+      html += '<div class="detail-row"><span class="detail-label">Status:</span><span class="detail-value">' + status + '</span></div>';
+
+      if (execState.durationMs) {
+        html += '<div class="detail-row"><span class="detail-label">Duration:</span><span class="detail-value">' + execState.durationMs + 'ms</span></div>';
+      }
+
+      var value = execState.value || execState.valuePreview;
+      if (value) {
+        var valueStr = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+        if (valueStr.length > 200) valueStr = valueStr.substring(0, 197) + '...';
+        html += '<div class="detail-row"><span class="detail-label">Value:</span><span class="detail-value" style="font-family: monospace; white-space: pre-wrap;">' + escapeHtml(valueStr) + '</span></div>';
+      }
+
+      if (execState.error) {
+        html += '<div class="detail-row"><span class="detail-label">Error:</span><span class="detail-value" style="color: var(--state-failed);">' + escapeHtml(execState.error) + '</span></div>';
+      }
+    }
+
+    // Find connected nodes from edges
+    if (currentVizDag) {
+      var connectedFrom = [];
+      var connectedTo = [];
+      currentVizDag.edges.forEach(function(edge) {
+        if (edge.source === node.id) {
+          var targetNode = currentVizDag.nodes.find(function(n) { return n.id === edge.target; });
+          if (targetNode) connectedTo.push(targetNode.label);
+        }
+        if (edge.target === node.id) {
+          var sourceNode = currentVizDag.nodes.find(function(n) { return n.id === edge.source; });
+          if (sourceNode) connectedFrom.push(sourceNode.label);
+        }
+      });
+
+      if (connectedFrom.length > 0) {
+        html += '<div class="detail-row"><span class="detail-label">From:</span><span class="detail-value">' + connectedFrom.join(', ') + '</span></div>';
+      }
+      if (connectedTo.length > 0) {
+        html += '<div class="detail-row"><span class="detail-label">To:</span><span class="detail-value">' + connectedTo.join(', ') + '</span></div>';
+      }
+    }
+
+    detailsContent.innerHTML = html;
+    nodeDetailsPanel.style.display = 'block';
+  }
+
+  // ========== End DagVizIR Rendering ==========
 
   function computeLayout(dag) {
     var nodes = {};
