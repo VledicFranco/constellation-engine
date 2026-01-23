@@ -45,6 +45,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `RecordFunctions.scala`: Row-polymorphic stdlib functions (GetName, GetAge, GetId, GetValue)
   - Example: `GetName: ∀ρ. { name: String | ρ } -> String` accepts any record with at least a `name` field
 
+#### Runtime
+- **Execution Tracker**: New system for capturing per-node execution data during DAG execution (#124)
+  - `ExecutionTracker.scala`: Thread-safe tracker using Ref for concurrent access
+  - `NodeStatus` enum: Pending, Running, Completed, Failed states
+  - `NodeExecutionResult`: Captures status, value (JSON), duration, and error per node
+  - `ExecutionTrace`: Complete trace with execution ID, DAG name, timestamps, and node results
+  - LRU eviction: Configurable max traces to prevent unbounded memory growth
+  - Value truncation: Large JSON values (>10KB default) are automatically truncated
+  - `fromRuntimeState`: Helper to convert existing `Runtime.State` to execution trace
+  - Enables DAG visualization to show execution state and runtime values
+
 #### Compiler Improvements
 - **IR Optimization Passes**: New optimization framework that reduces DAG size and improves runtime performance (#116)
   - `OptimizationPass.scala`: Base trait for implementing optimization passes
