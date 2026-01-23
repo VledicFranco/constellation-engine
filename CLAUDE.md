@@ -899,7 +899,7 @@ Closes #15
 
 **What is Constellation Engine?**
 
-A type-safe, composable ML orchestration framework for Scala 3. Users:
+A type-safe pipeline orchestration framework for Scala 3. Users:
 1. Define processing modules using the `ModuleBuilder` API
 2. Compose pipelines using `constellation-lang` DSL (`.cst` files)
 3. Execute pipelines with automatic dependency resolution

@@ -13,24 +13,27 @@ Constellation Engine is a type-safe orchestration language that lets you define 
 
 ### The Problem
 
-Building ML and data pipelines today means drowning in boilerplate:
+Building backend pipelines today means drowning in boilerplate:
 
 ```python
 # Traditional approach: 50 lines of glue code
-def process_candidates(items, user_context, weights):
-    enriched = []
-    for item in items:
-        merged = {**item, **user_context}
-        score = (
-            merged['relevance'] * weights['relevance_weight'] +
-            merged['freshness'] * weights['freshness_weight']
-        )
-        enriched.append({
-            'id': merged['id'],
-            'title': merged['title'],
-            'score': score,
-            'userId': merged['userId']
-        })
+def aggregate_order(order, customer, inventory):
+    enriched = {}
+    enriched['orderId'] = order['id']
+    enriched['items'] = order['items']
+    enriched['customerName'] = customer['name']
+    enriched['customerTier'] = customer['tier']
+
+    available_items = []
+    for item in order['items']:
+        stock = inventory.get(item['productId'], {})
+        if stock.get('quantity', 0) >= item['quantity']:
+            available_items.append({
+                'productId': item['productId'],
+                'price': stock['price'],
+                'quantity': item['quantity']
+            })
+    enriched['availableItems'] = available_items
     return enriched
 ```
 
@@ -39,13 +42,12 @@ Type errors hide until runtime. Field mismatches cause silent bugs. Refactoring 
 ### The Solution
 
 ```
-# Constellation: 6 lines, fully type-checked
-in items: Candidates<{ id: String, title: String, relevance: Int, freshness: Int }>
-in context: { userId: Int }
-in weights: { relevanceWeight: Int, freshnessWeight: Int }
+# Constellation: Declarative, fully type-checked
+in order: { id: String, items: List<{ productId: String, quantity: Int }> }
+in customer: { name: String, tier: String }
 
-enriched = items + context
-output = enriched[id, title, relevance, freshness, userId]
+enriched = order + customer
+output = enriched[id, items, name, tier]
 
 out output
 ```
@@ -56,22 +58,22 @@ Every field access is validated at compile time. Type mismatches are caught befo
 
 ## See It In Action
 
-### Batch Enrichment (ML Ranking)
+### API Response Aggregation
 
-Add user context to every candidate in a ranking pipeline:
+Combine data from multiple services into a unified response:
 
 ```
-type Product = { id: String, title: String, score: Float }
-type UserContext = { userId: Int, region: String, tier: String }
+type Order = { id: String, total: Float, status: String }
+type Customer = { customerId: Int, name: String, tier: String }
 
-in products: Candidates<Product>
-in context: UserContext
+in orders: List<Order>
+in customer: Customer
 
-# Merge adds context to EACH product
-enriched = products + context
+# Merge adds customer context to EACH order
+enriched = orders + customer
 
-# Project selects fields from EACH product
-output = enriched[id, title, score, userId, region]
+# Project selects fields from EACH order
+output = enriched[id, total, status, customerId, name]
 
 out output
 ```
@@ -79,11 +81,11 @@ out output
 **Input:**
 ```json
 {
-  "products": [
-    {"id": "p1", "title": "Widget A", "score": 0.95},
-    {"id": "p2", "title": "Widget B", "score": 0.87}
+  "orders": [
+    {"id": "ord-1", "total": 99.99, "status": "shipped"},
+    {"id": "ord-2", "total": 149.50, "status": "pending"}
   ],
-  "context": {"userId": 123, "region": "us-west", "tier": "premium"}
+  "customer": {"customerId": 123, "name": "Alice", "tier": "premium"}
 }
 ```
 
@@ -91,38 +93,35 @@ out output
 ```json
 {
   "output": [
-    {"id": "p1", "title": "Widget A", "score": 0.95, "userId": 123, "region": "us-west"},
-    {"id": "p2", "title": "Widget B", "score": 0.87, "userId": 123, "region": "us-west"}
+    {"id": "ord-1", "total": 99.99, "status": "shipped", "customerId": 123, "name": "Alice"},
+    {"id": "ord-2", "total": 149.50, "status": "pending", "customerId": 123, "name": "Alice"}
   ]
 }
 ```
 
-### Multi-Factor Scoring
+### Conditional Workflows
 
-Build configurable scoring systems with full type safety:
+Build configurable business logic with full type safety:
 
 ```
-type Candidate = { id: String, engagement: Int, recency: Int, quality: Int }
-type Weights = { engagementW: Int, recencyW: Int, qualityW: Int, threshold: Int }
+type Transaction = { id: String, amount: Int, category: String }
+type Rules = { threshold: Int, taxRate: Float }
 
-in candidate: Candidate
-in weights: Weights
+in transaction: Transaction
+in rules: Rules
 
-# Weighted scoring - types flow through every operation
-engagementScore = multiply(candidate.engagement, weights.engagementW)
-recencyScore = multiply(candidate.recency, weights.recencyW)
-qualityScore = multiply(candidate.quality, weights.qualityW)
+# Conditional logic with type-safe field access
+isLarge = gte(transaction.amount, rules.threshold)
+taxAmount = branch isLarge then multiply(transaction.amount, rules.taxRate) else 0
 
-total = add(add(engagementScore, recencyScore), qualityScore)
-qualified = gte(total, weights.threshold)
+result = transaction + { tax: taxAmount, flagged: isLarge }
 
-out total
-out qualified
+out result
 ```
 
 ### Higher-Order Transformations
 
-Filter and transform with lambdas:
+Filter and transform collections with lambdas:
 
 ```
 in users: List<{ name: String, age: Int, active: Boolean }>
@@ -133,11 +132,11 @@ adults = Filter(users, u => and(u.active, gte(u.age, 18)))
 # Extract just names
 names = Map(adults, u => u.name)
 
-# Count them
-count = Length(names)
+# Check if all are active
+allActive = All(adults, u => u.active)
 
 out names
-out count
+out allActive
 ```
 
 ---
@@ -160,21 +159,24 @@ merged = a + b  # Type: { x: Int, y: String, z: String }
 Select exactly the fields you need:
 
 ```
-in user: { id: Int, name: String, email: String, internal: String }
+in user: { id: Int, name: String, email: String, passwordHash: String }
 
 public = user[id, name, email]  # Type: { id: Int, name: String, email: String }
 ```
 
-### Candidates (Batch Operations)
+### Element-wise List Operations
 
-First-class support for ML batching - operations apply element-wise:
+Operations on `List<Record>` apply to each element automatically:
 
 ```
-in items: Candidates<{ id: String, features: List<Float> }>
-in context: { userId: Int }
+in items: List<{ id: String, price: Float }>
+in context: { currency: String }
 
-# Every item gets userId added
-enriched = items + context  # Candidates<{ id: String, features: List<Float>, userId: Int }>
+# Every item gets currency added
+enriched = items + context  # List<{ id: String, price: Float, currency: String }>
+
+# Extract a single field from each item
+prices = items.price  # List<Float>
 ```
 
 ### Full IDE Support
@@ -228,15 +230,15 @@ curl -X POST http://localhost:8080/run \
 import io.constellation.lang.runtime.LangCompiler
 import io.constellation.lang.semantic._
 
-// Define your ML modules
+// Define your service modules
 val compiler = LangCompiler.builder
   .withFunction(FunctionSignature(
-    name = "embed-model",
-    params = List("input" -> SemanticType.SCandidates(inputType)),
-    returns = embeddingsType,
-    moduleName = "embed-model"
+    name = "fetch-user",
+    params = List("userId" -> SemanticType.SInt),
+    returns = userType,
+    moduleName = "fetch-user"
   ))
-  .withModule(embedModule)  // Your actual implementation
+  .withModule(fetchUserModule)  // Your actual implementation
   .build
 
 // Compile and run
@@ -332,6 +334,18 @@ make test-lsp
 | [Architecture Guide](docs/architecture.md) | Deep dive into internals |
 | [API Guide](docs/api-guide.md) | Programmatic usage |
 | [Contributing](CONTRIBUTING.md) | Development setup and workflow |
+
+---
+
+## Use Cases
+
+Constellation excels at:
+
+- **API Composition** - Aggregate responses from multiple microservices
+- **Data Transformation** - ETL pipelines with compile-time validation
+- **Workflow Orchestration** - Conditional business logic with type safety
+- **Backend-for-Frontend** - Build tailored API responses
+- **Event Processing** - Transform and route events through pipelines
 
 ---
 

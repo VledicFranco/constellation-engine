@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Constellation Engine is a well-structured ML orchestration framework with a clean separation of concerns between parsing, type checking, IR generation, DAG compilation, and runtime execution. The architecture follows functional programming best practices with Cats Effect for side effects and cats-parse for parsing.
+Constellation Engine is a well-structured pipeline orchestration framework with a clean separation of concerns between parsing, type checking, IR generation, DAG compilation, and runtime execution. The architecture follows functional programming best practices with Cats Effect for side effects and cats-parse for parsing.
 
 This document identifies **architectural improvements** across six dimensions:
 1. **Parser Performance** - Memoization and incremental parsing

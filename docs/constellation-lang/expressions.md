@@ -12,7 +12,7 @@ out y
 
 ## Function Calls
 
-Call registered functions (ML models, transformations):
+Call registered functions (services, transformations):
 
 ```
 result = function-name(arg1, arg2, ...)
@@ -21,8 +21,8 @@ result = function-name(arg1, arg2, ...)
 Function names can include hyphens:
 
 ```
-embeddings = ide-ranker-v2-embed(communications)
-scores = compute-relevance-score(query, documents)
+user = fetch-user-profile(userId)
+orders = get-recent-orders(customerId, limit)
 ```
 
 ## Arithmetic Expressions
@@ -89,13 +89,13 @@ userId = user.id        # Type: Int
 userName = user.name    # Type: String
 ```
 
-Field access works on `Candidates` element-wise:
+Field access works on `List<Record>` element-wise:
 
 ```
-in items: Candidates<{ id: String, score: Float }>
+in items: List<{ id: String, score: Float }>
 
-ids = items.id          # Type: Candidates<String>
-scores = items.score    # Type: Candidates<Float>
+ids = items.id          # Type: List<String>
+scores = items.score    # Type: List<Float>
 ```
 
 **Note:** Field access (`.field`) extracts a single field's value, while projection (`[field1, field2]`) creates a new record with selected fields.
@@ -121,11 +121,11 @@ in data: { id: Int, name: String, email: String, extra: String }
 result = data[id, name, email]  # Type: { id: Int, name: String, email: String }
 ```
 
-Projections work on Candidates element-wise:
+Projections work on `List<Record>` element-wise:
 
 ```
-in items: Candidates<{ id: String, score: Float, metadata: String }>
-result = items[id, score]  # Type: Candidates<{ id: String, score: Float }>
+in items: List<{ id: String, score: Float, metadata: String }>
+result = items[id, score]  # Type: List<{ id: String, score: Float }>
 ```
 
 ## Comparison Expressions
@@ -237,15 +237,15 @@ result = expression when condition
 The result has type `Optional<T>` where `T` is the type of `expression`. If `condition` is false, the result is `None`:
 
 ```
-in text: String
+in data: String
 in minLength: Int
 
-# Only compute embeddings for sufficiently long text
-embeddings = compute-embeddings(text) when length(text) > minLength
+# Only process sufficiently long data
+processed = transform-data(data) when length(data) > minLength
 
 # Conditional feature extraction
 in user: { tier: String }
-premium_features = extract-premium(data) when user.tier == "premium"
+premium_features = get-premium-data(user) when user.tier == "premium"
 ```
 
 Guards compose with boolean operators:
@@ -266,7 +266,7 @@ If `optional_expr` is `Some(v)`, the result is `v`. Otherwise, the result is `fa
 
 ```
 # Fallback to computed value if cache miss
-embeddings = cached-embeddings(id) ?? compute-embeddings(text)
+result = get-cached(id) ?? compute-fresh(data)
 
 # Chain of fallbacks
 value = primary() ?? secondary() ?? default_value
@@ -294,11 +294,11 @@ processed = branch {
   otherwise -> batch-path(data)
 }
 
-# Model selection based on input size
-model_output = branch {
-  length(text) > 1000 -> large-model(text),
-  length(text) > 100 -> medium-model(text),
-  otherwise -> small-model(text)
+# Service selection based on input size
+output = branch {
+  length(data) > 1000 -> heavy-processor(data),
+  length(data) > 100 -> standard-processor(data),
+  otherwise -> light-processor(data)
 }
 ```
 
@@ -314,17 +314,17 @@ Define inline functions for use with higher-order functions like `filter`, `map`
 Lambdas enable collection operations:
 
 ```
-in items: Candidates<{ score: Float, active: Boolean }>
+in items: List<{ score: Float, active: Boolean }>
 
 # Filter items by condition
-highScoring = filter(items, (item) => item.score > 0.8)
+highScoring = Filter(items, item => item.score > 0.8)
 
 # Transform items
-doubled = map(items, (item) => item.score * 2)
+doubled = Map(items, item => item.score * 2)
 
 # Check conditions across all items
-allActive = all(items, (item) => item.active)
-anyHighScore = any(items, (item) => item.score > 0.9)
+allActive = All(items, item => item.active)
+anyHighScore = Any(items, item => item.score > 0.9)
 ```
 
 Lambdas can use multiple parameters:

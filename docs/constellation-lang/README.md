@@ -1,6 +1,6 @@
 # constellation-lang Reference
 
-constellation-lang is a domain-specific language for defining ML pipeline DAGs. It provides a declarative syntax with strong typing, type algebra, and field projections.
+constellation-lang is a domain-specific language for defining data transformation pipelines. It provides a declarative syntax with strong typing, type algebra, and field projections.
 
 ## Table of Contents
 

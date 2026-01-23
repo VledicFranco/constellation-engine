@@ -33,23 +33,32 @@ type Order = {
 
 ## Parameterized Types
 
-### Candidates<T>
-
-`Candidates<T>` represents a batch of items for ML processing. Operations on Candidates are applied element-wise:
-
-```
-type Item = { id: String, features: List<Float> }
-in items: Candidates<Item>
-
-# Operations on Candidates apply to each element
-processed = transform(items)  # Returns Candidates<ProcessedItem>
-```
-
 ### List<T>
+
+Lists are ordered collections that support element-wise operations when containing records:
 
 ```
 in tags: List<String>
 in scores: List<Float>
+```
+
+**Element-wise operations on `List<Record>`:**
+
+When a list contains record elements, merge, projection, and field access operations apply to each element automatically:
+
+```
+type Item = { id: String, price: Float }
+in items: List<Item>
+in context: { currency: String }
+
+# Merge adds context to EACH item
+enriched = items + context  # Type: List<{ id: String, price: Float, currency: String }>
+
+# Projection selects fields from EACH item
+selected = items[id]  # Type: List<{ id: String }>
+
+# Field access extracts field from EACH item
+ids = items.id  # Type: List<String>
 ```
 
 ### Map<K, V>
@@ -57,6 +66,16 @@ in scores: List<Float>
 ```
 in metadata: Map<String, Int>
 in lookup: Map<Int, String>
+```
+
+### Candidates<T> (Legacy Alias)
+
+`Candidates<T>` is a legacy alias for `List<T>`. It is fully supported for backwards compatibility but new code should use `List<T>` directly:
+
+```
+# These are equivalent:
+in items: Candidates<{ id: String }>
+in items: List<{ id: String }>
 ```
 
 ## Union Types
@@ -76,16 +95,16 @@ Union types are useful for:
 - **Discriminated unions**: Type-safe handling of multiple cases
 
 ```
-# A model that can return different output types
-type ModelOutput = {
-  prediction: Float,
-  confidence: Float
+# A service call that can return different output types
+type ServiceResponse = {
+  data: String,
+  status: Int
 } | {
   error: String,
   code: Int
 }
 
-in modelResult: ModelOutput
+in apiResult: ServiceResponse
 ```
 
 Union types can combine primitive types:

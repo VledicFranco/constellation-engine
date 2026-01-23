@@ -125,7 +125,7 @@ The parser uses [cats-parse](https://github.com/typelevel/cats-parse) for functi
 **Key Design Decisions:**
 - Position tracking on all AST nodes for precise error messages
 - Backtracking for ambiguous constructs (`outputDecl.backtrack | declaration`)
-- Hyphenated identifiers supported for ML model names
+- Hyphenated identifiers supported for service and module names
 
 ```scala
 // Position tracking

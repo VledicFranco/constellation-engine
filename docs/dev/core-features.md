@@ -1,6 +1,6 @@
 # Core Features
 
-Constellation Engine is designed with one overarching philosophy: **minimize time to experiment**. In ML development, the faster you can iterate on pipeline configurations and model combinations, the faster you can discover what works. Constellation provides the tooling to make this experimentation loop as tight as possible.
+Constellation Engine is designed with one overarching philosophy: **minimize time to experiment**. The faster you can iterate on pipeline configurations and service combinations, the faster you can discover what works. Constellation provides the tooling to make this experimentation loop as tight as possible.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ Constellation Engine is designed with one overarching philosophy: **minimize tim
 
 ## Philosophy: Time to Experiment
 
-Traditional ML pipeline development suffers from long iteration cycles:
+Traditional pipeline development suffers from long iteration cycles:
 
 1. **Code changes** require rebuilding and redeploying
 2. **Type errors** surface at runtime, often in production
@@ -64,8 +64,7 @@ The compiler uses a richer type representation:
 | Type | Purpose |
 |------|---------|
 | `SRecord(fields)` | Typed record with field names and types |
-| `SCandidates(element)` | Batch type for ML operations |
-| `SList(element)` | Typed list |
+| `SList(element)` | Typed list with element-wise operations for records |
 | `SMap(key, value)` | Typed map |
 | `SFunction(params, returns)` | Function types for HOFs |
 | `SOptional(element)` | Optional wrapper |
@@ -139,7 +138,7 @@ The domain-specific language provides a clean syntax for pipeline definition.
 type User = { id: Int, name: String, email: String }
 
 # Inputs
-in users: Candidates<User>
+in users: List<User>
 in context: { threshold: Int }
 
 # Processing steps
@@ -181,14 +180,14 @@ Merge combines records, with right-side values winning on conflicts:
 = { a: Int, b: Int, c: Float }
 ```
 
-When applied to `Candidates`:
+When applied to `List<Record>`:
 
 ```
-Candidates<{ id: String }> + { userId: Int }
-= Candidates<{ id: String, userId: Int }>
+List<{ id: String }> + { userId: Int }
+= List<{ id: String, userId: Int }>
 ```
 
-Context fields are added to **each** candidate item.
+Context fields are added to **each** list item.
 
 ### Projection Semantics (`[fields]`)
 
@@ -199,11 +198,11 @@ Projection selects specific fields:
 = { a: Int, c: Float }
 ```
 
-When applied to `Candidates`:
+When applied to `List<Record>`:
 
 ```
-Candidates<{ id: String, score: Float, extra: String }>[id, score]
-= Candidates<{ id: String, score: Float }>
+List<{ id: String, score: Float, extra: String }>[id, score]
+= List<{ id: String, score: Float }>
 ```
 
 ---
@@ -257,14 +256,14 @@ Any modules without data dependencies run concurrently.
 3. **Data** propagates through edges as modules complete
 4. **Outputs** are collected from terminal data nodes
 
-### Batching with Candidates
+### Element-wise List Operations
 
-The `Candidates<T>` type represents batched ML operations:
+`List<Record>` supports element-wise operations:
 
-- Operations apply to all items in the batch
+- Operations apply to all items in the list
 - Merge adds context to each item
 - Projection selects fields from each item
-- Native batching support for ML model inference
+- Field access extracts a field from each item
 
 ---
 
