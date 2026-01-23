@@ -150,16 +150,16 @@ Before writing any code, verify:
 
 - **24 issues completed** - Phase 2 complete!
 - Agent 3 queue empty - awaiting Phase 4 assignments
-- Task 4.2 (Full Incremental LSP) depends on #120 (Bidirectional Type Inference)
-- Will be assigned once #120 is complete
+- Task 4.2 (Full Incremental LSP) dependency #120 now COMPLETE
+- Ready to be assigned Task 4.2 once issue is created
 
 ## Dependencies
 
 ```
 Phase 2 ✅ COMPLETE
-#118 ✅ ──▶ Task 4.2 (Full Incremental LSP) - Waiting on #120
-#120 (Agent 1) ──▶ Task 4.2 (Agent 3 future)
+#118 ✅ ──▶ Task 4.2 (Full Incremental LSP) - UNBLOCKED
+#120 ✅ (Agent 1 COMPLETE) ──▶ Task 4.2 (Agent 3 ready)
 ```
 
 ---
-*Updated: 2026-01-22 (Phase 3 status update)*
+*Updated: 2026-01-23 (#120 dependency complete)*
