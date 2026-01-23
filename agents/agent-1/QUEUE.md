@@ -7,7 +7,7 @@
 
 | Priority | Issue | Title | Status | Branch |
 |----------|-------|-------|--------|--------|
-| - | - | _Queue empty - awaiting new assignments_ | - | - |
+| 1 | #120 | [Phase 3.1] Bidirectional Type Inference | Queued | - |
 
 ## Backlog
 
@@ -151,16 +151,17 @@ Before writing any code, verify:
 ## Notes
 
 - **26 issues completed** - Phase 2 complete!
-- Implemented IR Optimization Passes (#116): DCE, Constant Folding, CSE
-- Implemented Parser Memoization (#117): P.oneOf optimization, cache infrastructure
-- Awaiting new phase assignments
+- Phase 3 assigned: #120 (Bidirectional Type Inference)
+- Context file: `agents/phase-3/context-bidirectional-inference.md`
+- Depends on: Subtyping (#119) ✅
 
 ## Dependencies
 
 ```
-#112 ✅ ──▶ #116 ✅ (IR Optimization) - COMPLETE
-#117 ✅ (Parser Memoization) - COMPLETE
+Phase 2 ✅ COMPLETE
+#119 ✅ ──▶ #120 (Bidirectional Type Inference) - READY
+#120 ──▶ #121 (Row Polymorphism) - Assigned to Agent 2
 ```
 
 ---
-*Updated: 2026-01-22 (Phase 2 complete)*
+*Updated: 2026-01-22 (Phase 3 assigned)*

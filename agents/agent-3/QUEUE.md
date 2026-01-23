@@ -148,16 +148,18 @@ Before writing any code, verify:
 
 ## Notes
 
-- **24 issues completed** - Phase 2.3 (Semantic Tokens) done!
-- Ready for new Phase 2/3/4 assignments
-- Phase 4.3 (Full Incremental LSP) now unblocked
+- **24 issues completed** - Phase 2 complete!
+- Agent 3 queue empty - awaiting Phase 4 assignments
+- Task 4.2 (Full Incremental LSP) depends on #120 (Bidirectional Type Inference)
+- Will be assigned once #120 is complete
 
 ## Dependencies
 
 ```
-#113 ✅ ──▶ #118 ✅ (Semantic Tokens) - COMPLETE
-#118 ✅ ──▶ Phase 4.3 (Full Incremental LSP) - UNBLOCKED
+Phase 2 ✅ COMPLETE
+#118 ✅ ──▶ Task 4.2 (Full Incremental LSP) - Waiting on #120
+#120 (Agent 1) ──▶ Task 4.2 (Agent 3 future)
 ```
 
 ---
-*Updated: 2026-01-22 (Phase 2.3 complete)*
+*Updated: 2026-01-22 (Phase 3 status update)*

@@ -7,7 +7,7 @@
 
 | Priority | Issue | Title | Status | Branch |
 |----------|-------|-------|--------|--------|
-| - | - | No assigned issues | - | - |
+| 1 | #121 | [Phase 3.2] Row Polymorphism | Blocked by #120 | - |
 
 ## Backlog
 
@@ -136,17 +136,17 @@ Before writing any code, verify:
 
 ## Notes
 
-- **12 issues completed** - Phase 1 and Phase 2.4 complete
-- Subtyping implementation unblocks: Phase 3.1, 3.4, 4.1, 4.2
-- Agent 2 queue empty - awaiting new assignments
+- **12 issues completed** - Phase 2 complete!
+- Phase 3 assigned: #121 (Row Polymorphism)
+- Context file: `agents/phase-3/context-row-polymorphism.md`
+- Blocked by: #120 (Bidirectional Type Inference) - Agent 1
 
 ## Dependencies
 
 ```
-#119 (Subtyping) - COMPLETE
-#119 ──▶ Phase 3.1 (Incremental Compilation) - Now unblocked
-#119 ──▶ Phase 3.4 (Bidirectional Inference) - Now unblocked
+Phase 2 ✅ COMPLETE
+#119 ✅ ──▶ #120 (Agent 1) ──▶ #121 (Row Polymorphism) - BLOCKED
 ```
 
 ---
-*Updated: 2026-01-22 (Completed #114)*
+*Updated: 2026-01-22 (Phase 3 assigned)*
