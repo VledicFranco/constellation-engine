@@ -276,5 +276,8 @@ object ExampleLib {
           }
         result.copy(syntheticModules = result.syntheticModules ++ neededModules)
       }
+
+    def compileToIR(source: String, dagName: String) =
+      underlying.compileToIR(source, dagName)
   }
 }
