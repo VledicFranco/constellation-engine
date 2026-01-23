@@ -7,26 +7,31 @@
 
 | Priority | Issue | Title | Status | Blocked By |
 |----------|-------|-------|--------|------------|
-| 1 | [#122](https://github.com/VledicFranco/constellation-engine/issues/122) | DAG Visualization: Core IR and Sugiyama Layout | Ready | - |
-| 2 | [#125](https://github.com/VledicFranco/constellation-engine/issues/125) | DAG Visualization: Alternative Renderers | Blocked | #122 |
+| - | - | _No active assignments_ | - | - |
 
 ## Notes
 
-**Phase: DAG Visualization Redesign**
+**Phase Complete: DAG Visualization Redesign** ✅
 
-#122 creates the foundational `DagVizIR` data structure and Sugiyama layout algorithm. This must complete before any other visualization work can proceed.
+All DAG Visualization issues have been completed:
 
-#125 (Mermaid, ASCII, DOT renderers) can start as soon as #122 is done - it only needs the IR, not the SVG renderer.
+| Issue | Title | Status |
+|-------|-------|--------|
+| [#122](https://github.com/VledicFranco/constellation-engine/issues/122) | Core IR and Sugiyama Layout | ✅ Merged (PR #126) |
+| [#125](https://github.com/VledicFranco/constellation-engine/issues/125) | Alternative Renderers (Mermaid, DOT, ASCII) | ✅ Merged (PR #127) |
+| [#128](https://github.com/VledicFranco/constellation-engine/pull/128) | SVG Renderer enhancement | ✅ Merged |
 
-**Key files to create:**
+**Files created:**
 ```
 modules/lang-compiler/src/main/scala/io/constellation/lang/viz/
 ├── DagVizIR.scala
 ├── DagVizCompiler.scala
 ├── SugiyamaLayout.scala
-├── MermaidRenderer.scala   (for #125)
-├── ASCIIRenderer.scala     (for #125)
-└── DOTRenderer.scala       (for #125)
+├── DagRenderer.scala
+├── MermaidRenderer.scala
+├── DOTRenderer.scala
+├── ASCIIRenderer.scala
+└── SVGRenderer.scala
 ```
 
 ---
@@ -35,7 +40,7 @@ modules/lang-compiler/src/main/scala/io/constellation/lang/viz/
 
 See `agents/archive/` for historical completed issues.
 
-**Summary:** 27 issues completed across @example annotations, architecture improvements (Phases 1-3), and core language features.
+**Summary:** 30+ issues completed across @example annotations, architecture improvements (Phases 1-3), core language features, and DAG Visualization phase.
 
 ---
 *Last updated: 2026-01-23*
