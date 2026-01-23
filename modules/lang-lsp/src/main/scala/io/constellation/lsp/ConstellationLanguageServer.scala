@@ -7,6 +7,7 @@ import io.circe.syntax.*
 import io.constellation.{CValue, Constellation, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
+import io.constellation.lang.compiler.{ErrorCode, ErrorCodes => CompilerErrorCodes, ErrorFormatter, SuggestionContext, Suggestions}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc.*
@@ -1180,10 +1181,20 @@ class ConstellationLanguageServer(
             publishDiagnostics(PublishDiagnosticsParams(uri, List.empty))
 
           case Left(errors) =>
+            // Build suggestion context from compiler state
+            val context = buildSuggestionContext()
+
             val diagnostics = errors.flatMap { error =>
               error.span.map { span =>
                 // Convert span to line/col using SourceFile
                 val (startLC, endLC) = document.sourceFile.spanToLineCol(span)
+
+                // Get error code and suggestions from the new error system
+                val errorCode   = CompilerErrorCodes.fromCompileError(error)
+                val suggestions = Suggestions.forError(error, context)
+
+                // Build enhanced message with explanation and suggestions
+                val enhancedMessage = buildEnhancedMessage(error, errorCode, suggestions)
 
                 Diagnostic(
                   range = Range(
@@ -1191,9 +1202,9 @@ class ConstellationLanguageServer(
                     end = Position(endLC.line - 1, endLC.col - 1)
                   ),
                   severity = Some(DiagnosticSeverity.Error),
-                  code = None,
+                  code = Some(errorCode.code),
                   source = Some("constellation-lang"),
-                  message = error.message
+                  message = enhancedMessage
                 )
               }
             }
@@ -1203,6 +1214,40 @@ class ConstellationLanguageServer(
       case None =>
         IO.unit
     }
+
+  /** Build suggestion context from compiler's function registry */
+  private def buildSuggestionContext(): SuggestionContext = {
+    val registry = compiler.functionRegistry
+    SuggestionContext(
+      definedVariables = Nil, // Would need to track per-document
+      definedTypes = Nil,     // Would need to track per-document
+      availableFunctions = registry.all.map(_.name),
+      availableNamespaces = registry.namespaces.toList,
+      functionsByNamespace = registry.all
+        .groupBy(_.namespace.getOrElse("global"))
+        .view
+        .mapValues(_.map(_.name))
+        .toMap
+    )
+  }
+
+  /** Build enhanced error message with explanation and suggestions */
+  private def buildEnhancedMessage(
+      error: CompileError,
+      errorCode: ErrorCode,
+      suggestions: List[String]
+  ): String = {
+    val parts = List(
+      error.message,
+      "",
+      errorCode.explanation
+    ) ++ (
+      if (suggestions.nonEmpty)
+        List("", suggestions.mkString("\n"))
+      else Nil
+    )
+    parts.mkString("\n")
+  }
 
   private def executePipeline(
       document: DocumentState,
@@ -1323,51 +1368,36 @@ class ConstellationLanguageServer(
 
   /** Convert CompileError to structured ErrorInfo for the extension */
   private def compileErrorToErrorInfo(error: CompileError, sourceFile: SourceFile): ErrorInfo = {
-    val category = error match {
-      case _: CompileError.ParseError => ErrorCategory.Syntax
-      case _: CompileError.TypeError | _: CompileError.TypeMismatch |
-          _: CompileError.IncompatibleMerge =>
-        ErrorCategory.Type
-      case _: CompileError.UndefinedVariable | _: CompileError.UndefinedType |
-          _: CompileError.UndefinedFunction | _: CompileError.UndefinedNamespace |
-          _: CompileError.AmbiguousFunction | _: CompileError.InvalidProjection |
-          _: CompileError.InvalidFieldAccess =>
-        ErrorCategory.Reference
-      case _: CompileError.UnsupportedComparison | _: CompileError.UnsupportedArithmetic =>
-        ErrorCategory.Type
-      case _: CompileError.InternalError =>
-        ErrorCategory.Internal
+    // Use the new error code system
+    val errorCode       = CompilerErrorCodes.fromCompileError(error)
+    val context         = buildSuggestionContext()
+    val suggestions     = Suggestions.forError(error, context)
+
+    // Map compiler ErrorCategory to LSP ErrorCategory
+    import io.constellation.lang.compiler.{ErrorCategory => CompilerCategory}
+    val category = errorCode.category match {
+      case CompilerCategory.Syntax    => ErrorCategory.Syntax
+      case CompilerCategory.Type      => ErrorCategory.Type
+      case CompilerCategory.Reference => ErrorCategory.Reference
+      case CompilerCategory.Semantic  => ErrorCategory.Type // Map semantic to type for LSP
+      case CompilerCategory.Internal  => ErrorCategory.Internal
     }
 
     val (line, column, endLine, endColumn, codeContext) = error.span match {
       case Some(span) =>
         val (startLC, endLC) = sourceFile.spanToLineCol(span)
-        val context          = buildCodeContext(sourceFile, startLC.line, startLC.col, span.length)
-        (Some(startLC.line), Some(startLC.col), Some(endLC.line), Some(endLC.col), Some(context))
+        val codeCtx          = buildCodeContext(sourceFile, startLC.line, startLC.col, span.length)
+        (Some(startLC.line), Some(startLC.col), Some(endLC.line), Some(endLC.col), Some(codeCtx))
       case None =>
         (None, None, None, None, None)
     }
 
-    // Generate suggestions for certain error types
-    val suggestion = error match {
-      case e: CompileError.UndefinedFunction =>
-        findSimilarFunction(e.name).map(s => s"Did you mean: $s?")
-      case e: CompileError.UndefinedVariable =>
-        None // Could add variable suggestions if needed
-      case e: CompileError.InvalidProjection =>
-        if e.availableFields.nonEmpty then
-          Some(s"Available fields: ${e.availableFields.mkString(", ")}")
-        else None
-      case e: CompileError.InvalidFieldAccess =>
-        if e.availableFields.nonEmpty then
-          Some(s"Available fields: ${e.availableFields.mkString(", ")}")
-        else None
-      case _ => None
-    }
+    // Combine suggestions into a single string for the ErrorInfo
+    val suggestion = suggestions.headOption
 
     ErrorInfo(
       category = category,
-      message = error.message,
+      message = s"[${errorCode.code}] ${error.message}",
       line = line,
       column = column,
       endLine = endLine,
@@ -1409,41 +1439,6 @@ class ConstellationLanguageServer(
     }
 
     sb.toString()
-  }
-
-  /** Find a function name similar to the given name (for suggestions) */
-  private def findSimilarFunction(name: String): Option[String] = {
-    // Get all registered function names
-    val allFunctions = compiler.functionRegistry.all.map(_.name)
-
-    // Find functions with small edit distance
-    val candidates = allFunctions.filter { fn =>
-      levenshteinDistance(name.toLowerCase, fn.toLowerCase) <= 2
-    }
-
-    candidates.headOption
-  }
-
-  /** Calculate Levenshtein distance between two strings */
-  private def levenshteinDistance(s1: String, s2: String): Int = {
-    val m  = s1.length
-    val n  = s2.length
-    val dp = Array.ofDim[Int](m + 1, n + 1)
-
-    for i <- 0 to m do dp(i)(0) = i
-    for j <- 0 to n do dp(0)(j) = j
-
-    for
-      i <- 1 to m
-      j <- 1 to n
-    do {
-      val cost = if s1(i - 1) == s2(j - 1) then 0 else 1
-      dp(i)(j) = Math.min(
-        Math.min(dp(i - 1)(j) + 1, dp(i)(j - 1) + 1),
-        dp(i - 1)(j - 1) + cost
-      )
-    }
-    dp(m)(n)
   }
 
   /** Convert a runtime exception to ErrorInfo */
