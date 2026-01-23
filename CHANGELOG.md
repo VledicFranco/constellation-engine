@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### Compiler Improvements
+- **IR Optimization Passes**: New optimization framework that reduces DAG size and improves runtime performance (#116)
+  - `OptimizationPass.scala`: Base trait for implementing optimization passes
+  - `IROptimizer.scala`: Orchestrator with iterative optimization until fixpoint
+  - `DeadCodeElimination.scala`: Removes IR nodes not reachable from outputs
+  - `ConstantFolding.scala`: Evaluates constant expressions at compile time (arithmetic, string concat, boolean ops)
+  - `CommonSubexpressionElimination.scala`: Deduplicates identical computations
+  - `OptimizationConfig.scala`: Configuration for enabling/disabling individual passes
+  - Builder integration via `LangCompilerBuilder.withOptimization()`
+  - Optimization is disabled by default for backward compatibility
+
 - **Compilation Caching**: New `CompilationCache` and `CachingLangCompiler` classes that cache compilation results to avoid redundant parsing, type checking, and IR generation. Features include:
   - Thread-safe storage using cats-effect `Ref[IO, Map]`
   - LRU eviction policy with configurable max entries
