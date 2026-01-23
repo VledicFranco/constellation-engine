@@ -185,8 +185,7 @@ final case class FunctionSignature(
         SList(substituteRowVars(elem, mapping))
       case SOptional(inner) =>
         SOptional(substituteRowVars(inner, mapping))
-      case SCandidates(elem) =>
-        SCandidates(substituteRowVars(elem, mapping))
+      // Note: SCandidates was removed - "Candidates" is now a legacy alias for List
       case SMap(k, v) =>
         SMap(substituteRowVars(k, mapping), substituteRowVars(v, mapping))
       case SFunction(ps, ret) =>

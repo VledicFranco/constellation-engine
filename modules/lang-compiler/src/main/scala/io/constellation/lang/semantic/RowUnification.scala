@@ -163,8 +163,7 @@ object RowUnification {
         SList(applySubstitution(elem, subst))
       case SOptional(inner) =>
         SOptional(applySubstitution(inner, subst))
-      case SCandidates(elem) =>
-        SCandidates(applySubstitution(elem, subst))
+      // Note: SCandidates was removed - "Candidates" is now a legacy alias for List
       case SMap(k, v) =>
         SMap(applySubstitution(k, subst), applySubstitution(v, subst))
       case SFunction(params, ret) =>
