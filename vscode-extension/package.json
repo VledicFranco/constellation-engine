@@ -35,6 +35,55 @@
         "path": "./syntaxes/constellation.tmLanguage.json"
       }
     ],
+    "semanticTokenTypes": [
+      {
+        "id": "function",
+        "superType": "function",
+        "description": "A module/function call in constellation-lang"
+      },
+      {
+        "id": "type",
+        "superType": "type",
+        "description": "A type name in constellation-lang"
+      },
+      {
+        "id": "parameter",
+        "superType": "parameter",
+        "description": "An input parameter in constellation-lang"
+      },
+      {
+        "id": "variable",
+        "superType": "variable",
+        "description": "A variable in constellation-lang"
+      },
+      {
+        "id": "namespace",
+        "superType": "namespace",
+        "description": "A namespace/import in constellation-lang"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "constellation",
+        "scopes": {
+          "function": ["entity.name.function.constellation"],
+          "function.defaultLibrary": ["support.function.constellation"],
+          "type": ["entity.name.type.constellation"],
+          "type.declaration": ["entity.name.type.definition.constellation"],
+          "parameter": ["variable.parameter.constellation"],
+          "parameter.declaration": ["variable.parameter.declaration.constellation"],
+          "variable": ["variable.other.constellation"],
+          "variable.declaration": ["variable.other.declaration.constellation"],
+          "namespace": ["entity.name.namespace.constellation"],
+          "property": ["variable.other.property.constellation"],
+          "keyword": ["keyword.constellation"],
+          "string": ["string.constellation"],
+          "number": ["constant.numeric.constellation"],
+          "operator": ["keyword.operator.constellation"],
+          "comment": ["comment.constellation"]
+        }
+      }
+    ],
     "commands": [
       {
         "command": "constellation.executePipeline",
