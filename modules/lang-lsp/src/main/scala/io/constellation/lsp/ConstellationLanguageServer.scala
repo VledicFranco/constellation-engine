@@ -30,6 +30,11 @@ class ConstellationLanguageServer(
   private val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
 
+  // Cached completion tries for efficient prefix-based lookups
+  private var moduleCompletionTrie: CompletionTrie = CompletionTrie.empty
+  private var lastModuleNames: Set[String] = Set.empty
+  private val keywordCompletionTrie: CompletionTrie = buildKeywordTrie()
+
   /** Handle LSP request */
   def handleRequest(request: Request): IO[Response] =
     request.method match {
@@ -911,6 +916,9 @@ class ConstellationLanguageServer(
     val textBeforeCursor = lineText.take(position.character)
 
     constellation.getModules.map { modules =>
+      // Update the module completion trie if modules have changed
+      updateModuleCompletionTrie(modules)
+
       // Check context: are we after "use " or after a namespace prefix like "stdlib."?
       val isAfterUse = textBeforeCursor.trim.startsWith("use ")
       val namespacePrefix = {
@@ -962,18 +970,56 @@ class ConstellationLanguageServer(
         case None => List.empty
       }
 
-      // Module completions (functions from constellation.getModules)
-      val moduleCompletions = modules.map { module =>
-        // Format signature for detail field
-        val signature = TypeFormatter.formatSignature(
-          module.name,
-          module.consumes,
-          module.produces
-        )
+      // Combine completions based on context using efficient trie lookups
+      val allItems = if isAfterUse then {
+        namespaceCompletions
+      } else if namespacePrefix.isDefined then {
+        qualifiedCompletions.toList
+      } else {
+        // Use trie-based prefix lookup for O(k) instead of O(n) filtering
+        // where k = prefix length and n = number of items
+        val keywordMatches = keywordCompletionTrie.findByPrefix(wordAtCursor)
+        val moduleMatches = moduleCompletionTrie.findByPrefix(wordAtCursor)
+        keywordMatches ++ moduleMatches
+      }
 
-        // Enhanced documentation with type info
+      CompletionList(
+        isIncomplete = false,
+        items = allItems.toList
+      )
+    }
+  }
+
+  /**
+   * Build a trie containing all keyword completions.
+   * This is called once at initialization since keywords are static.
+   */
+  private def buildKeywordTrie(): CompletionTrie = {
+    val keywords = List(
+      CompletionItem("in", Some(CompletionItemKind.Keyword), Some("Input declaration"), None, None, None, None),
+      CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output declaration"), None, None, None, None),
+      CompletionItem("use", Some(CompletionItemKind.Keyword), Some("Import namespace"), None, Some("use "), None, None),
+      CompletionItem("as", Some(CompletionItemKind.Keyword), Some("Alias for import"), None, None, None, None),
+      CompletionItem("type", Some(CompletionItemKind.Keyword), Some("Type definition"), None, None, None, None),
+      CompletionItem("if", Some(CompletionItemKind.Keyword), Some("Conditional expression"), None, None, None, None),
+      CompletionItem("else", Some(CompletionItemKind.Keyword), Some("Else branch"), None, None, None, None),
+      CompletionItem("true", Some(CompletionItemKind.Keyword), Some("Boolean true"), None, None, None, None),
+      CompletionItem("false", Some(CompletionItemKind.Keyword), Some("Boolean false"), None, None, None, None)
+    )
+    CompletionTrie(keywords)
+  }
+
+  /**
+   * Update the module completion trie if modules have changed.
+   * Uses a simple cache invalidation based on module names.
+   */
+  private def updateModuleCompletionTrie(modules: List[io.constellation.ModuleNodeSpec]): Unit = {
+    val currentNames = modules.map(_.name).toSet
+    if (currentNames != lastModuleNames) {
+      val moduleItems = modules.map { module =>
+        val signature = TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
         val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
-          val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
+          val paramsDoc = TypeFormatter.formatParameters(module.consumes)
           val returnsDoc = TypeFormatter.formatReturns(module.produces)
           s"""${module.metadata.description}
              |
@@ -985,7 +1031,6 @@ class ConstellationLanguageServer(
         } else {
           module.metadata.description
         }
-
         CompletionItem(
           label = module.name,
           kind = Some(CompletionItemKind.Function),
@@ -996,106 +1041,8 @@ class ConstellationLanguageServer(
           sortText = Some(module.name)
         )
       }
-
-      val keywordCompletions = List(
-        CompletionItem(
-          "in",
-          Some(CompletionItemKind.Keyword),
-          Some("Input declaration"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "out",
-          Some(CompletionItemKind.Keyword),
-          Some("Output declaration"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "use",
-          Some(CompletionItemKind.Keyword),
-          Some("Import namespace"),
-          None,
-          Some("use "),
-          None,
-          None
-        ),
-        CompletionItem(
-          "as",
-          Some(CompletionItemKind.Keyword),
-          Some("Alias for import"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "type",
-          Some(CompletionItemKind.Keyword),
-          Some("Type definition"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "if",
-          Some(CompletionItemKind.Keyword),
-          Some("Conditional expression"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "else",
-          Some(CompletionItemKind.Keyword),
-          Some("Else branch"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "true",
-          Some(CompletionItemKind.Keyword),
-          Some("Boolean true"),
-          None,
-          None,
-          None,
-          None
-        ),
-        CompletionItem(
-          "false",
-          Some(CompletionItemKind.Keyword),
-          Some("Boolean false"),
-          None,
-          None,
-          None,
-          None
-        )
-      )
-
-      // Combine completions based on context
-      val allItems = if isAfterUse then {
-        namespaceCompletions
-      } else if namespacePrefix.isDefined then {
-        qualifiedCompletions.toList
-      } else {
-        keywordCompletions ++ moduleCompletions.filter(
-          _.label.toLowerCase.contains(wordAtCursor.toLowerCase)
-        )
-      }
-
-      CompletionList(
-        isIncomplete = false,
-        items = allItems.toList
-      )
+      moduleCompletionTrie = CompletionTrie(moduleItems)
+      lastModuleNames = currentNames
     }
   }
 

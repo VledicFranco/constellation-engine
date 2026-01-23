@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Document close cancels any pending validation
   - Independent debouncing per document URI
 
+- **Completion Trie**: Replaced linear filtering with prefix trie for O(k) completion lookups instead of O(n) (#114)
+  - `CompletionTrie.scala`: Trie data structure for efficient prefix-based lookups
+  - Case-insensitive matching for better discoverability
+  - Cached keyword completions (built once at initialization)
+  - Module completions automatically updated when registry changes
+
 ## [0.2.0] - 2026-01-22
 
 ### Added
