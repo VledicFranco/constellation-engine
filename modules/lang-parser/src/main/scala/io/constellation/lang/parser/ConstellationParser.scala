@@ -9,7 +9,7 @@ import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
 import io.constellation.lang.ast.BoolOp
 
-object ConstellationParser {
+object ConstellationParser extends MemoizationSupport {
 
   // Whitespace and comments
   private val whitespaceChar: P[Unit] = P.charIn(" \t\r\n").void
@@ -321,8 +321,19 @@ object ConstellationParser {
       else P.pure(loc)
     }
 
+  // Optimized exprPrimary using P.oneOf for efficient alternative matching
+  // Order: distinctive keywords first (if, branch), then structures, then fallbacks
   private lazy val exprPrimary: P[Expression] =
-    conditional.backtrack | branchExpr | functionCall.backtrack | literal | varRef.backtrack | parenExpr
+    P.oneOf(
+      List(
+        conditional.backtrack,  // 'if' keyword is distinctive
+        branchExpr.backtrack,   // 'branch' keyword is distinctive
+        parenExpr.backtrack,    // '(' is distinctive
+        functionCall.backtrack, // qualified name followed by '('
+        literal,                // literals have distinctive prefixes
+        varRef                  // fallback - simple identifier
+      )
+    )
 
   private lazy val parenExpr: P[Expression] =
     openParen *> expression <* closeParen
@@ -454,8 +465,18 @@ object ConstellationParser {
     (openBracket *> withSpan(P.defer(expression)).repSep0(comma) <* closeBracket)
       .map(elements => Expression.ListLit(elements.toList))
 
+  // Optimized literal parsing using P.oneOf for efficient matching
+  // Each literal type has distinctive starting characters
   private val literal: P[Expression] =
-    floatLit.backtrack | intLit | interpolatedString | boolLit | listLit
+    P.oneOf(
+      List(
+        interpolatedString,       // starts with '"'
+        listLit,                  // starts with '['
+        boolLit.backtrack,        // 'true' or 'false' - need backtrack for keyword prefix
+        floatLit.backtrack,       // digits with '.' - try before intLit
+        intLit                    // digits only
+      )
+    )
 
   // Declarations
   private val typeDef: P[Declaration.TypeDef] =
@@ -492,8 +513,22 @@ object ConstellationParser {
     (useKw *> locatedQualifiedName ~ (asKw *> withSpan(identifier)).?)
       .map { case (path, alias) => Declaration.UseDecl(path, alias) }
 
+  // Declaration parsing using P.oneOf for efficient matching
+  // Backtrack needed for declarations that can partially match identifiers:
+  // - inputDecl: 'in' can match start of identifier like 'inner'
+  // - outputDecl: 'out' can match start of identifier like 'output_var'
+  // - useDecl: 'use' can match start of identifier like 'user'
+  // - typeDef: 'type' can match start of identifier like 'typeInfo'
   private val declaration: P[Declaration] =
-    typeDef.backtrack | inputDecl.backtrack | outputDecl.backtrack | useDecl.backtrack | assignment
+    P.oneOf(
+      List(
+        typeDef.backtrack,        // 'type' keyword, needs backtrack
+        inputDecl.backtrack,      // 'in' or '@', 'in' needs backtrack
+        outputDecl.backtrack,     // 'out' keyword, needs backtrack
+        useDecl.backtrack,        // 'use' keyword, needs backtrack
+        assignment                // fallback - identifier = expr
+      )
+    )
 
   // Full program: sequence of declarations with at least one output declaration
   val program: Parser0[Program] =
@@ -509,8 +544,11 @@ object ConstellationParser {
       }
     }
 
-  /** Parse a constellation-lang program */
-  def parse(source: String): Either[CompileError.ParseError, Program] =
+  /** Parse a constellation-lang program.
+    * Clears the memoization cache before parsing to ensure fresh state.
+    */
+  def parse(source: String): Either[CompileError.ParseError, Program] = {
+    clearMemoCache() // Clear cache for fresh parse
     program.parseAll(source).left.map { err =>
       val offset = err.failedAtOffset
       CompileError.ParseError(
@@ -518,4 +556,25 @@ object ConstellationParser {
         Some(Span.point(offset))
       )
     }
+  }
+
+  /** Parse with cache statistics for benchmarking.
+    * @return Either parse error or (program, (cache hits, cache misses))
+    */
+  def parseWithStats(source: String): Either[CompileError.ParseError, (Program, (Int, Int))] = {
+    clearMemoCache()
+    program.parseAll(source) match {
+      case Right(prog) =>
+        val stats = getCacheStats
+        Right((prog, stats))
+      case Left(err) =>
+        val offset = err.failedAtOffset
+        Left(
+          CompileError.ParseError(
+            s"Parse error: ${err.expected.toList.map(_.toString).mkString(", ")}",
+            Some(Span.point(offset))
+          )
+        )
+    }
+  }
 }

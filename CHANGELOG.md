@@ -38,6 +38,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Builder integration via `LangCompilerBuilder.withCaching()`
 
 - **Improved Error Messages**: Enhanced compiler error messages with structured error codes, explanations, "did you mean" suggestions, and documentation links (#115)
+
+#### Parser Optimizations
+- **Parser Performance Improvements**: Optimized Constellation parser for reduced backtracking and better efficiency (#117)
+  - `MemoizationSupport.scala`: Thread-safe memoization infrastructure with cache hit/miss tracking for benchmarking
+  - Replaced chained `|` alternatives with `P.oneOf` for O(1) alternative selection
+  - `parseWithStats()` method for performance benchmarking with cache statistics
+  - `ParserOptimizations` utilities for optimized choice combinators
   - `ErrorCode.scala`: Error code catalog with E001-E900 codes covering reference, type, syntax, semantic, and internal errors
   - `Suggestions.scala`: Levenshtein distance-based "Did you mean?" suggestions for typos
   - `ErrorFormatter.scala`: Rich error formatting with code snippets, caret markers, and multiple output formats (plain text, markdown, one-line)
