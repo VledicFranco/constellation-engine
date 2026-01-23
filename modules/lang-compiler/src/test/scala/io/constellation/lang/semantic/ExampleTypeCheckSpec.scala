@@ -710,7 +710,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     result.left.get.head.message should include("List<String>")
   }
 
-  it should "reject list literal with mixed element types" in {
+  it should "reject list literal with mixed element types as input example" in {
     val source = """
       @example([1, "two", 3])
       in items: List<Int>
@@ -718,8 +718,9 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    // Should fail because list has mixed element types
-    result.left.get.head.message should include("mixed element types")
+    // With subtyping, mixed types produce a union: List<Int | String>
+    // This fails because List<Int | String> is not assignable to List<Int>
+    result.left.get.head.message should include("List<Int>")
   }
 
   it should "reject list literal for non-list input type" in {

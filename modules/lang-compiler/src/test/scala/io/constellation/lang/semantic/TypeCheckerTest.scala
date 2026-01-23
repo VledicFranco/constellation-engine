@@ -498,7 +498,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
   }
 
-  it should "report conditional with mismatched branch types error" in {
+  it should "compute union type for conditional with different branch types" in {
+    // With subtyping, different branch types produce a union type via LUB
     val source = """
       in flag: Boolean
       in a: Int
@@ -507,8 +508,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       out result
     """
     val result = check(source)
-    result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    result.isRight shouldBe true
+    // Result type is union of Int and String
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
   }
 
   it should "include position information in errors" in {
@@ -2523,7 +2525,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     getOutputType(result.toOption.get) shouldBe SemanticType.SInt
   }
 
-  it should "report error for branch with inconsistent Optional/non-Optional arms" in {
+  it should "compute union type for branch with Optional/non-Optional arms" in {
+    // With subtyping, different arm types produce a union type via LUB
     val source = """
       in flag: Boolean
       in value: Int
@@ -2535,8 +2538,11 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       out result
     """
     val result = check(source)
-    result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    result.isRight shouldBe true
+    // Result type is union of Optional<Int> and Int
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(
+      Set(SemanticType.SOptional(SemanticType.SInt), SemanticType.SInt)
+    )
   }
 
   // Integration Tests: Combined Patterns
@@ -3634,15 +3640,16 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
   }
 
-  it should "report error when conditional branches have different types" in {
+  it should "compute union type for conditional with literal branches of different types" in {
+    // With subtyping, different branch types produce a union type via LUB
     val source = """
       in flag: Boolean
       result = if (flag) 42 else "hello"
       out result
     """
     val result = check(source)
-    result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
   }
 
   it should "type check nested conditionals correctly" in {
@@ -4128,8 +4135,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     } shouldBe true
   }
 
-  // Conditional with mismatched branch types (inner mapN branch coverage)
-  it should "report TypeMismatch when conditional branches have different types" in {
+  // Conditional with different branch types produces union via LUB
+  it should "compute union type when conditional branches have different types" in {
     val source = """
       in flag: Boolean
       in a: Int
@@ -4138,9 +4145,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       out result
     """
     val result = check(source)
-    result.isLeft shouldBe true
-    val errors = result.left.toOption.get
-    errors.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
   }
 
   // Guard with string condition (alternative test for guard error)
@@ -4219,8 +4225,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     } shouldBe true
   }
 
-  // Branch with mismatched expression types
-  it should "report TypeMismatch when branch expressions have different types" in {
+  // Branch with different expression types produces union via LUB
+  it should "compute union type when branch expressions have different types" in {
     val source = """
       in flag: Boolean
       in flag2: Boolean
@@ -4232,9 +4238,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       out result
     """
     val result = check(source)
-    result.isLeft shouldBe true
-    val errors = result.left.toOption.get
-    errors.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
   }
 
   // Boolean binary with non-boolean operands (inner mapN branch coverage)

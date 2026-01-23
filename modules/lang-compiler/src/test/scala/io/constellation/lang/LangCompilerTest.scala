@@ -1114,9 +1114,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
   }
 
-  it should "report error when branch expressions have different types" in {
+  it should "compile branch with different types producing union type" in {
     val compiler = LangCompiler.empty
 
+    // With subtyping, different branch types produce a union type via LUB
     val source = """
       in flag: Boolean
       result = branch {
@@ -1126,14 +1127,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       out result
     """
 
-    val result = compiler.compile(source, "error-dag")
-    result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    val result = compiler.compile(source, "union-dag")
+    result.isRight shouldBe true
   }
 
-  it should "report error when otherwise type doesn't match branch types" in {
+  it should "compile branch with Int and Float producing union type" in {
     val compiler = LangCompiler.empty
 
+    // With subtyping, Int and Float produce a union type via LUB
     val source = """
       in flag: Boolean
       result = branch {
@@ -1143,9 +1144,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       out result
     """
 
-    val result = compiler.compile(source, "error-dag")
-    result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[CompileError.TypeMismatch]) shouldBe true
+    val result = compiler.compile(source, "union-dag-numeric")
+    result.isRight shouldBe true
   }
 
   it should "compile branch with record results" in {

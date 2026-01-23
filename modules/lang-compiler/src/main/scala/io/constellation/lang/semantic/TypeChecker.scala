@@ -536,11 +536,11 @@ object TypeChecker {
           CompileError
             .TypeMismatch("Boolean", c.semanticType.prettyPrint, Some(cond.span))
             .invalidNel
-        else if t.semanticType != e.semanticType then
-          CompileError
-            .TypeMismatch(t.semanticType.prettyPrint, e.semanticType.prettyPrint, Some(elseBr.span))
-            .invalidNel
-        else TypedExpression.Conditional(c, t, e, t.semanticType, span).validNel
+        else {
+          // Use LUB to find common type for branches
+          val resultType = Subtyping.lub(t.semanticType, e.semanticType)
+          TypedExpression.Conditional(c, t, e, resultType, span).validNel
+        }
       }.andThen(identity)
 
     case Expression.StringLit(v) =>
@@ -571,15 +571,9 @@ object TypeChecker {
       else
         // Type check each element
         elements.traverse(elem => checkExpression(elem.value, elem.span, env)).andThen { typedElements =>
-          // All elements must have the same type
-          val elementTypes = typedElements.map(_.semanticType).distinct
-          if elementTypes.size == 1 then
-            TypedExpression.ListLiteral(typedElements, elementTypes.head, span).validNel
-          else
-            CompileError.TypeError(
-              s"List literal has mixed element types: ${elementTypes.map(_.prettyPrint).mkString(", ")}",
-              Some(span)
-            ).invalidNel
+          // Find common type for all elements using LUB
+          val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
+          TypedExpression.ListLiteral(typedElements, elementType, span).validNel
         }
 
     case Expression.Compare(left, op, right) =>
@@ -695,24 +689,10 @@ object TypeChecker {
 
       (casesResult, otherwiseResult)
         .mapN { (typedCases, typedOtherwise) =>
-          // All expressions (cases + otherwise) must have the same type
-          val allExprs  = typedCases.map(_._2) :+ typedOtherwise
-          val firstType = allExprs.head.semanticType
-
-          val typeErrors = allExprs.zipWithIndex.drop(1).flatMap { case (expr, idx) =>
-            if expr.semanticType != firstType then
-              Some(
-                CompileError.TypeMismatch(
-                  firstType.prettyPrint,
-                  expr.semanticType.prettyPrint,
-                  Some(expr.span)
-                )
-              )
-            else None
-          }
-
-          if typeErrors.nonEmpty then typeErrors.head.invalidNel
-          else TypedExpression.Branch(typedCases, typedOtherwise, firstType, span).validNel
+          // Find common type for all branch results using LUB
+          val allExprs = typedCases.map(_._2) :+ typedOtherwise
+          val resultType = Subtyping.commonType(allExprs.map(_.semanticType))
+          TypedExpression.Branch(typedCases, typedOtherwise, resultType, span).validNel
         }
         .andThen(identity)
 
@@ -768,9 +748,10 @@ object TypeChecker {
     val paramTypesResult = params.zip(expectedType.paramTypes).traverse { case (param, expectedParamType) =>
       param.typeAnnotation match {
         case Some(typeExpr) =>
-          // Explicit type annotation - validate it matches expected
+          // Explicit type annotation - validate it's compatible with expected
+          // For parameters, expected must be subtype of annotated (contravariance)
           resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { annotatedType =>
-            if (annotatedType == expectedParamType)
+            if (Subtyping.isSubtype(expectedParamType, annotatedType))
               (param.name.value -> annotatedType).validNel
             else
               CompileError.TypeMismatch(
@@ -792,8 +773,8 @@ object TypeChecker {
       }
       // Type check the body
       checkExpression(body.value, body.span, lambdaEnv).andThen { typedBody =>
-        // Validate return type matches expected
-        if (typedBody.semanticType == expectedType.returnType) {
+        // Validate return type is subtype of expected
+        if (Subtyping.isSubtype(typedBody.semanticType, expectedType.returnType)) {
           val funcType = SemanticType.SFunction(paramTypes.map(_._2), typedBody.semanticType)
           TypedExpression.Lambda(paramTypes, typedBody, funcType, span).validNel
         } else {
@@ -822,16 +803,7 @@ object TypeChecker {
       .map(_.toMap)
 
   private def isAssignable(actual: SemanticType, expected: SemanticType): Boolean =
-    (actual, expected) match {
-      // SNothing (bottom type) is assignable to any type
-      case (SemanticType.SNothing, _) => true
-      // List<SNothing> is assignable to any List<T>
-      case (SemanticType.SList(SemanticType.SNothing), SemanticType.SList(_)) => true
-      // Candidates<SNothing> is assignable to any Candidates<T>
-      case (SemanticType.SCandidates(SemanticType.SNothing), SemanticType.SCandidates(_)) => true
-      // Default: strict equality
-      case _ => actual == expected
-    }
+    Subtyping.isAssignable(actual, expected)
 
   /** Desugar comparison operator to stdlib function call */
   private def desugarComparison(

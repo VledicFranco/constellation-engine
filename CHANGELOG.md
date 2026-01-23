@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Type System
+- **Subtyping System**: Implemented structural subtyping for the Constellation type system (#119)
+  - `Subtyping.scala`: Core subtyping implementation with `isSubtype`, `lub` (least upper bound), `glb` (greatest lower bound)
+  - `SNothing` as bottom type: Empty collections and conditionals now work seamlessly with typed collections
+  - Covariant collections: `List<Nothing>` assignable to `List<T>`, `Candidates<Nothing>` to `Candidates<T>`
+  - Record width + depth subtyping: Records with extra fields are subtypes of records expecting fewer fields
+  - Union type handling: Conditional branches with different types produce union types via LUB
+  - Function contravariance: Correct handling of function parameter and return type subtyping
+  - `explainFailure`: Human-readable explanations for type error messages
+
 #### Compiler Improvements
 - **IR Optimization Passes**: New optimization framework that reduces DAG size and improves runtime performance (#116)
   - `OptimizationPass.scala`: Base trait for implementing optimization passes
