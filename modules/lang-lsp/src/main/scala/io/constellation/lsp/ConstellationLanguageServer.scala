@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.implicits.*
 import io.circe.*
 import io.circe.syntax.*
-import io.constellation.{CValue, Constellation, Module, SteppedExecution}
+import io.constellation.{CValue, Constellation, ExecutionTracker, ExecutionTrace, NodeExecutionResult, NodeStatus, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.viz.{DagVizCompiler, SugiyamaLayout, LayoutConfig}
 import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
@@ -26,7 +26,8 @@ class ConstellationLanguageServer(
     documentManager: DocumentManager,
     debugSessionManager: DebugSessionManager,
     debouncer: Debouncer[String],
-    publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
+    publishDiagnostics: PublishDiagnosticsParams => IO[Unit],
+    executionTracker: Option[ExecutionTracker[IO]] = None
 ) {
   private val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
@@ -530,7 +531,7 @@ class ConstellationLanguageServer(
           case Right(params) =>
             documentManager.getDocument(params.uri).flatMap {
               case Some(document) =>
-                IO.pure(getDagVisualization(document, params)).map { result =>
+                getDagVisualization(document, params).map { result =>
                   Response(id = request.id, result = Some(result.asJson))
                 }
               case None =>
@@ -553,7 +554,7 @@ class ConstellationLanguageServer(
   private def getDagVisualization(
       document: DocumentState,
       params: GetDagVisualizationParams
-  ): GetDagVisualizationResult = {
+  ): IO[GetDagVisualizationResult] = {
     val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
 
     compiler.compileToIR(document.text, dagName) match {
@@ -566,64 +567,88 @@ class ConstellationLanguageServer(
         val layoutConfig = LayoutConfig(direction = direction)
         val layoutedVizIR = SugiyamaLayout.layout(vizIR, layoutConfig)
 
-        // Convert to LSP message types
-        val nodes = layoutedVizIR.nodes.map { n =>
-          DagVizNode(
-            id = n.id,
-            kind = n.kind.toString,
-            label = n.label,
-            typeSignature = n.typeSignature,
-            position = n.position.map(p => DagVizPosition(p.x, p.y)),
-            executionState = n.executionState.map(es =>
-              DagVizExecutionState(
-                status = es.status.toString,
-                value = es.value,
-                durationMs = es.durationMs,
-                error = es.error
+        // Get execution trace if executionId provided and tracker available
+        val executionTraceIO: IO[Option[ExecutionTrace]] =
+          (params.executionId, executionTracker) match {
+            case (Some(execId), Some(tracker)) => tracker.getTrace(execId)
+            case _                              => IO.pure(None)
+          }
+
+        executionTraceIO.map { traceOpt =>
+          // Convert to LSP message types, enriching with execution state if available
+          val nodes = layoutedVizIR.nodes.map { n =>
+            // Look up execution state from trace by node ID
+            val execState: Option[DagVizExecutionState] = traceOpt.flatMap { trace =>
+              trace.nodeResults.get(n.id).map { result =>
+                DagVizExecutionState(
+                  status = result.status.toString,
+                  value = result.value,
+                  durationMs = result.durationMs,
+                  error = result.error
+                )
+              }
+            }.orElse {
+              // Fall back to any execution state already in the node
+              n.executionState.map(es =>
+                DagVizExecutionState(
+                  status = es.status.toString,
+                  value = es.value,
+                  durationMs = es.durationMs,
+                  error = es.error
+                )
               )
+            }
+
+            DagVizNode(
+              id = n.id,
+              kind = n.kind.toString,
+              label = n.label,
+              typeSignature = n.typeSignature,
+              position = n.position.map(p => DagVizPosition(p.x, p.y)),
+              executionState = execState
+            )
+          }
+
+          val edges = layoutedVizIR.edges.map { e =>
+            DagVizEdge(
+              id = e.id,
+              source = e.source,
+              target = e.target,
+              label = e.label,
+              kind = e.kind.toString
+            )
+          }
+
+          val groups = layoutedVizIR.groups.map { g =>
+            DagVizGroup(
+              id = g.id,
+              label = g.label,
+              nodeIds = g.nodeIds,
+              collapsed = g.collapsed
+            )
+          }
+
+          val metadata = DagVizMetadata(
+            title = layoutedVizIR.metadata.title,
+            layoutDirection = layoutedVizIR.metadata.layoutDirection,
+            bounds = layoutedVizIR.metadata.bounds.map(b =>
+              DagVizBounds(b.minX, b.minY, b.maxX, b.maxY)
             )
           )
-        }
 
-        val edges = layoutedVizIR.edges.map { e =>
-          DagVizEdge(
-            id = e.id,
-            source = e.source,
-            target = e.target,
-            label = e.label,
-            kind = e.kind.toString
+          GetDagVisualizationResult(
+            success = true,
+            dag = Some(DagVisualization(nodes, edges, groups, metadata)),
+            error = None
           )
         }
-
-        val groups = layoutedVizIR.groups.map { g =>
-          DagVizGroup(
-            id = g.id,
-            label = g.label,
-            nodeIds = g.nodeIds,
-            collapsed = g.collapsed
-          )
-        }
-
-        val metadata = DagVizMetadata(
-          title = layoutedVizIR.metadata.title,
-          layoutDirection = layoutedVizIR.metadata.layoutDirection,
-          bounds = layoutedVizIR.metadata.bounds.map(b =>
-            DagVizBounds(b.minX, b.minY, b.maxX, b.maxY)
-          )
-        )
-
-        GetDagVisualizationResult(
-          success = true,
-          dag = Some(DagVisualization(nodes, edges, groups, metadata)),
-          error = None
-        )
 
       case Left(errors) =>
-        GetDagVisualizationResult(
+        IO.pure(GetDagVisualizationResult(
           success = false,
           dag = None,
           error = Some(errors.map(_.message).mkString("; "))
-        )
+        ))
     }
   }
 
@@ -1584,7 +1609,7 @@ object ConstellationLanguageServer {
       compiler: LangCompiler,
       publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
   ): IO[ConstellationLanguageServer] =
-    create(constellation, compiler, publishDiagnostics, DefaultDebounceDelay)
+    create(constellation, compiler, publishDiagnostics, DefaultDebounceDelay, None)
 
   /**
    * Create a new ConstellationLanguageServer with custom debounce delay.
@@ -1599,6 +1624,21 @@ object ConstellationLanguageServer {
       publishDiagnostics: PublishDiagnosticsParams => IO[Unit],
       debounceDelay: FiniteDuration
   ): IO[ConstellationLanguageServer] =
+    create(constellation, compiler, publishDiagnostics, debounceDelay, None)
+
+  /**
+   * Create a new ConstellationLanguageServer with execution tracking support.
+   *
+   * @param debounceDelay How long to wait after the last document change before validating.
+   * @param executionTracker Optional execution tracker for enriching visualization with execution state.
+   */
+  def create(
+      constellation: Constellation,
+      compiler: LangCompiler,
+      publishDiagnostics: PublishDiagnosticsParams => IO[Unit],
+      debounceDelay: FiniteDuration,
+      executionTracker: Option[ExecutionTracker[IO]]
+  ): IO[ConstellationLanguageServer] =
     for {
       docManager   <- DocumentManager.create
       debugManager <- DebugSessionManager.create
@@ -1609,6 +1649,7 @@ object ConstellationLanguageServer {
       docManager,
       debugManager,
       debouncer,
-      publishDiagnostics
+      publishDiagnostics,
+      executionTracker
     )
 }
