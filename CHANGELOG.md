@@ -5,6 +5,17 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Compilation Caching**: New `CompilationCache` and `CachingLangCompiler` classes that cache compilation results to avoid redundant parsing, type checking, and IR generation. Features include:
+  - Thread-safe storage using cats-effect `Ref[IO, Map]`
+  - LRU eviction policy with configurable max entries
+  - TTL-based expiration with configurable max age
+  - Cache statistics tracking (hits, misses, evictions, hit rate)
+  - Builder integration via `LangCompilerBuilder.withCaching()`
+
 ## [0.2.0] - 2026-01-22
 
 ### Added

@@ -37,7 +37,8 @@ object LangCompiler {
 /** Builder for LangCompiler with fluent API */
 final case class LangCompilerBuilder(
     private val registry: FunctionRegistry = FunctionRegistry.empty,
-    private val modules: Map[String, Module.Uninitialized] = Map.empty
+    private val modules: Map[String, Module.Uninitialized] = Map.empty,
+    private val cacheConfig: Option[CompilationCache.Config] = None
 ) {
 
   /** Register a function signature for type checking */
@@ -70,8 +71,22 @@ final case class LangCompilerBuilder(
   def withModules(newModules: Map[String, Module.Uninitialized]): LangCompilerBuilder =
     copy(modules = modules ++ newModules)
 
-  /** Build the LangCompiler */
-  def build: LangCompiler = new LangCompilerImpl(registry, modules)
+  /** Enable compilation caching with the given configuration */
+  def withCaching(config: CompilationCache.Config = CompilationCache.Config()): LangCompilerBuilder =
+    copy(cacheConfig = Some(config))
+
+  /** Disable compilation caching */
+  def withoutCaching: LangCompilerBuilder =
+    copy(cacheConfig = None)
+
+  /** Build the LangCompiler, optionally wrapped with caching */
+  def build: LangCompiler = {
+    val base = new LangCompilerImpl(registry, modules)
+    cacheConfig match {
+      case Some(config) => CachingLangCompiler.withConfig(base, config)
+      case None         => base
+    }
+  }
 }
 
 /** Implementation of LangCompiler */
