@@ -7,7 +7,7 @@
 
 | Priority | Issue | Title | Status | Branch |
 |----------|-------|-------|--------|--------|
-| 1 | #120 | [Phase 3.1] Bidirectional Type Inference | Queued | - |
+| - | - | - | - | - |
 
 ## Backlog
 
@@ -121,6 +121,7 @@ Before writing any code, verify:
 
 | Issue | Title | PR |
 |-------|-------|-----|
+| #120 | [Phase 3.1] Bidirectional Type Inference | Merged |
 | #117 | [Phase 2.2] Parser Memoization | Merged |
 | #116 | [Phase 2.1] IR Optimization Passes | Merged |
 | #112 | [Phase 1.1] Implement Compilation Caching | Merged |
@@ -150,18 +151,18 @@ Before writing any code, verify:
 
 ## Notes
 
-- **26 issues completed** - Phase 2 complete!
-- Phase 3 assigned: #120 (Bidirectional Type Inference)
-- Context file: `agents/phase-3/context-bidirectional-inference.md`
-- Depends on: Subtyping (#119) ✅
+- **27 issues completed** - Phase 3.1 complete!
+- Agent 1 queue empty - awaiting next Phase 3 assignments
+- #120 (Bidirectional Type Inference) unblocks Agent 3's Task 4.2 (Full Incremental LSP)
 
 ## Dependencies
 
 ```
 Phase 2 ✅ COMPLETE
-#119 ✅ ──▶ #120 (Bidirectional Type Inference) - READY
-#120 ──▶ #121 (Row Polymorphism) - Assigned to Agent 2
+#119 ✅ ──▶ #120 ✅ (Bidirectional Type Inference) - COMPLETE
+#120 ✅ ──▶ #121 (Row Polymorphism) - Agent 2
+#120 ✅ ──▶ Task 4.2 (Full Incremental LSP) - Agent 3
 ```
 
 ---
-*Updated: 2026-01-22 (Phase 3 assigned)*
+*Updated: 2026-01-23 (Phase 3.1 complete)*
