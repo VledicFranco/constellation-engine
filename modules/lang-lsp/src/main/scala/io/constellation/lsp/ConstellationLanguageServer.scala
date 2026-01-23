@@ -1,6 +1,7 @@
 package io.constellation.lsp
 
 import cats.effect.IO
+import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 import io.circe.*
 import io.circe.syntax.*
@@ -41,7 +42,19 @@ class ConstellationLanguageServer(
   private val semanticTokenProvider: SemanticTokenProvider = SemanticTokenProvider()
 
   /** Handle LSP request */
-  def handleRequest(request: Request): IO[Response] =
+  def handleRequest(request: Request): IO[Response] = {
+    val startTime = System.currentTimeMillis()
+    handleRequestInternal(request).flatTap { _ =>
+      val elapsed = System.currentTimeMillis() - startTime
+      if (elapsed > 50) { // Only log slow requests (>50ms)
+        logger.info(s"[TIMING] Request ${request.method} took ${elapsed}ms")
+      } else {
+        IO.unit
+      }
+    }
+  }
+
+  private def handleRequestInternal(request: Request): IO[Response] =
     request.method match {
       case "initialize" =>
         handleInitialize(request)
@@ -98,7 +111,19 @@ class ConstellationLanguageServer(
     }
 
   /** Handle LSP notification (no response) */
-  def handleNotification(notification: Notification): IO[Unit] =
+  def handleNotification(notification: Notification): IO[Unit] = {
+    val startTime = System.currentTimeMillis()
+    handleNotificationInternal(notification).flatTap { _ =>
+      val elapsed = System.currentTimeMillis() - startTime
+      if (elapsed > 10) { // Only log notifications taking >10ms
+        logger.info(s"[TIMING] Notification ${notification.method} took ${elapsed}ms")
+      } else {
+        IO.unit
+      }
+    }
+  }
+
+  private def handleNotificationInternal(notification: Notification): IO[Unit] =
     notification.method match {
       case "initialized" =>
         IO.unit // Client finished initialization
@@ -555,17 +580,27 @@ class ConstellationLanguageServer(
       document: DocumentState,
       params: GetDagVisualizationParams
   ): IO[GetDagVisualizationResult] = {
+    val totalStart = System.currentTimeMillis()
     val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
 
+    val irStart = System.currentTimeMillis()
     compiler.compileToIR(document.text, dagName) match {
       case Right(irProgram) =>
+        val irTime = System.currentTimeMillis() - irStart
+
         // Compile IR to visualization IR
+        val vizStart = System.currentTimeMillis()
         val vizIR = DagVizCompiler.compile(irProgram, title = Some(dagName))
+        val vizTime = System.currentTimeMillis() - vizStart
 
         // Apply layout
+        val layoutStart = System.currentTimeMillis()
         val direction = params.direction.getOrElse("TB")
         val layoutConfig = LayoutConfig(direction = direction)
         val layoutedVizIR = SugiyamaLayout.layout(vizIR, layoutConfig)
+        val layoutTime = System.currentTimeMillis() - layoutStart
+
+        logger.info(s"[TIMING] getDagVisualization: IR=${irTime}ms, vizCompile=${vizTime}ms, layout=${layoutTime}ms").unsafeRunSync()
 
         // Get execution trace if executionId provided and tracker available
         val executionTraceIO: IO[Option[ExecutionTrace]] =
@@ -1036,7 +1071,8 @@ class ConstellationLanguageServer(
         version = params.textDocument.version,
         text = params.textDocument.text
       )
-      _ <- validateDocument(params.textDocument.uri)
+      // Debounce validation on open to avoid lag when rapidly switching files
+      _ <- debouncer.debounce(params.textDocument.uri)(validateDocument(params.textDocument.uri))
     } yield ()
   }.handleErrorWith(e => logger.warn(s"Error in didOpen: ${e.getMessage}"))
 
@@ -1317,7 +1353,11 @@ class ConstellationLanguageServer(
   private def validateDocument(uri: String): IO[Unit] =
     documentManager.getDocument(uri).flatMap {
       case Some(document) =>
-        compiler.compile(document.text, "validation") match {
+        val startTime = System.currentTimeMillis()
+        val result = compiler.compile(document.text, "validation")
+        val compileTime = System.currentTimeMillis() - startTime
+        logger.info(s"[TIMING] validateDocument compile took ${compileTime}ms for ${uri.split('/').lastOption.getOrElse(uri)}").unsafeRunSync()
+        result match {
           case Right(_) =>
             // No errors
             publishDiagnostics(PublishDiagnosticsParams(uri, List.empty))

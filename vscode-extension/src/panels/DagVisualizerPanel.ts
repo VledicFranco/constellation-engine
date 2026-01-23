@@ -120,6 +120,11 @@ export class DagVisualizerPanel {
 
   private readonly _state: PanelState;
 
+  /** Check if the panel is currently open */
+  public static isPanelOpen(): boolean {
+    return DagVisualizerPanel.currentPanel !== undefined;
+  }
+
   public static createOrShow(
     extensionUri: vscode.Uri,
     client: LanguageClient | undefined,

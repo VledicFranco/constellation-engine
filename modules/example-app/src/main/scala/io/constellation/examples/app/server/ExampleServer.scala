@@ -6,6 +6,7 @@ import io.constellation.impl.ConstellationImpl
 import io.constellation.examples.app.ExampleLib
 import io.constellation.stdlib.StdLib
 import io.constellation.http.ConstellationServer
+import io.constellation.lang.CachingLangCompiler
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
@@ -40,7 +41,10 @@ object ExampleServer extends IOApp.Simple {
       _ <- logger.info(s"Registered ${allModules.size} modules")
 
       // Create compiler with standard library + example app functions
-      compiler = ExampleLib.compiler
+      // Wrap in caching compiler to avoid redundant compilations on every keystroke
+      baseCompiler = ExampleLib.compiler
+      compiler = CachingLangCompiler.withDefaults(baseCompiler)
+      _ <- logger.info("Compilation caching enabled")
 
       // Start the HTTP server (port from CONSTELLATION_PORT env var, defaults to 8080)
       port = ConstellationServer.DefaultPort

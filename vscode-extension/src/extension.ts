@@ -34,35 +34,28 @@ export function activate(context: vscode.ExtensionContext) {
       socket.on('open', () => {
         console.log('Connected to Constellation Language Server');
 
-        // Create a duplex stream wrapper around the WebSocket
+        // Simple duplex stream wrapper - pass data through directly
+        // vscode-languageclient handles LSP framing internally
         const stream = new Duplex({
           write(chunk: any, encoding: string, callback: (error?: Error | null) => void) {
-            try {
-              const message = chunk.toString();
-              socket.send(message, (error) => {
-                if (error) {
-                  callback(error);
-                } else {
-                  callback();
-                }
-              });
-            } catch (error) {
-              callback(error as Error);
-            }
+            const data = chunk.toString();
+            // Send directly - vscode-languageclient sends complete messages
+            socket.send(data, (error) => {
+              callback(error || undefined);
+            });
           },
           read() {
             // Data is pushed when received via 'message' event
           }
         });
 
-        // Push data to the stream when WebSocket receives messages
         socket.on('message', (data: ws.Data) => {
           stream.push(data.toString());
         });
 
         socket.on('close', () => {
           console.log('Disconnected from Constellation Language Server');
-          stream.push(null); // Signal end of stream
+          stream.push(null);
         });
 
         socket.on('error', (error) => {
@@ -70,12 +63,7 @@ export function activate(context: vscode.ExtensionContext) {
           stream.destroy(error);
         });
 
-        const streamInfo: StreamInfo = {
-          writer: stream,
-          reader: stream
-        };
-
-        resolve(streamInfo);
+        resolve({ writer: stream, reader: stream });
       });
 
       socket.on('error', (error) => {
@@ -178,10 +166,29 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(dagVisualizerCommand);
 
-  // Auto-refresh DAG visualizer on document change
+  // Auto-refresh DAG visualizer on document change (debounced to avoid lag)
+  // Only schedule refreshes if the panel is actually open
+  const refreshTimers = new Map<string, NodeJS.Timeout>();
+  const DEBOUNCE_MS = 750; // Wait 750ms after last keystroke before refreshing
+
   const documentChangeListener = vscode.workspace.onDidChangeTextDocument((e) => {
-    if (e.document.languageId === 'constellation') {
-      DagVisualizerPanel.refresh(e.document.uri.toString());
+    // Only process if panel is open and it's a constellation file
+    if (e.document.languageId === 'constellation' && DagVisualizerPanel.isPanelOpen()) {
+      const uri = e.document.uri.toString();
+
+      // Clear any pending refresh for this document
+      const existingTimer = refreshTimers.get(uri);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      // Schedule a new refresh after debounce delay
+      const timer = setTimeout(() => {
+        refreshTimers.delete(uri);
+        DagVisualizerPanel.refresh(uri);
+      }, DEBOUNCE_MS);
+
+      refreshTimers.set(uri, timer);
     }
   });
 

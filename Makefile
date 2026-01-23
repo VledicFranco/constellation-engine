@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean coverage coverage-report coverage-html fmt fmt-check lint lint-fix
+.PHONY: help dev server watch test compile clean extension ext-watch install all mcp-install mcp-build mcp-test mcp-start mcp-clean coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp
 
 # Default target
 help:
@@ -33,6 +33,13 @@ help:
 	@echo "  make test-compiler  - Test compiler module only"
 	@echo "  make test-lsp       - Test LSP module only"
 	@echo "  make test-fast      - Run tests without recompilation"
+	@echo ""
+	@echo "Benchmarks:"
+	@echo "  make benchmark          - Run all performance benchmarks"
+	@echo "  make benchmark-compiler - Compiler pipeline benchmarks"
+	@echo "  make benchmark-viz      - Visualization benchmarks"
+	@echo "  make benchmark-cache    - Cache effectiveness benchmarks"
+	@echo "  make benchmark-lsp      - LSP operations benchmarks"
 	@echo ""
 	@echo "Code Coverage:"
 	@echo "  make coverage       - Run tests with coverage and generate reports"
@@ -164,6 +171,36 @@ test-http:
 
 test-stdlib:
 	sbt "langStdlib/test"
+
+# =============================================================================
+# Performance Benchmarks
+# =============================================================================
+
+# Run all benchmarks
+benchmark:
+	@echo "Running all performance benchmarks..."
+	@echo "Results will be written to target/benchmark-*.json"
+	sbt "langCompiler/testOnly *Benchmark" "langLsp/testOnly *LspOperationsBenchmark"
+
+# Run compiler pipeline benchmarks only
+benchmark-compiler:
+	@echo "Running compiler pipeline benchmarks..."
+	sbt "langCompiler/testOnly *CompilerPipelineBenchmark"
+
+# Run visualization benchmarks only
+benchmark-viz:
+	@echo "Running visualization benchmarks..."
+	sbt "langCompiler/testOnly *VisualizationBenchmark"
+
+# Run cache effectiveness benchmarks
+benchmark-cache:
+	@echo "Running cache benchmarks..."
+	sbt "langCompiler/testOnly *CacheBenchmark"
+
+# Run LSP operations benchmarks
+benchmark-lsp:
+	@echo "Running LSP operations benchmarks..."
+	sbt "langLsp/testOnly *LspOperationsBenchmark"
 
 # =============================================================================
 # Code Coverage

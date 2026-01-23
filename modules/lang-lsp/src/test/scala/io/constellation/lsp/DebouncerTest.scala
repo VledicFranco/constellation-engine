@@ -204,7 +204,7 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
       debouncer <- Debouncer.create[String]()
     } yield {
       debouncer.delay shouldBe Debouncer.DefaultDelay
-      debouncer.delay shouldBe 200.millis
+      debouncer.delay shouldBe 500.millis
     }).unsafeRunSync()
   }
 

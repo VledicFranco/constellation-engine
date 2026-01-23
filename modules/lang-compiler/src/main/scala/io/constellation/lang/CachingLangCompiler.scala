@@ -5,6 +5,8 @@ import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.{CompileResult, IRProgram}
 import io.constellation.lang.semantic.FunctionRegistry
 
+import java.util.concurrent.ConcurrentHashMap
+
 /** A LangCompiler wrapper that caches compilation results.
   *
   * Provides transparent caching of compilation results to avoid redundant
@@ -23,6 +25,10 @@ class CachingLangCompiler(
     underlying: LangCompiler,
     cache: CompilationCache
 ) extends LangCompiler {
+
+  // Simple in-memory cache for IR results (separate from CompileResult cache)
+  // Key: (sourceHash, registryHash), Value: IRProgram
+  private val irCache = new ConcurrentHashMap[(Int, Int), IRProgram]()
 
   def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
@@ -47,9 +53,29 @@ class CachingLangCompiler(
     }
   }
 
-  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
-    // Delegate to underlying compiler (no caching for IR - it's used for visualization)
-    underlying.compileToIR(source, dagName)
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] = {
+    val sourceHash   = source.hashCode
+    val registryHash = functionRegistry.all.hashCode
+    val cacheKey     = (sourceHash, registryHash)
+
+    // Check IR cache first
+    Option(irCache.get(cacheKey)) match {
+      case Some(cachedIR) =>
+        // IR cache hit
+        Right(cachedIR)
+      case None =>
+        // Cache miss - compile and cache the IR
+        val result = underlying.compileToIR(source, dagName)
+        result.foreach { ir =>
+          // Limit IR cache size to prevent unbounded growth
+          if (irCache.size() > 100) {
+            irCache.clear() // Simple eviction: clear all when full
+          }
+          irCache.put(cacheKey, ir)
+        }
+        result
+    }
+  }
 
   /** Get cache statistics */
   def cacheStats: CacheStats =
@@ -60,8 +86,10 @@ class CachingLangCompiler(
     cache.invalidate(dagName).unsafeRunSync()
 
   /** Invalidate all cached compilations */
-  def invalidateAll(): Unit =
+  def invalidateAll(): Unit = {
     cache.invalidateAll().unsafeRunSync()
+    irCache.clear()
+  }
 }
 
 object CachingLangCompiler {

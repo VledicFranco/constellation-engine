@@ -96,8 +96,8 @@ class Debouncer[K] private (
 }
 
 object Debouncer {
-  /** Default debounce delay of 200ms - a good balance between responsiveness and efficiency */
-  val DefaultDelay: FiniteDuration = 200.millis
+  /** Default debounce delay of 500ms - balances responsiveness with avoiding excessive compilation */
+  val DefaultDelay: FiniteDuration = 500.millis
 
   /**
    * Create a new Debouncer with the specified delay.
