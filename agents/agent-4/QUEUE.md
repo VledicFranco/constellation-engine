@@ -5,9 +5,24 @@
 
 ## Current Assignment
 
-| Priority | Issue | Title | Status |
-|----------|-------|-------|--------|
-| - | - | _No active assignments_ | - |
+| Priority | Issue | Title | Status | Blocked By |
+|----------|-------|-------|--------|------------|
+| - | - | _No active assignments_ | - | - |
+
+## Notes
+
+**Phase: DAG Visualization Redesign**
+
+No direct assignments for Agent 4 in the current phase. Potential future work:
+
+- **Testing:** Visual regression tests for DAG rendering once #123 is complete
+- **Documentation:** Update user docs with new visualization features
+- **Tooling:** CLI integration for `constellation viz` command (part of #125)
+
+Agent 4 can assist with:
+- Code review for visualization PRs
+- Writing integration tests
+- Updating `docs/` with visualization examples
 
 ---
 
