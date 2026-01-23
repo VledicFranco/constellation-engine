@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - LSP diagnostics now include error codes and contextual suggestions
 
 #### LSP Improvements
+- **Semantic Token Highlighting**: LSP server now provides semantic tokens for rich syntax highlighting in VSCode (#118)
+  - Functions, types, variables, parameters, and properties highlighted distinctly
+  - Modifier support (declaration, definition, readonly, defaultLibrary)
+  - Graceful degradation on parse errors (falls back to TextMate grammar)
+  - Delta-encoded token format per LSP specification
+  - VSCode extension registers semantic token scopes for theme integration
+
 - **Debounced Document Validation**: LSP server now debounces document change events to avoid excessive compilations during rapid typing. Reduces CPU usage by 10-20x during active editing.
   - Configurable debounce delay (default: 200ms)
   - Document save triggers immediate validation (bypasses debounce)

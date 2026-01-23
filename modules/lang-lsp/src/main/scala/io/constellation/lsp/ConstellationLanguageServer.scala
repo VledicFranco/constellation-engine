@@ -35,6 +35,9 @@ class ConstellationLanguageServer(
   private var lastModuleNames: Set[String] = Set.empty
   private val keywordCompletionTrie: CompletionTrie = buildKeywordTrie()
 
+  // Semantic token provider for syntax highlighting
+  private val semanticTokenProvider: SemanticTokenProvider = SemanticTokenProvider()
+
   /** Handle LSP request */
   def handleRequest(request: Request): IO[Response] =
     request.method match {
@@ -71,6 +74,9 @@ class ConstellationLanguageServer(
 
       case "constellation/stepStop" =>
         handleStepStop(request)
+
+      case "textDocument/semanticTokens/full" =>
+        handleSemanticTokensFull(request)
 
       case method =>
         IO.pure(
@@ -123,7 +129,17 @@ class ConstellationLanguageServer(
           )
         ),
         hoverProvider = Some(true),
-        executeCommandProvider = None // Command handled client-side
+        executeCommandProvider = None, // Command handled client-side
+        semanticTokensProvider = Some(
+          SemanticTokensOptions(
+            legend = SemanticTokensLegend(
+              tokenTypes = SemanticTokenTypes.tokenTypes,
+              tokenModifiers = SemanticTokenTypes.tokenModifiers
+            ),
+            full = Some(true),
+            range = None
+          )
+        )
       )
     )
 
@@ -168,6 +184,38 @@ class ConstellationLanguageServer(
                     result = Some(CompletionList(isIncomplete = false, items = List.empty).asJson)
                   )
                 )
+            }
+        }
+    }
+
+  private def handleSemanticTokensFull(request: Request): IO[Response] =
+    request.params match {
+      case None =>
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(ErrorCodes.InvalidParams, "Missing params"))
+          )
+        )
+      case Some(json) =>
+        json.as[SemanticTokensParams] match {
+          case Left(decodeError) =>
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(
+                  ResponseError(ErrorCodes.InvalidParams, s"Invalid params: ${decodeError.message}")
+                )
+              )
+            )
+          case Right(params) =>
+            documentManager.getDocument(params.textDocument.uri).map {
+              case Some(document) =>
+                val tokens = semanticTokenProvider.computeTokens(document.text)
+                Response(id = request.id, result = Some(SemanticTokens(data = tokens).asJson))
+              case None =>
+                // Return empty tokens for unknown documents
+                Response(id = request.id, result = Some(SemanticTokens(data = List.empty).asJson))
             }
         }
     }

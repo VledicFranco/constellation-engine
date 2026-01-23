@@ -40,7 +40,34 @@ object LspMessages {
       textDocumentSync: Option[Int] = Some(1), // 1 = Full sync
       completionProvider: Option[CompletionOptions] = Some(CompletionOptions()),
       hoverProvider: Option[Boolean] = Some(true),
-      executeCommandProvider: Option[ExecuteCommandOptions] = None
+      executeCommandProvider: Option[ExecuteCommandOptions] = None,
+      semanticTokensProvider: Option[SemanticTokensOptions] = None
+  )
+
+  // ========== Semantic Tokens ==========
+
+  /** Options for semantic tokens provider */
+  case class SemanticTokensOptions(
+      legend: SemanticTokensLegend,
+      full: Option[Boolean] = Some(true),
+      range: Option[Boolean] = None
+  )
+
+  /** Legend describing available token types and modifiers */
+  case class SemanticTokensLegend(
+      tokenTypes: List[String],
+      tokenModifiers: List[String]
+  )
+
+  /** Parameters for textDocument/semanticTokens/full request */
+  case class SemanticTokensParams(
+      textDocument: TextDocumentIdentifier
+  )
+
+  /** Result of semantic tokens request */
+  case class SemanticTokens(
+      resultId: Option[String] = None,
+      data: List[Int]
   )
 
   case class CompletionOptions(
@@ -252,6 +279,18 @@ object LspMessages {
 
   given Encoder[ExecuteCommandOptions] = deriveEncoder
   given Decoder[ExecuteCommandOptions] = deriveDecoder
+
+  given Encoder[SemanticTokensOptions] = deriveEncoder
+  given Decoder[SemanticTokensOptions] = deriveDecoder
+
+  given Encoder[SemanticTokensLegend] = deriveEncoder
+  given Decoder[SemanticTokensLegend] = deriveDecoder
+
+  given Encoder[SemanticTokensParams] = deriveEncoder
+  given Decoder[SemanticTokensParams] = deriveDecoder
+
+  given Encoder[SemanticTokens] = deriveEncoder
+  given Decoder[SemanticTokens] = deriveDecoder
 
   given Encoder[DidOpenTextDocumentParams] = deriveEncoder
   given Decoder[DidOpenTextDocumentParams] = deriveDecoder
