@@ -478,22 +478,17 @@ This uses the sbt-revolver plugin configured in `project/plugins.sbt`.
 ### Building the Project
 
 ```bash
-# Clean build
-sbt clean compile
+# Preferred: Use make commands
+make clean && make compile     # Clean build
+make test                      # Run all tests
+make test-core                 # Run core module tests
+make test-compiler             # Run compiler module tests
+make server                    # Run example application/server
+make dev                       # Development mode with hot reload
 
-# Run all tests
-sbt test
-
-# Run specific module tests
-sbt core/test
-sbt runtime/test
-sbt langCompiler/test
-
-# Run example application
-sbt "exampleApp/runMain io.constellation.examples.app.server.ExampleServer"
-
-# Continuous compilation (watches for changes)
-sbt ~compile
+# Advanced: Direct sbt for specific needs
+sbt runtime/test               # Test specific module not covered by make
+sbt ~compile                   # Continuous compilation (watch mode)
 ```
 
 ### Adding a New Module to the Build
@@ -1043,15 +1038,26 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 ```
 
-### Common SBT Commands
+### Common Commands
+
+**Prefer `make` commands over raw `sbt`:**
 
 ```bash
-sbt compile                    # Compile all modules
-sbt test                       # Run all tests
-sbt core/test                  # Test specific module
-sbt ~compile                   # Watch mode
+make compile                   # Compile all modules
+make test                      # Run all tests
+make test-core                 # Test specific module
+make test-compiler             # Test compiler module
+make dev                       # Start dev environment
+make server                    # Start server only
+make clean                     # Clean build artifacts
+```
+
+**Advanced SBT commands (when `make` targets don't exist):**
+
+```bash
+sbt core/test                  # Test specific module directly
+sbt ~compile                   # Watch mode (continuous compilation)
 sbt "exampleApp/run"           # Run example app
-sbt clean                      # Clean build artifacts
 sbt ";clean;compile;test"      # Full rebuild and test
 ```
 

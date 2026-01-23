@@ -32,7 +32,7 @@ Constellation Engine consists of two main components:
 
 - Scala 3.3.x
 - SBT 1.9.x
-- JDK 21+
+- JDK 17+
 
 ### Installation
 
@@ -50,8 +50,9 @@ libraryDependencies ++= Seq(
 ### Build and Test
 
 ```bash
-sbt compile    # Compile the project
-sbt test       # Run all tests
+make compile   # Compile the project
+make test      # Run all tests
+make dev       # Start development server
 ```
 
 ## Documentation

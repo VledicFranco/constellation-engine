@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Documentation
+- **README Rewrite**: Complete rewrite with sales pitch, compelling examples, and clear value proposition
+- **LICENSE File**: Added MIT license file to repository root
+- Standardized Java version requirement to JDK 17+ across all docs
+- Updated all documentation to use `make` commands instead of raw `sbt`
+
 #### Type System
 - **Subtyping System**: Implemented structural subtyping for the Constellation type system (#119)
   - `Subtyping.scala`: Core subtyping implementation with `isSubtype`, `lub` (least upper bound), `glb` (greatest lower bound)

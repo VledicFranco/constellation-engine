@@ -3,94 +3,146 @@
 [![CI](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/VledicFranco/constellation-engine/graph/badge.svg)](https://codecov.io/gh/VledicFranco/constellation-engine)
 
-A Scala 3 framework for building type-safe ML pipeline DAGs with a declarative domain-specific language.
+**Stop writing glue code. Start describing pipelines.**
 
-## What is Constellation Engine?
+Constellation Engine is a type-safe orchestration language that lets you define data transformation pipelines declaratively. Describe *what* you want to compute, not *how* to wire it together.
 
-Constellation Engine lets you define machine learning pipelines as directed acyclic graphs (DAGs) with full compile-time type safety. It provides:
+---
 
-- **constellation-lang**: A clean DSL for declaring ML pipelines
-- **Type algebra**: Merge and project record types with `+` and `[fields]`
-- **Batched operations**: First-class `Candidates<T>` type for ML batching
-- **Modular design**: Compose reusable modules into complex pipelines
+## Why Constellation?
 
-## Quick Start
+### The Problem
 
-### Define a Pipeline
+Building ML and data pipelines today means drowning in boilerplate:
+
+```python
+# Traditional approach: 50 lines of glue code
+def process_candidates(items, user_context, weights):
+    enriched = []
+    for item in items:
+        merged = {**item, **user_context}
+        score = (
+            merged['relevance'] * weights['relevance_weight'] +
+            merged['freshness'] * weights['freshness_weight']
+        )
+        enriched.append({
+            'id': merged['id'],
+            'title': merged['title'],
+            'score': score,
+            'userId': merged['userId']
+        })
+    return enriched
+```
+
+Type errors hide until runtime. Field mismatches cause silent bugs. Refactoring is terrifying.
+
+### The Solution
 
 ```
-type Communication = {
-  id: String,
-  content: String,
-  channel: String
+# Constellation: 6 lines, fully type-checked
+in items: Candidates<{ id: String, title: String, relevance: Int, freshness: Int }>
+in context: { userId: Int }
+in weights: { relevanceWeight: Int, freshnessWeight: Int }
+
+enriched = items + context
+output = enriched[id, title, relevance, freshness, userId]
+
+out output
+```
+
+Every field access is validated at compile time. Type mismatches are caught before execution. Your IDE shows you exactly what's available.
+
+---
+
+## See It In Action
+
+### Batch Enrichment (ML Ranking)
+
+Add user context to every candidate in a ranking pipeline:
+
+```
+type Product = { id: String, title: String, score: Float }
+type UserContext = { userId: Int, region: String, tier: String }
+
+in products: Candidates<Product>
+in context: UserContext
+
+# Merge adds context to EACH product
+enriched = products + context
+
+# Project selects fields from EACH product
+output = enriched[id, title, score, userId, region]
+
+out output
+```
+
+**Input:**
+```json
+{
+  "products": [
+    {"id": "p1", "title": "Widget A", "score": 0.95},
+    {"id": "p2", "title": "Widget B", "score": 0.87}
+  ],
+  "context": {"userId": 123, "region": "us-west", "tier": "premium"}
 }
-
-in communications: Candidates<Communication>
-in userId: Int
-
-# Process through ML models
-embeddings = embed-model(communications)
-scores = ranking-model(embeddings + communications, userId)
-
-# Select and merge fields
-result = communications[id, channel] + scores[score]
-
-out result
 ```
 
-### Compile and Run
-
-```scala
-import io.constellation.lang.runtime.LangCompiler
-import io.constellation.lang.semantic._
-
-val compiler = LangCompiler.builder
-  .withFunction(FunctionSignature(
-    name = "embed-model",
-    params = List("input" -> SemanticType.SCandidates(inputType)),
-    returns = embeddingsType,
-    moduleName = "embed-model"
-  ))
-  .withFunction(FunctionSignature(
-    name = "ranking-model",
-    params = List(
-      "data" -> SemanticType.SCandidates(mergedType),
-      "userId" -> SemanticType.SInt
-    ),
-    returns = scoresType,
-    moduleName = "ranking-model"
-  ))
-  .build
-
-compiler.compile(source, "my-pipeline") match {
-  case Right(result) =>
-    val dagSpec = result.dagSpec
-    val modules = result.syntheticModules
-    // Execute with Runtime.run(dagSpec, inputs, modules)
-  case Left(errors) =>
-    errors.foreach(e => println(e.format))
+**Output:**
+```json
+{
+  "output": [
+    {"id": "p1", "title": "Widget A", "score": 0.95, "userId": 123, "region": "us-west"},
+    {"id": "p2", "title": "Widget B", "score": 0.87, "userId": 123, "region": "us-west"}
+  ]
 }
 ```
 
-## Language Features
+### Multi-Factor Scoring
 
-### Type System
+Build configurable scoring systems with full type safety:
 
 ```
-# Primitives
-in count: Int
-in name: String
-in score: Float
-in active: Boolean
+type Candidate = { id: String, engagement: Int, recency: Int, quality: Int }
+type Weights = { engagementW: Int, recencyW: Int, qualityW: Int, threshold: Int }
 
-# Records
-type User = { id: Int, name: String, email: String }
+in candidate: Candidate
+in weights: Weights
 
-# Parameterized types
-in items: List<String>
-in lookup: Map<String, Int>
-in candidates: Candidates<User>
+# Weighted scoring - types flow through every operation
+engagementScore = multiply(candidate.engagement, weights.engagementW)
+recencyScore = multiply(candidate.recency, weights.recencyW)
+qualityScore = multiply(candidate.quality, weights.qualityW)
+
+total = add(add(engagementScore, recencyScore), qualityScore)
+qualified = gte(total, weights.threshold)
+
+out total
+out qualified
 ```
+
+### Higher-Order Transformations
+
+Filter and transform with lambdas:
+
+```
+in users: List<{ name: String, age: Int, active: Boolean }>
+
+# Filter to active users over 18
+adults = Filter(users, u => and(u.active, gte(u.age, 18)))
+
+# Extract just names
+names = Map(adults, u => u.name)
+
+# Count them
+count = Length(names)
+
+out names
+out count
+```
+
+---
+
+## Key Features
 
 ### Type Algebra
 
@@ -99,110 +151,200 @@ Merge records with `+` (right side wins on conflicts):
 ```
 in a: { x: Int, y: Int }
 in b: { y: String, z: String }
-merged = a + b  # { x: Int, y: String, z: String }
+
+merged = a + b  # Type: { x: Int, y: String, z: String }
 ```
 
 ### Projections
 
-Select fields from records:
+Select exactly the fields you need:
 
 ```
-in data: { id: Int, name: String, extra: String }
-result = data[id, name]  # { id: Int, name: String }
+in user: { id: Int, name: String, email: String, internal: String }
+
+public = user[id, name, email]  # Type: { id: Int, name: String, email: String }
 ```
 
-### Candidates Operations
+### Candidates (Batch Operations)
 
-Operations on `Candidates<T>` apply element-wise:
+First-class support for ML batching - operations apply element-wise:
 
 ```
 in items: Candidates<{ id: String, features: List<Float> }>
 in context: { userId: Int }
 
-# Merge adds userId to each item
+# Every item gets userId added
 enriched = items + context  # Candidates<{ id: String, features: List<Float>, userId: Int }>
-
-# Project selects fields from each item
-selected = items[id]  # Candidates<{ id: String }>
 ```
+
+### Full IDE Support
+
+- Real-time type checking as you type
+- Autocomplete for fields and functions
+- Hover for type information
+- Go-to-definition for custom types
+- Inline error messages with suggestions
+
+---
+
+## Quick Start
+
+### 1. Install
+
+```bash
+git clone https://github.com/VledicFranco/constellation-engine.git
+cd constellation-engine
+make compile
+```
+
+### 2. Start the Server
+
+```bash
+make server
+```
+
+### 3. Run a Pipeline
+
+**Via HTTP:**
+```bash
+curl -X POST http://localhost:8080/run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "source": "in x: Int\nresult = add(x, 10)\nout result",
+    "inputs": {"x": 5}
+  }'
+```
+
+**Via VSCode:**
+1. Install the Constellation extension
+2. Create a `.cst` file
+3. Press `Ctrl+Shift+R` to run
+
+---
+
+## Integrate With Your Code
+
+```scala
+import io.constellation.lang.runtime.LangCompiler
+import io.constellation.lang.semantic._
+
+// Define your ML modules
+val compiler = LangCompiler.builder
+  .withFunction(FunctionSignature(
+    name = "embed-model",
+    params = List("input" -> SemanticType.SCandidates(inputType)),
+    returns = embeddingsType,
+    moduleName = "embed-model"
+  ))
+  .withModule(embedModule)  // Your actual implementation
+  .build
+
+// Compile and run
+compiler.compile(source, "my-pipeline") match {
+  case Right(result) =>
+    val dagSpec = result.dagSpec
+    // Execute with Runtime.run(dagSpec, inputs, modules)
+  case Left(errors) =>
+    errors.foreach(e => println(e.format))
+}
+```
+
+---
 
 ## Architecture
 
 ```
-Source Code
-    |
-    v
-+--------+     +-------------+     +-------------+     +-----------+
-| Parser | --> | TypeChecker | --> | IRGenerator | --> | DagCompiler |
-+--------+     +-------------+     +-------------+     +-----------+
-    |               |                    |                   |
-    v               v                    v                   v
-   AST          TypedAST            IRProgram            DagSpec
-                                                      + Synthetic
-                                                        Modules
+Source Code (.cst)
+       |
+       v
+  +---------+     +-------------+     +-------------+     +-------------+
+  | Parser  | --> | TypeChecker | --> | IRGenerator | --> | DagCompiler |
+  +---------+     +-------------+     +-------------+     +-------------+
+       |               |                    |                    |
+       v               v                    v                    v
+      AST          TypedAST            IRProgram             DagSpec
+                                                          + Synthetic
+                                                            Modules
 ```
 
-| Component | Description |
-|-----------|-------------|
-| Parser | cats-parse based parser producing AST with position info |
-| TypeChecker | Validates types, resolves references, produces typed AST |
-| IRGenerator | Transforms typed AST to intermediate representation |
-| DagCompiler | Generates DagSpec and synthetic modules for merge/project |
+| Stage | What It Does |
+|-------|--------------|
+| **Parser** | Parses source into AST with position tracking |
+| **TypeChecker** | Validates types, catches field/type mismatches |
+| **IRGenerator** | Transforms to intermediate representation |
+| **DagCompiler** | Generates executable DAG + synthetic modules |
+
+---
 
 ## Project Structure
 
 ```
 modules/
-├── core/                       # Core type system (CType, CValue)
-├── runtime/                    # DAG execution engine, ModuleBuilder
-├── lang-ast/                   # AST definitions with positions
-├── lang-parser/                # cats-parse based parser
-├── lang-compiler/              # Type checker, IR, DAG compiler
-├── lang-stdlib/                # Standard library functions
-├── lang-lsp/                   # Language Server Protocol
-├── http-api/                   # HTTP server and WebSocket LSP
-└── example-app/                # Example application
+├── core/           # Type system (CType, CValue)
+├── runtime/        # DAG execution, ModuleBuilder API
+├── lang-ast/       # AST definitions with source positions
+├── lang-parser/    # Parser (cats-parse)
+├── lang-compiler/  # Type checker, IR, DAG compiler
+├── lang-stdlib/    # Standard library (Map, Filter, etc.)
+├── lang-lsp/       # Language Server Protocol
+├── http-api/       # HTTP server + WebSocket LSP
+└── example-app/    # Example application
 ```
 
-## Building
+---
+
+## Development
 
 ```bash
-# Compile
-sbt compile
+# Compile everything
+make compile
 
-# Run tests
-sbt test
+# Run all tests
+make test
 
-# Run specific test suite
-sbt "testOnly io.constellation.lang.parser.ParserTest"
-sbt "testOnly io.constellation.lang.semantic.TypeCheckerTest"
-sbt "testOnly io.constellation.lang.runtime.LangCompilerTest"
+# Start dev environment (server + hot reload)
+make dev
+
+# Run specific test suites
+make test-core
+make test-compiler
+make test-lsp
 ```
+
+---
 
 ## Requirements
 
-- Scala 3.3.x
-- SBT 1.9.x
-- JDK 21+
+- **JDK 17+**
+- **SBT 1.9+**
+- **Node.js 18+** (for VSCode extension)
 
-## Dependencies
-
-- [Cats](https://typelevel.org/cats/) - Functional programming
-- [Cats Effect](https://typelevel.org/cats-effect/) - Effect system
-- [cats-parse](https://github.com/typelevel/cats-parse) - Parser combinators
-- [Circe](https://circe.github.io/circe/) - JSON handling
+---
 
 ## Documentation
 
-See the [docs](docs/) directory for detailed documentation:
+| Resource | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Complete tutorial from zero to custom modules |
+| [Language Reference](docs/constellation-lang/README.md) | Full syntax and semantics |
+| [Standard Library](docs/stdlib.md) | Built-in functions reference |
+| [Pipeline Examples](docs/examples/README.md) | Real-world examples with explanations |
+| [Architecture Guide](docs/architecture.md) | Deep dive into internals |
+| [API Guide](docs/api-guide.md) | Programmatic usage |
+| [Contributing](CONTRIBUTING.md) | Development setup and workflow |
 
-- [Documentation Index](docs/README.md)
-- [Pipeline Examples](docs/examples/README.md) - Real-world pipeline examples
-- [constellation-lang Reference](docs/constellation-lang/README.md)
-- [Standard Library](docs/stdlib.md)
-- [Architecture Guide](docs/architecture.md)
-- [API Guide](docs/api-guide.md)
+---
+
+## Why "Constellation"?
+
+Pipelines are graphs of connected nodes - like stars forming constellations. Each node (module) is a point of light; together they form something meaningful.
+
+---
 
 ## License
 
-MIT
+[MIT](LICENSE)
+
+---
+
+**Ready to stop writing glue code?** [Get started in 10 minutes](docs/getting-started.md)

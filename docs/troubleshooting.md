@@ -527,15 +527,15 @@ Set the `CONSTELLATION_DEBUG` environment variable:
 ```bash
 # Linux/macOS
 export CONSTELLATION_DEBUG=true
-sbt run
+make server
 
 # Windows PowerShell
 $env:CONSTELLATION_DEBUG = "true"
-sbt run
+.\scripts\dev.ps1 -ServerOnly
 
 # Windows CMD
 set CONSTELLATION_DEBUG=true
-sbt run
+make server
 ```
 
 ### Debug Mode Features
