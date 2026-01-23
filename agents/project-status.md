@@ -1,7 +1,7 @@
 # Constellation Engine - Architecture Improvements Project Status
 
-**Last Updated:** 2026-01-22
-**Updated By:** Agent 1 (Phase 3 kickoff)
+**Last Updated:** 2026-01-23
+**Updated By:** Agent 1 (Phase 3.1 complete)
 
 ---
 
@@ -11,7 +11,7 @@
 |-------|--------|----------|-------------------|
 | Phase 1: Quick Wins | `COMPLETED` | 4/4 tasks | ✅ Complete |
 | Phase 2: Core Improvements | `COMPLETED` | 4/4 tasks | ✅ Complete |
-| Phase 3: Type System Enhancements | `IN_PROGRESS` | 0/2 tasks | 3-5 weeks |
+| Phase 3: Type System Enhancements | `IN_PROGRESS` | 1/2 tasks | 3-5 weeks |
 | Phase 4: Long-term Vision | `NOT_STARTED` | 0/4 tasks | TBD |
 
 **Status Legend:** `NOT_STARTED` | `IN_PROGRESS` | `BLOCKED` | `COMPLETED`
@@ -93,13 +93,13 @@
 
 ### Task 3.1: Bidirectional Type Inference
 - **Context:** `agents/phase-3/context-bidirectional-inference.md`
-- **Status:** `NOT_STARTED`
+- **Status:** `COMPLETED`
 - **Assigned Agent:** Agent 1
-- **Issue:** [#120](https://github.com/VledicFranco/constellation-engine/issues/120)
-- **Branch:** None
-- **PR:** None
+- **Issue:** [#120](https://github.com/VledicFranco/constellation-engine/issues/120) (Closed)
+- **Branch:** `agent-1/issue-120-bidirectional-inference` (merged)
+- **PR:** Direct merge to master
 - **Depends On:** Task 2.4 ✅
-- **Notes:** Infer lambda parameter types from context (inference ⇑ and checking ⇓ modes)
+- **Notes:** Implemented bidirectional type checking with Mode.scala and BidirectionalTypeChecker.scala
 
 ### Task 3.2: Row Polymorphism
 - **Context:** `agents/phase-3/context-row-polymorphism.md`
@@ -108,8 +108,8 @@
 - **Issue:** [#121](https://github.com/VledicFranco/constellation-engine/issues/121)
 - **Branch:** None
 - **PR:** None
-- **Depends On:** Tasks 2.4 ✅, 3.1
-- **Notes:** Flexible record types with row variables (SOpenRecord, RowVar)
+- **Depends On:** Tasks 2.4 ✅, 3.1 ✅
+- **Notes:** Flexible record types with row variables (SOpenRecord, RowVar) - READY TO START
 
 ---
 
@@ -131,8 +131,8 @@
 - **Status:** `NOT_STARTED`
 - **Assigned Agent:** Agent 3
 - **Issue:** Not created
-- **Depends On:** Tasks 2.3 ✅, 3.1
-- **Notes:** Real-time incremental analysis
+- **Depends On:** Tasks 2.3 ✅, 3.1 ✅
+- **Notes:** Real-time incremental analysis - DEPENDENCIES COMPLETE, ready for issue creation
 
 ### Task 4.3: Incremental Compilation
 - **Context:** `agents/phase-4/context-incremental-compilation.md` (pending)
@@ -187,6 +187,7 @@
 | 2026-01-22 | Agent 3 | Task 2.3 | Completed Semantic Tokens for LSP | #118 Merged |
 | 2026-01-22 | Agent 1 | Phase 3 | Created GitHub issues #120, #121 | Success |
 | 2026-01-22 | Agent 1 | Phase 3 | Updated project status for Phase 3 kickoff | Success |
+| 2026-01-23 | Agent 1 | Task 3.1 | Completed Bidirectional Type Inference | #120 Merged |
 
 ---
 
