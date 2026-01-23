@@ -204,6 +204,69 @@ object LspMessages {
       cType: String
   )
 
+  // ========== Custom: Get DAG Visualization (New Format) ==========
+
+  case class GetDagVisualizationParams(
+      uri: String,
+      direction: Option[String] = None,    // "TB" or "LR", defaults to "TB"
+      executionId: Option[String] = None   // If provided, include execution state
+  )
+
+  case class GetDagVisualizationResult(
+      success: Boolean,
+      dag: Option[DagVisualization],
+      error: Option[String] = None
+  )
+
+  /** Complete DAG visualization with layout */
+  case class DagVisualization(
+      nodes: List[DagVizNode],
+      edges: List[DagVizEdge],
+      groups: List[DagVizGroup],
+      metadata: DagVizMetadata
+  )
+
+  case class DagVizNode(
+      id: String,
+      kind: String,           // "Input", "Output", "Operation", etc.
+      label: String,
+      typeSignature: String,
+      position: Option[DagVizPosition],
+      executionState: Option[DagVizExecutionState]
+  )
+
+  case class DagVizEdge(
+      id: String,
+      source: String,
+      target: String,
+      label: Option[String],
+      kind: String            // "Data", "Optional", "Control"
+  )
+
+  case class DagVizGroup(
+      id: String,
+      label: String,
+      nodeIds: List[String],
+      collapsed: Boolean
+  )
+
+  case class DagVizPosition(x: Double, y: Double)
+
+  case class DagVizBounds(minX: Double, minY: Double, maxX: Double, maxY: Double)
+
+  case class DagVizMetadata(
+      title: Option[String],
+      layoutDirection: String,
+      bounds: Option[DagVizBounds]
+  )
+
+  case class DagVizExecutionState(
+      status: String,               // "Pending", "Running", "Completed", "Failed"
+      value: Option[Json],
+      durationMs: Option[Long],
+      error: Option[String]
+  )
+
   case class InputField(
       name: String,
       `type`: TypeDescriptor,
@@ -362,6 +425,37 @@ object LspMessages {
 
   given Encoder[DataNode] = deriveEncoder
   given Decoder[DataNode] = deriveDecoder
+
+  // DAG Visualization codecs
+  given Encoder[GetDagVisualizationParams] = deriveEncoder
+  given Decoder[GetDagVisualizationParams] = deriveDecoder
+
+  given Encoder[GetDagVisualizationResult] = deriveEncoder
+  given Decoder[GetDagVisualizationResult] = deriveDecoder
+
+  given Encoder[DagVisualization] = deriveEncoder
+  given Decoder[DagVisualization] = deriveDecoder
+
+  given Encoder[DagVizNode] = deriveEncoder
+  given Decoder[DagVizNode] = deriveDecoder
+
+  given Encoder[DagVizEdge] = deriveEncoder
+  given Decoder[DagVizEdge] = deriveDecoder
+
+  given Encoder[DagVizGroup] = deriveEncoder
+  given Decoder[DagVizGroup] = deriveDecoder
+
+  given Encoder[DagVizPosition] = deriveEncoder
+  given Decoder[DagVizPosition] = deriveDecoder
+
+  given Encoder[DagVizBounds] = deriveEncoder
+  given Decoder[DagVizBounds] = deriveDecoder
+
+  given Encoder[DagVizMetadata] = deriveEncoder
+  given Decoder[DagVizMetadata] = deriveDecoder
+
+  given Encoder[DagVizExecutionState] = deriveEncoder
+  given Decoder[DagVizExecutionState] = deriveDecoder
 
   given Encoder[RecordField] = deriveEncoder
   given Decoder[RecordField] = deriveDecoder

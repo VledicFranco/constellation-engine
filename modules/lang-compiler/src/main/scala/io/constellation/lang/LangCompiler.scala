@@ -16,6 +16,9 @@ trait LangCompiler {
   /** Compile a constellation-lang source to a DagSpec and synthetic modules */
   def compile(source: String, dagName: String): Either[List[CompileError], CompileResult]
 
+  /** Compile to IR only (for visualization) */
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram]
+
   /** Get the function registry for namespace/function introspection */
   def functionRegistry: FunctionRegistry
 }
@@ -136,6 +139,21 @@ private class LangCompilerImpl(
         List(CompileError.InternalError(err.message))
       }
     } yield result
+
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
+    for {
+      // Phase 1: Parse
+      program <- ConstellationParser.parse(source).left.map(List(_))
+
+      // Phase 2: Type check
+      typedProgram <- TypeChecker.check(program, registry)
+
+      // Phase 3: Generate IR
+      irProgram = IRGenerator.generate(typedProgram)
+
+      // Phase 4: Optimize IR
+      optimizedIR = IROptimizer.optimizeIR(irProgram, optimizationConfig)
+    } yield optimizedIR
 }
 
 /** Utilities for registering modules with the compiler */

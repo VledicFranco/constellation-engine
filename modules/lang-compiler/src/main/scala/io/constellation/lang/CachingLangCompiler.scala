@@ -2,7 +2,7 @@ package io.constellation.lang
 
 import cats.effect.unsafe.implicits.global
 import io.constellation.lang.ast.CompileError
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.{CompileResult, IRProgram}
 import io.constellation.lang.semantic.FunctionRegistry
 
 /** A LangCompiler wrapper that caches compilation results.
@@ -46,6 +46,10 @@ class CachingLangCompiler(
         result
     }
   }
+
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
+    // Delegate to underlying compiler (no caching for IR - it's used for visualization)
+    underlying.compileToIR(source, dagName)
 
   /** Get cache statistics */
   def cacheStats: CacheStats =

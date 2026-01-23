@@ -93,5 +93,8 @@ object StdLib
           }
         result.copy(syntheticModules = result.syntheticModules ++ neededStdModules)
       }
+
+    def compileToIR(source: String, dagName: String) =
+      underlying.compileToIR(source, dagName)
   }
 }

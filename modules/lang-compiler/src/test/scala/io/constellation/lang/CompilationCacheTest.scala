@@ -190,6 +190,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()
@@ -211,6 +212,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()
@@ -231,6 +233,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()
@@ -251,6 +254,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Left(List(io.constellation.lang.ast.CompileError.InternalError("test error")))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()
@@ -272,6 +276,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()
@@ -296,6 +301,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
+      def compileToIR(source: String, dagName: String) = Left(List.empty)
     }
 
     val cache    = CompilationCache.createUnsafe()

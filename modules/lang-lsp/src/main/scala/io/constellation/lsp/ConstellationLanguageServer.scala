@@ -6,6 +6,7 @@ import io.circe.*
 import io.circe.syntax.*
 import io.constellation.{CValue, Constellation, Module, SteppedExecution}
 import io.constellation.lang.LangCompiler
+import io.constellation.lang.viz.{DagVizCompiler, SugiyamaLayout, LayoutConfig}
 import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
 import io.constellation.lang.compiler.{ErrorCode, ErrorCodes => CompilerErrorCodes, ErrorFormatter, SuggestionContext, Suggestions}
 import io.constellation.lang.semantic.FunctionRegistry
@@ -62,6 +63,9 @@ class ConstellationLanguageServer(
 
       case "constellation/getDagStructure" =>
         handleGetDagStructure(request)
+
+      case "constellation/getDagVisualization" =>
+        handleGetDagVisualization(request)
 
       case "constellation/stepStart" =>
         handleStepStart(request)
@@ -498,6 +502,124 @@ class ConstellationLanguageServer(
 
       case Left(errors) =>
         GetDagStructureResult(
+          success = false,
+          dag = None,
+          error = Some(errors.map(_.message).mkString("; "))
+        )
+    }
+  }
+
+  private def handleGetDagVisualization(request: Request): IO[Response] =
+    request.params match {
+      case None =>
+        IO.pure(
+          Response(
+            id = request.id,
+            error = Some(ResponseError(code = ErrorCodes.InvalidParams, message = "Missing params"))
+          )
+        )
+      case Some(paramsJson) =>
+        paramsJson.as[GetDagVisualizationParams] match {
+          case Left(error) =>
+            IO.pure(
+              Response(
+                id = request.id,
+                error = Some(ResponseError(code = ErrorCodes.InvalidParams, message = error.getMessage))
+              )
+            )
+          case Right(params) =>
+            documentManager.getDocument(params.uri).flatMap {
+              case Some(document) =>
+                IO.pure(getDagVisualization(document, params)).map { result =>
+                  Response(id = request.id, result = Some(result.asJson))
+                }
+              case None =>
+                IO.pure(
+                  Response(
+                    id = request.id,
+                    result = Some(
+                      GetDagVisualizationResult(
+                        success = false,
+                        dag = None,
+                        error = Some("Document not found")
+                      ).asJson
+                    )
+                  )
+                )
+            }
+        }
+    }
+
+  private def getDagVisualization(
+      document: DocumentState,
+      params: GetDagVisualizationParams
+  ): GetDagVisualizationResult = {
+    val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
+
+    compiler.compileToIR(document.text, dagName) match {
+      case Right(irProgram) =>
+        // Compile IR to visualization IR
+        val vizIR = DagVizCompiler.compile(irProgram, title = Some(dagName))
+
+        // Apply layout
+        val direction = params.direction.getOrElse("TB")
+        val layoutConfig = LayoutConfig(direction = direction)
+        val layoutedVizIR = SugiyamaLayout.layout(vizIR, layoutConfig)
+
+        // Convert to LSP message types
+        val nodes = layoutedVizIR.nodes.map { n =>
+          DagVizNode(
+            id = n.id,
+            kind = n.kind.toString,
+            label = n.label,
+            typeSignature = n.typeSignature,
+            position = n.position.map(p => DagVizPosition(p.x, p.y)),
+            executionState = n.executionState.map(es =>
+              DagVizExecutionState(
+                status = es.status.toString,
+                value = es.value,
+                durationMs = es.durationMs,
+                error = es.error
+              )
+            )
+          )
+        }
+
+        val edges = layoutedVizIR.edges.map { e =>
+          DagVizEdge(
+            id = e.id,
+            source = e.source,
+            target = e.target,
+            label = e.label,
+            kind = e.kind.toString
+          )
+        }
+
+        val groups = layoutedVizIR.groups.map { g =>
+          DagVizGroup(
+            id = g.id,
+            label = g.label,
+            nodeIds = g.nodeIds,
+            collapsed = g.collapsed
+          )
+        }
+
+        val metadata = DagVizMetadata(
+          title = layoutedVizIR.metadata.title,
+          layoutDirection = layoutedVizIR.metadata.layoutDirection,
+          bounds = layoutedVizIR.metadata.bounds.map(b =>
+            DagVizBounds(b.minX, b.minY, b.maxX, b.maxY)
+          )
+        )
+
+        GetDagVisualizationResult(
+          success = true,
+          dag = Some(DagVisualization(nodes, edges, groups, metadata)),
+          error = None
+        )
+
+      case Left(errors) =>
+        GetDagVisualizationResult(
           success = false,
           dag = None,
           error = Some(errors.map(_.message).mkString("; "))
