@@ -38,6 +38,15 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
   type TypeResult[A] = ValidatedNel[CompileError, A]
 
+  // Counter for generating fresh row variables
+  private var rowVarCounter = 0
+
+  /** Generate a fresh row variable for row polymorphism instantiation */
+  private def freshRowVar(): RowVar = {
+    rowVarCounter += 1
+    RowVar(rowVarCounter)
+  }
+
   /** Type check a program */
   def check(program: Program): Either[List[CompileError], TypedProgram] = {
     val initialEnv = TypeEnvironment(functions = functions)
@@ -472,8 +481,11 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
             s"Function ${name.fullName} expects ${sig.params.size} argument(s), got ${args.size}",
             Some(span)
           ).invalidNel
+        } else if (sig.isRowPolymorphic) {
+          // Row-polymorphic function: instantiate fresh row variables and use unification
+          inferRowPolymorphicCall(name, sig, args, span, env, context)
         } else {
-          // Check each argument against expected parameter type (checking mode!)
+          // Standard function: check each argument against expected parameter type
           args.zip(sig.params).zipWithIndex.traverse { case ((argExpr, (paramName, paramType)), idx) =>
             val argContext = FunctionArgument(name.fullName, idx, paramName)
             checkExpr(argExpr.value, argExpr.span, env, Check(paramType), argContext)
@@ -483,6 +495,100 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         }
       case Left(error) =>
         error.invalidNel
+    }
+  }
+
+  /** Handle row-polymorphic function call with row unification */
+  private def inferRowPolymorphicCall(
+      name: QualifiedName,
+      originalSig: FunctionSignature,
+      args: List[Located[Expression]],
+      span: Span,
+      env: TypeEnvironment,
+      context: TypeContext
+  ): TypeResult[TypedExpression] = {
+    // Instantiate fresh row variables for this call site
+    val instantiatedSig = originalSig.instantiate(() => freshRowVar())
+
+    // Type check arguments, collecting row substitutions along the way
+    var subst = RowUnification.Substitution.empty
+
+    val typedArgsResult = args.zip(instantiatedSig.params).zipWithIndex.traverse {
+      case ((argExpr, (paramName, paramType)), idx) =>
+        val argContext = FunctionArgument(name.fullName, idx, paramName)
+
+        // First, infer the argument type
+        inferExpr(argExpr.value, argExpr.span, env, context).andThen { typedArg =>
+          // Then check compatibility, potentially using row unification
+          checkArgumentWithRowUnification(
+            typedArg,
+            paramType,
+            argExpr.span,
+            idx,
+            name.fullName,
+            subst
+          ) match {
+            case Right((typed, newSubst)) =>
+              subst = newSubst
+              typed.validNel
+            case Left(error) =>
+              error.invalidNel
+          }
+        }
+    }
+
+    typedArgsResult.map { typedArgs =>
+      // Apply substitution to the return type
+      val resultType = RowUnification.applySubstitution(instantiatedSig.returns, subst)
+      TypedExpression.FunctionCall(name.fullName, originalSig, typedArgs, span)
+    }
+  }
+
+  /** Check argument against expected type with row unification support */
+  private def checkArgumentWithRowUnification(
+      typedArg: TypedExpression,
+      expectedType: SemanticType,
+      span: Span,
+      argIndex: Int,
+      funcName: String,
+      subst: RowUnification.Substitution
+  ): Either[CompileError, (TypedExpression, RowUnification.Substitution)] = {
+    (typedArg.semanticType, expectedType) match {
+      // Closed record passed to open record parameter - use row unification
+      case (actual: SRecord, expected: SOpenRecord) =>
+        RowUnification.unifyClosedWithOpen(actual, expected) match {
+          case Right(newSubst) =>
+            Right((typedArg, subst.merge(newSubst)))
+          case Left(err) =>
+            Left(CompileError.TypeError(
+              s"Argument ${argIndex + 1} to $funcName: ${err.message}",
+              Some(span)
+            ))
+        }
+
+      // Open record passed to open record parameter
+      case (actual: SOpenRecord, expected: SOpenRecord) =>
+        RowUnification.unifyOpenWithOpen(actual, expected, subst) match {
+          case Right(newSubst) =>
+            Right((typedArg, newSubst))
+          case Left(err) =>
+            Left(CompileError.TypeError(
+              s"Argument ${argIndex + 1} to $funcName: ${err.message}",
+              Some(span)
+            ))
+        }
+
+      // Standard subtyping check
+      case (actual, expected) =>
+        if (Subtyping.isSubtype(actual, expected)) {
+          Right((typedArg, subst))
+        } else {
+          Left(CompileError.TypeMismatch(
+            expected.prettyPrint,
+            actual.prettyPrint,
+            Some(span)
+          ))
+        }
     }
   }
 

@@ -62,6 +62,23 @@ object Subtyping {
           subFields.get(name).exists(subType => isSubtype(subType, supType))
         }
 
+      // Closed record is subtype of open record if it has all required fields
+      // with compatible types (row polymorphism)
+      case (SemanticType.SRecord(subFields), SemanticType.SOpenRecord(supFields, _)) =>
+        supFields.forall { case (name, supType) =>
+          subFields.get(name).exists(subType => isSubtype(subType, supType))
+        }
+
+      // Open record is subtype of open record if it has all required fields
+      case (SemanticType.SOpenRecord(subFields, _), SemanticType.SOpenRecord(supFields, _)) =>
+        supFields.forall { case (name, supType) =>
+          subFields.get(name).exists(subType => isSubtype(subType, supType))
+        }
+
+      // Open record is NOT a subtype of closed record (may have extra fields)
+      case (SemanticType.SOpenRecord(_, _), SemanticType.SRecord(_)) =>
+        false
+
       // Union as supertype: sub is subtype if it's subtype of any member
       case (_, SemanticType.SUnion(supMembers)) =>
         supMembers.exists(m => isSubtype(sub, m))
@@ -168,6 +185,28 @@ object Subtyping {
               None
             }
           }
+
+        // Closed record vs open record
+        case (SemanticType.SRecord(subFields), SemanticType.SOpenRecord(supFields, _)) =>
+          val missing = supFields.keySet.diff(subFields.keySet)
+          if (missing.nonEmpty) {
+            Some(s"Record is missing required field(s): ${missing.mkString(", ")}")
+          } else {
+            val incompatible = supFields.collect {
+              case (name, supType) if subFields.get(name).exists(subType => !isSubtype(subType, supType)) =>
+                val subType = subFields(name)
+                s"'$name' has type ${subType.prettyPrint} but expected ${supType.prettyPrint}"
+            }
+            if (incompatible.nonEmpty) {
+              Some(s"Field type mismatch: ${incompatible.mkString("; ")}")
+            } else {
+              None
+            }
+          }
+
+        // Open record vs closed record (always fails)
+        case (SemanticType.SOpenRecord(_, _), SemanticType.SRecord(_)) =>
+          Some("Open record type cannot be assigned to closed record type")
 
         case (SemanticType.SList(subElem), SemanticType.SList(supElem)) =>
           explainFailure(subElem, supElem).map(reason => s"List element type mismatch: $reason")

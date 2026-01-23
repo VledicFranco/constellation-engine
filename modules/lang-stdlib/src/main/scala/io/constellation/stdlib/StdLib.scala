@@ -30,7 +30,8 @@ object StdLib
     with BooleanFunctions
     with ComparisonFunctions
     with UtilityFunctions
-    with HigherOrderFunctions {
+    with HigherOrderFunctions
+    with RecordFunctions {
 
   /** Register all standard library functions with a LangCompiler builder */
   def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder = {
@@ -40,7 +41,8 @@ object StdLib
       booleanSignatures ++
       comparisonSignatures ++
       utilitySignatures ++
-      hofSignatures
+      hofSignatures ++
+      recordSignatures
 
     allSigs.foldLeft(builder)((b, sig) => b.withFunction(sig))
   }
@@ -52,7 +54,8 @@ object StdLib
       listModules ++
       booleanModules ++
       comparisonModules ++
-      utilityModules
+      utilityModules ++
+      recordModules
 
   /** Get all standard library function signatures */
   def allSignatures: List[FunctionSignature] =
@@ -62,7 +65,8 @@ object StdLib
       booleanSignatures ++
       comparisonSignatures ++
       utilitySignatures ++
-      hofSignatures
+      hofSignatures ++
+      recordSignatures
 
   /** Create a LangCompiler with all standard library functions registered */
   def compiler: LangCompiler = {

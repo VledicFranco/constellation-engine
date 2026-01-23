@@ -73,6 +73,30 @@ object SemanticType {
     def prettyPrint: String = members.map(_.prettyPrint).toList.sorted.mkString(" | ")
   }
 
+  /** Row variable - represents unknown additional fields in open records.
+    * Used for row polymorphism: { name: String | ρ } means "a record with at least name".
+    */
+  final case class RowVar(id: Int) extends SemanticType {
+    def prettyPrint: String = s"ρ$id"
+  }
+
+  /** Open record type - has specific fields plus a row variable for "rest".
+    * Enables row polymorphism where functions accept records with "at least" certain fields.
+    *
+    * Example: SOpenRecord(Map("name" -> SString), RowVar(1)) represents { name: String | ρ1 }
+    * This matches any record with at least a "name" field of type String.
+    */
+  final case class SOpenRecord(
+    fields: Map[String, SemanticType],
+    rowVar: RowVar
+  ) extends SemanticType {
+    def prettyPrint: String = {
+      val fieldStr = fields.map { case (k, v) => s"$k: ${v.prettyPrint}" }.mkString(", ")
+      if (fieldStr.isEmpty) s"{ | ${rowVar.prettyPrint} }"
+      else s"{ $fieldStr | ${rowVar.prettyPrint} }"
+    }
+  }
+
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
     case SString           => CType.CString
@@ -90,6 +114,10 @@ object SemanticType {
     case SUnion(members)   =>
       // Use prettyPrint as tag name for each member type
       CType.CUnion(members.map(m => m.prettyPrint -> toCType(m)).toMap)
+    case RowVar(_)         =>
+      throw new IllegalArgumentException("Row variables cannot be converted to CType - they must be resolved during type checking")
+    case SOpenRecord(_, _) =>
+      throw new IllegalArgumentException("Open record types cannot be converted to CType - they must be closed during type checking")
   }
 
   /** Convert Constellation CType to SemanticType */
@@ -108,19 +136,65 @@ object SemanticType {
 
 /** Function signature for registered modules */
 final case class FunctionSignature(
-    name: String,                         // Language name: "ide-ranker-v2"
-    params: List[(String, SemanticType)], // Parameter names and types
-    returns: SemanticType,                // Return type
-    moduleName: String,                   // Constellation module name
-    namespace: Option[String] = None      // Optional namespace: "stdlib.math"
+    name: String,                                        // Language name: "ide-ranker-v2"
+    params: List[(String, SemanticType)],                // Parameter names and types
+    returns: SemanticType,                               // Return type
+    moduleName: String,                                  // Constellation module name
+    namespace: Option[String] = None,                    // Optional namespace: "stdlib.math"
+    rowVars: List[SemanticType.RowVar] = Nil             // Row variables this signature quantifies over
 ) {
 
   /** Fully qualified name (namespace.name or just name if no namespace) */
   def qualifiedName: String = namespace.map(_ + ".").getOrElse("") + name
 
+  /** Is this signature row-polymorphic? */
+  def isRowPolymorphic: Boolean = rowVars.nonEmpty
+
   def prettyPrint: String = {
     val paramStr = params.map { case (n, t) => s"$n: ${t.prettyPrint}" }.mkString(", ")
-    s"$qualifiedName($paramStr) -> ${returns.prettyPrint}"
+    val rowVarStr = if (rowVars.isEmpty) "" else s"∀${rowVars.map(_.prettyPrint).mkString(", ")}. "
+    s"$rowVarStr$qualifiedName($paramStr) -> ${returns.prettyPrint}"
+  }
+
+  /** Create a fresh instantiation of this signature with new row variables.
+    * Each call to a row-polymorphic function gets fresh row variables to avoid
+    * interference between different call sites.
+    */
+  def instantiate(freshVarGen: () => SemanticType.RowVar): FunctionSignature = {
+    if (!isRowPolymorphic) this
+    else {
+      val mapping = rowVars.map(rv => rv -> freshVarGen()).toMap
+      copy(
+        params = params.map { case (n, t) => (n, substituteRowVars(t, mapping)) },
+        returns = substituteRowVars(returns, mapping),
+        rowVars = mapping.values.toList
+      )
+    }
+  }
+
+  private def substituteRowVars(t: SemanticType, mapping: Map[SemanticType.RowVar, SemanticType.RowVar]): SemanticType = {
+    import SemanticType._
+    t match {
+      case SOpenRecord(fields, rv) =>
+        SOpenRecord(fields.view.mapValues(substituteRowVars(_, mapping)).toMap, mapping.getOrElse(rv, rv))
+      case SRecord(fields) =>
+        SRecord(fields.view.mapValues(substituteRowVars(_, mapping)).toMap)
+      case SList(elem) =>
+        SList(substituteRowVars(elem, mapping))
+      case SOptional(inner) =>
+        SOptional(substituteRowVars(inner, mapping))
+      case SCandidates(elem) =>
+        SCandidates(substituteRowVars(elem, mapping))
+      case SMap(k, v) =>
+        SMap(substituteRowVars(k, mapping), substituteRowVars(v, mapping))
+      case SFunction(ps, ret) =>
+        SFunction(ps.map(substituteRowVars(_, mapping)), substituteRowVars(ret, mapping))
+      case SUnion(members) =>
+        SUnion(members.map(substituteRowVars(_, mapping)))
+      case rv: RowVar =>
+        mapping.getOrElse(rv, rv)
+      case other => other
+    }
   }
 }
 

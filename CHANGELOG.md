@@ -34,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Function contravariance: Correct handling of function parameter and return type subtyping
   - `explainFailure`: Human-readable explanations for type error messages
 
+- **Row Polymorphism**: Implemented row polymorphism for flexible record handling (#121)
+  - `RowVar(id)`: Row variable type representing unknown additional fields in open records
+  - `SOpenRecord(fields, rowVar)`: Open record type with specific fields plus a row variable for "rest"
+  - `RowUnification.scala`: Row unification algorithm for matching closed records against open records
+  - `Substitution`: Mapping from row variables to their resolved field sets with merge support
+  - Updated `FunctionSignature` with `rowVars` field and `instantiate()` for fresh variable generation per call site
+  - Updated `Subtyping`: Closed records with extra fields are subtypes of open records requiring fewer fields
+  - Updated `BidirectionalTypeChecker`: Row-polymorphic function call handling with automatic row unification
+  - `RecordFunctions.scala`: Row-polymorphic stdlib functions (GetName, GetAge, GetId, GetValue)
+  - Example: `GetName: ∀ρ. { name: String | ρ } -> String` accepts any record with at least a `name` field
+
 #### Compiler Improvements
 - **IR Optimization Passes**: New optimization framework that reduces DAG size and improves runtime performance (#116)
   - `OptimizationPass.scala`: Base trait for implementing optimization passes
