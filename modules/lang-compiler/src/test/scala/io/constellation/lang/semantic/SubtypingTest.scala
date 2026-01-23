@@ -45,7 +45,8 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
     Subtyping.isSubtype(SNothing, SRecord(Map("name" -> SString))) shouldBe true
     Subtyping.isSubtype(SNothing, SOptional(SInt)) shouldBe true
     Subtyping.isSubtype(SNothing, SUnion(Set(SInt, SString))) shouldBe true
-    Subtyping.isSubtype(SNothing, SCandidates(SInt)) shouldBe true
+    // Note: Candidates is now a legacy alias for List
+    Subtyping.isSubtype(SNothing, SList(SInt)) shouldBe true
     Subtyping.isSubtype(SNothing, SMap(SString, SInt)) shouldBe true
   }
 
@@ -71,10 +72,11 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
     Subtyping.isSubtype(SList(SInt), SList(SString)) shouldBe false
   }
 
-  it should "handle covariant Candidates" in {
-    Subtyping.isSubtype(SCandidates(SNothing), SCandidates(SInt)) shouldBe true
-    Subtyping.isSubtype(SCandidates(SNothing), SCandidates(SString)) shouldBe true
-    Subtyping.isSubtype(SCandidates(SInt), SCandidates(SNothing)) shouldBe false
+  // Note: Candidates is now a legacy alias for List, so these tests use SList
+  it should "handle covariant Lists (formerly Candidates)" in {
+    Subtyping.isSubtype(SList(SNothing), SList(SInt)) shouldBe true
+    Subtyping.isSubtype(SList(SNothing), SList(SString)) shouldBe true
+    Subtyping.isSubtype(SList(SInt), SList(SNothing)) shouldBe false
   }
 
   it should "handle covariant Optional" in {

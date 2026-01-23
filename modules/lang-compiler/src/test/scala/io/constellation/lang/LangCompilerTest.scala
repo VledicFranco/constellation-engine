@@ -151,7 +151,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       )
     )
 
-    val embeddingsType = SemanticType.SCandidates(
+    val embeddingsType = SemanticType.SList(
       SemanticType.SRecord(
         Map(
           "embedding" -> SemanticType.SList(SemanticType.SFloat)
@@ -159,7 +159,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       )
     )
 
-    val scoresType = SemanticType.SCandidates(
+    val scoresType = SemanticType.SList(
       SemanticType.SRecord(
         Map(
           "score" -> SemanticType.SFloat
@@ -170,7 +170,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     registry.register(
       FunctionSignature(
         name = "ide-ranker-v2-candidate-embed",
-        params = List("input" -> SemanticType.SCandidates(communicationType)),
+        params = List("input" -> SemanticType.SList(communicationType)),
         returns = embeddingsType,
         moduleName = "ide-ranker-v2-candidate-embed"
       )

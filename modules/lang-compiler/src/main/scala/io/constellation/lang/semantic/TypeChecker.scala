@@ -361,8 +361,9 @@ object TypeChecker {
 
     case TypeExpr.Parameterized(name, params) =>
       name match {
+        // "Candidates" is a legacy alias for "List" - both support element-wise operations
         case "Candidates" if params.size == 1 =>
-          resolveTypeExpr(params.head, span, env).map(SemanticType.SCandidates(_))
+          resolveTypeExpr(params.head, span, env).map(SemanticType.SList(_))
         case "List" if params.size == 1 =>
           resolveTypeExpr(params.head, span, env).map(SemanticType.SList(_))
         case "Map" if params.size == 2 =>
@@ -401,17 +402,20 @@ object TypeChecker {
         // Right-hand side wins on conflicts
         SemanticType.SRecord(lFields ++ rFields).validNel
 
+      // List<Record> + List<Record> = merge records element-wise
       case (
-            SemanticType.SCandidates(SemanticType.SRecord(lFields)),
-            SemanticType.SCandidates(SemanticType.SRecord(rFields))
+            SemanticType.SList(SemanticType.SRecord(lFields)),
+            SemanticType.SList(SemanticType.SRecord(rFields))
           ) =>
-        SemanticType.SCandidates(SemanticType.SRecord(lFields ++ rFields)).validNel
+        SemanticType.SList(SemanticType.SRecord(lFields ++ rFields)).validNel
 
-      case (SemanticType.SCandidates(lElem), rRec: SemanticType.SRecord) =>
-        mergeTypes(lElem, rRec, span).map(SemanticType.SCandidates(_))
+      // List<Record> + Record = add fields to each element
+      case (SemanticType.SList(lElem), rRec: SemanticType.SRecord) =>
+        mergeTypes(lElem, rRec, span).map(SemanticType.SList(_))
 
-      case (lRec: SemanticType.SRecord, SemanticType.SCandidates(rElem)) =>
-        mergeTypes(lRec, rElem, span).map(SemanticType.SCandidates(_))
+      // Record + List<Record> = add fields to each element
+      case (lRec: SemanticType.SRecord, SemanticType.SList(rElem)) =>
+        mergeTypes(lRec, rElem, span).map(SemanticType.SList(_))
 
       case _ =>
         CompileError.IncompatibleMerge(left.prettyPrint, right.prettyPrint, Some(span)).invalidNel
@@ -489,12 +493,13 @@ object TypeChecker {
               )
             }
 
-          case SemanticType.SCandidates(SemanticType.SRecord(availableFields)) =>
+          // List<Record> projection: select fields from each element
+          case SemanticType.SList(SemanticType.SRecord(availableFields)) =>
             checkProjection(fields, availableFields, span).map { projectedFields =>
               TypedExpression.Projection(
                 typedSource,
                 fields,
-                SemanticType.SCandidates(SemanticType.SRecord(projectedFields)),
+                SemanticType.SList(SemanticType.SRecord(projectedFields)),
                 span
               )
             }
@@ -522,15 +527,16 @@ object TypeChecker {
                   .invalidNel
             }
 
-          case SemanticType.SCandidates(SemanticType.SRecord(availableFields)) =>
+          // List<Record> field access: extract field from each element
+          case SemanticType.SList(SemanticType.SRecord(availableFields)) =>
             availableFields.get(field.value) match {
               case Some(fieldType) =>
-                // Field access on Candidates returns Candidates of the field type
+                // Field access on List<Record> returns List of the field type
                 TypedExpression
                   .FieldAccess(
                     typedSource,
                     field.value,
-                    SemanticType.SCandidates(fieldType),
+                    SemanticType.SList(fieldType),
                     span
                   )
                   .validNel
@@ -941,15 +947,15 @@ object TypeChecker {
       case _                                       => false
     }
 
-    // Check if a type is mergeable (record-like: Record, Candidates<Record>)
+    // Check if a type is mergeable (record-like: Record, List<Record>)
     def isMergeable(t: SemanticType): Boolean = t match {
-      case _: SemanticType.SRecord                           => true
-      case SemanticType.SCandidates(_: SemanticType.SRecord) => true
-      case SemanticType.SCandidates(_) => false // Candidates of non-record not mergeable
-      case _                           => false
+      case _: SemanticType.SRecord                       => true
+      case SemanticType.SList(_: SemanticType.SRecord)   => true
+      case SemanticType.SList(_) => false // List of non-record not mergeable
+      case _                     => false
     }
 
-    // For Add with mergeable types (records or Candidates<Record>), treat as merge
+    // For Add with mergeable types (records or List<Record>), treat as merge
     if op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType) then {
       return mergeTypes(left.semanticType, right.semanticType, span).map { merged =>
         TypedExpression.Merge(left, right, merged, span)

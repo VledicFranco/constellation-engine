@@ -4,7 +4,7 @@ package io.constellation.lang.semantic
   *
   * Implements structural subtyping with:
   * - SNothing as bottom type (subtype of all types)
-  * - Covariant collections (List, Candidates, Optional)
+  * - Covariant collections (List, Optional)
   * - Width + depth subtyping for records
   * - Union type handling (upper and lower bounds)
   * - Contravariant function parameters
@@ -21,7 +21,6 @@ object Subtyping {
     *
     * SList(S) <: SList(T) ⟸ S <: T   (Covariance)
     * SOptional(S) <: SOptional(T) ⟸ S <: T
-    * SCandidates(S) <: SCandidates(T) ⟸ S <: T
     * SMap(K, S) <: SMap(K, T) ⟸ S <: T (values covariant, keys invariant)
     *
     * SRecord(F₁) <: SRecord(F₂) ⟸ ∀f∈F₂. f∈F₁ ∧ F₁(f) <: F₂(f)  (Width + Depth)
@@ -43,9 +42,6 @@ object Subtyping {
 
       // Collections are covariant in their element type
       case (SemanticType.SList(subElem), SemanticType.SList(supElem)) =>
-        isSubtype(subElem, supElem)
-
-      case (SemanticType.SCandidates(subElem), SemanticType.SCandidates(supElem)) =>
         isSubtype(subElem, supElem)
 
       case (SemanticType.SOptional(subInner), SemanticType.SOptional(supInner)) =>

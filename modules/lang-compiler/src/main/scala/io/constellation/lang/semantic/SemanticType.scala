@@ -37,12 +37,15 @@ object SemanticType {
     }
   }
 
-  /** Candidates<T> - a collection type for ML batching */
-  final case class SCandidates(element: SemanticType) extends SemanticType {
-    def prettyPrint: String = s"Candidates<${element.prettyPrint}>"
-  }
-
-  /** List<T> */
+  /** List<T> - collection type with element-wise operations for records.
+    *
+    * When the element type is a record, List supports:
+    * - Element-wise merge: `list + record` adds fields to each element
+    * - Element-wise projection: `list[field1, field2]` selects fields from each element
+    * - Element-wise field access: `list.field` extracts a field from each element
+    *
+    * Note: "Candidates" is a legacy alias for List and resolves to SList.
+    */
   final case class SList(element: SemanticType) extends SemanticType {
     def prettyPrint: String = s"List<${element.prettyPrint}>"
   }
@@ -105,7 +108,6 @@ object SemanticType {
     case SBoolean          => CType.CBoolean
     case SNothing          => CType.CString // Bottom type - use String as default for runtime
     case SRecord(fields)   => CType.CProduct(fields.view.mapValues(toCType).toMap)
-    case SCandidates(elem) => CType.CList(toCType(elem))
     case SList(elem)       => CType.CList(toCType(elem))
     case SMap(k, v)        => CType.CMap(toCType(k), toCType(v))
     case SOptional(inner)  => CType.COptional(toCType(inner))
