@@ -66,6 +66,11 @@ object LspMessages {
       textDocument: TextDocumentIdentifier
   )
 
+  case class DidSaveTextDocumentParams(
+      textDocument: TextDocumentIdentifier,
+      text: Option[String] = None // Text is included if the server has requested it
+  )
+
   case class PublishDiagnosticsParams(
       uri: String,
       diagnostics: List[Diagnostic]
@@ -256,6 +261,9 @@ object LspMessages {
 
   given Encoder[DidCloseTextDocumentParams] = deriveEncoder
   given Decoder[DidCloseTextDocumentParams] = deriveDecoder
+
+  given Encoder[DidSaveTextDocumentParams] = deriveEncoder
+  given Decoder[DidSaveTextDocumentParams] = deriveDecoder
 
   given Encoder[PublishDiagnosticsParams] = deriveEncoder
   given Decoder[PublishDiagnosticsParams] = deriveDecoder

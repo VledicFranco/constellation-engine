@@ -15,12 +15,15 @@ import io.constellation.lsp.protocol.LspMessages.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
+import scala.concurrent.duration._
+
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
     constellation: Constellation,
     compiler: LangCompiler,
     documentManager: DocumentManager,
     debugSessionManager: DebugSessionManager,
+    debouncer: Debouncer[String],
     publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
 ) {
   private val logger: Logger[IO] =
@@ -91,6 +94,9 @@ class ConstellationLanguageServer(
 
       case "textDocument/didChange" =>
         handleDidChange(notification)
+
+      case "textDocument/didSave" =>
+        handleDidSave(notification)
 
       case "textDocument/didClose" =>
         handleDidClose(notification)
@@ -844,18 +850,37 @@ class ConstellationLanguageServer(
             )
           )
       )
+      uri = params.textDocument.uri
       _ <- params.contentChanges.headOption match {
         case Some(change) =>
           documentManager.updateDocument(
-            uri = params.textDocument.uri,
+            uri = uri,
             version = params.textDocument.version,
             text = change.text
           )
         case None => IO.unit
       }
-      _ <- validateDocument(params.textDocument.uri)
+      // Use debounced validation to avoid excessive compilation during rapid typing
+      _ <- debouncer.debounce(uri)(validateDocument(uri))
     } yield ()
   }.handleErrorWith(e => logger.warn(s"Error in didChange: ${e.getMessage}"))
+
+  private def handleDidSave(notification: Notification): IO[Unit] = {
+    for {
+      params <- IO.fromEither(
+        notification.params
+          .toRight(new Exception("Missing params"))
+          .flatMap(
+            _.as[DidSaveTextDocumentParams].left.map(e =>
+              new Exception(s"Invalid params: ${e.message}")
+            )
+          )
+      )
+      uri = params.textDocument.uri
+      // Immediate validation on save - bypass debounce for responsive feedback
+      _ <- debouncer.immediate(uri)(validateDocument(uri))
+    } yield ()
+  }.handleErrorWith(e => logger.warn(s"Error in didSave: ${e.getMessage}"))
 
   private def handleDidClose(notification: Notification): IO[Unit] = {
     for {
@@ -868,9 +893,12 @@ class ConstellationLanguageServer(
             )
           )
       )
-      _ <- documentManager.closeDocument(params.textDocument.uri)
+      uri = params.textDocument.uri
+      // Cancel any pending validation for this document
+      _ <- debouncer.cancel(uri)
+      _ <- documentManager.closeDocument(uri)
       // Clear diagnostics
-      _ <- publishDiagnostics(PublishDiagnosticsParams(params.textDocument.uri, List.empty))
+      _ <- publishDiagnostics(PublishDiagnosticsParams(uri, List.empty))
     } yield ()
   }.handleErrorWith(e => logger.warn(s"Error in didClose: ${e.getMessage}"))
 
@@ -1433,19 +1461,42 @@ class ConstellationLanguageServer(
 }
 
 object ConstellationLanguageServer {
+  /** Default debounce delay for document validation */
+  val DefaultDebounceDelay: FiniteDuration = Debouncer.DefaultDelay
+
+  /**
+   * Create a new ConstellationLanguageServer with default debounce settings.
+   */
   def create(
       constellation: Constellation,
       compiler: LangCompiler,
       publishDiagnostics: PublishDiagnosticsParams => IO[Unit]
   ): IO[ConstellationLanguageServer] =
+    create(constellation, compiler, publishDiagnostics, DefaultDebounceDelay)
+
+  /**
+   * Create a new ConstellationLanguageServer with custom debounce delay.
+   *
+   * @param debounceDelay How long to wait after the last document change before validating.
+   *                      Shorter delays give faster feedback but use more CPU.
+   *                      Recommended range: 100ms - 300ms.
+   */
+  def create(
+      constellation: Constellation,
+      compiler: LangCompiler,
+      publishDiagnostics: PublishDiagnosticsParams => IO[Unit],
+      debounceDelay: FiniteDuration
+  ): IO[ConstellationLanguageServer] =
     for {
       docManager   <- DocumentManager.create
       debugManager <- DebugSessionManager.create
+      debouncer    <- Debouncer.create[String](debounceDelay)
     } yield new ConstellationLanguageServer(
       constellation,
       compiler,
       docManager,
       debugManager,
+      debouncer,
       publishDiagnostics
     )
 }
