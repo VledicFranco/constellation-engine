@@ -24,9 +24,14 @@ class DagRendererTest extends AnyFunSuite with Matchers {
     DagRenderer.forFormat("ASCII") shouldBe Some(ASCIIRenderer)
   }
 
+  test("DagRenderer.forFormat returns correct renderer for svg") {
+    DagRenderer.forFormat("svg") shouldBe Some(SVGRenderer)
+    DagRenderer.forFormat("SVG") shouldBe Some(SVGRenderer)
+  }
+
   test("DagRenderer.forFormat returns None for unknown format") {
     DagRenderer.forFormat("unknown") shouldBe None
-    DagRenderer.forFormat("svg") shouldBe None
+    DagRenderer.forFormat("pdf") shouldBe None
     DagRenderer.forFormat("") shouldBe None
   }
 
@@ -34,19 +39,22 @@ class DagRendererTest extends AnyFunSuite with Matchers {
     DagRenderer.mermaid shouldBe MermaidRenderer
     DagRenderer.dot shouldBe DOTRenderer
     DagRenderer.ascii shouldBe ASCIIRenderer
+    DagRenderer.svg shouldBe SVGRenderer
   }
 
   test("availableFormats lists all supported formats") {
     DagRenderer.availableFormats should contain("mermaid")
     DagRenderer.availableFormats should contain("dot")
     DagRenderer.availableFormats should contain("ascii")
+    DagRenderer.availableFormats should contain("svg")
   }
 
   test("all renderers implement DagRenderer trait") {
     val renderers: List[DagRenderer] = List(
       MermaidRenderer,
       DOTRenderer,
-      ASCIIRenderer
+      ASCIIRenderer,
+      SVGRenderer
     )
 
     renderers.foreach { renderer =>
@@ -74,11 +82,15 @@ class DagRendererTest extends AnyFunSuite with Matchers {
     val mermaidOutput = MermaidRenderer.render(dag)
     val dotOutput = DOTRenderer.render(dag)
     val asciiOutput = ASCIIRenderer.render(dag)
+    val svgOutput = SVGRenderer.render(dag)
 
     // All outputs should be different
     mermaidOutput should not equal dotOutput
     dotOutput should not equal asciiOutput
     asciiOutput should not equal mermaidOutput
+    svgOutput should not equal mermaidOutput
+    svgOutput should not equal dotOutput
+    svgOutput should not equal asciiOutput
 
     // Mermaid starts with "graph"
     mermaidOutput should startWith("graph")
@@ -88,5 +100,8 @@ class DagRendererTest extends AnyFunSuite with Matchers {
 
     // ASCII has box characters
     asciiOutput should include("┌")
+
+    // SVG starts with "<svg"
+    svgOutput should startWith("<svg")
   }
 }

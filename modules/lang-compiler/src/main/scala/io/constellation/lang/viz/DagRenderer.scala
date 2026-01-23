@@ -23,15 +23,17 @@ object DagRenderer {
   val mermaid: DagRenderer = MermaidRenderer
   val dot: DagRenderer     = DOTRenderer
   val ascii: DagRenderer   = ASCIIRenderer
+  val svg: DagRenderer     = SVGRenderer
 
   /** Get a renderer by format name */
   def forFormat(format: String): Option[DagRenderer] = format.toLowerCase match {
     case "mermaid" | "mmd" => Some(MermaidRenderer)
     case "dot" | "graphviz" => Some(DOTRenderer)
     case "ascii" | "text" | "txt" => Some(ASCIIRenderer)
+    case "svg" => Some(SVGRenderer)
     case _ => None
   }
 
   /** List of all available formats */
-  val availableFormats: List[String] = List("mermaid", "dot", "ascii")
+  val availableFormats: List[String] = List("mermaid", "dot", "ascii", "svg")
 }
