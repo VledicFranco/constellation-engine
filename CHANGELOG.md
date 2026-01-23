@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated all documentation to use `make` commands instead of raw `sbt`
 
 #### Type System
+- **Bidirectional Type Inference**: Implemented bidirectional type checking for improved type inference (#120)
+  - `Mode.scala`: Inference (⇑) and Checking (⇓) modes with rich TypeContext for error messages
+  - `BidirectionalTypeChecker.scala`: Full bidirectional type checking implementation
+  - Lambda parameter inference: `filter(users, (u) => u.active)` now infers `u` as record type from context
+  - Empty list typing: `[]` infers as `List<Nothing>`, compatible with any `List<T>` via subtyping
+  - Subsumption rule: Automatically applies when inferred type is subtype of expected type
+  - Enhanced error messages: Reports "in argument 2 ('predicate') of filter" instead of generic errors
+  - Full backward compatibility: Existing explicit annotations continue to work
+
 - **Subtyping System**: Implemented structural subtyping for the Constellation type system (#119)
   - `Subtyping.scala`: Core subtyping implementation with `isSubtype`, `lub` (least upper bound), `glb` (greatest lower bound)
   - `SNothing` as bottom type: Empty collections and conditionals now work seamlessly with typed collections

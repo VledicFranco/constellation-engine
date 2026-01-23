@@ -190,13 +190,37 @@ object TypedExpression {
   ) extends TypedExpression
 }
 
-/** Type checker for constellation-lang */
+/** Type checker for constellation-lang.
+  *
+  * This object provides the main entry point for type checking. It delegates
+  * to `BidirectionalTypeChecker` which implements bidirectional type inference.
+  *
+  * Bidirectional type checking enables:
+  * - Lambda parameter type inference from context
+  * - Empty list typing from expected type
+  * - Better error messages with contextual information
+  */
 object TypeChecker {
 
   type TypeResult[A] = ValidatedNel[CompileError, A]
 
-  /** Type check a program */
+  /** Type check a program using bidirectional type inference.
+    *
+    * @param program The parsed program to type check
+    * @param functions Registry of available function signatures
+    * @return Either a list of type errors, or a fully typed program
+    */
   def check(
+      program: Program,
+      functions: FunctionRegistry
+  ): Either[List[CompileError], TypedProgram] = {
+    // Delegate to bidirectional type checker
+    BidirectionalTypeChecker(functions).check(program)
+  }
+
+  // Legacy implementation kept for reference - all logic now in BidirectionalTypeChecker
+  @deprecated("Use BidirectionalTypeChecker.check directly", "0.5.0")
+  private def checkLegacy(
       program: Program,
       functions: FunctionRegistry
   ): Either[List[CompileError], TypedProgram] = {
