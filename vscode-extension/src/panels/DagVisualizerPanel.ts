@@ -275,6 +275,16 @@ export class DagVisualizerPanel {
       );
 
       if (vizResult.success && vizResult.dag) {
+        // Check if DAG is too large - warn user to prevent OOM
+        const nodeCount = vizResult.dag.nodes?.length || 0;
+        const MAX_NODES = 200;
+        if (nodeCount > MAX_NODES) {
+          this._state.panel.webview.postMessage({
+            type: 'error',
+            message: `DAG has ${nodeCount} nodes (limit: ${MAX_NODES}). Visualization disabled to prevent memory issues. Close the visualizer panel for large files.`
+          });
+          return;
+        }
         this._state.panel.webview.postMessage({
           type: 'dagVizData',
           dag: vizResult.dag,
@@ -297,6 +307,18 @@ export class DagVisualizerPanel {
       );
 
       if (result.success && result.dag) {
+        // Check if DAG is too large - warn user to prevent OOM
+        const moduleCount = Object.keys(result.dag.modules || {}).length;
+        const dataCount = Object.keys(result.dag.data || {}).length;
+        const nodeCount = moduleCount + dataCount;
+        const MAX_NODES = 200;
+        if (nodeCount > MAX_NODES) {
+          this._state.panel.webview.postMessage({
+            type: 'error',
+            message: `DAG has ${nodeCount} nodes (limit: ${MAX_NODES}). Visualization disabled to prevent memory issues.`
+          });
+          return;
+        }
         this._state.panel.webview.postMessage({
           type: 'dagData',
           dag: result.dag,
@@ -1622,6 +1644,7 @@ export class DagVisualizerPanel {
       fileNameEl.textContent = currentFileName;
       currentVizDag = message.dag;
       currentDag = null; // Clear old format
+      executionStates = {}; // Clear execution states for new DAG
       useNewVisualization = true;
       // Update layout direction buttons based on server response
       var serverDirection = message.dag.metadata && message.dag.metadata.layoutDirection || 'TB';
@@ -1637,6 +1660,7 @@ export class DagVisualizerPanel {
       fileNameEl.textContent = currentFileName;
       currentDag = message.dag;
       currentVizDag = null; // Clear new format
+      executionStates = {}; // Clear execution states for new DAG
       useNewVisualization = false;
       renderDag(message.dag);
     } else if (message.type === 'error') {

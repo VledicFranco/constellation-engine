@@ -34,9 +34,14 @@ export function activate(context: vscode.ExtensionContext) {
       socket.on('open', () => {
         console.log('Connected to Constellation Language Server');
 
-        // Simple duplex stream wrapper - pass data through directly
-        // vscode-languageclient handles LSP framing internally
+        // Queue for messages received while paused due to backpressure
+        const messageQueue: string[] = [];
+        let isPaused = false;
+
+        // Duplex stream wrapper with proper backpressure handling
+        // Use smaller highWaterMark to trigger backpressure earlier and prevent OOM
         const stream = new Duplex({
+          highWaterMark: 256 * 1024, // 256KB buffer limit (reduced from 1MB)
           write(chunk: any, encoding: string, callback: (error?: Error | null) => void) {
             const data = chunk.toString();
             // Send directly - vscode-languageclient sends complete messages
@@ -45,16 +50,44 @@ export function activate(context: vscode.ExtensionContext) {
             });
           },
           read() {
-            // Data is pushed when received via 'message' event
+            // When the consumer is ready for more data, drain the queue
+            isPaused = false;
+            while (messageQueue.length > 0 && !isPaused) {
+              const msg = messageQueue.shift()!;
+              // push() returns false if internal buffer is full
+              if (!this.push(msg)) {
+                isPaused = true;
+                break;
+              }
+            }
           }
         });
 
         socket.on('message', (data: ws.Data) => {
-          stream.push(data.toString());
+          const msg = data.toString();
+
+          if (isPaused) {
+            // Buffer is full, queue the message
+            // Limit queue size to prevent unbounded memory growth
+            if (messageQueue.length < 100) {
+              messageQueue.push(msg);
+            } else {
+              console.warn('LSP message queue full, dropping message');
+            }
+          } else {
+            // Try to push directly, queue if buffer full
+            if (!stream.push(msg)) {
+              isPaused = true;
+            }
+          }
         });
 
         socket.on('close', () => {
           console.log('Disconnected from Constellation Language Server');
+          // Drain any remaining queued messages
+          while (messageQueue.length > 0) {
+            stream.push(messageQueue.shift()!);
+          }
           stream.push(null);
         });
 
@@ -170,6 +203,14 @@ export function activate(context: vscode.ExtensionContext) {
   // Only schedule refreshes if the panel is actually open
   const refreshTimers = new Map<string, NodeJS.Timeout>();
   const DEBOUNCE_MS = 750; // Wait 750ms after last keystroke before refreshing
+
+  // Clean up timers on deactivate
+  context.subscriptions.push({
+    dispose: () => {
+      refreshTimers.forEach((timer) => clearTimeout(timer));
+      refreshTimers.clear();
+    }
+  });
 
   const documentChangeListener = vscode.workspace.onDidChangeTextDocument((e) => {
     // Only process if panel is open and it's a constellation file

@@ -36,8 +36,9 @@ class LspWebSocketHandler(
   def routes(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = HttpRoutes.of[IO] {
     case GET -> Root / "lsp" =>
       // Queue for complete LSP messages (after buffering)
-      Queue.unbounded[IO, String].flatMap { clientMessages =>
-        Queue.unbounded[IO, String].flatMap { serverMessages =>
+      // Use bounded queues to prevent memory issues if one side can't keep up
+      Queue.bounded[IO, String](100).flatMap { clientMessages =>
+        Queue.bounded[IO, String](100).flatMap { serverMessages =>
           // Buffer for accumulating partial LSP messages from WebSocket frames
           Ref.of[IO, String]("").flatMap { bufferRef =>
             ConstellationLanguageServer

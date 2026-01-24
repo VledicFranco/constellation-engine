@@ -241,8 +241,17 @@ class ConstellationLanguageServer(
           case Right(params) =>
             documentManager.getDocument(params.textDocument.uri).map {
               case Some(document) =>
-                val tokens = semanticTokenProvider.computeTokens(document.text)
-                Response(id = request.id, result = Some(SemanticTokens(data = tokens).asJson))
+                // Skip semantic tokens for large files to prevent OOM in VS Code extension
+                // Large files generate thousands of tokens which can overwhelm the client
+                val MaxLinesForSemanticTokens = 150
+                val lineCount = document.text.count(_ == '\n') + 1
+                if (lineCount > MaxLinesForSemanticTokens) {
+                  // Return empty tokens for large files
+                  Response(id = request.id, result = Some(SemanticTokens(data = List.empty).asJson))
+                } else {
+                  val tokens = semanticTokenProvider.computeTokens(document.text)
+                  Response(id = request.id, result = Some(SemanticTokens(data = tokens).asJson))
+                }
               case None =>
                 // Return empty tokens for unknown documents
                 Response(id = request.id, result = Some(SemanticTokens(data = List.empty).asJson))
