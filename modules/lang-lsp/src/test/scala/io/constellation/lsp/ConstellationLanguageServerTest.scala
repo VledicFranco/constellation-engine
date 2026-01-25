@@ -1310,4 +1310,92 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     response.result shouldBe defined
     (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
   }
+
+  // ========== Cache Stats Tests ==========
+
+  it should "return cachingEnabled=false for non-caching compiler" in {
+    val result = for {
+      server <- createTestServer() // Uses non-caching compiler
+      response <- server.handleRequest(Request(
+        id = StringId("cache-1"),
+        method = "constellation/getCacheStats",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.id shouldBe StringId("cache-1")
+    response.result shouldBe defined
+    response.error shouldBe None
+
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+    (resultJson \\ "cachingEnabled").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+    (resultJson \\ "stats").headOption.flatMap(_.asNull) shouldBe defined
+  }
+
+  it should "return cache statistics for caching compiler" in {
+    import io.constellation.lang.{CachingLangCompiler, CompilationCache}
+
+    val uppercaseModule = createUppercaseModule()
+
+    val result = for {
+      constellation <- ConstellationImpl.init
+      _ <- constellation.setModule(uppercaseModule)
+
+      // Create a caching compiler
+      baseCompiler = LangCompiler.builder
+        .withModule(
+          "Uppercase",
+          uppercaseModule,
+          List("text" -> SemanticType.SString),
+          SemanticType.SString
+        )
+        .build
+      cachingCompiler = CachingLangCompiler.withDefaults(baseCompiler)
+
+      // Create server with caching compiler
+      server <- ConstellationLanguageServer.create(
+        constellation,
+        cachingCompiler,
+        _ => IO.unit
+      )
+
+      // Do a compilation to populate cache stats
+      _ <- server.handleNotification(Notification(
+        method = "textDocument/didOpen",
+        params = Some(DidOpenTextDocumentParams(
+          TextDocumentItem("file:///cache.cst", "constellation", 1,
+            """in text: String
+              |result = Uppercase(text)
+              |out result""".stripMargin)
+        ).asJson)
+      ))
+
+      response <- server.handleRequest(Request(
+        id = StringId("cache-2"),
+        method = "constellation/getCacheStats",
+        params = None
+      ))
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.id shouldBe StringId("cache-2")
+    response.result shouldBe defined
+    response.error shouldBe None
+
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+    (resultJson \\ "cachingEnabled").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+
+    // Stats should be an object with hits, misses, etc.
+    val stats = (resultJson \\ "stats").headOption
+    stats shouldBe defined
+    stats.get.isObject shouldBe true
+    (stats.get \\ "hits").headOption.flatMap(_.asNumber) shouldBe defined
+    (stats.get \\ "misses").headOption.flatMap(_.asNumber) shouldBe defined
+    (stats.get \\ "hitRate").headOption.flatMap(_.asNumber) shouldBe defined
+    (stats.get \\ "evictions").headOption.flatMap(_.asNumber) shouldBe defined
+    (stats.get \\ "entries").headOption.flatMap(_.asNumber) shouldBe defined
+  }
 }

@@ -6,7 +6,7 @@ import cats.implicits.*
 import io.circe.*
 import io.circe.syntax.*
 import io.constellation.{CValue, Constellation, ExecutionTracker, ExecutionTrace, NodeExecutionResult, NodeStatus, Module, SteppedExecution}
-import io.constellation.lang.LangCompiler
+import io.constellation.lang.{CachingLangCompiler, CacheStats, LangCompiler}
 import io.constellation.lang.viz.{DagVizCompiler, SugiyamaLayout, LayoutConfig}
 import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
 import io.constellation.lang.compiler.{ErrorCode, ErrorCodes => CompilerErrorCodes, ErrorFormatter, SuggestionContext, Suggestions}
@@ -92,6 +92,9 @@ class ConstellationLanguageServer(
 
       case "constellation/stepStop" =>
         handleStepStop(request)
+
+      case "constellation/getCacheStats" =>
+        handleGetCacheStats(request)
 
       case "textDocument/semanticTokens/full" =>
         handleSemanticTokensFull(request)
@@ -887,6 +890,36 @@ class ConstellationLanguageServer(
             }
         }
     }
+
+  /** Handle constellation/getCacheStats request
+    *
+    * Returns cache statistics if using CachingLangCompiler, otherwise returns
+    * cachingEnabled: false.
+    */
+  private def handleGetCacheStats(request: Request): IO[Response] = {
+    val result = compiler match {
+      case cachingCompiler: CachingLangCompiler =>
+        val stats = cachingCompiler.cacheStats
+        Json.obj(
+          "success" -> Json.fromBoolean(true),
+          "cachingEnabled" -> Json.fromBoolean(true),
+          "stats" -> Json.obj(
+            "hits" -> Json.fromLong(stats.hits),
+            "misses" -> Json.fromLong(stats.misses),
+            "hitRate" -> Json.fromDoubleOrNull(stats.hitRate),
+            "evictions" -> Json.fromLong(stats.evictions),
+            "entries" -> Json.fromInt(stats.entries)
+          )
+        )
+      case _ =>
+        Json.obj(
+          "success" -> Json.fromBoolean(true),
+          "cachingEnabled" -> Json.fromBoolean(false),
+          "stats" -> Json.Null
+        )
+    }
+    IO.pure(Response(id = request.id, result = Some(result)))
+  }
 
   private def startStepExecution(
       document: DocumentState,
