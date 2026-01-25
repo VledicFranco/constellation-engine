@@ -1,6 +1,6 @@
 package io.constellation.lang.compiler
 
-import io.constellation.lang.ast.BoolOp
+import io.constellation.lang.ast.{BoolOp, ModuleCallOptions, PriorityLevel}
 import io.constellation.lang.semantic.*
 
 import java.util.UUID
@@ -90,7 +90,7 @@ object IRGenerator {
           throw new IllegalStateException(s"Undefined variable in IR generation: $name")
       }
 
-    case TypedExpression.FunctionCall(name, signature, args, span) =>
+    case TypedExpression.FunctionCall(name, signature, args, options, typedFallback, span) =>
       // Check if this is a higher-order function call (has lambda argument)
       val lambdaArgIndex = args.indexWhere(_.isInstanceOf[TypedExpression.Lambda])
       if (lambdaArgIndex >= 0 && isHigherOrderFunction(signature.moduleName)) {
@@ -105,6 +105,9 @@ object IRGenerator {
             (newCtx, ids :+ (paramName -> argId))
         }
 
+        // Convert AST options to IR options (using typed fallback)
+        val (finalCtx, irOptions) = convertOptions(options, typedFallback, argsCtx)
+
         val id = UUID.randomUUID()
         val node = IRNode.ModuleCall(
           id = id,
@@ -112,9 +115,10 @@ object IRGenerator {
           languageName = name,
           inputs = argIds.toMap,
           outputType = signature.returns,
+          options = irOptions,
           debugSpan = Some(span)
         )
-        (argsCtx.addNode(node), id)
+        (finalCtx.addNode(node), id)
       }
 
     case TypedExpression.Merge(left, right, semanticType, span) =>
@@ -306,5 +310,61 @@ object IRGenerator {
       bodyOutputId = bodyOutputId,
       returnType = lambda.semanticType.returnType
     )
+  }
+
+  /** Convert AST ModuleCallOptions to IR options, generating IR nodes for fallback if present.
+    *
+    * @param options The AST module call options
+    * @param typedFallback The typed fallback expression (already type-checked)
+    * @param ctx Current generation context
+    * @return Updated context and IR options
+    */
+  private def convertOptions(
+      options: ModuleCallOptions,
+      typedFallback: Option[TypedExpression],
+      ctx: GenContext
+  ): (GenContext, IRModuleCallOptions) = {
+    if (options.isEmpty && typedFallback.isEmpty) {
+      (ctx, IRModuleCallOptions.empty)
+    } else {
+      // Generate IR for typed fallback expression if present
+      val (finalCtx, fallbackId) = typedFallback match {
+        case Some(fallbackExpr) =>
+          val (newCtx, id) = generateExpression(fallbackExpr, ctx)
+          (newCtx, Some(id))
+        case None =>
+          (ctx, None)
+      }
+
+      // Convert priority to normalized Int value
+      val priorityValue: Option[Int] = options.priority.map {
+        case Left(level) => level match {
+          case PriorityLevel.Critical   => 100
+          case PriorityLevel.High       => 80
+          case PriorityLevel.Normal     => 50
+          case PriorityLevel.Low        => 20
+          case PriorityLevel.Background => 0
+        }
+        case Right(custom) => custom.value
+      }
+
+      val irOptions = IRModuleCallOptions(
+        retry = options.retry,
+        timeoutMs = options.timeout.map(_.toMillis),
+        delayMs = options.delay.map(_.toMillis),
+        backoff = options.backoff,
+        fallback = fallbackId,
+        cacheMs = options.cache.map(_.toMillis),
+        cacheBackend = options.cacheBackend,
+        throttleCount = options.throttle.map(_.count),
+        throttlePerMs = options.throttle.map(_.per.toMillis),
+        concurrency = options.concurrency,
+        onError = options.onError,
+        lazyEval = options.lazyEval,
+        priority = priorityValue
+      )
+
+      (finalCtx, irOptions)
+    }
   }
 }

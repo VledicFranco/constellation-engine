@@ -1,9 +1,41 @@
 package io.constellation.lang.compiler
 
-import io.constellation.lang.ast.Span
+import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy, PriorityLevel, Span}
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
+
+/** Module call options at IR level.
+  *
+  * These are the resolved options from the AST, with fallback expressions
+  * compiled into IR nodes. Options like retry, timeout, etc. are passed
+  * through to the runtime for execution.
+  */
+final case class IRModuleCallOptions(
+    retry: Option[Int] = None,
+    timeoutMs: Option[Long] = None,
+    delayMs: Option[Long] = None,
+    backoff: Option[BackoffStrategy] = None,
+    fallback: Option[UUID] = None,       // IR node ID for fallback expression
+    cacheMs: Option[Long] = None,
+    cacheBackend: Option[String] = None,
+    throttleCount: Option[Int] = None,
+    throttlePerMs: Option[Long] = None,
+    concurrency: Option[Int] = None,
+    onError: Option[ErrorStrategy] = None,
+    lazyEval: Option[Boolean] = None,
+    priority: Option[Int] = None         // Normalized to Int (critical=100, high=80, etc.)
+) {
+  def isEmpty: Boolean =
+    retry.isEmpty && timeoutMs.isEmpty && delayMs.isEmpty && backoff.isEmpty &&
+    fallback.isEmpty && cacheMs.isEmpty && cacheBackend.isEmpty &&
+    throttleCount.isEmpty && throttlePerMs.isEmpty && concurrency.isEmpty &&
+    onError.isEmpty && lazyEval.isEmpty && priority.isEmpty
+}
+
+object IRModuleCallOptions {
+  val empty: IRModuleCallOptions = IRModuleCallOptions()
+}
 
 /** Intermediate representation for constellation-lang programs.
   *
@@ -35,6 +67,7 @@ object IRNode {
       languageName: String,      // The name used in constellation-lang
       inputs: Map[String, UUID], // Parameter name -> input node ID
       outputType: SemanticType,
+      options: IRModuleCallOptions = IRModuleCallOptions.empty,
       debugSpan: Option[Span] = None
   ) extends IRNode
 
@@ -221,7 +254,8 @@ final case class IRProgram(
   /** Get all dependencies for a given node */
   def dependencies(nodeId: UUID): Set[UUID] = nodes.get(nodeId) match {
     case Some(IRNode.Input(_, _, _, _))                              => Set.empty
-    case Some(IRNode.ModuleCall(_, _, _, inputs, _, _))              => inputs.values.toSet
+    case Some(IRNode.ModuleCall(_, _, _, inputs, _, options, _))     =>
+      inputs.values.toSet ++ options.fallback.toSet
     case Some(IRNode.MergeNode(_, left, right, _, _))                => Set(left, right)
     case Some(IRNode.ProjectNode(_, source, _, _, _))                => Set(source)
     case Some(IRNode.FieldAccessNode(_, source, _, _, _))            => Set(source)

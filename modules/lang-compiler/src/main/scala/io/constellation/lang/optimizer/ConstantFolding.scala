@@ -62,7 +62,7 @@ object ConstantFolding extends OptimizationPass {
       Some(FoldedValue(value, outputType))
 
     // Module calls can be folded if all inputs are constant and operation is foldable
-    case IRNode.ModuleCall(_, moduleName, _, inputs, outputType, _) =>
+    case IRNode.ModuleCall(_, moduleName, _, inputs, outputType, _, _) =>
       foldModuleCall(moduleName, inputs, folded, outputType)
 
     // AND with constant operands

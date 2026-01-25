@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -23,6 +23,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("add2") -> IRNode.ModuleCall(
@@ -31,6 +32,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("result") -> IRNode.ModuleCall(
@@ -39,6 +41,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("add1"), "b" -> uuid("add2")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -57,7 +60,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
 
     // One of add1 or add2 should be removed
     val addNodes = optimized.nodes.values.collect {
-      case n @ IRNode.ModuleCall(_, "stdlib.math.add", "add", inputs, _, _)
+      case n @ IRNode.ModuleCall(_, "stdlib.math.add", "add", inputs, _, _, _)
           if inputs == Map("a" -> uuid("x"), "b" -> uuid("y")) =>
         n
     }.toList
@@ -79,6 +82,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("mul") -> IRNode.ModuleCall(
@@ -87,6 +91,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -166,6 +171,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("field1"), "b" -> uuid("field2")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -241,6 +247,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("add2") -> IRNode.ModuleCall(
@@ -249,6 +256,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("y")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("mul") -> IRNode.ModuleCall(
@@ -257,6 +265,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("add1"), "b" -> uuid("add2")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
