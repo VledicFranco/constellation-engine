@@ -8,6 +8,7 @@ import * as ws from 'ws';
 import { Duplex } from 'stream';
 import { ScriptRunnerPanel } from './panels/ScriptRunnerPanel';
 import { DagVisualizerPanel } from './panels/DagVisualizerPanel';
+import { PerformanceTracker, Operations } from './utils/performanceTracker';
 
 let client: LanguageClient | undefined;
 
@@ -143,11 +144,14 @@ export function activate(context: vscode.ExtensionContext) {
       try {
         const inputs = JSON.parse(inputsJson);
 
-        // Send custom request to execute pipeline
+        // Send custom request to execute pipeline with performance tracking
+        const tracker = PerformanceTracker.getInstance();
+        const timer = tracker.startOperation(Operations.LSP_EXECUTE);
         const result = await client?.sendRequest('constellation/executePipeline', {
           uri,
           inputs
         });
+        timer.end();
 
         if (result && (result as any).success) {
           vscode.window.showInformationMessage('Pipeline executed successfully');
@@ -176,7 +180,10 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const uri = editor.document.uri.toString();
+      const tracker = PerformanceTracker.getInstance();
+      const timer = tracker.startOperation(Operations.PANEL_CREATE);
       ScriptRunnerPanel.createOrShow(context.extensionUri, client, uri);
+      timer.end();
     }
   );
 
@@ -193,11 +200,35 @@ export function activate(context: vscode.ExtensionContext) {
       }
 
       const uri = editor.document.uri.toString();
+      const tracker = PerformanceTracker.getInstance();
+      const timer = tracker.startOperation(Operations.PANEL_CREATE);
       DagVisualizerPanel.createOrShow(context.extensionUri, client, uri);
+      timer.end();
     }
   );
 
   context.subscriptions.push(dagVisualizerCommand);
+
+  // Register command to show performance statistics
+  const showPerfStatsCommand = vscode.commands.registerCommand(
+    'constellation.showPerformanceStats',
+    () => {
+      const tracker = PerformanceTracker.getInstance();
+      const stats = tracker.getAllStats();
+      if (Object.keys(stats).length === 0) {
+        vscode.window.showInformationMessage('No performance data collected yet.');
+        return;
+      }
+      // Log to console and show summary
+      tracker.logStats();
+      const summary = Object.entries(stats)
+        .map(([op, s]) => `${op}: avg=${s.avg.toFixed(0)}ms, p95=${s.p95.toFixed(0)}ms`)
+        .join('\n');
+      vscode.window.showInformationMessage(`Performance Stats:\n${summary}`);
+    }
+  );
+
+  context.subscriptions.push(showPerfStatsCommand);
 
   // Auto-refresh DAG visualizer on document change (debounced to avoid lag)
   // Only schedule refreshes if the panel is actually open
@@ -243,6 +274,10 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate(): Thenable<void> | undefined {
+  // Log performance stats on deactivation
+  const tracker = PerformanceTracker.getInstance();
+  tracker.logStats();
+
   if (!client) {
     return undefined;
   }

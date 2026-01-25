@@ -98,6 +98,10 @@
         "command": "constellation.showDagVisualization",
         "title": "Constellation: Show DAG Visualization",
         "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "constellation.showPerformanceStats",
+        "title": "Constellation: Show Performance Statistics"
       }
     ],
     "keybindings": [

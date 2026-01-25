@@ -9,6 +9,7 @@ import {
   getFileNameFromUri,
   PanelState
 } from '../utils/webviewUtils';
+import { PerformanceTracker, Operations } from '../utils/performanceTracker';
 
 interface DagStructure {
   modules: { [uuid: string]: ModuleNode };
@@ -260,12 +261,16 @@ export class DagVisualizerPanel {
       return;
     }
 
+    const tracker = PerformanceTracker.getInstance();
+    const refreshTimer = tracker.startOperation(Operations.DAG_REFRESH);
+
     this._state.panel.webview.postMessage({ type: 'loading', loading: true });
 
     const fileName = getFileNameFromUri(this._state.currentUri);
 
     // Try the new getDagVisualization endpoint first (server-side layout)
     try {
+      const lspTimer = tracker.startOperation(Operations.LSP_GET_DAG);
       const vizResult = await this._state.client.sendRequest<GetDagVisualizationResult>(
         'constellation/getDagVisualization',
         {
@@ -273,6 +278,7 @@ export class DagVisualizerPanel {
           direction: this._layoutDirection
         } as GetDagVisualizationParams
       );
+      lspTimer.end();
 
       if (vizResult.success && vizResult.dag) {
         // Check if DAG is too large - warn user to prevent OOM
@@ -283,6 +289,7 @@ export class DagVisualizerPanel {
             type: 'error',
             message: `DAG has ${nodeCount} nodes (limit: ${MAX_NODES}). Visualization disabled to prevent memory issues. Close the visualizer panel for large files.`
           });
+          refreshTimer.end();
           return;
         }
         this._state.panel.webview.postMessage({
@@ -290,6 +297,7 @@ export class DagVisualizerPanel {
           dag: vizResult.dag,
           fileName: fileName
         });
+        refreshTimer.end();
         return;
       }
       // If new endpoint returned error, fall through to legacy endpoint
@@ -317,6 +325,7 @@ export class DagVisualizerPanel {
             type: 'error',
             message: `DAG has ${nodeCount} nodes (limit: ${MAX_NODES}). Visualization disabled to prevent memory issues.`
           });
+          refreshTimer.end();
           return;
         }
         this._state.panel.webview.postMessage({
@@ -336,6 +345,7 @@ export class DagVisualizerPanel {
         message: error.message || 'Failed to get DAG structure'
       });
     }
+    refreshTimer.end();
   }
 
   public dispose() {

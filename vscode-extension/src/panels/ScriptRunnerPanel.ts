@@ -12,6 +12,7 @@ import {
   PanelState
 } from '../utils/webviewUtils';
 import { DagVisualizerPanel } from './DagVisualizerPanel';
+import { PerformanceTracker, Operations } from '../utils/performanceTracker';
 
 interface InputField {
   name: string;
@@ -243,13 +244,17 @@ export class ScriptRunnerPanel {
     // Notify DAG visualizer that execution is starting
     DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
 
+    const tracker = PerformanceTracker.getInstance();
+    const timer = tracker.startOperation(Operations.EXECUTION_FULL);
     const startTime = Date.now();
 
     try {
+      const lspTimer = tracker.startOperation(Operations.LSP_EXECUTE);
       const result = await this._state.client.sendRequest<ExecutePipelineResult>(
         'constellation/executePipeline',
         { uri: this._state.currentUri, inputs }
       );
+      lspTimer.end();
 
       const executionTime = Date.now() - startTime;
 
@@ -272,7 +277,9 @@ export class ScriptRunnerPanel {
           errors: result.errors
         });
       }
+      timer.end();
     } catch (error: any) {
+      timer.end();
       // Notify DAG visualizer of failure
       DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
 
@@ -300,11 +307,15 @@ export class ScriptRunnerPanel {
     // Notify DAG visualizer that stepping is starting
     DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
 
+    const tracker = PerformanceTracker.getInstance();
+    const timer = tracker.startOperation(Operations.LSP_STEP_START);
+
     try {
       const result = await this._state.client.sendRequest<StepStartResult>(
         'constellation/stepStart',
         { uri: this._state.currentUri, inputs }
       );
+      timer.end();
 
       if (result.success && result.sessionId) {
         this._steppingSessionId = result.sessionId;
@@ -345,6 +356,7 @@ export class ScriptRunnerPanel {
         });
       }
     } catch (error: any) {
+      timer.end();
       this._isStepping = false;
       this._steppingSessionId = undefined;
       if (this._state.currentUri) {
@@ -369,11 +381,16 @@ export class ScriptRunnerPanel {
 
     this._state.panel.webview.postMessage({ type: 'stepExecuting' });
 
+    const tracker = PerformanceTracker.getInstance();
+    const timer = tracker.startOperation(Operations.EXECUTION_STEP);
+
     try {
+      const lspTimer = tracker.startOperation(Operations.LSP_STEP_NEXT);
       const result = await this._state.client.sendRequest<StepNextResult>(
         'constellation/stepNext',
         { sessionId: this._steppingSessionId }
       );
+      lspTimer.end();
 
       if (result.success && result.state) {
         // Notify DAG visualizer about the updated state
@@ -416,7 +433,9 @@ export class ScriptRunnerPanel {
           error: result.error || 'Step execution failed'
         });
       }
+      timer.end();
     } catch (error: any) {
+      timer.end();
       this._state.panel.webview.postMessage({
         type: 'stepError',
         error: error.message || 'Step execution failed'
