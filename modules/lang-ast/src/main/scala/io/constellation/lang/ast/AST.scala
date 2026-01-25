@@ -564,4 +564,12 @@ object CompileWarning {
   ) extends CompileWarning {
     def message: String = s"'$option' without '$requiredOption' has no effect"
   }
+
+  /** High retry count warning */
+  final case class HighRetryCount(
+      count: Int,
+      span: Option[Span]
+  ) extends CompileWarning {
+    def message: String = s"High retry count ($count) - consider using a lower value with exponential backoff"
+  }
 }

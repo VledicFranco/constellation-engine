@@ -6,9 +6,9 @@ import cats.implicits.*
 import io.circe.*
 import io.circe.syntax.*
 import io.constellation.{CValue, Constellation, ExecutionTracker, ExecutionTrace, NodeExecutionResult, NodeStatus, Module, SteppedExecution}
-import io.constellation.lang.{CachingLangCompiler, CacheStats, LangCompiler}
+import io.constellation.lang.{ast, CachingLangCompiler, CacheStats, LangCompiler}
 import io.constellation.lang.viz.{DagVizCompiler, SugiyamaLayout, LayoutConfig}
-import io.constellation.lang.ast.{Annotation, CompileError, Declaration, Expression, SourceFile, Span, TypeExpr}
+import io.constellation.lang.ast.{Annotation, CompileError, CompileWarning, Declaration, Expression, SourceFile, Span, TypeExpr}
 import io.constellation.lang.compiler.{ErrorCode, ErrorCodes => CompilerErrorCodes, ErrorFormatter, SuggestionContext, Suggestions}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
@@ -1333,6 +1333,16 @@ class ConstellationLanguageServer(
 
   private def getHover(document: DocumentState, position: Position): IO[Option[Hover]] = {
     val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
+    val lineText = document.getLine(position.line).getOrElse("")
+    val textBeforeCursor = lineText.take(position.character)
+
+    // Check for option/strategy hover first (higher priority in with clause context)
+    diagnostics.OptionsDiagnostics.getHover(wordAtCursor, textBeforeCursor) match {
+      case Some(hover) =>
+        return IO.pure(Some(hover))
+      case None =>
+        // Fall through to module hover
+    }
 
     for {
       _       <- logger.trace(s"Hover word at cursor: '$wordAtCursor'")
@@ -1412,9 +1422,24 @@ class ConstellationLanguageServer(
         val compileTime = System.currentTimeMillis() - startTime
         logger.info(s"[TIMING] validateDocument compile took ${compileTime}ms for ${uri.split('/').lastOption.getOrElse(uri)}").unsafeRunSync()
         result match {
-          case Right(_) =>
-            // No errors
-            publishDiagnostics(PublishDiagnosticsParams(uri, List.empty))
+          case Right(compileResult) =>
+            // Convert warnings to diagnostics
+            val warningDiagnostics = compileResult.warnings.flatMap { warning =>
+              warning.span.map { span =>
+                val (startLC, endLC) = document.sourceFile.spanToLineCol(span)
+                Diagnostic(
+                  range = Range(
+                    start = Position(startLC.line - 1, startLC.col - 1),
+                    end = Position(endLC.line - 1, endLC.col - 1)
+                  ),
+                  severity = Some(DiagnosticSeverity.Warning),
+                  code = Some(warningCodeFor(warning)),
+                  source = Some("constellation-lang"),
+                  message = warning.message
+                )
+              }
+            }
+            publishDiagnostics(PublishDiagnosticsParams(uri, warningDiagnostics))
 
           case Left(errors) =>
             // Build suggestion context from compiler state
@@ -1450,6 +1475,12 @@ class ConstellationLanguageServer(
       case None =>
         IO.unit
     }
+
+  /** Generate a warning code for a CompileWarning */
+  private def warningCodeFor(warning: ast.CompileWarning): String = warning match {
+    case _: ast.CompileWarning.OptionDependency => "OPTS001"
+    case _: ast.CompileWarning.HighRetryCount   => "OPTS003"
+  }
 
   /** Build suggestion context from compiler's function registry */
   private def buildSuggestionContext(): SuggestionContext = {

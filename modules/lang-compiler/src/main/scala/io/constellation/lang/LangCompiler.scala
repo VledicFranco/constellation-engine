@@ -138,7 +138,7 @@ private class LangCompilerImpl(
       result <- DagCompiler.compile(optimizedIR, dagName, modules).left.map { err =>
         List(CompileError.InternalError(err.message))
       }
-    } yield result
+    } yield result.copy(warnings = typedProgram.warnings)
 
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
     for {

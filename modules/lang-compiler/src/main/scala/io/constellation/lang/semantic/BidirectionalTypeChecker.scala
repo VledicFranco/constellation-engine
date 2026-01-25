@@ -742,6 +742,21 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       addWarning(CompileWarning.OptionDependency("backoff", "delay", Some(span)))
     }
 
+    if (options.backoff.isDefined && options.retry.isEmpty) {
+      addWarning(CompileWarning.OptionDependency("backoff", "retry", Some(span)))
+    }
+
+    if (options.cacheBackend.isDefined && options.cache.isEmpty) {
+      addWarning(CompileWarning.OptionDependency("cache_backend", "cache", Some(span)))
+    }
+
+    // Warn about high retry count
+    options.retry.foreach { retryCount =>
+      if (retryCount > 10) {
+        addWarning(CompileWarning.HighRetryCount(retryCount, Some(span)))
+      }
+    }
+
     // Return errors or typed fallback
     if (errors.nonEmpty) {
       errors.head.invalidNel

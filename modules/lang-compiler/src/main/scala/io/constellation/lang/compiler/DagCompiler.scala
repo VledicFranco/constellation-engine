@@ -4,15 +4,17 @@ import cats.effect.IO
 import cats.syntax.all.*
 import io.constellation.*
 import io.constellation.lang.compiler.CompilerError as DagCompilerError
+import io.constellation.lang.ast.CompileWarning
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
 
-/** Compilation result containing the DagSpec, synthetic modules, and module options */
+/** Compilation result containing the DagSpec, synthetic modules, module options, and warnings */
 final case class CompileResult(
     dagSpec: DagSpec,
     syntheticModules: Map[UUID, Module.Uninitialized],
-    moduleOptions: Map[UUID, IRModuleCallOptions] = Map.empty
+    moduleOptions: Map[UUID, IRModuleCallOptions] = Map.empty,
+    warnings: List[CompileWarning] = Nil
 )
 
 /** Compiles IR to Constellation DagSpec.
