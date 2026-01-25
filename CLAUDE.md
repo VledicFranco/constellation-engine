@@ -23,39 +23,6 @@ This file contains actionable rules that Claude must follow when working on this
 
 **Why:** Raw `sbt` commands bypass project-specific configurations and are harder to maintain.
 
-## MCP Server Tools (PREFERRED)
-
-**When the Constellation MCP server is available, ALWAYS prefer MCP tools over direct command execution.**
-
-The MCP server provides structured output, result caching, and better integration for multi-agent workflows. Use these tools instead of running commands directly:
-
-| Task | MCP Tool | Fallback Command |
-|------|----------|------------------|
-| Run all tests | `constellation_run_tests` | `make test` |
-| Run module tests | `constellation_run_tests({ module: "parser" })` | `make test-parser` |
-| Check compilation | `constellation_get_build_status` | `make compile` |
-| Get cached test results | `constellation_get_test_status` | (no equivalent) |
-| Run affected tests only | `constellation_run_affected_tests` | (no equivalent) |
-| Verify worktree | `constellation_verify_worktree` | `git rev-parse --git-dir` |
-| Get agent context | `constellation_get_agent_context` | (manual git commands) |
-| Resume session info | `constellation_resume_session` | (manual git commands) |
-| Read work queue | `constellation_read_queue({ agentNumber: N })` | `cat agents/agent-N/QUEUE.md` |
-| Record session handoff | `constellation_handoff_session` | (no equivalent) |
-
-**Benefits of MCP tools:**
-- **Structured output**: Parsed test results with pass/fail counts and failure details
-- **Caching**: `constellation_get_test_status` returns cached results without re-running
-- **Smart testing**: `constellation_run_affected_tests` only tests modules affected by your changes
-- **Session management**: Tools for resuming work, reading queues, and handoff notes
-- **Consistency**: Same interface regardless of platform (Windows/macOS/Linux)
-
-**When to fall back to direct commands:**
-- MCP server is not configured or unavailable
-- You need interactive output (watching logs in real-time)
-- Running the development server (`make dev`, `make server`)
-
-**Documentation:** See `docs/dev/constellation-repo-dev-mcp.md` for complete tool reference.
-
 ## Server Endpoints
 
 - HTTP API: `http://localhost:{port}` (default: 8080)
@@ -436,16 +403,14 @@ Closes #42
 
 **DO NOT merge to master until ALL of these pass:**
 
-1. [ ] Verified working in a worktree (use `constellation_verify_worktree` or `git rev-parse --git-dir`)
+1. [ ] Verified working in a worktree (`git rev-parse --git-dir` should contain `worktrees/`)
 2. [ ] Branch follows naming convention: `agent-<N>/issue-<NUMBER>-<desc>`
-3. [ ] Compilation succeeds (use `constellation_get_build_status` or `make compile`)
-4. [ ] ALL tests pass (use `constellation_run_tests` or `make test`)
+3. [ ] Compilation succeeds (`make compile`)
+4. [ ] ALL tests pass (`make test`)
 5. [ ] Rebased on latest `origin/master`
 6. [ ] No merge conflicts (resolve any conflicts, then re-run tests)
 7. [ ] Commits follow conventional format
 8. [ ] Final commit message references the issue number with `Closes #<N>`
-
-**Prefer MCP tools** for steps 1, 3, and 4 when available - they provide structured output and caching.
 
 ### Coordination Rules
 
@@ -524,14 +489,6 @@ git push --force-with-lease
 
 When resuming work on an existing branch (e.g., after a session crash or continuation):
 
-**Preferred: Use MCP tool (gets all info in one call)**
-```
-constellation_resume_session({ agentNumber: N })
-```
-
-This returns: current branch, last commits, uncommitted changes, and rebase status.
-
-**Fallback: Manual git commands**
 ```bash
 # 1. Check if your branch exists locally and remotely
 git branch -a | grep agent-<N>
@@ -559,8 +516,8 @@ make test
 
 **Session handoff notes:**
 - Check the GitHub issue for any comments you left about progress
-- Review your QUEUE.md for status notes (or use `constellation_read_queue`)
-- Verify build with `constellation_get_build_status` or `make compile`
+- Review your QUEUE.md for status notes
+- Verify build with `make compile`
 
 ### Handling Merge Conflicts
 
@@ -655,11 +612,7 @@ When testing the VSCode extension, update the LSP port in `vscode-extension/.vsc
 
 **Read your assigned issues from your queue file while still in the main repo:**
 
-```
-# Preferred: Use MCP tool
-constellation_read_queue({ agentNumber: N })
-
-# Fallback: Direct file read
+```bash
 cat agents/agent-<N>/QUEUE.md
 ```
 
@@ -737,12 +690,7 @@ git checkout -b agent-<N>/issue-<NUMBER>-<short-description>
 
 ### Step 7: Verify Build Works
 
-```
-# Preferred: Use MCP tools
-constellation_get_build_status()  # Check compilation
-constellation_run_tests()          # Run all tests
-
-# Fallback: Direct commands
+```bash
 make compile
 make test
 ```
