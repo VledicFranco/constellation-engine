@@ -257,4 +257,72 @@ final case class IRProgram(
     nodes.keys.foreach(visit)
     result.reverse
   }
+
+  /** Compute topological layers for parallel processing.
+    *
+    * Nodes in the same layer have no dependencies on each other
+    * and can be processed in parallel. Layer 0 contains nodes
+    * with no dependencies, Layer N contains nodes whose dependencies
+    * are all in layers 0..N-1.
+    *
+    * @return List of layers, where each layer is a set of node IDs
+    */
+  def topologicalLayers: List[Set[UUID]] = {
+    import scala.collection.mutable
+
+    // Build reverse dependency map (node -> nodes that depend on it)
+    val dependents: mutable.Map[UUID, mutable.Set[UUID]] = mutable.Map.empty
+    nodes.keys.foreach(id => dependents(id) = mutable.Set.empty[UUID])
+
+    // Compute in-degree for each node
+    val inDegree: mutable.Map[UUID, Int] = mutable.Map.empty.withDefaultValue(0)
+    nodes.keys.foreach { nodeId =>
+      val deps = dependencies(nodeId)
+      inDegree(nodeId) = deps.size
+      deps.foreach { depId =>
+        if (!dependents.contains(depId)) {
+          dependents(depId) = mutable.Set.empty[UUID]
+        }
+        dependents(depId) += nodeId
+      }
+    }
+
+    val layers = mutable.ListBuffer[Set[UUID]]()
+    var remaining = nodes.keySet
+
+    while (remaining.nonEmpty) {
+      // Current layer: all nodes with in-degree 0
+      val currentLayer = remaining.filter(n => inDegree(n) == 0)
+
+      if (currentLayer.isEmpty && remaining.nonEmpty) {
+        // Cycle detected - fall back to processing remaining nodes as single layer
+        layers += remaining
+        remaining = Set.empty
+      } else {
+        layers += currentLayer
+
+        // Decrease in-degree for dependents
+        currentLayer.foreach { nodeId =>
+          dependents.get(nodeId).foreach { deps =>
+            deps.foreach { dependent =>
+              inDegree(dependent) = inDegree(dependent) - 1
+            }
+          }
+        }
+
+        remaining = remaining -- currentLayer
+      }
+    }
+
+    layers.toList
+  }
+
+  /** Get the maximum parallelism potential (size of largest layer) */
+  def maxParallelism: Int = {
+    val layers = topologicalLayers
+    if (layers.isEmpty) 0 else layers.map(_.size).max
+  }
+
+  /** Get the critical path length (number of layers) */
+  def criticalPathLength: Int = topologicalLayers.size
 }
