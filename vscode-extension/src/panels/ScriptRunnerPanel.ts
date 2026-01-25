@@ -460,8 +460,7 @@ export class ScriptRunnerPanel {
         { sessionId: this._steppingSessionId }
       );
 
-      this._isStepping = false;
-      this._steppingSessionId = undefined;
+      this._cleanupStepSession();
 
       if (result.success) {
         if (this._state.currentUri) {
@@ -485,8 +484,7 @@ export class ScriptRunnerPanel {
         });
       }
     } catch (error: any) {
-      this._isStepping = false;
-      this._steppingSessionId = undefined;
+      this._cleanupStepSession();
       if (this._state.currentUri) {
         DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
       }
@@ -500,8 +498,7 @@ export class ScriptRunnerPanel {
 
   private async _stepStop() {
     if (!this._state.client || !this._steppingSessionId) {
-      this._isStepping = false;
-      this._steppingSessionId = undefined;
+      this._cleanupStepSession();
       this._state.panel.webview.postMessage({ type: 'stepStopped' });
       return;
     }
@@ -514,13 +511,18 @@ export class ScriptRunnerPanel {
     } catch (error) {
       console.error('[ScriptRunner] Failed to stop stepping session:', error);
     } finally {
-      this._isStepping = false;
-      this._steppingSessionId = undefined;
+      this._cleanupStepSession();
       if (this._state.currentUri) {
         DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
       }
       this._state.panel.webview.postMessage({ type: 'stepStopped' });
     }
+  }
+
+  /** Clean up step-through session state to prevent memory accumulation */
+  private _cleanupStepSession(): void {
+    this._steppingSessionId = undefined;
+    this._isStepping = false;
   }
 
   private async _navigateToError(line: number, column: number) {
@@ -547,6 +549,7 @@ export class ScriptRunnerPanel {
   }
 
   public dispose() {
+    this._cleanupStepSession();
     ScriptRunnerPanel.currentPanel = undefined;
     disposePanel(this._state);
   }
