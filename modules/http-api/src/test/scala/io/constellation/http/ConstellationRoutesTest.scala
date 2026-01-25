@@ -512,4 +512,69 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // The default empty registry has no namespaces
     body.namespaces shouldBe empty
   }
+
+  // Metrics endpoint tests
+
+  "Metrics endpoint" should "return server statistics without caching compiler" in {
+    val request  = Request[IO](Method.GET, uri"/metrics")
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[Json].unsafeRunSync()
+
+    // Check timestamp is present
+    body.hcursor.downField("timestamp").as[String] should be a Symbol("right")
+
+    // Check cache is null when not using CachingLangCompiler
+    body.hcursor.downField("cache").focus shouldBe Some(Json.Null)
+
+    // Check server stats are present
+    body.hcursor.downField("server").downField("uptime_seconds").as[Long] should be a Symbol("right")
+    body.hcursor.downField("server").downField("requests_total").as[Long] should be a Symbol("right")
+  }
+
+  it should "return cache statistics with caching compiler" in {
+    import io.constellation.lang.CachingLangCompiler
+
+    // Create routes with a caching compiler
+    val cachingCompiler = LangCompiler.builder.withCaching().build
+    val cachingRoutes   = ConstellationRoutes(constellation, cachingCompiler, functionRegistry).routes
+
+    // First make a compile request to populate cache stats
+    val compileRequest = CompileRequest(
+      source = "in x: Int\nout x",
+      dagName = "cache-test"
+    )
+    val compileReq = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
+    cachingRoutes.orNotFound.run(compileReq).unsafeRunSync()
+
+    // Now get metrics
+    val request  = Request[IO](Method.GET, uri"/metrics")
+    val response = cachingRoutes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[Json].unsafeRunSync()
+
+    // Check cache stats are present
+    val cacheCursor = body.hcursor.downField("cache")
+    cacheCursor.downField("hits").as[Long] should be a Symbol("right")
+    cacheCursor.downField("misses").as[Long] should be a Symbol("right")
+    cacheCursor.downField("hitRate").as[Double] should be a Symbol("right")
+    cacheCursor.downField("evictions").as[Long] should be a Symbol("right")
+    cacheCursor.downField("entries").as[Int] should be a Symbol("right")
+  }
+
+  it should "increment request count on each call" in {
+    val request1 = Request[IO](Method.GET, uri"/metrics")
+    val response1 = routes.orNotFound.run(request1).unsafeRunSync()
+    val count1 = response1.as[Json].unsafeRunSync()
+      .hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+
+    val request2 = Request[IO](Method.GET, uri"/metrics")
+    val response2 = routes.orNotFound.run(request2).unsafeRunSync()
+    val count2 = response2.as[Json].unsafeRunSync()
+      .hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+
+    count2 should be > count1
+  }
 }
