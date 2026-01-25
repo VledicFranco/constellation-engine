@@ -41,14 +41,24 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
   // Counter for generating fresh row variables
   private var rowVarCounter = 0
 
+  // Mutable collection for warnings (accumulated during type checking)
+  private val collectedWarnings = scala.collection.mutable.ListBuffer[CompileWarning]()
+
   /** Generate a fresh row variable for row polymorphism instantiation */
   private def freshRowVar(): RowVar = {
     rowVarCounter += 1
     RowVar(rowVarCounter)
   }
 
+  /** Add a warning to the collection */
+  private def addWarning(warning: CompileWarning): Unit = {
+    collectedWarnings += warning
+  }
+
   /** Type check a program */
   def check(program: Program): Either[List[CompileError], TypedProgram] = {
+    // Reset warnings for a fresh check
+    collectedWarnings.clear()
     val initialEnv = TypeEnvironment(functions = functions)
 
     val result = program.declarations
@@ -64,7 +74,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case TypedDeclaration.OutputDecl(name, semanticType, span) =>
             (name, semanticType, span)
         }
-        TypedProgram(typedDecls, outputs)
+        TypedProgram(typedDecls, outputs, collectedWarnings.toList)
       }
 
     result.toEither.left.map(_.toList)
@@ -176,8 +186,8 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         .toValidNel(CompileError.UndefinedVariable(name, Some(span)))
         .map(TypedExpression.VarRef(name, _, span))
 
-    case Expression.FunctionCall(name, args, _) =>
-      inferFunctionCall(name, args, span, env, context)
+    case Expression.FunctionCall(name, args, options) =>
+      inferFunctionCall(name, args, options, span, env, context)
 
     case Expression.Merge(left, right) =>
       (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
@@ -470,6 +480,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
   private def inferFunctionCall(
       name: QualifiedName,
       args: List[Located[Expression]],
+      options: ModuleCallOptions,
       span: Span,
       env: TypeEnvironment,
       context: TypeContext
@@ -483,13 +494,21 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           ).invalidNel
         } else if (sig.isRowPolymorphic) {
           // Row-polymorphic function: instantiate fresh row variables and use unification
-          inferRowPolymorphicCall(name, sig, args, span, env, context)
+          inferRowPolymorphicCall(name, sig, args, options, span, env, context)
         } else {
           // Standard function: check each argument against expected parameter type
-          args.zip(sig.params).zipWithIndex.traverse { case ((argExpr, (paramName, paramType)), idx) =>
+          val argsResult = args.zip(sig.params).zipWithIndex.traverse { case ((argExpr, (paramName, paramType)), idx) =>
             val argContext = FunctionArgument(name.fullName, idx, paramName)
             checkExpr(argExpr.value, argExpr.span, env, Check(paramType), argContext)
-          }.map { typedArgs =>
+          }
+
+          // Validate module call options if present
+          val optionsValidation: TypeResult[Unit] =
+            if (options.isEmpty) ().validNel
+            else validateModuleCallOptions(options, sig.returns, span, env, context)
+
+          // Combine args and options validation
+          (argsResult, optionsValidation).mapN { (typedArgs, _) =>
             TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
           }
         }
@@ -503,6 +522,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       name: QualifiedName,
       originalSig: FunctionSignature,
       args: List[Located[Expression]],
+      options: ModuleCallOptions,
       span: Span,
       env: TypeEnvironment,
       context: TypeContext
@@ -537,7 +557,12 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         }
     }
 
-    typedArgsResult.map { typedArgs =>
+    // Validate module call options if present
+    val optionsValidation: TypeResult[Unit] =
+      if (options.isEmpty) ().validNel
+      else validateModuleCallOptions(options, originalSig.returns, span, env, context)
+
+    (typedArgsResult, optionsValidation).mapN { (typedArgs, _) =>
       // Apply substitution to the return type
       val resultType = RowUnification.applySubstitution(instantiatedSig.returns, subst)
       TypedExpression.FunctionCall(name.fullName, originalSig, typedArgs, span)
@@ -590,6 +615,140 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           ))
         }
     }
+  }
+
+  // ============================================================================
+  // Module Call Options Validation
+  // ============================================================================
+
+  /** Validate module call options and return any errors.
+    * Warnings are collected via addWarning().
+    *
+    * Validates:
+    * - Fallback type compatibility with module return type
+    * - Value ranges (retry >= 0, concurrency > 0, etc.)
+    * - Option dependencies (warns if delay without retry, etc.)
+    */
+  private def validateModuleCallOptions(
+      options: ModuleCallOptions,
+      moduleReturnType: SemanticType,
+      span: Span,
+      env: TypeEnvironment,
+      context: TypeContext
+  ): TypeResult[Unit] = {
+    import cats.syntax.all.*
+
+    val errors = scala.collection.mutable.ListBuffer[CompileError]()
+
+    // 1. Validate fallback type
+    options.fallback.foreach { fallbackExpr =>
+      // Type check the fallback expression
+      inferExpr(fallbackExpr.value, fallbackExpr.span, env, context) match {
+        case Validated.Valid(typedFallback) =>
+          if (!Subtyping.isSubtype(typedFallback.semanticType, moduleReturnType)) {
+            errors += CompileError.FallbackTypeMismatch(
+              moduleReturnType.prettyPrint,
+              typedFallback.semanticType.prettyPrint,
+              Some(fallbackExpr.span)
+            )
+          }
+        case Validated.Invalid(errs) =>
+          // Propagate fallback type check errors
+          errors ++= errs.toList
+      }
+    }
+
+    // 2. Validate value ranges
+    options.retry.foreach { value =>
+      if (value < 0) {
+        errors += CompileError.InvalidOptionValue(
+          "retry",
+          value.toString,
+          "must be >= 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.concurrency.foreach { value =>
+      if (value <= 0) {
+        errors += CompileError.InvalidOptionValue(
+          "concurrency",
+          value.toString,
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.throttle.foreach { rate =>
+      if (rate.count <= 0) {
+        errors += CompileError.InvalidOptionValue(
+          "throttle",
+          s"${rate.count}/${rate.per.value}${rate.per.unit}",
+          "count must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.timeout.foreach { duration =>
+      if (duration.value <= 0) {
+        errors += CompileError.InvalidOptionValue(
+          "timeout",
+          s"${duration.value}${durationUnitString(duration.unit)}",
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.delay.foreach { duration =>
+      if (duration.value <= 0) {
+        errors += CompileError.InvalidOptionValue(
+          "delay",
+          s"${duration.value}${durationUnitString(duration.unit)}",
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.cache.foreach { duration =>
+      if (duration.value <= 0) {
+        errors += CompileError.InvalidOptionValue(
+          "cache",
+          s"${duration.value}${durationUnitString(duration.unit)}",
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    // 3. Validate option dependencies (warnings, not errors)
+    if (options.delay.isDefined && options.retry.isEmpty) {
+      addWarning(CompileWarning.OptionDependency("delay", "retry", Some(span)))
+    }
+
+    if (options.backoff.isDefined && options.delay.isEmpty) {
+      addWarning(CompileWarning.OptionDependency("backoff", "delay", Some(span)))
+    }
+
+    // Return errors or success
+    if (errors.nonEmpty) {
+      errors.toList.traverse_(_.invalidNel)
+    } else {
+      ().validNel
+    }
+  }
+
+  /** Convert DurationUnit to string for error messages */
+  private def durationUnitString(unit: DurationUnit): String = unit match {
+    case DurationUnit.Milliseconds => "ms"
+    case DurationUnit.Seconds      => "s"
+    case DurationUnit.Minutes      => "min"
+    case DurationUnit.Hours        => "h"
+    case DurationUnit.Days         => "d"
   }
 
   // ============================================================================

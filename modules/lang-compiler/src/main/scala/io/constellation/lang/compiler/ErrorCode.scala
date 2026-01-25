@@ -196,6 +196,36 @@ object ErrorCodes {
     val docPath     = Some("constellation-lang/type-system")
   }
 
+  case object InvalidOptionValue extends ErrorCode {
+    val code        = "E016"
+    val title       = "Invalid option value"
+    val category    = ErrorCategory.Type
+    val explanation = """The value provided for a module call option is invalid.
+                        |
+                        |Option value constraints:
+                        |  - retry: must be >= 0
+                        |  - timeout, delay, cache: must be > 0
+                        |  - concurrency: must be > 0
+                        |  - throttle count: must be > 0""".stripMargin.trim
+    val docPath     = Some("constellation-lang/module-options")
+  }
+
+  case object FallbackTypeMismatch extends ErrorCode {
+    val code        = "E017"
+    val title       = "Fallback type mismatch"
+    val category    = ErrorCategory.Type
+    val explanation = """The fallback expression type doesn't match the module return type.
+                        |
+                        |The fallback option provides a default value when the module fails.
+                        |Its type must be compatible with what the module returns.
+                        |
+                        |Example:
+                        |  result = GetName(id) with fallback: "Unknown"
+                        |  If GetName returns String, "Unknown" is valid.
+                        |  If GetName returns Int, "Unknown" would be invalid.""".stripMargin.trim
+    val docPath     = Some("constellation-lang/module-options")
+  }
+
   // ========== Syntax Errors (E020-E029) ==========
 
   case object ParseError extends ErrorCode {
@@ -272,6 +302,8 @@ object ErrorCodes {
     UnsupportedComparison,
     UnsupportedArithmetic,
     GeneralTypeError,
+    InvalidOptionValue,
+    FallbackTypeMismatch,
     ParseError,
     UnexpectedToken,
     DuplicateDefinition,
@@ -281,19 +313,21 @@ object ErrorCodes {
 
   /** Map a CompileError to its corresponding ErrorCode */
   def fromCompileError(error: CompileError): ErrorCode = error match {
-    case _: CompileError.UndefinedVariable    => UndefinedVariable
-    case _: CompileError.UndefinedFunction    => UndefinedFunction
-    case _: CompileError.UndefinedType        => UndefinedType
-    case _: CompileError.UndefinedNamespace   => UndefinedNamespace
-    case _: CompileError.AmbiguousFunction    => AmbiguousFunction
-    case _: CompileError.InvalidProjection    => InvalidProjection
-    case _: CompileError.InvalidFieldAccess   => InvalidFieldAccess
-    case _: CompileError.TypeMismatch         => TypeMismatch
-    case _: CompileError.IncompatibleMerge    => IncompatibleMerge
+    case _: CompileError.UndefinedVariable     => UndefinedVariable
+    case _: CompileError.UndefinedFunction     => UndefinedFunction
+    case _: CompileError.UndefinedType         => UndefinedType
+    case _: CompileError.UndefinedNamespace    => UndefinedNamespace
+    case _: CompileError.AmbiguousFunction     => AmbiguousFunction
+    case _: CompileError.InvalidProjection     => InvalidProjection
+    case _: CompileError.InvalidFieldAccess    => InvalidFieldAccess
+    case _: CompileError.TypeMismatch          => TypeMismatch
+    case _: CompileError.IncompatibleMerge     => IncompatibleMerge
     case _: CompileError.UnsupportedComparison => UnsupportedComparison
     case _: CompileError.UnsupportedArithmetic => UnsupportedArithmetic
-    case _: CompileError.TypeError            => GeneralTypeError
-    case _: CompileError.ParseError           => ParseError
-    case _: CompileError.InternalError        => InternalError
+    case _: CompileError.InvalidOptionValue    => InvalidOptionValue
+    case _: CompileError.FallbackTypeMismatch  => FallbackTypeMismatch
+    case _: CompileError.TypeError             => GeneralTypeError
+    case _: CompileError.ParseError            => ParseError
+    case _: CompileError.InternalError         => InternalError
   }
 }

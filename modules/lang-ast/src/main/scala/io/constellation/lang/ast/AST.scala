@@ -522,4 +522,46 @@ object CompileError {
   final case class InternalError(details: String, span: Option[Span] = None) extends CompileError {
     def message: String = s"Internal compiler error: $details"
   }
+
+  /** Invalid module call option value */
+  final case class InvalidOptionValue(
+      option: String,
+      value: String,
+      constraint: String,
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String = s"Invalid value for '$option': $value ($constraint)"
+  }
+
+  /** Fallback type mismatch with module return type */
+  final case class FallbackTypeMismatch(
+      expected: String,
+      actual: String,
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Fallback type mismatch: module returns $expected but fallback is $actual"
+  }
+}
+
+/** Compile warnings - non-fatal diagnostics */
+sealed trait CompileWarning {
+  def message: String
+  def span: Option[Span]
+
+  def format: String = span match {
+    case Some(s) => s"Warning at $s: $message"
+    case None    => s"Warning: $message"
+  }
+}
+
+object CompileWarning {
+  /** Option dependency warning */
+  final case class OptionDependency(
+      option: String,
+      requiredOption: String,
+      span: Option[Span]
+  ) extends CompileWarning {
+    def message: String = s"'$option' without '$requiredOption' has no effect"
+  }
 }

@@ -33,7 +33,8 @@ final case class TypeEnvironment(
 /** Typed program after type checking */
 final case class TypedProgram(
     declarations: List[TypedDeclaration],
-    outputs: List[(String, SemanticType, Span)] // (name, type, span) for each declared output
+    outputs: List[(String, SemanticType, Span)], // (name, type, span) for each declared output
+    warnings: List[CompileWarning] = Nil
 )
 
 /** Typed declarations */

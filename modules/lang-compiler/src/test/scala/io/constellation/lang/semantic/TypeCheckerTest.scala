@@ -4504,4 +4504,280 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source, registry)
     result.isRight shouldBe true
   }
+
+  // ============================================================================
+  // Module Call Options Validation Tests
+  // ============================================================================
+
+  /** Helper registry for module call options tests */
+  private def optionsRegistry: FunctionRegistry = {
+    val registry = FunctionRegistry.empty
+    registry.register(
+      FunctionSignature(
+        name = "GetValue",
+        params = List("id" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "get-value-module"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "GetName",
+        params = List("id" -> SemanticType.SInt),
+        returns = SemanticType.SString,
+        moduleName = "get-name-module"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "GetUser",
+        params = List("id" -> SemanticType.SInt),
+        returns = SemanticType.SRecord(Map("name" -> SemanticType.SString, "age" -> SemanticType.SInt)),
+        moduleName = "get-user-module"
+      )
+    )
+    registry
+  }
+
+  it should "accept valid fallback type for module call options" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with fallback: 0
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "accept string fallback for string-returning module" in {
+    val source = """
+      in x: Int
+      result = GetName(x) with fallback: "Unknown"
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "reject mismatched fallback type" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with fallback: "not a number"
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.FallbackTypeMismatch]) shouldBe true
+  }
+
+  // Note: Negative retry values are rejected at the parser level (nonNegativeIntString),
+  // so we don't test negative retry at type checker level.
+
+  it should "accept zero retry count (means no retries)" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 0
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept positive retry count" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 3
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "reject zero concurrency" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with concurrency: 0
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isLeft shouldBe true
+    result.left.toOption.get.exists(_.isInstanceOf[CompileError.InvalidOptionValue]) shouldBe true
+  }
+
+  // Note: Negative concurrency values are rejected at the parser level (nonNegativeIntString),
+  // so we don't test negative concurrency at type checker level.
+
+  it should "accept positive concurrency" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with concurrency: 10
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "warn when delay is used without retry" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with delay: 1s
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    val typedProgram = result.toOption.get
+    typedProgram.warnings.nonEmpty shouldBe true
+    typedProgram.warnings.exists(_.isInstanceOf[CompileWarning.OptionDependency]) shouldBe true
+    typedProgram.warnings.exists(w =>
+      w.message.contains("delay") && w.message.contains("retry")
+    ) shouldBe true
+  }
+
+  it should "warn when backoff is used without delay" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 3, backoff: exponential
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    val typedProgram = result.toOption.get
+    typedProgram.warnings.nonEmpty shouldBe true
+    typedProgram.warnings.exists(w =>
+      w.message.contains("backoff") && w.message.contains("delay")
+    ) shouldBe true
+  }
+
+  it should "not warn when delay is used with retry" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 3, delay: 1s
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    val typedProgram = result.toOption.get
+    // Should have no warnings about delay without retry
+    typedProgram.warnings.exists(w =>
+      w.message.contains("delay") && w.message.contains("retry")
+    ) shouldBe false
+  }
+
+  it should "not warn when backoff is used with delay" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 3, delay: 1s, backoff: exponential
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    val typedProgram = result.toOption.get
+    // Should have no warnings about backoff without delay
+    typedProgram.warnings.exists(w =>
+      w.message.contains("backoff") && w.message.contains("delay")
+    ) shouldBe false
+  }
+
+  it should "accept valid timeout duration" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with timeout: 30s
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept valid cache duration" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with cache: 5min
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept valid throttle rate" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with throttle: 100/1min
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept valid on_error strategy" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with on_error: skip
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept valid priority level" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with priority: high
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept numeric priority" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with priority: 5
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept lazy option" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with lazy
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept multiple options combined" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with retry: 3, timeout: 30s, fallback: 0, cache: 5min
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+  }
+
+  it should "accept all options together without fallback type error" in {
+    val source = """
+      in x: Int
+      result = GetValue(x) with
+        retry: 3,
+        delay: 500ms,
+        backoff: exponential,
+        timeout: 30s,
+        fallback: -1,
+        cache: 5min,
+        on_error: skip,
+        priority: high
+      out result
+    """
+    val result = check(source, optionsRegistry)
+    result.isRight shouldBe true
+    // No warnings since delay is with retry, backoff is with delay
+    val typedProgram = result.toOption.get
+    typedProgram.warnings.isEmpty shouldBe true
+  }
 }
