@@ -1,0 +1,42 @@
+# Cache Demo: Demonstrating Cache Effectiveness
+# Uses slow operations to show how caching dramatically speeds up repeated calls
+
+# Slow database query - 500ms per call without cache
+# With cache, repeated calls return instantly
+
+@example("SELECT * FROM users")
+in query1: String
+
+@example("SELECT * FROM orders")
+in query2: String
+
+# First call - slow (500ms), result is cached for 5 minutes
+result1 = SlowQuery(query1) with cache: 5min
+
+# Second call with same query - instant (cached)
+# Note: In actual execution, this would use the cached value
+result2 = SlowQuery(query1) with cache: 5min
+
+# Different query - slow (500ms), different cache entry
+result3 = SlowQuery(query2) with cache: 5min
+
+# Expensive computation - 2 seconds without cache
+@example("transform this data")
+in data: String
+
+# Without cache, every call takes 2 seconds
+# With 10 minute cache, repeated computations are instant
+computed = ExpensiveCompute(data) with cache: 10min
+
+# You can also specify a cache backend for distributed caching
+@example("https://api.example.com/slow")
+in endpoint: String
+
+apiResult = SlowApiCall(endpoint) with cache: 1h, cache_backend: "redis"
+
+# Outputs - compare timing between cached and uncached calls
+out result1
+out result2
+out result3
+out computed
+out apiResult

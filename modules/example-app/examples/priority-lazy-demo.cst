@@ -1,0 +1,69 @@
+# Priority and Lazy Evaluation Demo
+# Demonstrates priority and lazy options for execution control
+
+# QuickCheck is fast (10ms) - validates if data needs deep analysis
+# DeepAnalysis is slow (1.5s) - expensive deep analysis
+
+@example("simple data")
+in simpleData: String
+
+@example("complex data requiring analysis")
+in complexData: String
+
+# Priority levels: critical, high, normal, low, background
+# Higher priority tasks execute first when resources are limited
+
+# Quick validation runs with high priority
+quickResult = QuickCheck(simpleData) with priority: high
+
+# Expensive analysis runs with lower priority
+expensiveResult = DeepAnalysis(simpleData) with priority: low
+
+# Background priority for non-urgent work
+backgroundResult = ExpensiveCompute(simpleData) with priority: background
+
+# lazy: true - Defers execution until the result is actually needed
+# Useful when a result might not be used depending on earlier conditions
+
+# This expensive computation is deferred until actually consumed
+lazyComputed = ExpensiveCompute(complexData) with lazy: true
+
+# Combining lazy with cache - computation is deferred AND cached
+lazyAndCached = SlowQuery(simpleData) with lazy: true, cache: 5min
+
+# Combining priority with other options
+# High-priority, cached operation with retry for critical paths
+
+@example("critical-query")
+in criticalQuery: String
+
+criticalResult = SlowQuery(criticalQuery) with
+    priority: critical,
+    cache: 10min,
+    retry: 3,
+    timeout: 5s
+
+# Low priority background job with all resilience options
+@example("background-job")
+in backgroundJob: String
+
+@example("background-fallback")
+in bgFallback: String
+
+backgroundJob = SlowApiCall(backgroundJob) with
+    priority: background,
+    lazy: true,
+    timeout: 30s,
+    retry: 5,
+    delay: 1s,
+    backoff: linear,
+    fallback: bgFallback,
+    cache: 1h
+
+out quickResult
+out expensiveResult
+out backgroundResult
+out lazyComputed
+out lazyAndCached
+out criticalResult
+out backgroundJob

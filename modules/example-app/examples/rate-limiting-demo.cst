@@ -1,0 +1,65 @@
+# Rate Limiting Demo
+# Demonstrates throttle and concurrency options
+
+# RateLimitedApi simulates an API with rate limits
+# Without throttle, sending many requests at once would exceed limits
+# With throttle: 5/1s, we limit to 5 requests per second
+
+@example("request-1")
+in req1: String
+
+@example("request-2")
+in req2: String
+
+@example("request-3")
+in req3: String
+
+@example("request-4")
+in req4: String
+
+@example("request-5")
+in req5: String
+
+# Each call respects the throttle limit of 5 per second
+resp1 = RateLimitedApi(req1) with throttle: 5/1s
+resp2 = RateLimitedApi(req2) with throttle: 5/1s
+resp3 = RateLimitedApi(req3) with throttle: 5/1s
+resp4 = RateLimitedApi(req4) with throttle: 5/1s
+resp5 = RateLimitedApi(req5) with throttle: 5/1s
+
+# ResourceIntensiveTask simulates CPU/memory-intensive operations
+# Without concurrency limit, running many in parallel could exhaust resources
+# With concurrency: 2, at most 2 run at the same time
+
+@example("task-A")
+in taskA: String
+
+@example("task-B")
+in taskB: String
+
+@example("task-C")
+in taskC: String
+
+resultA = ResourceIntensiveTask(taskA) with concurrency: 2
+resultB = ResourceIntensiveTask(taskB) with concurrency: 2
+resultC = ResourceIntensiveTask(taskC) with concurrency: 2
+
+# Combine throttle and concurrency for fine-grained control
+# This pattern is useful for calling rate-limited APIs with heavy processing
+
+@example("heavy-task")
+in heavyTask: String
+
+heavyResult = ResourceIntensiveTask(heavyTask) with
+    throttle: 10/1s,
+    concurrency: 3
+
+out resp1
+out resp2
+out resp3
+out resp4
+out resp5
+out resultA
+out resultB
+out resultC
+out heavyResult

@@ -2,7 +2,7 @@ package io.constellation.examples.app
 
 import io.constellation.lang.LangCompilerBuilder
 import io.constellation.lang.semantic.{FunctionRegistry, SemanticType}
-import io.constellation.examples.app.modules.{DataModules, TextModules}
+import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -37,12 +37,24 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     modules.keys should contain("Contains")
     modules.keys should contain("SplitLines")
     modules.keys should contain("Split")
+
+    // Resilience modules
+    modules.keys should contain("SlowQuery")
+    modules.keys should contain("SlowApiCall")
+    modules.keys should contain("ExpensiveCompute")
+    modules.keys should contain("FlakyService")
+    modules.keys should contain("TimeoutProneService")
+    modules.keys should contain("RateLimitedApi")
+    modules.keys should contain("ResourceIntensiveTask")
+    modules.keys should contain("QuickCheck")
+    modules.keys should contain("DeepAnalysis")
+    modules.keys should contain("AlwaysFailsService")
   }
 
   it should "have correct total module count" in {
     val modules = ExampleLib.allModules
-    // 8 data modules + 9 text modules = 17 total
-    modules.size shouldBe 17
+    // 8 data modules + 9 text modules + 10 resilience modules = 27 total
+    modules.size shouldBe 27
   }
 
   it should "have matching module names and spec names" in {
@@ -79,8 +91,22 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     }
   }
 
+  "ExampleLib.resilienceSignatures" should "have correct count" in {
+    ExampleLib.resilienceSignatures should have size 10
+  }
+
+  it should "have valid parameter types" in {
+    ExampleLib.resilienceSignatures.foreach { sig =>
+      sig.params should not be empty
+      sig.params.foreach { case (_, paramType) =>
+        paramType should not be null
+      }
+    }
+  }
+
   "ExampleLib.allSignatures" should "have correct total count" in {
-    ExampleLib.allSignatures should have size 17
+    // 8 data + 9 text + 10 resilience = 27 total
+    ExampleLib.allSignatures should have size 27
   }
 
   it should "have unique function names" in {
@@ -197,6 +223,18 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     registry.lookup("Contains").isDefined shouldBe true
     registry.lookup("SplitLines").isDefined shouldBe true
     registry.lookup("Split").isDefined shouldBe true
+
+    // Resilience functions
+    registry.lookup("SlowQuery").isDefined shouldBe true
+    registry.lookup("SlowApiCall").isDefined shouldBe true
+    registry.lookup("ExpensiveCompute").isDefined shouldBe true
+    registry.lookup("FlakyService").isDefined shouldBe true
+    registry.lookup("TimeoutProneService").isDefined shouldBe true
+    registry.lookup("RateLimitedApi").isDefined shouldBe true
+    registry.lookup("ResourceIntensiveTask").isDefined shouldBe true
+    registry.lookup("QuickCheck").isDefined shouldBe true
+    registry.lookup("DeepAnalysis").isDefined shouldBe true
+    registry.lookup("AlwaysFailsService").isDefined shouldBe true
   }
 
   it should "also include StdLib functions" in {
@@ -290,6 +328,31 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     compiled.syntheticModules should not be empty
   }
 
+  it should "compile programs using resilience functions" in {
+    val source = """
+      in query: String
+      result = SlowQuery(query)
+      out result
+    """
+
+    val result = ExampleLib.compiler.compile(source, "resilience-test")
+    result.isRight shouldBe true
+  }
+
+  it should "compile programs using resilience functions with module call options" in {
+    val source = """
+      in query: String
+      in fallbackValue: String
+      result = SlowQuery(query) with cache: 5min, retry: 3, timeout: 2s
+      safeResult = FlakyService(query) with retry: 3, delay: 100ms, backoff: exponential, fallback: fallbackValue
+      out result
+      out safeResult
+    """
+
+    val result = ExampleLib.compiler.compile(source, "resilience-options-test")
+    result.isRight shouldBe true
+  }
+
   // ========== Error Handling Tests ==========
 
   "ExampleLib.compiler" should "reject unknown functions" in {
@@ -339,6 +402,13 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     val textSignatureCount = ExampleLib.textSignatures.size
 
     textModuleCount shouldBe textSignatureCount
+  }
+
+  "ResilienceModules and ExampleLib" should "have consistent module counts" in {
+    val resilienceModuleCount    = ResilienceModules.all.size
+    val resilienceSignatureCount = ExampleLib.resilienceSignatures.size
+
+    resilienceModuleCount shouldBe resilienceSignatureCount
   }
 
   "All modules" should "have corresponding signatures" in {

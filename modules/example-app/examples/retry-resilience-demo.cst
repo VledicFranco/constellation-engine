@@ -1,0 +1,61 @@
+# Retry and Resilience Demo
+# Demonstrates retry, timeout, delay, backoff, and fallback options
+
+@example("process this request")
+in request: String
+
+@example("default fallback response")
+in fallbackValue: String
+
+# FlakyService fails 2 out of 3 attempts
+# With retry: 3, it will succeed on the third attempt
+# With delay and exponential backoff, retries are spaced out
+
+reliableResult = FlakyService(request) with
+    retry: 3,
+    delay: 100ms,
+    backoff: exponential
+
+# TimeoutProneService is slow on first call (3s), fast on subsequent calls
+# With timeout: 500ms, the first attempt times out
+# Combined with retry, the second attempt (which is fast) succeeds
+
+@example("timeout test request")
+in timeoutRequest: String
+
+timeoutResult = TimeoutProneService(timeoutRequest) with
+    timeout: 500ms,
+    retry: 2,
+    delay: 50ms
+
+# AlwaysFailsService always fails - use fallback to provide default value
+# Without fallback, this would error
+# With fallback, it returns the fallback value instead
+
+@example("this will fail")
+in failingRequest: String
+
+safeResult = AlwaysFailsService(failingRequest) with
+    retry: 2,
+    fallback: fallbackValue
+
+# Combined resilience: timeout + retry + delay + backoff + fallback
+# This is a typical pattern for calling unreliable external APIs
+
+@example("https://flaky-api.example.com/data")
+in apiEndpoint: String
+
+@example("cached default data")
+in defaultApiResponse: String
+
+apiResult = SlowApiCall(apiEndpoint) with
+    timeout: 2s,
+    retry: 3,
+    delay: 200ms,
+    backoff: exponential,
+    fallback: defaultApiResponse
+
+out reliableResult
+out timeoutResult
+out safeResult
+out apiResult

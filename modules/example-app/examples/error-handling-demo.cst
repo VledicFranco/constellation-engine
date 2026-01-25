@@ -1,0 +1,51 @@
+# Error Handling Demo
+# Demonstrates on_error strategies: skip, fail, log
+
+# AlwaysFailsService always throws an error
+# Different on_error strategies handle this differently
+
+@example("will-fail-request")
+in failingRequest: String
+
+# on_error: skip - Silently returns zero/empty value on error
+# Useful when the result is optional and failure shouldn't stop the pipeline
+skipped = AlwaysFailsService(failingRequest) with on_error: skip
+
+# on_error: log - Logs the error but continues with zero/empty value
+# Useful for debugging while keeping the pipeline running
+logged = AlwaysFailsService(failingRequest) with on_error: log
+
+# on_error: fail (default) - Propagates the error, stopping execution
+# This is the default behavior, shown explicitly here
+# Uncommenting this would cause the pipeline to fail:
+# failed = AlwaysFailsService(failingRequest) with on_error: fail
+
+# Combine on_error with retry for robust error handling
+# First retry, then if all retries fail, skip the error
+
+@example("flaky-request")
+in flakyRequest: String
+
+robustResult = FlakyService(flakyRequest) with
+    retry: 3,
+    delay: 100ms,
+    on_error: skip
+
+# Combine on_error with fallback
+# If fallback is provided, it takes precedence over on_error
+# This is the recommended pattern for critical operations
+
+@example("critical-request")
+in criticalRequest: String
+
+@example("safe-default-value")
+in safeDefault: String
+
+safeCritical = AlwaysFailsService(criticalRequest) with
+    retry: 2,
+    fallback: safeDefault
+
+out skipped
+out logged
+out robustResult
+out safeCritical

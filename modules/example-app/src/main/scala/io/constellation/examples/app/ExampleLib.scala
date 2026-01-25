@@ -4,7 +4,7 @@ import io.constellation.*
 import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
 import io.constellation.lang.semantic.*
 import io.constellation.stdlib.StdLib
-import io.constellation.examples.app.modules.{DataModules, TextModules}
+import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
 
 import java.util.UUID
 
@@ -207,6 +207,78 @@ object ExampleLib {
     moduleName = "Split"
   )
 
+  // ========== Resilience Module Signatures ==========
+
+  private val slowQuerySig = FunctionSignature(
+    name = "SlowQuery",
+    params = List("query" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "SlowQuery"
+  )
+
+  private val slowApiCallSig = FunctionSignature(
+    name = "SlowApiCall",
+    params = List("endpoint" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "SlowApiCall"
+  )
+
+  private val expensiveComputeSig = FunctionSignature(
+    name = "ExpensiveCompute",
+    params = List("data" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "ExpensiveCompute"
+  )
+
+  private val flakyServiceSig = FunctionSignature(
+    name = "FlakyService",
+    params = List("request" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "FlakyService"
+  )
+
+  private val timeoutProneServiceSig = FunctionSignature(
+    name = "TimeoutProneService",
+    params = List("request" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "TimeoutProneService"
+  )
+
+  private val rateLimitedApiSig = FunctionSignature(
+    name = "RateLimitedApi",
+    params = List("request" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "RateLimitedApi"
+  )
+
+  private val resourceIntensiveTaskSig = FunctionSignature(
+    name = "ResourceIntensiveTask",
+    params = List("task" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "ResourceIntensiveTask"
+  )
+
+  private val quickCheckSig = FunctionSignature(
+    name = "QuickCheck",
+    params = List("data" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "QuickCheck"
+  )
+
+  private val deepAnalysisSig = FunctionSignature(
+    name = "DeepAnalysis",
+    params = List("data" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "DeepAnalysis"
+  )
+
+  private val alwaysFailsServiceSig = FunctionSignature(
+    name = "AlwaysFailsService",
+    params = List("request" -> SemanticType.SString),
+    returns = SemanticType.SString,
+    moduleName = "AlwaysFailsService"
+  )
+
   // ========== All Signatures ==========
 
   val dataSignatures: List[FunctionSignature] = List(
@@ -232,7 +304,20 @@ object ExampleLib {
     splitSig
   )
 
-  val allSignatures: List[FunctionSignature] = dataSignatures ++ textSignatures
+  val resilienceSignatures: List[FunctionSignature] = List(
+    slowQuerySig,
+    slowApiCallSig,
+    expensiveComputeSig,
+    flakyServiceSig,
+    timeoutProneServiceSig,
+    rateLimitedApiSig,
+    resourceIntensiveTaskSig,
+    quickCheckSig,
+    deepAnalysisSig,
+    alwaysFailsServiceSig
+  )
+
+  val allSignatures: List[FunctionSignature] = dataSignatures ++ textSignatures ++ resilienceSignatures
 
   // ========== Module Mappings ==========
 
@@ -240,7 +325,8 @@ object ExampleLib {
   def allModules: Map[String, Module.Uninitialized] = {
     val dataModuleMap = DataModules.all.map(m => m.spec.name -> m).toMap
     val textModuleMap = TextModules.all.map(m => m.spec.name -> m).toMap
-    dataModuleMap ++ textModuleMap
+    val resilienceModuleMap = ResilienceModules.all.map(m => m.spec.name -> m).toMap
+    dataModuleMap ++ textModuleMap ++ resilienceModuleMap
   }
 
   /** Register all example functions with a LangCompiler builder */

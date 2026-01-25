@@ -1,0 +1,87 @@
+# Resilient Pipeline Demo
+# A realistic example combining all module call options
+# Simulates a data processing pipeline calling external services
+
+@example("user-123")
+in userId: String
+
+@example("product-456")
+in productId: String
+
+@example("default-user-data")
+in defaultUserData: String
+
+@example("default-product-data")
+in defaultProductData: String
+
+# Step 1: Fetch user data from a slow, flaky API
+# - Cache for 5 minutes (user data doesn't change often)
+# - Retry 3 times with exponential backoff for transient failures
+# - Timeout at 3 seconds to prevent hanging
+# - Fall back to default if all else fails
+
+userData = FlakyService(userId) with
+    cache: 5min,
+    retry: 3,
+    delay: 100ms,
+    backoff: exponential,
+    timeout: 3s,
+    fallback: defaultUserData,
+    priority: high
+
+# Step 2: Fetch product data from a different slow API
+# - Similar resilience pattern
+# - Higher priority since products change more often
+
+productData = SlowApiCall(productId) with
+    cache: 1min,
+    retry: 2,
+    delay: 50ms,
+    backoff: linear,
+    timeout: 2s,
+    fallback: defaultProductData,
+    priority: high
+
+# Step 3: Perform expensive computation on fetched data
+# - Cache the result for 10 minutes
+# - Use lazy evaluation (only compute if actually needed)
+# - Lower priority since it's CPU-bound, not latency-critical
+
+recommendation = ExpensiveCompute(userData) with
+    cache: 10min,
+    lazy: true,
+    priority: normal,
+    concurrency: 2
+
+# Step 4: Call a rate-limited external API
+# - Throttle to 10 requests per second
+# - Limit concurrency to 3 parallel calls
+# - Log errors but continue (non-critical enrichment)
+
+@example("https://enrichment-api.example.com")
+in enrichmentEndpoint: String
+
+enrichedData = RateLimitedApi(enrichmentEndpoint) with
+    throttle: 10/1s,
+    concurrency: 3,
+    timeout: 5s,
+    on_error: log,
+    priority: low
+
+# Step 5: Deep analysis (only if needed)
+# - Very expensive (1.5s), so use lazy evaluation
+# - Cache for a long time since analysis is deterministic
+# - Background priority
+
+deepInsights = DeepAnalysis(productData) with
+    lazy: true,
+    cache: 1h,
+    priority: background,
+    timeout: 10s
+
+# Output all results
+out userData
+out productData
+out recommendation
+out enrichedData
+out deepInsights
