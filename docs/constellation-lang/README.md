@@ -22,6 +22,15 @@ constellation-lang is a domain-specific language for defining data transformatio
   - Branch expressions
   - Lambda expressions
 
+### Module Call Options
+
+- [Module Options Reference](./module-options.md) - Complete guide to `with` clause options
+  - [Resilience Options](./options/) - retry, timeout, delay, backoff, fallback
+  - [Caching Options](./options/) - cache, cache_backend
+  - [Rate Control Options](./options/) - throttle, concurrency
+  - [Advanced Options](./options/) - on_error, lazy, priority
+- [Resilient Pipelines Guide](./examples/resilient-pipelines.md) - Real-world patterns
+
 ### Reference
 
 - [Examples](./examples.md) - Complete example programs
