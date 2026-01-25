@@ -17,30 +17,58 @@ object DagVizCompiler:
   def compile(ir: IRProgram, title: Option[String] = None): DagVizIR =
     val nodeMap = ir.nodes
 
-    // Build reverse mapping: variable name -> node ID for outputs
-    val outputNodeIds = ir.declaredOutputs.flatMap { name =>
-      ir.variableBindings.get(name).map(id => (name, id))
-    }.toMap
-
-    // Convert each IR node to a VizNode
+    // Step 1: Convert all IR nodes to VizNodes (keep original kind/label)
     val vizNodes = nodeMap.map { case (id, node) =>
-      val outputName = outputNodeIds.collectFirst { case (name, nodeId) if nodeId == id => name }
-      irNodeToVizNode(id, node, outputName)
+      irNodeToVizNode(id, node)
     }.toList
 
-    // Build edges from dependencies
+    // Step 2: Create explicit Output nodes for declared outputs
+    val outputNodes = ir.declaredOutputs.flatMap { name =>
+      ir.variableBindings.get(name).map { sourceId =>
+        val outputId = s"output_$name"
+        val sourceNode = nodeMap.get(sourceId)
+        val typeSignature = sourceNode.map(n => formatType(getNodeOutputType(n))).getOrElse("Unknown")
+        VizNode(
+          id = outputId,
+          kind = NodeKind.Output,
+          label = name,
+          typeSignature = typeSignature
+        )
+      }
+    }
+
+    // Step 3: Build edges from IR dependencies
     val vizEdges = buildEdges(ir)
 
+    // Step 4: Create edges from source nodes to output nodes
+    var outputEdgeId = vizEdges.length
+    val outputEdges = ir.declaredOutputs.flatMap { name =>
+      ir.variableBindings.get(name).map { sourceId =>
+        outputEdgeId += 1
+        VizEdge(
+          id = s"e$outputEdgeId",
+          source = sourceId.toString,
+          target = s"output_$name",
+          label = Some("value"),
+          kind = EdgeKind.Data
+        )
+      }
+    }
+
+    // Combine everything
+    val allNodes = vizNodes ++ outputNodes
+    val allEdges = vizEdges ++ outputEdges
+
     DagVizIR(
-      nodes = vizNodes,
-      edges = vizEdges,
+      nodes = allNodes,
+      edges = allEdges,
       groups = List.empty, // Groups computed later if needed
       metadata = VizMetadata(title = title)
     )
 
   /** Convert an IR node to a visualization node */
-  private def irNodeToVizNode(id: UUID, node: IRNode, outputName: Option[String]): VizNode =
-    val baseNode = node match {
+  private def irNodeToVizNode(id: UUID, node: IRNode): VizNode =
+    node match {
       case IRNode.Input(_, name, outputType, _) =>
         VizNode(
           id = id.toString,
@@ -177,14 +205,25 @@ object DagVizCompiler:
         )
     }
 
-    // Mark as output if this node is a declared output
-    outputName match {
-      case Some(name) =>
-        baseNode.copy(
-          kind = NodeKind.Output,
-          label = name
-        )
-      case None => baseNode
+  /** Extract the output type from an IR node */
+  private def getNodeOutputType(node: IRNode): SemanticType =
+    node match {
+      case IRNode.Input(_, _, outputType, _)                   => outputType
+      case IRNode.ModuleCall(_, _, _, _, outputType, _)        => outputType
+      case IRNode.MergeNode(_, _, _, outputType, _)            => outputType
+      case IRNode.ProjectNode(_, _, _, outputType, _)          => outputType
+      case IRNode.FieldAccessNode(_, _, _, outputType, _)      => outputType
+      case IRNode.ConditionalNode(_, _, _, _, outputType, _)   => outputType
+      case IRNode.LiteralNode(_, _, outputType, _)             => outputType
+      case IRNode.AndNode(_, _, _, _)                          => SemanticType.SBoolean
+      case IRNode.OrNode(_, _, _, _)                           => SemanticType.SBoolean
+      case IRNode.NotNode(_, _, _)                             => SemanticType.SBoolean
+      case IRNode.GuardNode(_, _, _, innerType, _)             => SemanticType.SOptional(innerType)
+      case IRNode.CoalesceNode(_, _, _, resultType, _)         => resultType
+      case IRNode.BranchNode(_, _, _, resultType, _)           => resultType
+      case IRNode.StringInterpolationNode(_, _, _, _)          => SemanticType.SString
+      case IRNode.HigherOrderNode(_, _, _, _, outputType, _)   => outputType
+      case IRNode.ListLiteralNode(_, _, elementType, _)        => SemanticType.SList(elementType)
     }
 
   /** Build edges from IR dependencies */

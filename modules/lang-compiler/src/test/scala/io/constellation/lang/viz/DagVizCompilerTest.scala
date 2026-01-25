@@ -32,7 +32,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
   test("compile linear pipeline A -> B -> C") {
     val inputId = UUID.randomUUID()
     val moduleId = UUID.randomUUID()
-    val outputId = UUID.randomUUID()
+    val fieldAccessId = UUID.randomUUID()
 
     val ir = IRProgram(
       nodes = Map(
@@ -45,28 +45,87 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
           SemanticType.SString,
           None
         ),
-        outputId -> IRNode.FieldAccessNode(outputId, moduleId, "result", SemanticType.SString, None)
+        fieldAccessId -> IRNode.FieldAccessNode(fieldAccessId, moduleId, "result", SemanticType.SString, None)
       ),
       inputs = List(inputId),
       declaredOutputs = List("result"),
-      variableBindings = Map("input" -> inputId, "processed" -> moduleId, "result" -> outputId)
+      variableBindings = Map("input" -> inputId, "processed" -> moduleId, "result" -> fieldAccessId)
     )
 
     val vizIR = DagVizCompiler.compile(ir)
 
-    vizIR.nodes should have length 3
-    vizIR.edges should have length 2
+    // 4 nodes: Input, Operation, FieldAccess, and separate Output node
+    vizIR.nodes should have length 4
+    // 3 edges: input->module, module->fieldAccess, fieldAccess->output
+    vizIR.edges should have length 3
 
     // Check node types
     val nodeKinds = vizIR.nodes.map(n => n.id -> n.kind).toMap
     nodeKinds(inputId.toString) shouldBe NodeKind.Input
     nodeKinds(moduleId.toString) shouldBe NodeKind.Operation
-    nodeKinds(outputId.toString) shouldBe NodeKind.Output // Marked as output because it's in declaredOutputs
+    nodeKinds(fieldAccessId.toString) shouldBe NodeKind.FieldAccess // Keeps original kind
+    nodeKinds("output_result") shouldBe NodeKind.Output // Separate output node
 
     // Check edges exist
     val edgePairs = vizIR.edges.map(e => (e.source, e.target)).toSet
     edgePairs should contain((inputId.toString, moduleId.toString))
-    edgePairs should contain((moduleId.toString, outputId.toString))
+    edgePairs should contain((moduleId.toString, fieldAccessId.toString))
+    edgePairs should contain((fieldAccessId.toString, "output_result")) // Edge to output node
+  }
+
+  test("operation node with declared output creates separate output node") {
+    // sum = add(a, b); out sum
+    // Should create: Input(a), Input(b), Operation(add), Output(sum)
+    // With edges: a→add, b→add, add→sum
+    val aId = UUID.randomUUID()
+    val bId = UUID.randomUUID()
+    val addId = UUID.randomUUID()
+
+    val ir = IRProgram(
+      nodes = Map(
+        aId -> IRNode.Input(aId, "a", SemanticType.SInt, None),
+        bId -> IRNode.Input(bId, "b", SemanticType.SInt, None),
+        addId -> IRNode.ModuleCall(
+          addId,
+          "Add",
+          "add",
+          Map("left" -> aId, "right" -> bId),
+          SemanticType.SInt,
+          None
+        )
+      ),
+      inputs = List(aId, bId),
+      declaredOutputs = List("sum"),
+      variableBindings = Map("a" -> aId, "b" -> bId, "sum" -> addId)
+    )
+
+    val vizIR = DagVizCompiler.compile(ir)
+
+    // 4 nodes: Input(a), Input(b), Operation(add), Output(sum)
+    vizIR.nodes should have length 4
+
+    // Check node types and labels
+    val nodeKinds = vizIR.nodes.map(n => n.id -> n.kind).toMap
+    val nodeLabels = vizIR.nodes.map(n => n.id -> n.label).toMap
+
+    nodeKinds(aId.toString) shouldBe NodeKind.Input
+    nodeKinds(bId.toString) shouldBe NodeKind.Input
+    nodeKinds(addId.toString) shouldBe NodeKind.Operation
+    nodeLabels(addId.toString) shouldBe "add" // Operation label preserved!
+    nodeKinds("output_sum") shouldBe NodeKind.Output
+    nodeLabels("output_sum") shouldBe "sum"
+
+    // 3 edges: a→add, b→add, add→sum
+    vizIR.edges should have length 3
+
+    val edgePairs = vizIR.edges.map(e => (e.source, e.target)).toSet
+    edgePairs should contain((aId.toString, addId.toString))
+    edgePairs should contain((bId.toString, addId.toString))
+    edgePairs should contain((addId.toString, "output_sum"))
+
+    // Check output edge has "value" label
+    val outputEdge = vizIR.edges.find(_.target == "output_sum").get
+    outputEdge.label shouldBe Some("value")
   }
 
   test("compile diamond pattern") {
