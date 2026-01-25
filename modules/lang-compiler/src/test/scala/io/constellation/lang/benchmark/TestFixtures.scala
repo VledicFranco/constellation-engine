@@ -377,6 +377,9 @@ object TestFixtures {
   /** Stress program with 500 chained operations */
   lazy val stressProgram500: String = generateStressProgram(500)
 
+  /** Stress program with 1000 chained operations */
+  lazy val stressProgram1000: String = generateStressProgram(1000)
+
   /** Load the actual lead-scoring-pipeline.cst from examples
     * NOTE: This requires a full FunctionRegistry, not LangCompiler.empty
     */
