@@ -9,10 +9,13 @@ import org.http4s.circe.CirceEntityCodec.*
 import io.constellation.{CValue, Constellation, Runtime}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
-import io.constellation.lang.LangCompiler
+import io.constellation.lang.{CachingLangCompiler, LangCompiler}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.circe.syntax.*
 import io.circe.Json
+
+import java.time.Instant
+import java.util.concurrent.atomic.AtomicLong
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -168,6 +171,33 @@ class ConstellationRoutes(
     // Health check endpoint
     case GET -> Root / "health" =>
       Ok(Json.obj("status" -> Json.fromString("ok")))
+
+    // Metrics endpoint for performance monitoring
+    case GET -> Root / "metrics" =>
+      val uptimeSeconds = java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds
+      val requestCount = ConstellationRoutes.requestCount.incrementAndGet()
+
+      val cacheStats = compiler match {
+        case c: CachingLangCompiler =>
+          val s = c.cacheStats
+          Some(Json.obj(
+            "hits" -> Json.fromLong(s.hits),
+            "misses" -> Json.fromLong(s.misses),
+            "hitRate" -> Json.fromDoubleOrNull(s.hitRate),
+            "evictions" -> Json.fromLong(s.evictions),
+            "entries" -> Json.fromInt(s.entries)
+          ))
+        case _ => None
+      }
+
+      Ok(Json.obj(
+        "timestamp" -> Json.fromString(Instant.now().toString),
+        "cache" -> cacheStats.getOrElse(Json.Null),
+        "server" -> Json.obj(
+          "uptime_seconds" -> Json.fromLong(uptimeSeconds),
+          "requests_total" -> Json.fromLong(requestCount)
+        )
+      ))
   }
 
   // ========== Private Helper Methods ==========
@@ -235,6 +265,12 @@ class ConstellationRoutes(
 }
 
 object ConstellationRoutes {
+  /** Server start time for uptime calculation */
+  private val startTime: Instant = Instant.now()
+
+  /** Total request count across all endpoints */
+  private val requestCount: AtomicLong = new AtomicLong(0)
+
   def apply(
       constellation: Constellation,
       compiler: LangCompiler,
