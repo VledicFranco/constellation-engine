@@ -158,7 +158,7 @@ class ConstellationLanguageServer(
         textDocumentSync = Some(1), // Full text sync
         completionProvider = Some(
           CompletionOptions(
-            triggerCharacters = Some(List("(", ",", " ", "."))
+            triggerCharacters = Some(List("(", ",", " ", ".", ":"))
           )
         ),
         hoverProvider = Some(true),
@@ -1187,6 +1187,18 @@ class ConstellationLanguageServer(
     val wordAtCursor     = document.getWordAtPosition(position).getOrElse("")
     val lineText         = document.getLine(position.line).getOrElse("")
     val textBeforeCursor = lineText.take(position.character)
+
+    // Check for with clause context first (higher priority than general completions)
+    val withClauseContext = WithClauseCompletions.analyzeContext(textBeforeCursor, lineText)
+    withClauseContext match {
+      case WithClauseCompletions.NotInWithClause =>
+        // Fall through to standard completion logic
+        ()
+      case ctx =>
+        // Return with clause completions
+        val items = WithClauseCompletions.getCompletions(ctx)
+        return IO.pure(CompletionList(isIncomplete = false, items = items))
+    }
 
     constellation.getModules.map { modules =>
       // Update the module completion trie if modules have changed
