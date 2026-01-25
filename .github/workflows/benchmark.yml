@@ -1,0 +1,81 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  JAVA_VERSION: '17'
+  SBT_OPTS: '-Xmx4G -XX:+UseG1GC'
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'sbt'
+
+      - name: Cache SBT
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier
+          key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-
+
+      - name: Compile project
+        run: sbt compile
+
+      - name: Run compiler benchmarks
+        run: sbt "langCompiler/testOnly *Benchmark"
+
+      - name: Run LSP benchmarks
+        run: sbt "langLsp/testOnly *Benchmark"
+
+      - name: Collect benchmark results
+        if: always()
+        run: |
+          mkdir -p benchmark-results
+          find . -name "benchmark-*.json" -exec cp {} benchmark-results/ \; 2>/dev/null || true
+          echo "Benchmark results collected"
+          ls -la benchmark-results/ 2>/dev/null || echo "No JSON reports found"
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmark-results/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Benchmark run completed for commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "Results are available in the **benchmark-results-${{ github.sha }}** artifact." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Performance Targets" >> $GITHUB_STEP_SUMMARY
+          echo "| Phase | Small | Medium | Large |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Parse | <5ms | <50ms | <200ms |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeCheck | <5ms | <50ms | <200ms |" >> $GITHUB_STEP_SUMMARY
+          echo "| Full Pipeline | <50ms | <150ms | <400ms |" >> $GITHUB_STEP_SUMMARY
