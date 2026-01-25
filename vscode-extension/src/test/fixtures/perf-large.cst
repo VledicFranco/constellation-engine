@@ -1,0 +1,191 @@
+# Large Benchmark - Complex Flag Processing Pipeline
+# Matches: TestFixtures.largeProgram (~200 lines)
+# Purpose: Complex pipeline, realistic medium file
+# Target: <200ms parse, <400ms full pipeline
+
+type SystemConfig = {
+  mainEnabled: Boolean,
+  backupEnabled: Boolean,
+  debugMode: Boolean,
+  maintenanceMode: Boolean
+}
+
+type FeatureFlags = {
+  featureA: Boolean,
+  featureB: Boolean,
+  featureC: Boolean,
+  featureD: Boolean,
+  featureE: Boolean,
+  featureF: Boolean
+}
+
+type UserProfile = {
+  isAdmin: Boolean,
+  isPremium: Boolean,
+  isVerified: Boolean,
+  isBetaTester: Boolean,
+  isInternal: Boolean,
+  level: Int,
+  score: Int
+}
+
+type AccessRules = {
+  requiresAuth: Boolean,
+  requiresPremium: Boolean,
+  requiresAdmin: Boolean,
+  allowGuests: Boolean
+}
+
+in system: SystemConfig
+in features: FeatureFlags
+in user: UserProfile
+in access: AccessRules
+in defaultLevel: Int
+in defaultScore: Int
+
+# System state extraction
+mainOn = system.mainEnabled
+backupOn = system.backupEnabled
+debugOn = system.debugMode
+maintOn = system.maintenanceMode
+
+# Feature flag extraction
+fA = features.featureA
+fB = features.featureB
+fC = features.featureC
+fD = features.featureD
+fE = features.featureE
+fF = features.featureF
+
+# User profile extraction
+isAdmin = user.isAdmin
+isPremium = user.isPremium
+isVerified = user.isVerified
+isBetaTester = user.isBetaTester
+isInternal = user.isInternal
+userLevel = user.level
+userScore = user.score
+
+# Access rules extraction
+needsAuth = access.requiresAuth
+needsPremium = access.requiresPremium
+needsAdmin = access.requiresAdmin
+allowsGuests = access.allowGuests
+
+# System availability logic
+systemAvailable = mainOn or backupOn
+systemOperational = systemAvailable and not maintOn
+canDebug = debugOn and isAdmin
+emergencyMode = not mainOn and backupOn
+
+# Feature access logic
+coreFeatures = fA and fB
+advancedFeatures = fC and fD
+experimentalFeatures = fE and fF
+anyFeatureEnabled = fA or fB or fC or fD or fE or fF
+allCoreEnabled = fA and fB and fC
+
+# User tier logic
+isPrivileged = isAdmin or isInternal
+canAccessBeta = isBetaTester or isInternal
+isPowerUser = isPremium and isVerified
+isRegularUser = not isAdmin and not isPremium
+needsUpgrade = isRegularUser and not isVerified
+
+# Access control logic
+passesAuthCheck = not needsAuth or isVerified
+passesPremiumCheck = not needsPremium or isPremium
+passesAdminCheck = not needsAdmin or isAdmin
+passesGuestCheck = allowsGuests or isVerified
+passesAllChecks = passesAuthCheck and passesPremiumCheck and passesAdminCheck
+
+# Complex access decisions
+canAccessSystem = systemOperational and passesAllChecks
+canAccessCore = canAccessSystem and coreFeatures
+canAccessAdvanced = canAccessCore and advancedFeatures and isPowerUser
+canAccessExperimental = canAccessAdvanced and experimentalFeatures and canAccessBeta
+
+# Guard expressions for conditional values
+adminLevel = userLevel when isAdmin
+premiumLevel = userLevel when isPremium
+verifiedLevel = userLevel when isVerified
+betaLevel = userLevel when isBetaTester
+
+adminScore = userScore when isAdmin
+premiumScore = userScore when isPremium
+verifiedScore = userScore when isVerified
+internalScore = userScore when isInternal
+
+# Coalesce chains for fallback resolution
+effectiveLevel = adminLevel ?? premiumLevel ?? verifiedLevel ?? betaLevel ?? defaultLevel
+effectiveScore = adminScore ?? premiumScore ?? verifiedScore ?? internalScore ?? defaultScore
+
+# More complex conditionals
+accessTier = if (isAdmin) userLevel else if (isPremium) defaultLevel else defaultScore
+featureTier = if (canAccessExperimental) userLevel else if (canAccessAdvanced) defaultLevel else defaultScore
+
+# Additional boolean combinations
+fullAccess = canAccessExperimental and isPrivileged
+limitedAccess = canAccessCore and not canAccessAdvanced
+noAccess = not canAccessSystem
+
+# Status flags
+isHealthy = systemOperational and anyFeatureEnabled
+needsMaintenance = maintOn or (not mainOn and not backupOn)
+isInGoodState = isHealthy and not needsMaintenance
+
+# Mixed logic chains
+complexCondition1 = (isAdmin and fA) or (isPremium and fB) or (isVerified and fC)
+complexCondition2 = (mainOn and not debugOn) or (backupOn and debugOn)
+complexCondition3 = (needsAuth and passesAuthCheck) or (not needsAuth and allowsGuests)
+
+# Final tier guards
+tier1Value = userScore when fullAccess
+tier2Value = userLevel when limitedAccess
+tier3Value = defaultScore when noAccess
+
+# Final coalesce resolution
+finalTierValue = tier1Value ?? tier2Value ?? tier3Value ?? defaultLevel
+
+# More conditional outputs
+systemStatus = if (isHealthy) userScore else defaultScore
+userStatus = if (isPrivileged) userLevel else effectiveLevel
+accessStatus = if (passesAllChecks) userScore else effectiveScore
+
+# Outputs
+out systemAvailable
+out systemOperational
+out canDebug
+out emergencyMode
+out coreFeatures
+out advancedFeatures
+out experimentalFeatures
+out anyFeatureEnabled
+out allCoreEnabled
+out isPrivileged
+out canAccessBeta
+out isPowerUser
+out isRegularUser
+out needsUpgrade
+out passesAllChecks
+out canAccessSystem
+out canAccessCore
+out canAccessAdvanced
+out canAccessExperimental
+out effectiveLevel
+out effectiveScore
+out accessTier
+out featureTier
+out fullAccess
+out limitedAccess
+out noAccess
+out isHealthy
+out needsMaintenance
+out isInGoodState
+out complexCondition1
+out complexCondition2
+out complexCondition3
+out finalTierValue
+out systemStatus
+out userStatus
+out accessStatus

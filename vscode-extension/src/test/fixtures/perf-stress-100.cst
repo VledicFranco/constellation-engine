@@ -1,0 +1,125 @@
+# Stress test program - 100 chained boolean operations
+# Matches: TestFixtures.stressProgram100
+# Purpose: Stress test, verify O(n) scaling
+# Target: Tests scalability of compiler
+
+type Input = { flag: Boolean, value: Int }
+
+in input: Input
+in fallback: Int
+
+baseFlag = input.flag
+baseValue = input.value
+
+b0 = baseFlag
+b1 = b0 or baseFlag
+b2 = not b1
+b3 = (b2 and baseFlag) or not baseFlag
+b4 = b3 and baseFlag
+b5 = b4 or baseFlag
+b6 = not b5
+b7 = (b6 and baseFlag) or not baseFlag
+b8 = b7 and baseFlag
+b9 = b8 or baseFlag
+b10 = not b9
+b11 = (b10 and baseFlag) or not baseFlag
+b12 = b11 and baseFlag
+b13 = b12 or baseFlag
+b14 = not b13
+b15 = (b14 and baseFlag) or not baseFlag
+b16 = b15 and baseFlag
+b17 = b16 or baseFlag
+b18 = not b17
+b19 = (b18 and baseFlag) or not baseFlag
+b20 = b19 and baseFlag
+b21 = b20 or baseFlag
+b22 = not b21
+b23 = (b22 and baseFlag) or not baseFlag
+b24 = b23 and baseFlag
+b25 = b24 or baseFlag
+b26 = not b25
+b27 = (b26 and baseFlag) or not baseFlag
+b28 = b27 and baseFlag
+b29 = b28 or baseFlag
+b30 = not b29
+b31 = (b30 and baseFlag) or not baseFlag
+b32 = b31 and baseFlag
+b33 = b32 or baseFlag
+b34 = not b33
+b35 = (b34 and baseFlag) or not baseFlag
+b36 = b35 and baseFlag
+b37 = b36 or baseFlag
+b38 = not b37
+b39 = (b38 and baseFlag) or not baseFlag
+b40 = b39 and baseFlag
+b41 = b40 or baseFlag
+b42 = not b41
+b43 = (b42 and baseFlag) or not baseFlag
+b44 = b43 and baseFlag
+b45 = b44 or baseFlag
+b46 = not b45
+b47 = (b46 and baseFlag) or not baseFlag
+b48 = b47 and baseFlag
+b49 = b48 or baseFlag
+b50 = not b49
+b51 = (b50 and baseFlag) or not baseFlag
+b52 = b51 and baseFlag
+b53 = b52 or baseFlag
+b54 = not b53
+b55 = (b54 and baseFlag) or not baseFlag
+b56 = b55 and baseFlag
+b57 = b56 or baseFlag
+b58 = not b57
+b59 = (b58 and baseFlag) or not baseFlag
+b60 = b59 and baseFlag
+b61 = b60 or baseFlag
+b62 = not b61
+b63 = (b62 and baseFlag) or not baseFlag
+b64 = b63 and baseFlag
+b65 = b64 or baseFlag
+b66 = not b65
+b67 = (b66 and baseFlag) or not baseFlag
+b68 = b67 and baseFlag
+b69 = b68 or baseFlag
+b70 = not b69
+b71 = (b70 and baseFlag) or not baseFlag
+b72 = b71 and baseFlag
+b73 = b72 or baseFlag
+b74 = not b73
+b75 = (b74 and baseFlag) or not baseFlag
+b76 = b75 and baseFlag
+b77 = b76 or baseFlag
+b78 = not b77
+b79 = (b78 and baseFlag) or not baseFlag
+b80 = b79 and baseFlag
+b81 = b80 or baseFlag
+b82 = not b81
+b83 = (b82 and baseFlag) or not baseFlag
+b84 = b83 and baseFlag
+b85 = b84 or baseFlag
+b86 = not b85
+b87 = (b86 and baseFlag) or not baseFlag
+b88 = b87 and baseFlag
+b89 = b88 or baseFlag
+b90 = not b89
+b91 = (b90 and baseFlag) or not baseFlag
+b92 = b91 and baseFlag
+b93 = b92 or baseFlag
+b94 = not b93
+b95 = (b94 and baseFlag) or not baseFlag
+b96 = b95 and baseFlag
+b97 = b96 or baseFlag
+b98 = not b97
+b99 = (b98 and baseFlag) or not baseFlag
+b100 = b99 and baseFlag
+
+# Guards and coalesce
+guarded1 = baseValue when b100
+guarded2 = fallback when not b100
+result = guarded1 ?? guarded2 ?? fallback
+
+final = if (b100) baseValue else fallback
+
+out result
+out final
+out b100
