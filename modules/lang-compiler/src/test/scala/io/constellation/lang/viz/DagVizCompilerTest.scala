@@ -1,6 +1,6 @@
 package io.constellation.lang.viz
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -43,6 +43,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
           "Uppercase",
           Map("text" -> inputId),
           SemanticType.SString,
+          IRModuleCallOptions.empty,
           None
         ),
         fieldAccessId -> IRNode.FieldAccessNode(fieldAccessId, moduleId, "result", SemanticType.SString, None)
@@ -91,6 +92,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
           "add",
           Map("left" -> aId, "right" -> bId),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -138,8 +140,8 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val ir = IRProgram(
       nodes = Map(
         aId -> IRNode.Input(aId, "a", SemanticType.SString, None),
-        bId -> IRNode.ModuleCall(bId, "ModuleB", "ModuleB", Map("x" -> aId), SemanticType.SString, None),
-        cId -> IRNode.ModuleCall(cId, "ModuleC", "ModuleC", Map("x" -> aId), SemanticType.SString, None),
+        bId -> IRNode.ModuleCall(bId, "ModuleB", "ModuleB", Map("x" -> aId), SemanticType.SString, IRModuleCallOptions.empty, None),
+        cId -> IRNode.ModuleCall(cId, "ModuleC", "ModuleC", Map("x" -> aId), SemanticType.SString, IRModuleCallOptions.empty, None),
         dId -> IRNode.MergeNode(dId, bId, cId, SemanticType.SRecord(Map("b" -> SemanticType.SString, "c" -> SemanticType.SString)), None)
       ),
       inputs = List(aId),
@@ -242,6 +244,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
           "add",
           Map("left" -> input1Id, "right" -> input2Id),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),

@@ -502,14 +502,14 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
             checkExpr(argExpr.value, argExpr.span, env, Check(paramType), argContext)
           }
 
-          // Validate module call options if present
-          val optionsValidation: TypeResult[Unit] =
-            if (options.isEmpty) ().validNel
+          // Validate module call options if present and get typed fallback
+          val optionsValidation: TypeResult[Option[TypedExpression]] =
+            if (options.isEmpty) None.validNel
             else validateModuleCallOptions(options, sig.returns, span, env, context)
 
           // Combine args and options validation
-          (argsResult, optionsValidation).mapN { (typedArgs, _) =>
-            TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
+          (argsResult, optionsValidation).mapN { (typedArgs, typedFallback) =>
+            TypedExpression.FunctionCall(name.fullName, sig, typedArgs, options, typedFallback, span)
           }
         }
       case Left(error) =>
@@ -557,15 +557,15 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         }
     }
 
-    // Validate module call options if present
-    val optionsValidation: TypeResult[Unit] =
-      if (options.isEmpty) ().validNel
+    // Validate module call options if present and get typed fallback
+    val optionsValidation: TypeResult[Option[TypedExpression]] =
+      if (options.isEmpty) None.validNel
       else validateModuleCallOptions(options, originalSig.returns, span, env, context)
 
-    (typedArgsResult, optionsValidation).mapN { (typedArgs, _) =>
+    (typedArgsResult, optionsValidation).mapN { (typedArgs, typedFallback) =>
       // Apply substitution to the return type
       val resultType = RowUnification.applySubstitution(instantiatedSig.returns, subst)
-      TypedExpression.FunctionCall(name.fullName, originalSig, typedArgs, span)
+      TypedExpression.FunctionCall(name.fullName, originalSig, typedArgs, options, typedFallback, span)
     }
   }
 
@@ -629,18 +629,23 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     * - Value ranges (retry >= 0, concurrency > 0, etc.)
     * - Option dependencies (warns if delay without retry, etc.)
     */
+  /** Validates module call options and returns the typed fallback expression if present.
+    *
+    * @return The typed fallback expression (if present and valid), or None
+    */
   private def validateModuleCallOptions(
       options: ModuleCallOptions,
       moduleReturnType: SemanticType,
       span: Span,
       env: TypeEnvironment,
       context: TypeContext
-  ): TypeResult[Unit] = {
+  ): TypeResult[Option[TypedExpression]] = {
     import cats.syntax.all.*
 
     val errors = scala.collection.mutable.ListBuffer[CompileError]()
+    var typedFallbackOpt: Option[TypedExpression] = None
 
-    // 1. Validate fallback type
+    // 1. Validate fallback type and capture typed expression
     options.fallback.foreach { fallbackExpr =>
       // Type check the fallback expression
       inferExpr(fallbackExpr.value, fallbackExpr.span, env, context) match {
@@ -651,6 +656,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
               typedFallback.semanticType.prettyPrint,
               Some(fallbackExpr.span)
             )
+          } else {
+            // Capture the typed fallback for use in FunctionCall
+            typedFallbackOpt = Some(typedFallback)
           }
         case Validated.Invalid(errs) =>
           // Propagate fallback type check errors
@@ -734,11 +742,11 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       addWarning(CompileWarning.OptionDependency("backoff", "delay", Some(span)))
     }
 
-    // Return errors or success
+    // Return errors or typed fallback
     if (errors.nonEmpty) {
-      errors.toList.traverse_(_.invalidNel)
+      errors.head.invalidNel
     } else {
-      ().validNel
+      typedFallbackOpt.validNel
     }
   }
 
@@ -964,11 +972,11 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     funcNameResult.andThen { funcName =>
       functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
         case Right(sig) =>
-          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), span)
+          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
           if (op == CompareOp.NotEq) {
             functions.lookupInScope(QualifiedName.simple("not"), env.namespaceScope, Some(span)) match {
               case Right(notSig) =>
-                TypedExpression.FunctionCall("not", notSig, List(funcCall), span).validNel
+                TypedExpression.FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span).validNel
               case Left(err) => err.invalidNel
             }
           } else {
@@ -1025,7 +1033,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
     functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
       case Right(sig) =>
-        TypedExpression.FunctionCall(funcName, sig, List(left, right), span).validNel
+        TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span).validNel
       case Left(err) => err.invalidNel
     }
   }

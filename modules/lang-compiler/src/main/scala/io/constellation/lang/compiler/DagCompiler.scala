@@ -8,10 +8,11 @@ import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
 
-/** Compilation result containing the DagSpec and synthetic modules */
+/** Compilation result containing the DagSpec, synthetic modules, and module options */
 final case class CompileResult(
     dagSpec: DagSpec,
-    syntheticModules: Map[UUID, Module.Uninitialized]
+    syntheticModules: Map[UUID, Module.Uninitialized],
+    moduleOptions: Map[UUID, IRModuleCallOptions] = Map.empty
 )
 
 /** Compiles IR to Constellation DagSpec.
@@ -62,6 +63,9 @@ object DagCompiler {
     private var inEdges: Set[(UUID, UUID)]                        = Set.empty // data -> module
     private var outEdges: Set[(UUID, UUID)]                       = Set.empty // module -> data
 
+    // Maps module UUID -> module call options (for runtime execution)
+    private var moduleOptions: Map[UUID, IRModuleCallOptions]     = Map.empty
+
     // Maps IR node ID -> its output data node UUID
     private var nodeOutputs: Map[UUID, UUID] = Map.empty
 
@@ -102,7 +106,7 @@ object DagCompiler {
           outputBindings = outputBindings
         )
 
-        CompileResult(dagSpec, syntheticModules)
+        CompileResult(dagSpec, syntheticModules, moduleOptions)
       }
     }
 
@@ -115,8 +119,8 @@ object DagCompiler {
         nodeOutputs = nodeOutputs + (id -> dataId)
         Right(())
 
-      case IRNode.ModuleCall(id, moduleName, languageName, inputs, outputType, _) =>
-        processModuleCall(id, moduleName, languageName, inputs, outputType)
+      case IRNode.ModuleCall(id, moduleName, languageName, inputs, outputType, options, _) =>
+        processModuleCall(id, moduleName, languageName, inputs, outputType, options)
 
       case IRNode.MergeNode(id, left, right, outputType, _) =>
         processMergeNode(id, left, right, outputType)
@@ -167,10 +171,16 @@ object DagCompiler {
         moduleName: String,
         languageName: String,
         inputs: Map[String, UUID],
-        outputType: SemanticType
+        outputType: SemanticType,
+        options: IRModuleCallOptions
     ): Either[DagCompilerError, Unit] = {
       val moduleId     = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
+
+      // Store module call options if not empty
+      if (!options.isEmpty) {
+        moduleOptions = moduleOptions + (moduleId -> options)
+      }
 
       // Look up the registered module and get output field name
       val outputFieldName = registeredModules.get(moduleName) match {
@@ -734,7 +744,7 @@ object DagCompiler {
             case IRNode.OrNode(_, left, right, _) =>
               validateNode(left).flatMap(_ => validateNode(right))
             case IRNode.NotNode(_, operand, _) => validateNode(operand)
-            case IRNode.ModuleCall(_, moduleName, _, inputs, _, _) =>
+            case IRNode.ModuleCall(_, moduleName, _, inputs, _, _, _) =>
               validateBuiltinFunction(moduleName).flatMap { _ =>
                 inputs.values.toList.traverse(validateNode).map(_ => ())
               }
@@ -827,7 +837,7 @@ object DagCompiler {
       case IRNode.NotNode(_, operand, _) =>
         !evaluateNode(operand).asInstanceOf[Boolean]
 
-      case IRNode.ModuleCall(_, moduleName, _, inputs, _, _) =>
+      case IRNode.ModuleCall(_, moduleName, _, inputs, _, _, _) =>
         // For simple comparison/arithmetic operations in lambda bodies
         val inputValues = inputs.map { case (name, nodeId) => name -> evaluateNode(nodeId) }
         evaluateBuiltinFunctionUnsafe(moduleName, inputValues)

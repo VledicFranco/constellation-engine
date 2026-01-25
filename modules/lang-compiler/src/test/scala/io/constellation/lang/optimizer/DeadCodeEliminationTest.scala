@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -24,6 +24,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("literal1")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("used") -> IRNode.ModuleCall(
@@ -32,6 +33,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("input"), "b" -> uuid("literal2")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -67,6 +69,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("literal")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -110,6 +113,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("input")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -136,6 +140,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("a")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("c") -> IRNode.ModuleCall(
@@ -144,6 +149,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("b"), "b" -> uuid("a")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("d") -> IRNode.LiteralNode(uuid("d"), 42, SemanticType.SInt, None)

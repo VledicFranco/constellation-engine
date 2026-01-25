@@ -68,6 +68,8 @@ object TypedExpression {
       name: String,
       signature: FunctionSignature,
       args: List[TypedExpression],
+      options: ModuleCallOptions,
+      typedFallback: Option[TypedExpression],  // Typed fallback expression (if options.fallback is set)
       span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = signature.returns
@@ -465,7 +467,7 @@ object TypeChecker {
                   }
               }
             }.map { typedArgs =>
-              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, span)
+              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, ModuleCallOptions.empty, None, span)
             }
           }
         case Left(error) =>
@@ -902,7 +904,7 @@ object TypeChecker {
         Some(span)
       ) match {
         case Right(sig) =>
-          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), span)
+          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
 
           // For NotEq, wrap in not()
           if op == CompareOp.NotEq then {
@@ -912,7 +914,7 @@ object TypeChecker {
               Some(span)
             ) match {
               case Right(notSig) =>
-                TypedExpression.FunctionCall("not", notSig, List(funcCall), span).validNel
+                TypedExpression.FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span).validNel
               case Left(err) =>
                 err.invalidNel
             }
@@ -990,7 +992,7 @@ object TypeChecker {
       Some(span)
     ) match {
       case Right(sig) =>
-        TypedExpression.FunctionCall(funcName, sig, List(left, right), span).validNel
+        TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span).validNel
       case Left(err) =>
         err.invalidNel
     }

@@ -67,7 +67,7 @@ object CommonSubexpressionElimination extends OptimizationPass {
     case IRNode.LiteralNode(_, _, _, _) => ""
 
     // Module calls are identified by module name and input mapping
-    case IRNode.ModuleCall(_, moduleName, languageName, inputs, outputType, _) =>
+    case IRNode.ModuleCall(_, moduleName, languageName, inputs, outputType, _, _) =>
       val inputSig = inputs.toSeq.sortBy(_._1).map { case (k, v) => s"$k=$v" }.mkString(",")
       s"call:$moduleName:$languageName:$inputSig:${outputType.prettyPrint}"
 

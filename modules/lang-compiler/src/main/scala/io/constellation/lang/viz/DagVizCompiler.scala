@@ -77,7 +77,7 @@ object DagVizCompiler:
           typeSignature = formatType(outputType)
         )
 
-      case IRNode.ModuleCall(_, moduleName, languageName, inputs, outputType, _) =>
+      case IRNode.ModuleCall(_, moduleName, languageName, inputs, outputType, _, _) =>
         VizNode(
           id = id.toString,
           kind = NodeKind.Operation,
@@ -209,7 +209,7 @@ object DagVizCompiler:
   private def getNodeOutputType(node: IRNode): SemanticType =
     node match {
       case IRNode.Input(_, _, outputType, _)                   => outputType
-      case IRNode.ModuleCall(_, _, _, _, outputType, _)        => outputType
+      case IRNode.ModuleCall(_, _, _, _, outputType, _, _)      => outputType
       case IRNode.MergeNode(_, _, _, outputType, _)            => outputType
       case IRNode.ProjectNode(_, _, _, outputType, _)          => outputType
       case IRNode.FieldAccessNode(_, _, _, outputType, _)      => outputType
@@ -238,7 +238,7 @@ object DagVizCompiler:
         case IRNode.Input(_, _, _, _) =>
           List.empty
 
-        case IRNode.ModuleCall(_, _, _, inputs, _, _) =>
+        case IRNode.ModuleCall(_, _, _, inputs, _, _, _) =>
           inputs.map { case (paramName, sourceId) =>
             VizEdge(
               id = nextEdgeId(),

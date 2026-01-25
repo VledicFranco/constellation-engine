@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -25,6 +25,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         // Dead code
@@ -36,6 +37,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("x"), "b" -> uuid("const")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -72,6 +74,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -104,6 +107,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -132,6 +136,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -236,6 +241,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("lit")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),

@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,6 +22,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -50,6 +51,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "subtract",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -77,6 +79,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -104,6 +107,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "divide",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -131,6 +135,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "divide",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -215,6 +220,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "concat",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SString,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -322,6 +328,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("input"), "b" -> uuid("literal")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
@@ -349,6 +356,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "add",
           Map("a" -> uuid("a"), "b" -> uuid("b")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         ),
         uuid("mul") -> IRNode.ModuleCall(
@@ -357,6 +365,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
           "multiply",
           Map("a" -> uuid("add"), "b" -> uuid("c")),
           SemanticType.SInt,
+          IRModuleCallOptions.empty,
           None
         )
       ),
