@@ -46,13 +46,14 @@ export function simplifyLabel(name: string | undefined, maxLen: number): string 
   // Remove UUID-like prefix (alphanumeric followed by underscore)
   const uuidMatch = simplified.match(/^[a-f0-9]{8,}_(.+)$/i);
   if (uuidMatch) {
+    // UUID prefix removed - keep the remainder as-is (preserves any namespace)
     simplified = uuidMatch[1];
-  }
-
-  // If name has dots (namespace), take the last part
-  if (simplified.includes('.')) {
-    const parts = simplified.split('.');
-    simplified = parts[parts.length - 1];
+  } else {
+    // No UUID prefix - if name has dots (namespace), take the last part
+    if (simplified.includes('.')) {
+      const parts = simplified.split('.');
+      simplified = parts[parts.length - 1];
+    }
   }
 
   // Truncate if too long
