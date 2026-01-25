@@ -57,6 +57,7 @@ lazy val runtime = project
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
+      "com.fasterxml.jackson.core" % "jackson-core" % "2.15.3",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
     )
   )

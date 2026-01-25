@@ -7,6 +7,13 @@ import io.circe.Json
   * JSON → CValue/RawValue requires type information (CType) to guide the conversion. CValue → JSON
   * is straightforward and doesn't require type information.
   *
+  * ==Conversion Strategies==
+  *
+  * - **Eager** (`jsonToCValue`): Full recursive conversion. Best for small payloads (<10KB).
+  * - **Adaptive** (`convertAdaptive`): Automatically chooses strategy based on payload size.
+  *   Uses streaming for large payloads, lazy for medium, eager for small.
+  * - **Streaming** (`StreamingJsonConverter`): Jackson-based streaming for very large payloads.
+  *
   * ==Memory-Efficient Path==
   *
   * For large data (especially numeric arrays), use the RawValue methods:
@@ -15,8 +22,41 @@ import io.circe.Json
   *
   * These avoid allocating intermediate CValue wrappers, providing ~6x memory reduction for large
   * numeric arrays.
+  *
+  * ==Performance Guidelines==
+  *
+  * | Payload Size | Recommended Method |
+  * |--------------|-------------------|
+  * | < 10KB | `jsonToCValue` (eager) |
+  * | 10-100KB | `convertAdaptive` |
+  * | > 100KB | `convertAdaptive` or `StreamingJsonConverter` |
+  * | Numeric arrays | `jsonToRawValue` |
   */
 object JsonCValueConverter {
+
+  /** Adaptive conversion that automatically chooses the best strategy based on payload size.
+    *
+    * Uses:
+    * - Eager (recursive descent) for payloads < 10KB
+    * - Lazy conversion for payloads 10-100KB
+    * - Streaming (Jackson) for payloads > 100KB
+    *
+    * @param json The JSON to convert
+    * @param expectedType The expected CType
+    * @return Either error message or converted CValue
+    */
+  def convertAdaptive(json: Json, expectedType: CType): Either[String, CValue] =
+    AdaptiveJsonConverter.convert(json, expectedType)
+
+  /** Adaptive conversion with explicit size hint.
+    *
+    * @param json The JSON to convert
+    * @param expectedType The expected CType
+    * @param sizeHint Size of the JSON payload in bytes (avoids re-estimation)
+    * @return Either error message or converted CValue
+    */
+  def convertAdaptive(json: Json, expectedType: CType, sizeHint: Int): Either[String, CValue] =
+    AdaptiveJsonConverter.convert(json, expectedType, sizeHint)
 
   /** Convert JSON to CValue using the expected type as a guide.
     *
