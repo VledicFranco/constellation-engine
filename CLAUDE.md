@@ -202,6 +202,52 @@ When adding a module to example-app:
 
 ---
 
+## Performance Testing & Benchmarks
+
+**Run benchmarks before performance-critical changes:**
+
+| Command | Purpose |
+|---------|---------|
+| `sbt "langCompiler/testOnly *Benchmark"` | All compiler benchmarks |
+| `sbt "langCompiler/testOnly *RegressionTests"` | Regression suite (CI enforced) |
+| `sbt "langLsp/testOnly *Benchmark"` | LSP operation benchmarks |
+| `sbt "runtime/testOnly *ExecutionBenchmark"` | Runtime execution |
+
+### Key Performance Targets
+
+| Operation | Target | Critical |
+|-----------|--------|----------|
+| Parse (small) | <5ms | Yes |
+| Full pipeline (medium) | <100ms | Yes |
+| Cache hit | <5ms | Yes |
+| Autocomplete | <50ms | Yes |
+| Cache speedup | >5x | Yes |
+
+### Check Cache Effectiveness
+
+```bash
+curl http://localhost:8080/metrics | jq .cache
+# hitRate should be >0.8 for unchanged sources
+```
+
+### Performance Documentation
+
+- **Full guide:** `docs/dev/performance-benchmarks.md` (all benchmarks, targets, troubleshooting)
+- **Framework guide:** `docs/dev/benchmark-framework.md` (how to write new benchmarks)
+- **E2E fixtures:** `vscode-extension/src/test/fixtures/PERF-README.md`
+- **CI workflow:** `.github/workflows/benchmark.yml`
+
+### Adding Performance Tests
+
+When writing performance-sensitive code:
+
+1. Add baseline to `RegressionTests.scala` if critical
+2. Use `BenchmarkHarness.measureWithWarmup()` for measurements
+3. Use `TestFixtures` for consistent input (small/medium/large programs)
+4. Document expected results in `docs/dev/performance-benchmarks.md`
+
+---
+
 ## Release Management
 
 **Creating releases with semantic versioning:**
