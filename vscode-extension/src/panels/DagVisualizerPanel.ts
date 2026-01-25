@@ -173,15 +173,11 @@ export class DagVisualizerPanel {
     }
   }
 
-  /** Update a single node's execution state */
+  /** Update a single node's execution state (batched for 60fps) */
   public static notifyNodeUpdate(documentUri: string, nodeId: string, state: string, valuePreview?: string) {
-    if (DagVisualizerPanel.currentPanel && DagVisualizerPanel.currentPanel._state.currentUri === documentUri) {
-      DagVisualizerPanel.currentPanel._state.panel.webview.postMessage({
-        type: 'executionUpdate',
-        nodeId,
-        state,
-        valuePreview
-      });
+    const panel = DagVisualizerPanel.currentPanel;
+    if (panel && panel._state.currentUri === documentUri) {
+      panel._queueUpdate({ nodeId, state, valuePreview });
     }
   }
 
@@ -251,6 +247,11 @@ export class DagVisualizerPanel {
   }
 
   private _layoutDirection: string = 'TB';
+
+  // Message batching for smooth 60fps updates during execution
+  private static readonly BATCH_INTERVAL_MS = 16; // 60fps
+  private _pendingUpdates: Array<{nodeId: string, state: string, valuePreview?: string}> = [];
+  private _batchTimer: ReturnType<typeof setTimeout> | undefined;
 
   private async _refreshDag() {
     if (!this._state.client || !this._state.currentUri) {
@@ -349,8 +350,51 @@ export class DagVisualizerPanel {
   }
 
   public dispose() {
+    // Clean up batch timer to prevent memory leak
+    if (this._batchTimer) {
+      clearTimeout(this._batchTimer);
+      this._batchTimer = undefined;
+    }
     DagVisualizerPanel.currentPanel = undefined;
     disposePanel(this._state);
+  }
+
+  /** Queue a node update for batched sending at 60fps */
+  private _queueUpdate(update: {nodeId: string, state: string, valuePreview?: string}): void {
+    // Deduplicate: if same nodeId already queued, update it instead of adding
+    const existingIndex = this._pendingUpdates.findIndex(u => u.nodeId === update.nodeId);
+    if (existingIndex >= 0) {
+      this._pendingUpdates[existingIndex] = update;
+    } else {
+      this._pendingUpdates.push(update);
+    }
+
+    // Schedule flush if not already scheduled
+    if (!this._batchTimer) {
+      this._batchTimer = setTimeout(() => this._flushUpdates(), DagVisualizerPanel.BATCH_INTERVAL_MS);
+    }
+  }
+
+  /** Flush all pending updates as a single batch message */
+  private _flushUpdates(): void {
+    this._batchTimer = undefined;
+
+    if (this._pendingUpdates.length > 0) {
+      const batchSize = this._pendingUpdates.length;
+
+      // Send batched update
+      this._state.panel.webview.postMessage({
+        type: 'executionBatchUpdate',
+        updates: this._pendingUpdates
+      });
+
+      // Log large batches for performance visibility
+      if (batchSize > 10) {
+        console.log(`[PERF] Batched ${batchSize} node updates`);
+      }
+
+      this._pendingUpdates = [];
+    }
   }
 
   private _update() {
