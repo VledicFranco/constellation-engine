@@ -1,0 +1,255 @@
+package io.constellation.lang.compiler
+
+import cats.effect.IO
+import cats.syntax.all._
+import io.constellation.{CType, CValue}
+import io.constellation.cache.{CacheBackend, CacheKeyGenerator, CacheRegistry, InMemoryCacheBackend}
+import io.constellation.execution._
+import io.constellation.lang.ast.{BackoffStrategy => ASTBackoffStrategy, ErrorStrategy => ASTErrorStrategy}
+
+import scala.concurrent.duration._
+import java.util.UUID
+
+/** Executes module operations with options from the DAG compiler.
+  *
+  * This is the integration layer between:
+  * - `IRModuleCallOptions` from the compiler
+  * - Runtime execution infrastructure (ModuleExecutor, CacheRegistry, LimiterRegistry, etc.)
+  *
+  * ==Usage==
+  *
+  * {{{
+  * val executor = ModuleOptionsExecutor.create.unsafeRunSync()
+  *
+  * val result = executor.executeWithOptions(
+  *   operation = module.run(runtime),
+  *   moduleId = moduleId,
+  *   moduleName = "MyModule",
+  *   options = irOptions,
+  *   outputType = CType.CString,
+  *   getFallbackValue = Some(() => IO.pure("default"))
+  * )
+  * }}}
+  */
+class ModuleOptionsExecutor private (
+    cacheRegistry: CacheRegistry,
+    limiterRegistry: LimiterRegistry
+) {
+
+  /** Execute an operation with the specified module call options.
+    *
+    * @param operation The IO operation to execute
+    * @param moduleId The module UUID (for cache/limiter keys)
+    * @param moduleName The module name (for logging)
+    * @param options The module call options from the compiler
+    * @param outputType The expected output type (for error strategy zero values)
+    * @param getFallbackValue Optional function to get fallback value (evaluated lazily)
+    * @return The result of execution with all options applied
+    */
+  def executeWithOptions[A](
+      operation: IO[A],
+      moduleId: UUID,
+      moduleName: String,
+      options: IRModuleCallOptions,
+      outputType: CType,
+      getFallbackValue: Option[() => IO[Any]] = None
+  ): IO[Any] = {
+    if (options.isEmpty) {
+      // Fast path: no options, just run the operation
+      operation
+    } else {
+      // Apply options in order (outer to inner):
+      // 1. Lazy evaluation (if enabled, wrap in LazyValue)
+      // 2. Rate control (throttle + concurrency)
+      // 3. Caching
+      // 4. Retry with timeout and fallback
+      // 5. Error strategy
+      // 6. Priority scheduling
+
+      var wrapped: IO[Any] = operation.widen[Any]
+
+      // Apply error strategy (innermost, catches errors from operation)
+      options.onError.foreach { strategy =>
+        val errorStrategy = convertErrorStrategy(strategy)
+        wrapped = ErrorStrategyExecutor.execute(wrapped, errorStrategy, outputType, moduleName)
+      }
+
+      // Apply retry, timeout, and fallback
+      wrapped = applyRetryTimeoutFallback(wrapped, moduleName, options, getFallbackValue)
+
+      // Apply caching
+      options.cacheMs.foreach { ttlMs =>
+        wrapped = applyCaching(wrapped, moduleId, moduleName, ttlMs.millis, options.cacheBackend)
+      }
+
+      // Apply rate control (throttle + concurrency)
+      wrapped = applyRateControl(wrapped, moduleName, options)
+
+      // Apply priority scheduling
+      options.priority.foreach { priority =>
+        wrapped = applyPriority(wrapped, priority)
+      }
+
+      // Apply lazy evaluation (outermost)
+      if (options.lazyEval.getOrElse(false)) {
+        wrapped = applyLazy(wrapped)
+      }
+
+      wrapped
+    }
+  }
+
+  /** Apply retry, timeout, and fallback options. */
+  private def applyRetryTimeoutFallback[A](
+      operation: IO[A],
+      moduleName: String,
+      options: IRModuleCallOptions,
+      getFallbackValue: Option[() => IO[Any]]
+  ): IO[Any] = {
+    val hasRetry = options.retry.exists(_ > 0)
+    val hasTimeout = options.timeoutMs.isDefined
+    val hasFallback = getFallbackValue.isDefined
+
+    if (!hasRetry && !hasTimeout && !hasFallback) {
+      operation
+    } else {
+      // Build execution options
+      val execOptions = ExecutionOptions[Any](
+        retry = options.retry,
+        timeout = options.timeoutMs.map(_.millis),
+        delay = options.delayMs.map(_.millis),
+        backoff = options.backoff.map(convertBackoffStrategy),
+        maxDelay = Some(30.seconds),
+        fallback = getFallbackValue.map(f => f()),
+        onRetry = Some((attempt, error) => IO.println(s"[WARN] [$moduleName] retry $attempt: ${error.getMessage}")),
+        onFallback = Some((error) => IO.println(s"[WARN] [$moduleName] using fallback: ${error.getMessage}"))
+      )
+
+      ModuleExecutor.execute(operation.widen[Any], execOptions)
+    }
+  }
+
+  /** Apply caching option. */
+  private def applyCaching[A](
+      operation: IO[A],
+      moduleId: UUID,
+      moduleName: String,
+      ttl: FiniteDuration,
+      backendName: Option[String]
+  ): IO[Any] = {
+    // Generate a simple cache key based on module name
+    // TODO: Include input values for proper cache key generation
+    val cacheKey = s"module:$moduleName:$moduleId"
+
+    for {
+      backend <- backendName match {
+        case Some(name) =>
+          cacheRegistry.get(name).flatMap {
+            case Some(b) => IO.pure(b)
+            case None =>
+              // Create and register a new backend if not found
+              val newBackend = new InMemoryCacheBackend(maxSize = Some(1000))
+              cacheRegistry.register(name, newBackend).as(newBackend)
+          }
+        case None =>
+          cacheRegistry.default
+      }
+      result <- backend.getOrCompute[Any](cacheKey, ttl)(operation.widen[Any])
+    } yield result
+  }
+
+  /** Apply rate control (throttle and/or concurrency). */
+  private def applyRateControl[A](
+      operation: IO[A],
+      moduleName: String,
+      options: IRModuleCallOptions
+  ): IO[Any] = {
+    val hasThrottle = options.throttleCount.isDefined && options.throttlePerMs.isDefined
+    val hasConcurrency = options.concurrency.isDefined
+
+    if (!hasThrottle && !hasConcurrency) {
+      operation
+    } else {
+      val rateLimit = for {
+        count <- options.throttleCount
+        perMs <- options.throttlePerMs
+      } yield RateLimit(count, perMs.millis)
+
+      val rateControlOptions = RateControlOptions(
+        throttle = rateLimit,
+        concurrency = options.concurrency
+      )
+
+      RateControlExecutor.executeWithRateControl(
+        operation.widen[Any],
+        moduleName,
+        rateControlOptions,
+        limiterRegistry
+      )
+    }
+  }
+
+  /** Apply priority scheduling. */
+  private def applyPriority[A](operation: IO[A], priority: Int): IO[Any] = {
+    // Priority is recorded but execution is immediate in current implementation
+    // Future: could use PriorityScheduler for actual priority-based scheduling
+    val level = priority match {
+      case p if p >= 100 => PriorityLevel.Critical
+      case p if p >= 75 => PriorityLevel.High
+      case p if p >= 50 => PriorityLevel.Normal
+      case p if p >= 25 => PriorityLevel.Low
+      case _ => PriorityLevel.Background
+    }
+
+    // For now, just tag the operation (priority scheduling is advisory)
+    operation.widen[Any]
+  }
+
+  /** Apply lazy evaluation. */
+  private def applyLazy[A](operation: IO[A]): IO[Any] = {
+    // Wrap in LazyValue for deferred execution
+    LazyValue(operation.widen[Any]).flatMap(_.force)
+  }
+
+  /** Convert AST backoff strategy to runtime backoff strategy. */
+  private def convertBackoffStrategy(strategy: ASTBackoffStrategy): BackoffStrategy =
+    strategy match {
+      case ASTBackoffStrategy.Fixed => BackoffStrategy.Fixed
+      case ASTBackoffStrategy.Linear => BackoffStrategy.Linear
+      case ASTBackoffStrategy.Exponential => BackoffStrategy.Exponential
+    }
+
+  /** Convert AST error strategy to runtime error strategy. */
+  private def convertErrorStrategy(strategy: ASTErrorStrategy): ErrorStrategy =
+    strategy match {
+      case ASTErrorStrategy.Propagate => ErrorStrategy.Propagate
+      case ASTErrorStrategy.Skip => ErrorStrategy.Skip
+      case ASTErrorStrategy.Log => ErrorStrategy.Log
+      case ASTErrorStrategy.Wrap => ErrorStrategy.Wrap
+    }
+
+  /** Get the cache registry for external access. */
+  def getCacheRegistry: CacheRegistry = cacheRegistry
+
+  /** Get the limiter registry for external access. */
+  def getLimiterRegistry: LimiterRegistry = limiterRegistry
+}
+
+object ModuleOptionsExecutor {
+
+  /** Create a new module options executor with default registries. */
+  def create: IO[ModuleOptionsExecutor] = {
+    for {
+      cacheRegistry <- CacheRegistry.create
+      limiterRegistry <- LimiterRegistry.create
+    } yield new ModuleOptionsExecutor(cacheRegistry, limiterRegistry)
+  }
+
+  /** Create a module options executor with custom registries. */
+  def withRegistries(
+      cacheRegistry: CacheRegistry,
+      limiterRegistry: LimiterRegistry
+  ): ModuleOptionsExecutor = {
+    new ModuleOptionsExecutor(cacheRegistry, limiterRegistry)
+  }
+}
