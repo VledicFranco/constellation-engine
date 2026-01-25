@@ -4,6 +4,14 @@ import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
 import io.constellation.lang.ast.BoolOp
+import io.constellation.lang.ast.DurationUnit
+import io.constellation.lang.ast.Duration
+import io.constellation.lang.ast.Rate
+import io.constellation.lang.ast.BackoffStrategy
+import io.constellation.lang.ast.ErrorStrategy
+import io.constellation.lang.ast.PriorityLevel
+import io.constellation.lang.ast.CustomPriority
+import io.constellation.lang.ast.ModuleCallOptions
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -2040,5 +2048,645 @@ class ParserTest extends AnyFlatSpec with Matchers {
     """
     val result = ConstellationParser.parse(source)
     result.isRight shouldBe true
+  }
+
+  // ============================================================================
+  // Module call options (with clause) tests - RFC-001 through RFC-011
+  // ============================================================================
+
+  it should "parse module call with single retry option" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with retry: 3
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name shouldBe QualifiedName.simple("Foo")
+    funcCall.options.retry shouldBe Some(3)
+  }
+
+  it should "parse module call with multiple options" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with retry: 3, timeout: 30s
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.retry shouldBe Some(3)
+    funcCall.options.timeout shouldBe defined
+    funcCall.options.timeout.get.value shouldBe 30
+    funcCall.options.timeout.get.unit shouldBe DurationUnit.Seconds
+  }
+
+  it should "parse duration values in milliseconds" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with timeout: 500ms
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.timeout.get.value shouldBe 500
+    funcCall.options.timeout.get.unit shouldBe DurationUnit.Milliseconds
+  }
+
+  it should "parse duration values in seconds" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with timeout: 30s
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.timeout.get.value shouldBe 30
+    funcCall.options.timeout.get.unit shouldBe DurationUnit.Seconds
+  }
+
+  it should "parse duration values in minutes" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with cache: 5min
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.cache.get.value shouldBe 5
+    funcCall.options.cache.get.unit shouldBe DurationUnit.Minutes
+  }
+
+  it should "parse duration values in hours" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with cache: 1h
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.cache.get.value shouldBe 1
+    funcCall.options.cache.get.unit shouldBe DurationUnit.Hours
+  }
+
+  it should "parse duration values in days" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with cache: 7d
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.cache.get.value shouldBe 7
+    funcCall.options.cache.get.unit shouldBe DurationUnit.Days
+  }
+
+  it should "parse rate values for throttle option" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with throttle: 100/1min
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.throttle shouldBe defined
+    funcCall.options.throttle.get.count shouldBe 100
+    funcCall.options.throttle.get.per.value shouldBe 1
+    funcCall.options.throttle.get.per.unit shouldBe DurationUnit.Minutes
+  }
+
+  it should "parse rate values with seconds" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with throttle: 10/1s
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.throttle.get.count shouldBe 10
+    funcCall.options.throttle.get.per.value shouldBe 1
+    funcCall.options.throttle.get.per.unit shouldBe DurationUnit.Seconds
+  }
+
+  it should "parse backoff strategy: exponential" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with backoff: exponential
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.backoff shouldBe Some(BackoffStrategy.Exponential)
+  }
+
+  it should "parse backoff strategy: linear" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with backoff: linear
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.backoff shouldBe Some(BackoffStrategy.Linear)
+  }
+
+  it should "parse backoff strategy: fixed" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with backoff: fixed
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.backoff shouldBe Some(BackoffStrategy.Fixed)
+  }
+
+  it should "parse error strategy: propagate" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with on_error: propagate
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.onError shouldBe Some(ErrorStrategy.Propagate)
+  }
+
+  it should "parse error strategy: skip" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with on_error: skip
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.onError shouldBe Some(ErrorStrategy.Skip)
+  }
+
+  it should "parse error strategy: log" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with on_error: log
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.onError shouldBe Some(ErrorStrategy.Log)
+  }
+
+  it should "parse error strategy: wrap" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with on_error: wrap
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.onError shouldBe Some(ErrorStrategy.Wrap)
+  }
+
+  it should "parse priority level: critical" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: critical
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.Critical))
+  }
+
+  it should "parse priority level: high" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: high
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.High))
+  }
+
+  it should "parse priority level: normal" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: normal
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.Normal))
+  }
+
+  it should "parse priority level: low" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: low
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.Low))
+  }
+
+  it should "parse priority level: background" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: background
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.Background))
+  }
+
+  it should "parse numeric priority" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with priority: 10
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.priority shouldBe Some(Right(CustomPriority(10)))
+  }
+
+  it should "parse fallback with variable reference" in {
+    val source = """
+      in x: Int
+      in defaultValue: Int
+      result = Foo(x) with fallback: defaultValue
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.fallback shouldBe defined
+    funcCall.options.fallback.get.value shouldBe a[Expression.VarRef]
+  }
+
+  it should "parse fallback with function call" in {
+    val source = """
+      in x: Int
+      in y: Int
+      result = Foo(x) with fallback: Bar(y)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.fallback shouldBe defined
+    funcCall.options.fallback.get.value shouldBe a[Expression.FunctionCall]
+  }
+
+  it should "parse fallback with literal value" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with fallback: 0
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.fallback shouldBe defined
+    funcCall.options.fallback.get.value shouldBe Expression.IntLit(0)
+  }
+
+  it should "parse lazy flag without value" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with lazy
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.lazyEval shouldBe Some(true)
+  }
+
+  it should "parse lazy flag with true value" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with lazy: true
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.lazyEval shouldBe Some(true)
+  }
+
+  it should "parse lazy flag with false value" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with lazy: false
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.lazyEval shouldBe Some(false)
+  }
+
+  it should "parse concurrency option" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with concurrency: 5
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.concurrency shouldBe Some(5)
+  }
+
+  it should "parse delay option" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with delay: 1s
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.delay shouldBe defined
+    funcCall.options.delay.get.value shouldBe 1
+    funcCall.options.delay.get.unit shouldBe DurationUnit.Seconds
+  }
+
+  it should "parse cache_backend option" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with cache_backend: "redis"
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.cacheBackend shouldBe Some("redis")
+  }
+
+  it should "parse all Phase 1 options together" in {
+    val source = """
+      in x: Int
+      in defaultValue: Int
+      result = Foo(x) with retry: 3, timeout: 30s, fallback: defaultValue, cache: 5min
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.retry shouldBe Some(3)
+    funcCall.options.timeout.get.value shouldBe 30
+    funcCall.options.fallback shouldBe defined
+    funcCall.options.cache.get.value shouldBe 5
+  }
+
+  it should "parse all Phase 2 options together" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with retry: 3, delay: 1s, backoff: exponential
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.retry shouldBe Some(3)
+    funcCall.options.delay.get.value shouldBe 1
+    funcCall.options.backoff shouldBe Some(BackoffStrategy.Exponential)
+  }
+
+  it should "parse all Phase 3 options together" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with throttle: 100/1min, concurrency: 5
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.throttle.get.count shouldBe 100
+    funcCall.options.concurrency shouldBe Some(5)
+  }
+
+  it should "parse all Phase 4 options together" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with on_error: skip, lazy, priority: high
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.onError shouldBe Some(ErrorStrategy.Skip)
+    funcCall.options.lazyEval shouldBe Some(true)
+    funcCall.options.priority shouldBe Some(Left(PriorityLevel.High))
+  }
+
+  it should "parse comprehensive module options example" in {
+    val source = """
+      in x: Int
+      in fallbackValue: Int
+      result = Process(x) with retry: 3, timeout: 30s, delay: 1s, backoff: exponential, fallback: fallbackValue, cache: 5min
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.retry shouldBe Some(3)
+    funcCall.options.timeout.get.value shouldBe 30
+    funcCall.options.delay.get.value shouldBe 1
+    funcCall.options.backoff shouldBe Some(BackoffStrategy.Exponential)
+    funcCall.options.fallback shouldBe defined
+    funcCall.options.cache.get.value shouldBe 5
+  }
+
+  it should "parse module call without options (default empty)" in {
+    val source = """
+      in x: Int
+      result = Foo(x)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.isEmpty shouldBe true
+  }
+
+  it should "not allow 'with' as an identifier" in {
+    val source = """
+      in with: Int
+      out with
+    """
+    val result = ConstellationParser.parse(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "parse multi-line with clause" in {
+    val source = """
+      in x: Int
+      result = Foo(x) with
+        retry: 3,
+        timeout: 30s,
+        cache: 5min
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.options.retry shouldBe Some(3)
+    funcCall.options.timeout.get.value shouldBe 30
+    funcCall.options.cache.get.value shouldBe 5
+  }
+
+  it should "parse module options on qualified function call" in {
+    val source = """
+      in x: Int
+      result = stdlib.compute.process(x) with retry: 3
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name shouldBe QualifiedName(List("stdlib", "compute", "process"))
+    funcCall.options.retry shouldBe Some(3)
   }
 }

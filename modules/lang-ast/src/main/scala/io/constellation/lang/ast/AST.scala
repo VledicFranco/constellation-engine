@@ -209,6 +209,96 @@ enum BoolOp:
   case And // and
   case Or  // or
 
+// ============================================================================
+// Module Call Options (RFC-001 through RFC-011)
+// ============================================================================
+
+/** Duration unit for timeout, delay, cache options */
+enum DurationUnit:
+  case Milliseconds // ms
+  case Seconds      // s
+  case Minutes      // min
+  case Hours        // h
+  case Days         // d
+
+  /** Convert a value in this unit to milliseconds */
+  def toMillis(value: Long): Long = this match
+    case Milliseconds => value
+    case Seconds      => value * 1000L
+    case Minutes      => value * 60L * 1000L
+    case Hours        => value * 60L * 60L * 1000L
+    case Days         => value * 24L * 60L * 60L * 1000L
+
+/** Duration value (e.g., 30s, 5min, 1h) */
+final case class Duration(value: Long, unit: DurationUnit) {
+  def toMillis: Long = unit.toMillis(value)
+
+  override def toString: String = unit match
+    case DurationUnit.Milliseconds => s"${value}ms"
+    case DurationUnit.Seconds      => s"${value}s"
+    case DurationUnit.Minutes      => s"${value}min"
+    case DurationUnit.Hours        => s"${value}h"
+    case DurationUnit.Days         => s"${value}d"
+}
+
+/** Rate value for throttle option (e.g., 100/1min = 100 per minute) */
+final case class Rate(count: Int, per: Duration) {
+  override def toString: String = s"$count/$per"
+}
+
+/** Backoff strategy for retry delays */
+enum BackoffStrategy:
+  case Fixed       // constant delay between retries
+  case Linear      // delay increases linearly (N × base delay)
+  case Exponential // delay doubles each retry (2^N × base delay, capped at 30s)
+
+/** Error handling strategy */
+enum ErrorStrategy:
+  case Propagate // re-throw the error (default)
+  case Skip      // return zero value for the type
+  case Log       // log error and return zero value
+  case Wrap      // wrap in ErrorResult type
+
+/** Priority level for scheduling hints */
+enum PriorityLevel:
+  case Critical   // highest priority, minimal queuing
+  case High       // above normal, preferred scheduling
+  case Normal     // default priority
+  case Low        // below normal, yield to others
+  case Background // lowest priority, run when idle
+
+/** Custom numeric priority (higher = more important) */
+final case class CustomPriority(value: Int)
+
+/** Module call options from `with` clause
+  *
+  * Example: `result = MyModule(input) with retry: 3, timeout: 30s, cache: 5min`
+  */
+final case class ModuleCallOptions(
+    retry: Option[Int] = None,
+    timeout: Option[Duration] = None,
+    delay: Option[Duration] = None,
+    backoff: Option[BackoffStrategy] = None,
+    fallback: Option[Located[Expression]] = None,
+    cache: Option[Duration] = None,
+    cacheBackend: Option[String] = None,
+    throttle: Option[Rate] = None,
+    concurrency: Option[Int] = None,
+    onError: Option[ErrorStrategy] = None,
+    lazyEval: Option[Boolean] = None,
+    priority: Option[Either[PriorityLevel, CustomPriority]] = None
+) {
+  def isEmpty: Boolean =
+    retry.isEmpty && timeout.isEmpty && delay.isEmpty && backoff.isEmpty &&
+    fallback.isEmpty && cache.isEmpty && cacheBackend.isEmpty &&
+    throttle.isEmpty && concurrency.isEmpty && onError.isEmpty &&
+    lazyEval.isEmpty && priority.isEmpty
+}
+
+object ModuleCallOptions {
+  val empty: ModuleCallOptions = ModuleCallOptions()
+}
+
 /** Expressions */
 sealed trait Expression
 
@@ -217,10 +307,13 @@ object Expression {
   /** Variable reference: communications, embeddings */
   final case class VarRef(name: String) extends Expression
 
-  /** Function call: ide-ranker-v2-candidate-embed(communications) or stdlib.math.add(a, b) */
+  /** Function call: ide-ranker-v2-candidate-embed(communications) or stdlib.math.add(a, b)
+    * Optionally includes module call options from `with` clause.
+    */
   final case class FunctionCall(
       name: QualifiedName,
-      args: List[Located[Expression]]
+      args: List[Located[Expression]],
+      options: ModuleCallOptions = ModuleCallOptions.empty
   ) extends Expression
 
   /** Type algebra on expressions: embeddings + communications */

@@ -433,7 +433,7 @@ object TypeChecker {
         .toValidNel(CompileError.UndefinedVariable(name, Some(span)))
         .map(TypedExpression.VarRef(name, _, span))
 
-    case Expression.FunctionCall(name, args) =>
+    case Expression.FunctionCall(name, args, _) =>
       env.functions.lookupInScope(name, env.namespaceScope, Some(span)) match {
         case Right(sig) =>
           if args.size != sig.params.size then {

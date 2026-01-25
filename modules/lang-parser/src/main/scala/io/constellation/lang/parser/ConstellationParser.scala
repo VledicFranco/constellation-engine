@@ -8,6 +8,14 @@ import io.constellation.lang.ast.*
 import io.constellation.lang.ast.CompareOp
 import io.constellation.lang.ast.ArithOp
 import io.constellation.lang.ast.BoolOp
+import io.constellation.lang.ast.DurationUnit
+import io.constellation.lang.ast.Duration
+import io.constellation.lang.ast.Rate
+import io.constellation.lang.ast.BackoffStrategy
+import io.constellation.lang.ast.ErrorStrategy
+import io.constellation.lang.ast.PriorityLevel
+import io.constellation.lang.ast.CustomPriority
+import io.constellation.lang.ast.ModuleCallOptions
 
 object ConstellationParser extends MemoizationSupport {
 
@@ -37,6 +45,8 @@ object ConstellationParser extends MemoizationSupport {
   private val whenKw: P[Unit]      = keyword("when")
   private val branchKw: P[Unit]    = keyword("branch")
   private val otherwiseKw: P[Unit] = keyword("otherwise")
+  private val withKw: P[Unit]      = keyword("with")
+  private val lazyKw: P[Unit]      = keyword("lazy")
 
   // Reserved words
   private val reserved: Set[String] = Set(
@@ -54,7 +64,9 @@ object ConstellationParser extends MemoizationSupport {
     "not",
     "when",
     "branch",
-    "otherwise"
+    "otherwise",
+    "with",
+    "lazy"
   )
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
@@ -91,6 +103,157 @@ object ConstellationParser extends MemoizationSupport {
   private val dot: P[Unit]          = P.char('.')
   private val arrow: P[Unit]        = token(P.string("->"))
   private val fatArrow: P[Unit]     = token(P.string("=>"))
+  private val slash: P[Unit]        = token(P.char('/'))
+
+  // ============================================================================
+  // Duration and Rate parsing (for module call options)
+  // ============================================================================
+
+  // Duration units: ms, s, min, h, d
+  // Note: 'min' must be checked before 'm' to avoid ambiguity
+  private val durationUnit: P[DurationUnit] = P.oneOf(
+    List(
+      P.string("ms").as(DurationUnit.Milliseconds),
+      P.string("min").as(DurationUnit.Minutes),
+      P.string("s").as(DurationUnit.Seconds),
+      P.string("h").as(DurationUnit.Hours),
+      P.string("d").as(DurationUnit.Days)
+    )
+  )
+
+  // Duration: integer followed by unit (e.g., 30s, 5min, 100ms)
+  private val duration: P[Duration] =
+    (Numbers.nonNegativeIntString ~ durationUnit).map { case (valueStr, unit) =>
+      Duration(valueStr.toLong, unit)
+    }
+
+  // Rate: count/duration (e.g., 100/1min, 10/1s)
+  private val rate: P[Rate] =
+    (Numbers.nonNegativeIntString ~ (slash *> duration)).map { case (countStr, per) =>
+      Rate(countStr.toInt, per)
+    }
+
+  // Backoff strategy identifiers
+  private val backoffStrategy: P[BackoffStrategy] = P.oneOf(
+    List(
+      P.string("exponential").as(BackoffStrategy.Exponential),
+      P.string("linear").as(BackoffStrategy.Linear),
+      P.string("fixed").as(BackoffStrategy.Fixed)
+    )
+  )
+
+  // Error handling strategy identifiers
+  private val errorStrategy: P[ErrorStrategy] = P.oneOf(
+    List(
+      P.string("propagate").as(ErrorStrategy.Propagate),
+      P.string("skip").as(ErrorStrategy.Skip),
+      P.string("log").as(ErrorStrategy.Log),
+      P.string("wrap").as(ErrorStrategy.Wrap)
+    )
+  )
+
+  // Priority level identifiers
+  private val priorityLevel: P[PriorityLevel] = P.oneOf(
+    List(
+      P.string("critical").as(PriorityLevel.Critical),
+      P.string("high").as(PriorityLevel.High),
+      P.string("normal").as(PriorityLevel.Normal),
+      P.string("low").as(PriorityLevel.Low),
+      P.string("background").as(PriorityLevel.Background)
+    )
+  )
+
+  // ============================================================================
+  // Module call options: with retry: 3, timeout: 30s, cache: 5min
+  // ============================================================================
+
+  // Option names (used for parsing individual options)
+  private val optionName: P[String] = token(rawIdentifier)
+
+  // Single module call option: name: value
+  // Returns a function that updates ModuleCallOptions
+  private lazy val moduleOption: P[ModuleCallOptions => ModuleCallOptions] = P.defer {
+    // retry: 3
+    val retryOpt = (token(P.string("retry")) *> colon *> token(Numbers.nonNegativeIntString))
+      .map(v => (opts: ModuleCallOptions) => opts.copy(retry = Some(v.toInt)))
+
+    // timeout: 30s
+    val timeoutOpt = (token(P.string("timeout")) *> colon *> token(duration))
+      .map(d => (opts: ModuleCallOptions) => opts.copy(timeout = Some(d)))
+
+    // delay: 1s
+    val delayOpt = (token(P.string("delay")) *> colon *> token(duration))
+      .map(d => (opts: ModuleCallOptions) => opts.copy(delay = Some(d)))
+
+    // backoff: exponential
+    val backoffOpt = (token(P.string("backoff")) *> colon *> token(backoffStrategy))
+      .map(s => (opts: ModuleCallOptions) => opts.copy(backoff = Some(s)))
+
+    // fallback: expression
+    val fallbackOpt = (token(P.string("fallback")) *> colon *> withSpan(expression))
+      .map(e => (opts: ModuleCallOptions) => opts.copy(fallback = Some(e)))
+
+    // cache: 5min
+    val cacheOpt = (token(P.string("cache")) *> colon *> token(duration))
+      .map(d => (opts: ModuleCallOptions) => opts.copy(cache = Some(d)))
+
+    // cache_backend: "redis"
+    val cacheBackendOpt = (token(P.string("cache_backend")) *> colon *> token(P.char('"') *> P.until0(P.char('"')) <* P.char('"')))
+      .map(s => (opts: ModuleCallOptions) => opts.copy(cacheBackend = Some(s)))
+
+    // throttle: 100/1min
+    val throttleOpt = (token(P.string("throttle")) *> colon *> token(rate))
+      .map(r => (opts: ModuleCallOptions) => opts.copy(throttle = Some(r)))
+
+    // concurrency: 5
+    val concurrencyOpt = (token(P.string("concurrency")) *> colon *> token(Numbers.nonNegativeIntString))
+      .map(v => (opts: ModuleCallOptions) => opts.copy(concurrency = Some(v.toInt)))
+
+    // on_error: skip
+    val onErrorOpt = (token(P.string("on_error")) *> colon *> token(errorStrategy))
+      .map(s => (opts: ModuleCallOptions) => opts.copy(onError = Some(s)))
+
+    // lazy (flag without value) or lazy: true/false
+    val lazyFlagOnly = lazyKw.as((opts: ModuleCallOptions) => opts.copy(lazyEval = Some(true)))
+    val lazyWithValue = (lazyKw *> colon *> (trueKw.as(true) | falseKw.as(false)))
+      .map(v => (opts: ModuleCallOptions) => opts.copy(lazyEval = Some(v)))
+    val lazyOpt = lazyWithValue.backtrack | lazyFlagOnly
+
+    // priority: high or priority: 10
+    val priorityLevelOpt = token(priorityLevel)
+      .map(p => (opts: ModuleCallOptions) => opts.copy(priority = Some(Left(p))))
+    val priorityNumericOpt = token(Numbers.signedIntString)
+      .map(v => (opts: ModuleCallOptions) => opts.copy(priority = Some(Right(CustomPriority(v.toInt)))))
+    val priorityOpt = (token(P.string("priority")) *> colon *> (priorityLevelOpt.backtrack | priorityNumericOpt))
+      .map(f => f) // f is already the right type
+
+    P.oneOf(
+      List(
+        retryOpt.backtrack,
+        timeoutOpt.backtrack,
+        delayOpt.backtrack,
+        backoffOpt.backtrack,
+        fallbackOpt.backtrack,
+        cacheBackendOpt.backtrack,  // must come before cache
+        cacheOpt.backtrack,
+        throttleOpt.backtrack,
+        concurrencyOpt.backtrack,
+        onErrorOpt.backtrack,
+        lazyOpt.backtrack,
+        priorityOpt.backtrack
+      )
+    )
+  }
+
+  // With clause: with option1: value1, option2: value2, ...
+  private lazy val withClause: P[ModuleCallOptions] =
+    (withKw *> moduleOption.repSep(comma)).map { options =>
+      options.foldLeft(ModuleCallOptions.empty) { (acc, f) => f(acc) }
+    }
+
+  // Optional with clause
+  private lazy val optionalWithClause: Parser0[ModuleCallOptions] =
+    withClause.?.map(_.getOrElse(ModuleCallOptions.empty))
 
   // Comparison operators (order matters: longer operators first)
   private val eqOp: P[CompareOp]    = P.string("==").as(CompareOp.Eq)
@@ -342,9 +505,9 @@ object ConstellationParser extends MemoizationSupport {
     identifier.map(Expression.VarRef(_))
 
   private lazy val functionCall: P[Expression.FunctionCall] =
-    ((qualifiedName <* ws) ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen))
-      .map { case (name, args) =>
-        Expression.FunctionCall(name, args.toList)
+    ((qualifiedName <* ws) ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen) ~ optionalWithClause)
+      .map { case ((name, args), options) =>
+        Expression.FunctionCall(name, args.toList, options)
       }
 
   private lazy val conditional: P[Expression.Conditional] =

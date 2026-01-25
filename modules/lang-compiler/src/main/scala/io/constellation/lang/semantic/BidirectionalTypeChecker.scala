@@ -176,7 +176,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         .toValidNel(CompileError.UndefinedVariable(name, Some(span)))
         .map(TypedExpression.VarRef(name, _, span))
 
-    case Expression.FunctionCall(name, args) =>
+    case Expression.FunctionCall(name, args, _) =>
       inferFunctionCall(name, args, span, env, context)
 
     case Expression.Merge(left, right) =>

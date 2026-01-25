@@ -184,7 +184,7 @@ class SemanticTokenProvider {
         // Variable reference
         tokens += RawToken(span.start, span.length, TokenType.Variable, TokenModifier.None)
 
-      case Expression.FunctionCall(name, args) =>
+      case Expression.FunctionCall(name, args, _) =>
         // Function name - use the span of the Located expression minus args
         // Since QualifiedName doesn't have span, we need to estimate
         val funcNameLen = name.fullName.length
