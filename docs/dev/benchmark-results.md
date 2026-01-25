@@ -13,6 +13,8 @@ This document contains measured performance baselines for the Constellation Engi
 | Semantic Tokens | `sbt "langLsp/testOnly *SemanticTokenBenchmark"` | <3ms for large files |
 | Cache Performance | `sbt "langCompiler/testOnly *CacheBenchmark"` | 7-90x speedup |
 | Compiler Pipeline | `sbt "langCompiler/testOnly *CompilerPipelineBenchmark"` | <10ms full pipeline |
+| Memory Profiling | `sbt "langCompiler/testOnly *MemoryBenchmark"` | <50MB per phase |
+| Execution Performance | `sbt "runtime/testOnly *ExecutionBenchmark"` | ~0.2ms per node |
 
 ---
 
@@ -242,6 +244,164 @@ sbt -J-Xmx4G "langCompiler/testOnly *VisualizationBenchmark"
 1. **Check parse errors:** Failed parses return empty tokens (graceful degradation)
 2. **Profile with large file:** The benchmark uses a 188-line file as "large"
 3. **Verify LSP connection:** Network latency may dominate for remote LSP
+
+---
+
+## Memory Benchmarks
+
+**File:** `modules/lang-compiler/src/test/scala/io/constellation/lang/benchmark/MemoryBenchmark.scala`
+
+**Purpose:** Measures heap memory consumption per compilation phase to establish baselines and identify memory-intensive operations.
+
+### Running Memory Benchmarks
+
+```bash
+sbt "langCompiler/testOnly *MemoryBenchmark"
+```
+
+### Phase Memory Usage
+
+| Phase | Small | Medium | Large | Target |
+|-------|-------|--------|-------|--------|
+| Parse | ~24MB | ~2MB | ~3MB | <50MB |
+| TypeCheck | ~2MB | ~0.4MB | ~8MB | <50MB |
+| IR Generation | ~4MB | ~1.5MB | ~0.7MB | <50MB |
+| Optimization | - | - | ~5MB | <50MB |
+| DAG Compile | - | - | ~11MB | <50MB |
+| **Full Pipeline** | ~0.3MB | ~0.1MB | ~0.1MB | <50MB |
+
+**Note:** JVM memory measurement is inherently noisy due to GC timing. Values are averages over 10 samples. The "Full Pipeline" memory is lower than individual phases because it measures retained memory after the entire operation, while phase measurements include intermediate objects.
+
+### Stress Test Results
+
+| Node Count | Heap Delta | MB per Node |
+|------------|-----------|-------------|
+| 100 nodes | ~0.1MB | ~0.001 MB/node |
+| 200 nodes | ~0.14MB | ~0.0007 MB/node |
+
+### Scaling Analysis
+
+- **Scaling characteristic:** Sub-linear to linear (~0.5-0.9 ratio)
+- Memory usage does not grow proportionally with program size
+- JVM GC effectively manages intermediate objects
+
+### JVM Heap Recommendations
+
+Based on benchmark results:
+
+| Use Case | Recommended Heap |
+|----------|-----------------|
+| Minimum for development | `-Xms40m` |
+| Large workloads | `-Xmx100m` |
+| Stress testing | `-Xmx200m` |
+
+### Warning Thresholds (for LSP/Extension)
+
+| Level | Per Compilation | Action |
+|-------|----------------|--------|
+| Normal | < 50 MB | No action needed |
+| Warning | 50-100 MB | Monitor, consider splitting large files |
+| Critical | > 200 MB | Investigate for memory leaks |
+
+---
+
+## Execution Benchmarks
+
+**File:** `modules/runtime/src/test/scala/io/constellation/benchmark/ExecutionBenchmark.scala`
+
+**Purpose:** Measures DAG execution performance for both full execution and step-through debugging modes.
+
+### Running Execution Benchmarks
+
+```bash
+sbt "runtime/testOnly *ExecutionBenchmark"
+```
+
+### Full Execution Performance
+
+| DAG Size | Nodes | Average | Target | Throughput |
+|----------|-------|---------|--------|------------|
+| Simple | 1 | ~1.8ms | <50ms | ~560 ops/s |
+| Medium | 3 | ~2.1ms | <100ms | ~480 ops/s |
+| Large | 10 | ~4.8ms | <200ms | ~210 ops/s |
+| Stress 50 | 50 | ~12ms | <500ms | ~85 ops/s |
+| Stress 100 | 100 | ~21ms | <1000ms | ~47 ops/s |
+
+### Step-through Execution Performance
+
+| DAG Size | Average per Step | Target | Throughput |
+|----------|-----------------|--------|------------|
+| Simple | ~0.3ms | <100ms | ~3300 steps/s |
+| Medium | ~0.3ms | <100ms | ~3300 steps/s |
+
+### Scaling Analysis
+
+```
+Simple -> Large:     2.7x time increase (10x node increase)
+Stress50 -> Stress100: 1.8x time increase (2x node increase)
+Scaling characteristic: Linear (~0.9 ratio)
+```
+
+**Finding:** Execution scales approximately linearly with node count. Each node adds ~0.21ms of execution time.
+
+### Performance Targets Summary
+
+| Operation | Target | Status |
+|-----------|--------|--------|
+| Simple DAG execution | <50ms | PASS (~2ms) |
+| Medium DAG execution | <100ms | PASS (~2ms) |
+| Large DAG execution | <200ms | PASS (~5ms) |
+| Stress test (100 nodes) | <1000ms | PASS (~21ms) |
+| Step-through per batch | <100ms | PASS (~0.3ms) |
+
+All execution benchmarks pass with significant margin, ensuring interactive responsiveness.
+
+---
+
+## VS Code Extension Memory Management
+
+### Memory Limits in Extension
+
+The VS Code extension implements memory management to prevent unbounded growth during long sessions:
+
+| Component | Behavior |
+|-----------|----------|
+| Step-through session state | Cleaned via `_cleanupStepSession()` on stop/complete |
+| Panel dispose | Clears all accumulated state and static references |
+| WebView state | Reset on new execution via `setAllNodesState('pending')` |
+
+### Memory Management Implementation
+
+**ScriptRunnerPanel:**
+- `_cleanupStepSession()`: Clears `_steppingSessionId` and `_isStepping` flag
+- Called on: stop, continue, error, and dispose
+- Prevents step-through state accumulation
+
+**DagVisualizerPanel:**
+- Execution states stored in WebView (cleared on panel close)
+- `resetExecutionStates()` clears state on demand
+- Static `currentPanel` reference cleared on dispose
+
+### Testing Memory Management
+
+Tests in `vscode-extension/src/test/suite/e2e/memory-management.test.ts` verify:
+- Step-through session cleanup on stop/complete/error
+- Panel dispose clearing all state
+- Rapid open/close cycles not leaking memory
+- Multiple executions not causing memory growth
+
+### Troubleshooting Extension Memory Issues
+
+1. **Check extension host memory** in Task Manager/Activity Monitor
+2. **If memory is growing:**
+   - Check for panel leaks (open/close panels 10 times)
+   - Verify step-through sessions are being stopped properly
+3. **Long step-through sessions:**
+   - Stop and restart periodically
+   - Memory is bounded by panel lifecycle
+4. **Large files:**
+   - Consider splitting into smaller modules
+   - Each module compiles independently
 
 ---
 
