@@ -1,0 +1,83 @@
+# Medium benchmark program - Flag Processing
+# Matches: TestFixtures.mediumProgram (~80 lines)
+# Purpose: Realistic small file
+# Target: <50ms parse, <150ms full pipeline
+
+type Config = {
+  enabled: Boolean,
+  active: Boolean,
+  premium: Boolean,
+  verified: Boolean
+}
+
+type UserData = {
+  score: Int,
+  level: Int,
+  isAdmin: Boolean,
+  isActive: Boolean
+}
+
+in config: Config
+in user: UserData
+in defaultScore: Int
+in defaultLevel: Int
+
+# Extract fields
+enabled = config.enabled
+active = config.active
+premium = config.premium
+verified = config.verified
+
+score = user.score
+level = user.level
+isAdmin = user.isAdmin
+isActive = user.isActive
+
+# Compound boolean conditions
+isFullyEnabled = enabled and active
+isPremiumUser = premium and verified
+canAccess = isFullyEnabled or isAdmin
+isRestricted = not enabled or not active
+
+# Nested conditions
+hasAccess = canAccess and isActive
+isPowerUser = isPremiumUser and isAdmin
+needsUpgrade = not premium and isActive
+
+# Guard expressions
+premiumScore = score when isPremiumUser
+adminLevel = level when isAdmin
+activeScore = score when isActive
+
+# Coalesce chains
+effectiveScore = premiumScore ?? activeScore ?? defaultScore
+effectiveLevel = adminLevel ?? defaultLevel
+
+# Complex conditionals
+accessLevel = if (isPowerUser) level else if (hasAccess) defaultLevel else defaultScore
+tierLevel = if (isPremiumUser) level else defaultLevel
+
+# More boolean combinations
+allEnabled = enabled and active and premium and verified
+anyEnabled = enabled or active or premium or verified
+mixedState = (enabled and not active) or (not enabled and active)
+
+# Final computations
+finalAccess = if (allEnabled) level else effectiveLevel
+fallbackResult = if (anyEnabled) score else defaultScore
+
+out isFullyEnabled
+out isPremiumUser
+out canAccess
+out hasAccess
+out isPowerUser
+out needsUpgrade
+out effectiveScore
+out effectiveLevel
+out accessLevel
+out tierLevel
+out allEnabled
+out anyEnabled
+out mixedState
+out finalAccess
+out fallbackResult

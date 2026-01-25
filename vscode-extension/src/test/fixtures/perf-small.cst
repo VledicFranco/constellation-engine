@@ -1,0 +1,19 @@
+# Small benchmark program
+# Matches: TestFixtures.smallProgram (~15 lines)
+# Purpose: Quick sanity checks
+# Target: <5ms parse, <50ms full pipeline
+
+type Data = { value: Int, flag: Boolean }
+
+in data: Data
+in fallback: Int
+
+value = data.value
+flag = data.flag
+
+result = if (flag) value else fallback
+guarded = value when flag
+final = guarded ?? fallback
+
+out result
+out final
