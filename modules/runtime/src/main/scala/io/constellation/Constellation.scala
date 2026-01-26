@@ -31,4 +31,19 @@ trait Constellation {
       inputs: Map[String, CValue],
       modules: Map[java.util.UUID, Module.Uninitialized]
   ): IO[Runtime.State]
+
+  /** Run a DAG with pre-resolved modules and priority scheduling.
+    *
+    * @param dagSpec The DAG specification
+    * @param inputs Input data
+    * @param modules Module implementations keyed by UUID
+    * @param modulePriorities Priority values per module UUID (0-100, higher = more important)
+    * @return Execution state
+    */
+  def runDagWithModulesAndPriorities(
+      dagSpec: DagSpec,
+      inputs: Map[String, CValue],
+      modules: Map[java.util.UUID, Module.Uninitialized],
+      modulePriorities: Map[java.util.UUID, Int]
+  ): IO[Runtime.State]
 }

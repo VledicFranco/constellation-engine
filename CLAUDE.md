@@ -42,6 +42,22 @@ For multi-agent setups, each agent uses a unique port based on their agent numbe
 
 The `scripts/dev.ps1` script auto-detects the agent number from the directory name.
 
+**Scheduler Configuration:**
+The global priority scheduler can be configured via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONSTELLATION_SCHEDULER_ENABLED` | `false` | Enable bounded scheduler with priority ordering |
+| `CONSTELLATION_SCHEDULER_MAX_CONCURRENCY` | `16` | Maximum concurrent tasks when scheduler enabled |
+| `CONSTELLATION_SCHEDULER_STARVATION_TIMEOUT` | `30s` | Time before low-priority tasks get priority boost |
+
+Example:
+```bash
+CONSTELLATION_SCHEDULER_ENABLED=true CONSTELLATION_SCHEDULER_MAX_CONCURRENCY=8 sbt "exampleApp/run"
+```
+
+For more details, see `docs/dev/global-scheduler.md`.
+
 ## Code Conventions
 
 ### Module Creation

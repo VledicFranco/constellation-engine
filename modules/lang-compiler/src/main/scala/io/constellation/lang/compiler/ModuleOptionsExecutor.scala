@@ -14,7 +14,7 @@ import java.util.UUID
   *
   * This is the integration layer between:
   * - `IRModuleCallOptions` from the compiler
-  * - Runtime execution infrastructure (ModuleExecutor, CacheRegistry, LimiterRegistry, etc.)
+  * - Runtime execution infrastructure (ModuleExecutor, CacheRegistry, LimiterRegistry, GlobalScheduler, etc.)
   *
   * ==Usage==
   *
@@ -30,10 +30,17 @@ import java.util.UUID
   *   getFallbackValue = Some(() => IO.pure("default"))
   * )
   * }}}
+  *
+  * ==Priority Scheduling==
+  *
+  * When a GlobalScheduler is configured (via `withScheduler` or environment config), tasks
+  * with `priority` options are submitted to the scheduler for global ordering. High-priority
+  * tasks from any execution will run before low-priority tasks.
   */
 class ModuleOptionsExecutor private (
     cacheRegistry: CacheRegistry,
-    limiterRegistry: LimiterRegistry
+    limiterRegistry: LimiterRegistry,
+    scheduler: GlobalScheduler = GlobalScheduler.unbounded
 ) {
 
   /** Execute an operation with the specified module call options.
@@ -189,20 +196,23 @@ class ModuleOptionsExecutor private (
     }
   }
 
-  /** Apply priority scheduling. */
+  /** Apply priority scheduling.
+    *
+    * Submits the operation to the global scheduler with the given priority.
+    * High-priority tasks (>= 75) are executed before low-priority tasks (< 25)
+    * when the system is under load.
+    *
+    * @param operation The IO operation to schedule
+    * @param priority Priority value (0-100, higher = more important)
+    * @return The scheduled operation
+    */
   private def applyPriority[A](operation: IO[A], priority: Int): IO[Any] = {
-    // Priority is recorded but execution is immediate in current implementation
-    // Future: could use PriorityScheduler for actual priority-based scheduling
-    val level = priority match {
-      case p if p >= 100 => PriorityLevel.Critical
-      case p if p >= 75 => PriorityLevel.High
-      case p if p >= 50 => PriorityLevel.Normal
-      case p if p >= 25 => PriorityLevel.Low
-      case _ => PriorityLevel.Background
-    }
+    // Clamp priority to valid range
+    val clampedPriority = math.max(0, math.min(100, priority))
 
-    // For now, just tag the operation (priority scheduling is advisory)
-    operation.widen[Any]
+    // Submit to global scheduler - this provides cross-execution priority ordering
+    // when using a bounded scheduler, or passes through immediately with unbounded
+    scheduler.submit(clampedPriority, operation.widen[Any])
   }
 
   /** Apply lazy evaluation. */
@@ -233,11 +243,14 @@ class ModuleOptionsExecutor private (
 
   /** Get the limiter registry for external access. */
   def getLimiterRegistry: LimiterRegistry = limiterRegistry
+
+  /** Get the scheduler for external access. */
+  def getScheduler: GlobalScheduler = scheduler
 }
 
 object ModuleOptionsExecutor {
 
-  /** Create a new module options executor with default registries. */
+  /** Create a new module options executor with default registries and unbounded scheduler. */
   def create: IO[ModuleOptionsExecutor] = {
     for {
       cacheRegistry <- CacheRegistry.create
@@ -245,11 +258,40 @@ object ModuleOptionsExecutor {
     } yield new ModuleOptionsExecutor(cacheRegistry, limiterRegistry)
   }
 
-  /** Create a module options executor with custom registries. */
+  /** Create a module options executor with custom registries (unbounded scheduler). */
   def withRegistries(
       cacheRegistry: CacheRegistry,
       limiterRegistry: LimiterRegistry
   ): ModuleOptionsExecutor = {
     new ModuleOptionsExecutor(cacheRegistry, limiterRegistry)
+  }
+
+  /** Create a module options executor with a custom scheduler.
+    *
+    * Use this when you want priority-based scheduling across all executions.
+    *
+    * @param scheduler The global scheduler for priority ordering
+    * @return IO that creates the executor
+    */
+  def createWithScheduler(scheduler: GlobalScheduler): IO[ModuleOptionsExecutor] = {
+    for {
+      cacheRegistry <- CacheRegistry.create
+      limiterRegistry <- LimiterRegistry.create
+    } yield new ModuleOptionsExecutor(cacheRegistry, limiterRegistry, scheduler)
+  }
+
+  /** Create a module options executor with custom registries and scheduler.
+    *
+    * @param cacheRegistry Cache registry for caching options
+    * @param limiterRegistry Limiter registry for rate limiting options
+    * @param scheduler Global scheduler for priority scheduling
+    * @return The executor instance
+    */
+  def withAll(
+      cacheRegistry: CacheRegistry,
+      limiterRegistry: LimiterRegistry,
+      scheduler: GlobalScheduler
+  ): ModuleOptionsExecutor = {
+    new ModuleOptionsExecutor(cacheRegistry, limiterRegistry, scheduler)
   }
 }

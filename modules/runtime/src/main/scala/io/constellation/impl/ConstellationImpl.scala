@@ -2,9 +2,13 @@ package io.constellation.impl
 
 import cats.effect.IO
 import io.constellation.*
+import io.constellation.execution.GlobalScheduler
 
-final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRegistry)
-    extends Constellation {
+final class ConstellationImpl(
+    moduleRegistry: ModuleRegistry,
+    dagRegistry: DagRegistry,
+    scheduler: GlobalScheduler = GlobalScheduler.unbounded
+) extends Constellation {
 
   def getModules: IO[List[ModuleNodeSpec]] =
     moduleRegistry.listModules
@@ -46,7 +50,7 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
         case Some(dagSpec) =>
           for {
             modules <- moduleRegistry.initModules(dagSpec)
-            context <- Runtime.run(dagSpec, inputs, modules)
+            context <- Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
           } yield context
         case None => IO.raiseError(new Exception(s"DAG $name not found"))
       }
@@ -55,7 +59,7 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
   def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State] =
     for {
       modules <- moduleRegistry.initModules(dagSpec)
-      context <- Runtime.run(dagSpec, inputs, modules)
+      context <- Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
     } yield context
 
   def runDagWithModules(
@@ -63,14 +67,38 @@ final class ConstellationImpl(moduleRegistry: ModuleRegistry, dagRegistry: DagRe
       inputs: Map[String, CValue],
       modules: Map[java.util.UUID, Module.Uninitialized]
   ): IO[Runtime.State] =
-    Runtime.run(dagSpec, inputs, modules)
+    Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
+
+  def runDagWithModulesAndPriorities(
+      dagSpec: DagSpec,
+      inputs: Map[String, CValue],
+      modules: Map[java.util.UUID, Module.Uninitialized],
+      modulePriorities: Map[java.util.UUID, Int]
+  ): IO[Runtime.State] =
+    Runtime.runWithScheduler(dagSpec, inputs, modules, modulePriorities, scheduler)
 }
 
 object ConstellationImpl {
 
+  /** Initialize with default unbounded scheduler. */
   def init: IO[ConstellationImpl] =
     for {
       moduleRegistry <- ModuleRegistryImpl.init
       dagRegistry    <- DagRegistryImpl.init
     } yield new ConstellationImpl(moduleRegistry = moduleRegistry, dagRegistry = dagRegistry)
+
+  /** Initialize with a custom scheduler for priority-based execution.
+    *
+    * @param scheduler The global scheduler to use for task ordering
+    * @return ConstellationImpl with scheduler support
+    */
+  def initWithScheduler(scheduler: GlobalScheduler): IO[ConstellationImpl] =
+    for {
+      moduleRegistry <- ModuleRegistryImpl.init
+      dagRegistry    <- DagRegistryImpl.init
+    } yield new ConstellationImpl(
+      moduleRegistry = moduleRegistry,
+      dagRegistry = dagRegistry,
+      scheduler = scheduler
+    )
 }

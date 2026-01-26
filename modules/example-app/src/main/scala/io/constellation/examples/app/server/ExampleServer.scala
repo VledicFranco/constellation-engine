@@ -3,12 +3,15 @@ package io.constellation.examples.app.server
 import cats.effect.{IO, IOApp}
 import cats.implicits.*
 import io.constellation.impl.ConstellationImpl
+import io.constellation.execution.GlobalScheduler
 import io.constellation.examples.app.ExampleLib
 import io.constellation.stdlib.StdLib
-import io.constellation.http.ConstellationServer
+import io.constellation.http.{ConstellationServer, DashboardConfig}
 import io.constellation.lang.CachingLangCompiler
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+
+import java.nio.file.Paths
 
 /** Example HTTP server with standard library + example app functions
   *
@@ -18,7 +21,13 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   * The server port can be configured via the CONSTELLATION_PORT environment variable. Default port
   * is 8080. For multi-agent setups, use: 8080 + agent_number
   *
+  * The dashboard can be configured via environment variables:
+  *   - CONSTELLATION_CST_DIR: Directory containing .cst files to browse (default: current directory)
+  *   - CONSTELLATION_SAMPLE_RATE: Execution sampling rate 0.0-1.0 (default: 1.0)
+  *   - CONSTELLATION_MAX_EXECUTIONS: Max stored executions (default: 1000)
+  *
   * Once started, you can:
+  *   - Access the dashboard: http://localhost:{port}/dashboard
   *   - Compile constellation-lang programs: POST /compile
   *   - Execute compiled DAGs: POST /execute
   *   - List available DAGs: GET /dags
@@ -31,28 +40,47 @@ object ExampleServer extends IOApp.Simple {
     Slf4jLogger.getLoggerFromName[IO]("io.constellation.examples.app.server.ExampleServer")
 
   def run: IO[Unit] =
-    for {
-      // Create constellation engine instance
-      constellation <- ConstellationImpl.init
+    ConstellationServer.schedulerResource.use { scheduler =>
+      for {
+        // Log scheduler configuration
+        _ <- if (ConstellationServer.SchedulerConfig.enabled) {
+          logger.info(
+            s"Bounded scheduler enabled: maxConcurrency=${ConstellationServer.SchedulerConfig.maxConcurrency}, " +
+            s"starvationTimeout=${ConstellationServer.SchedulerConfig.starvationTimeout}"
+          )
+        } else {
+          logger.info("Using unbounded scheduler (default)")
+        }
 
-      // Register all modules (StdLib + ExampleLib) for runtime execution and LSP
-      allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
-      _ <- allModules.traverse(constellation.setModule)
-      _ <- logger.info(s"Registered ${allModules.size} modules")
+        // Create constellation engine instance with scheduler
+        constellation <- ConstellationImpl.initWithScheduler(scheduler)
 
-      // Create compiler with standard library + example app functions
-      // Wrap in caching compiler to avoid redundant compilations on every keystroke
-      baseCompiler = ExampleLib.compiler
-      compiler = CachingLangCompiler.withDefaults(baseCompiler)
-      _ <- logger.info("Compilation caching enabled")
+        // Register all modules (StdLib + ExampleLib) for runtime execution and LSP
+        allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
+        _ <- allModules.traverse(constellation.setModule)
+        _ <- logger.info(s"Registered ${allModules.size} modules")
 
-      // Start the HTTP server (port from CONSTELLATION_PORT env var, defaults to 8080)
-      port = ConstellationServer.DefaultPort
-      _ <- logger.info(s"Constellation HTTP API server starting at http://0.0.0.0:$port")
-      _ <- logger.info(s"LSP WebSocket available at ws://localhost:$port/lsp")
-      _ <- ConstellationServer
-        .builder(constellation, compiler)
-        .withHost("0.0.0.0")
-        .run
-    } yield ()
+        // Create compiler with standard library + example app functions
+        // Wrap in caching compiler to avoid redundant compilations on every keystroke
+        baseCompiler = ExampleLib.compiler
+        compiler = CachingLangCompiler.withDefaults(baseCompiler)
+        _ <- logger.info("Compilation caching enabled")
+
+        // Configure dashboard (reads from environment variables)
+        dashboardConfig = DashboardConfig.fromEnv
+        cstDir = dashboardConfig.getCstDirectory.toAbsolutePath.toString
+
+        // Start the HTTP server (port from CONSTELLATION_PORT env var, defaults to 8080)
+        port = ConstellationServer.DefaultPort
+        _ <- logger.info(s"Constellation HTTP API server starting at http://0.0.0.0:$port")
+        _ <- logger.info(s"Dashboard available at http://localhost:$port/dashboard")
+        _ <- logger.info(s"Dashboard CST directory: $cstDir")
+        _ <- logger.info(s"LSP WebSocket available at ws://localhost:$port/lsp")
+        _ <- ConstellationServer
+          .builder(constellation, compiler)
+          .withHost("0.0.0.0")
+          .withDashboard(dashboardConfig)
+          .run
+      } yield ()
+    }
 }

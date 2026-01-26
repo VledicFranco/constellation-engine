@@ -7,6 +7,7 @@ import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
 import io.constellation.{CValue, Constellation, Runtime}
+import io.constellation.execution.GlobalScheduler
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
 import io.constellation.lang.{CachingLangCompiler, LangCompiler}
@@ -21,7 +22,8 @@ import java.util.concurrent.atomic.AtomicLong
 class ConstellationRoutes(
     constellation: Constellation,
     compiler: LangCompiler,
-    functionRegistry: FunctionRegistry
+    functionRegistry: FunctionRegistry,
+    scheduler: Option[GlobalScheduler] = None
 ) {
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -174,30 +176,52 @@ class ConstellationRoutes(
 
     // Metrics endpoint for performance monitoring
     case GET -> Root / "metrics" =>
-      val uptimeSeconds = java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds
-      val requestCount = ConstellationRoutes.requestCount.incrementAndGet()
+      for {
+        uptimeSeconds <- IO.pure(java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds)
+        requestCount <- IO.pure(ConstellationRoutes.requestCount.incrementAndGet())
 
-      val cacheStats = compiler match {
-        case c: CachingLangCompiler =>
-          val s = c.cacheStats
-          Some(Json.obj(
-            "hits" -> Json.fromLong(s.hits),
-            "misses" -> Json.fromLong(s.misses),
-            "hitRate" -> Json.fromDoubleOrNull(s.hitRate),
-            "evictions" -> Json.fromLong(s.evictions),
-            "entries" -> Json.fromInt(s.entries)
-          ))
-        case _ => None
-      }
+        cacheStats = compiler match {
+          case c: CachingLangCompiler =>
+            val s = c.cacheStats
+            Some(Json.obj(
+              "hits" -> Json.fromLong(s.hits),
+              "misses" -> Json.fromLong(s.misses),
+              "hitRate" -> Json.fromDoubleOrNull(s.hitRate),
+              "evictions" -> Json.fromLong(s.evictions),
+              "entries" -> Json.fromInt(s.entries)
+            ))
+          case _ => None
+        }
 
-      Ok(Json.obj(
-        "timestamp" -> Json.fromString(Instant.now().toString),
-        "cache" -> cacheStats.getOrElse(Json.Null),
-        "server" -> Json.obj(
-          "uptime_seconds" -> Json.fromLong(uptimeSeconds),
-          "requests_total" -> Json.fromLong(requestCount)
-        )
-      ))
+        // Get scheduler stats if available
+        schedulerStats <- scheduler match {
+          case Some(s) =>
+            s.stats.map { stats =>
+              Some(Json.obj(
+                "enabled" -> Json.fromBoolean(true),
+                "activeCount" -> Json.fromInt(stats.activeCount),
+                "queuedCount" -> Json.fromInt(stats.queuedCount),
+                "totalSubmitted" -> Json.fromLong(stats.totalSubmitted),
+                "totalCompleted" -> Json.fromLong(stats.totalCompleted),
+                "highPriorityCompleted" -> Json.fromLong(stats.highPriorityCompleted),
+                "lowPriorityCompleted" -> Json.fromLong(stats.lowPriorityCompleted),
+                "starvationPromotions" -> Json.fromLong(stats.starvationPromotions)
+              ))
+            }
+          case None =>
+            IO.pure(Some(Json.obj("enabled" -> Json.fromBoolean(false))))
+        }
+
+        response <- Ok(Json.obj(
+          "timestamp" -> Json.fromString(Instant.now().toString),
+          "cache" -> cacheStats.getOrElse(Json.Null),
+          "scheduler" -> schedulerStats.getOrElse(Json.Null),
+          "server" -> Json.obj(
+            "uptime_seconds" -> Json.fromLong(uptimeSeconds),
+            "requests_total" -> Json.fromLong(requestCount)
+          )
+        ))
+      } yield response
   }
 
   // ========== Private Helper Methods ==========
@@ -276,5 +300,13 @@ object ConstellationRoutes {
       compiler: LangCompiler,
       functionRegistry: FunctionRegistry
   ): ConstellationRoutes =
-    new ConstellationRoutes(constellation, compiler, functionRegistry)
+    new ConstellationRoutes(constellation, compiler, functionRegistry, None)
+
+  def apply(
+      constellation: Constellation,
+      compiler: LangCompiler,
+      functionRegistry: FunctionRegistry,
+      scheduler: GlobalScheduler
+  ): ConstellationRoutes =
+    new ConstellationRoutes(constellation, compiler, functionRegistry, Some(scheduler))
 }

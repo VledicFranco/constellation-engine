@@ -6,6 +6,7 @@ import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.{catsSyntaxParallelTraverse1, catsSyntaxTuple2Parallel, toTraverseOps}
 import cats.{Eval, Monoid}
 import io.circe.Json
+import io.constellation.execution.GlobalScheduler
 import io.constellation.pool.RuntimePool
 
 import java.util.UUID
@@ -115,10 +116,31 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
 
 object Runtime {
 
+  /** Default priority value (Normal). */
+  private val DefaultPriority: Int = 50
+
   def run(
       dag: DagSpec,
       initData: Map[String, CValue],
       modules: Map[UUID, Module.Uninitialized]
+  ): IO[Runtime.State] =
+    runWithScheduler(dag, initData, modules, Map.empty, GlobalScheduler.unbounded)
+
+  /** Run DAG with priority-based scheduling.
+    *
+    * @param dag The DAG specification
+    * @param initData Initial input data
+    * @param modules Module implementations
+    * @param modulePriorities Priority values per module UUID (0-100, higher = more important)
+    * @param scheduler The global scheduler for task ordering
+    * @return Execution state
+    */
+  def runWithScheduler(
+      dag: DagSpec,
+      initData: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler
   ): IO[Runtime.State] =
     for {
       _                   <- validateRunIO(dag, initData)
@@ -139,7 +161,10 @@ object Runtime {
       transformFibers <- startInlineTransformFibers(dag, runtime)
 
       latency <- (
-        runnable.parTraverse(_.run(runtime)),
+        runnable.parTraverse { module =>
+          val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
+          scheduler.submit(priority, module.run(runtime))
+        },
         transformFibers.parTraverse(_.join)
       ).parMapN((_, _) => ())
         .timed
@@ -171,6 +196,26 @@ object Runtime {
       inputTypes: Map[String, CType],
       modules: Map[UUID, Module.Uninitialized]
   ): IO[Runtime.State] =
+    runWithRawInputsAndScheduler(dag, initData, inputTypes, modules, Map.empty, GlobalScheduler.unbounded)
+
+  /** Run DAG with RawValue inputs and priority-based scheduling.
+    *
+    * @param dag The DAG specification
+    * @param initData Raw input data
+    * @param inputTypes Input type specifications
+    * @param modules Module implementations
+    * @param modulePriorities Priority values per module UUID
+    * @param scheduler The global scheduler
+    * @return Execution state
+    */
+  def runWithRawInputsAndScheduler(
+      dag: DagSpec,
+      initData: Map[String, RawValue],
+      inputTypes: Map[String, CType],
+      modules: Map[UUID, Module.Uninitialized],
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler
+  ): IO[Runtime.State] =
     for {
       _                   <- validateRawInputsIO(dag, initData, inputTypes)
       modulesAndDataTable <- initModules(dag, modules)
@@ -190,7 +235,10 @@ object Runtime {
       transformFibers <- startInlineTransformFibers(dag, runtime)
 
       latency <- (
-        runnable.parTraverse(_.run(runtime)),
+        runnable.parTraverse { module =>
+          val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
+          scheduler.submit(priority, module.run(runtime))
+        },
         transformFibers.parTraverse(_.join)
       ).parMapN((_, _) => ())
         .timed
@@ -227,6 +275,26 @@ object Runtime {
       modules: Map[UUID, Module.Uninitialized],
       pool: RuntimePool
   ): IO[Runtime.State] =
+    runPooledWithScheduler(dag, initData, modules, pool, Map.empty, GlobalScheduler.unbounded)
+
+  /** Run DAG with object pooling and priority-based scheduling.
+    *
+    * @param dag The DAG specification
+    * @param initData Input data
+    * @param modules Module implementations
+    * @param pool The runtime pool
+    * @param modulePriorities Priority values per module UUID
+    * @param scheduler The global scheduler
+    * @return Execution state
+    */
+  def runPooledWithScheduler(
+      dag: DagSpec,
+      initData: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      pool: RuntimePool,
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler
+  ): IO[Runtime.State] =
     for {
       _ <- validateRunIO(dag, initData)
 
@@ -250,7 +318,10 @@ object Runtime {
 
       // Execute and track time
       latency <- (
-        runnable.parTraverse(_.run(runtime)),
+        runnable.parTraverse { module =>
+          val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
+          scheduler.submit(priority, module.run(runtime))
+        },
         transformFibers.parTraverse(_.join)
       ).parMapN((_, _) => ())
         .timed
