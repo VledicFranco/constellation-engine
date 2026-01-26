@@ -79,6 +79,7 @@ make dev       # Start development server
 
 | Document | Description |
 |----------|-------------|
+| [Global Priority Scheduler](dev/global-scheduler.md) | Bounded concurrency with priority-based scheduling |
 | [MCP Server](dev/constellation-repo-dev-mcp.md) | MCP server for multi-agent development workflows |
 
 ## Quick Example

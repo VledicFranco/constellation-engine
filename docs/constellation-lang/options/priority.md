@@ -18,14 +18,16 @@ The `priority` option provides a hint to the scheduler about the relative import
 
 Priority can be specified as a named level or as a numeric value.
 
+> **Note:** Priority only affects scheduling when the bounded scheduler is enabled. See [Scheduler Configuration](#scheduler-configuration) below.
+
 ## Priority Levels
 
 | Level | Value | Description |
 |-------|-------|-------------|
 | `critical` | 100 | Highest priority, minimal queuing |
-| `high` | 75 | Above normal, preferred scheduling |
+| `high` | 80 | Above normal, preferred scheduling |
 | `normal` | 50 | Default priority |
-| `low` | 25 | Below normal, can be delayed |
+| `low` | 20 | Below normal, can be delayed |
 | `background` | 0 | Lowest priority, runs when idle |
 
 ## Examples
@@ -76,36 +78,86 @@ processed = events.map(e =>
 out processed
 ```
 
+## Scheduler Configuration
+
+By default, Constellation uses an **unbounded scheduler** that executes all parallel tasks immediately. In this mode, priority values are stored but do not affect execution order.
+
+To enable priority-based scheduling, use the **bounded scheduler** via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONSTELLATION_SCHEDULER_ENABLED` | `false` | Enable bounded scheduler |
+| `CONSTELLATION_SCHEDULER_MAX_CONCURRENCY` | `16` | Maximum concurrent tasks |
+| `CONSTELLATION_SCHEDULER_STARVATION_TIMEOUT` | `30s` | Time before priority boost |
+
+### Enabling the Scheduler
+
+```bash
+# Enable bounded scheduler with default settings
+CONSTELLATION_SCHEDULER_ENABLED=true
+
+# Enable with custom concurrency limit
+CONSTELLATION_SCHEDULER_ENABLED=true CONSTELLATION_SCHEDULER_MAX_CONCURRENCY=8
+```
+
+### Starvation Prevention
+
+The bounded scheduler includes starvation prevention via an **aging mechanism**:
+- Waiting tasks receive +10 effective priority every 5 seconds
+- After 30 seconds, a `background` (0) task reaches 60 effective priority
+- This ensures low-priority tasks eventually execute
+
+For full details, see [Global Scheduler Documentation](../../dev/global-scheduler.md).
+
 ## Behavior
+
+When the bounded scheduler is enabled:
 
 1. When a module call with priority is made:
    - Create a `PrioritizedTask` with the priority value
    - Submit to the priority scheduler
 2. The scheduler processes tasks by:
-   - Sorting by priority (highest first)
+   - Sorting by effective priority (highest first)
    - Breaking ties by submission time (FIFO)
-   - Executing in priority order
+   - Executing in priority order within concurrency limits
+
+When the scheduler is disabled (default):
+- All parallel tasks execute immediately via `parTraverse`
+- Priority values are ignored (no scheduling effect)
 
 ## Priority Ordering
 
 Higher numeric values = higher priority:
 
 ```
-critical (100) > high (75) > normal (50) > low (25) > background (0)
+critical (100) > high (80) > normal (50) > low (20) > background (0)
 ```
 
 Tasks with the same priority are processed in submission order.
 
 ## Scheduler Statistics
 
-The priority scheduler tracks:
-- Tasks submitted per priority level
-- Average wait time by priority
-- Current queue depth
+When the bounded scheduler is enabled, it tracks execution metrics.
 
 Access via the `/metrics` endpoint:
 ```bash
 curl http://localhost:8080/metrics | jq .scheduler
+```
+
+Example response:
+```json
+{
+  "scheduler": {
+    "enabled": true,
+    "activeCount": 4,
+    "queuedCount": 12,
+    "totalSubmitted": 1523,
+    "totalCompleted": 1507,
+    "highPriorityCompleted": 312,
+    "lowPriorityCompleted": 89,
+    "starvationPromotions": 23
+  }
+}
 ```
 
 ## Related Options
