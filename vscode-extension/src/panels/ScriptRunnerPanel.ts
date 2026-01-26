@@ -11,8 +11,17 @@ import {
   JS_UTILS,
   PanelState
 } from '../utils/webviewUtils';
-import { DagVisualizerPanel } from './DagVisualizerPanel';
 import { PerformanceTracker, Operations } from '../utils/performanceTracker';
+
+// Dashboard URL helper - constructs URL for execution history
+function getDashboardExecutionUrl(executionId?: string): string {
+  const config = vscode.workspace.getConfiguration('constellation');
+  const serverUrl = config.get<string>('server.url') || 'ws://localhost:8080/lsp';
+  const baseUrl = serverUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:').replace(/\/lsp$/, '');
+  return executionId
+    ? `${baseUrl}/dashboard#/executions/${executionId}`
+    : `${baseUrl}/dashboard`;
+}
 
 interface InputField {
   name: string;
@@ -241,8 +250,7 @@ export class ScriptRunnerPanel {
 
     this._state.panel.webview.postMessage({ type: 'executing' });
 
-    // Notify DAG visualizer that execution is starting
-    DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
+    // Note: DAG visualization is now in the web dashboard
 
     const tracker = PerformanceTracker.getInstance();
     const timer = tracker.startOperation(Operations.EXECUTION_FULL);
@@ -259,33 +267,27 @@ export class ScriptRunnerPanel {
       const executionTime = Date.now() - startTime;
 
       if (result.success) {
-        // Notify DAG visualizer of successful completion
-        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
-
         this._state.panel.webview.postMessage({
           type: 'executeResult',
           outputs: result.outputs || {},
-          executionTimeMs: result.executionTimeMs || executionTime
+          executionTimeMs: result.executionTimeMs || executionTime,
+          dashboardUrl: getDashboardExecutionUrl()
         });
       } else {
-        // Notify DAG visualizer of failure
-        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-
         this._state.panel.webview.postMessage({
           type: 'executeError',
           error: result.error || 'Execution failed',
-          errors: result.errors
+          errors: result.errors,
+          dashboardUrl: getDashboardExecutionUrl()
         });
       }
       timer.end();
     } catch (error: any) {
       timer.end();
-      // Notify DAG visualizer of failure
-      DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-
       this._state.panel.webview.postMessage({
         type: 'executeError',
-        error: error.message || 'Execution failed'
+        error: error.message || 'Execution failed',
+        dashboardUrl: getDashboardExecutionUrl()
       });
     }
   }
@@ -304,8 +306,7 @@ export class ScriptRunnerPanel {
     this._isStepping = true;
     this._state.panel.webview.postMessage({ type: 'stepStarting' });
 
-    // Notify DAG visualizer that stepping is starting
-    DagVisualizerPanel.notifyExecutionStart(this._state.currentUri);
+    // Note: DAG visualization is now in the web dashboard
 
     const tracker = PerformanceTracker.getInstance();
     const timer = tracker.startOperation(Operations.LSP_STEP_START);
@@ -334,7 +335,6 @@ export class ScriptRunnerPanel {
             updates.push({ nodeId, state: 'pending' });
           });
 
-          DagVisualizerPanel.notifyBatchUpdate(this._state.currentUri, updates);
         }
 
         this._state.panel.webview.postMessage({
@@ -346,10 +346,6 @@ export class ScriptRunnerPanel {
       } else {
         this._isStepping = false;
         this._steppingSessionId = undefined;
-        if (this._state.currentUri) {
-          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-        }
-
         this._state.panel.webview.postMessage({
           type: 'stepError',
           error: result.error || 'Failed to start stepping'
@@ -359,10 +355,6 @@ export class ScriptRunnerPanel {
       timer.end();
       this._isStepping = false;
       this._steppingSessionId = undefined;
-      if (this._state.currentUri) {
-        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-      }
-
       this._state.panel.webview.postMessage({
         type: 'stepError',
         error: error.message || 'Failed to start stepping'
@@ -412,14 +404,10 @@ export class ScriptRunnerPanel {
             updates.push({ nodeId, state: 'pending' });
           });
 
-          DagVisualizerPanel.notifyBatchUpdate(this._state.currentUri, updates);
         }
 
         if (result.isComplete) {
           this._isStepping = false;
-          if (this._state.currentUri) {
-            DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
-          }
         }
 
         this._state.panel.webview.postMessage({
@@ -463,10 +451,6 @@ export class ScriptRunnerPanel {
       this._cleanupStepSession();
 
       if (result.success) {
-        if (this._state.currentUri) {
-          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, true);
-        }
-
         this._state.panel.webview.postMessage({
           type: 'stepComplete',
           state: result.state,
@@ -474,10 +458,6 @@ export class ScriptRunnerPanel {
           executionTimeMs: result.executionTimeMs
         });
       } else {
-        if (this._state.currentUri) {
-          DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-        }
-
         this._state.panel.webview.postMessage({
           type: 'stepError',
           error: result.error || 'Continue execution failed'
@@ -485,10 +465,6 @@ export class ScriptRunnerPanel {
       }
     } catch (error: any) {
       this._cleanupStepSession();
-      if (this._state.currentUri) {
-        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-      }
-
       this._state.panel.webview.postMessage({
         type: 'stepError',
         error: error.message || 'Continue execution failed'
@@ -512,9 +488,6 @@ export class ScriptRunnerPanel {
       console.error('[ScriptRunner] Failed to stop stepping session:', error);
     } finally {
       this._cleanupStepSession();
-      if (this._state.currentUri) {
-        DagVisualizerPanel.notifyExecutionComplete(this._state.currentUri, false);
-      }
       this._state.panel.webview.postMessage({ type: 'stepStopped' });
     }
   }

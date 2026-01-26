@@ -96,8 +96,8 @@
       },
       {
         "command": "constellation.showDagVisualization",
-        "title": "Constellation: Show DAG Visualization",
-        "icon": "$(type-hierarchy)"
+        "title": "Constellation: Open Dashboard (DAG Visualization)",
+        "icon": "$(browser)"
       },
       {
         "command": "constellation.showPerformanceStats",

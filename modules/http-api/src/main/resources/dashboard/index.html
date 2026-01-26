@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Constellation Dashboard</title>
+    <link rel="stylesheet" href="/dashboard/static/css/main.css">
+    <!-- Cytoscape.js for DAG visualization -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <!-- Dagre for hierarchical layouts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-brand">
+                <svg class="logo" viewBox="0 0 24 24" width="32" height="32">
+                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <circle cx="12" cy="8" r="2" fill="currentColor"/>
+                    <circle cx="8" cy="14" r="2" fill="currentColor"/>
+                    <circle cx="16" cy="14" r="2" fill="currentColor"/>
+                    <line x1="12" y1="10" x2="8" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                    <line x1="12" y1="10" x2="16" y2="12" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+                <h1>Constellation</h1>
+            </div>
+            <nav class="header-nav">
+                <button class="nav-btn active" data-view="scripts">Scripts</button>
+                <button class="nav-btn" data-view="history">History</button>
+            </nav>
+            <div class="header-actions">
+                <button id="refresh-btn" class="icon-btn" title="Refresh">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="app-main">
+            <!-- Scripts View -->
+            <div id="scripts-view" class="view active">
+                <!-- File Browser Panel -->
+                <aside class="sidebar" id="file-browser-panel">
+                    <div class="panel-header">
+                        <h2>Files</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="file-tree" class="file-tree"></div>
+                    </div>
+                </aside>
+
+                <!-- Main Editor Area -->
+                <section class="main-panel">
+                    <div class="panel-header">
+                        <div class="file-info">
+                            <span id="current-file" class="file-name">Select a script</span>
+                        </div>
+                        <div class="panel-actions">
+                            <button id="run-btn" class="primary-btn" disabled>
+                                <svg viewBox="0 0 24 24" width="16" height="16">
+                                    <path fill="currentColor" d="M8 5v14l11-7z"/>
+                                </svg>
+                                Run
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Input/Output Section -->
+                    <div class="io-container">
+                        <div class="io-panel inputs-panel">
+                            <h3>Inputs</h3>
+                            <div id="inputs-form" class="inputs-form">
+                                <p class="placeholder-text">Load a script to see inputs</p>
+                            </div>
+                        </div>
+                        <div class="io-panel outputs-panel">
+                            <h3>Output</h3>
+                            <div id="outputs-display" class="outputs-display">
+                                <p class="placeholder-text">Run a script to see outputs</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DAG Visualization -->
+                    <div class="dag-container">
+                        <div class="dag-header">
+                            <h3>DAG Visualization</h3>
+                            <div class="dag-controls">
+                                <button id="layout-tb" class="layout-btn active" title="Top to Bottom">TB</button>
+                                <button id="layout-lr" class="layout-btn" title="Left to Right">LR</button>
+                                <span class="separator"></span>
+                                <button id="zoom-in" class="icon-btn" title="Zoom In">+</button>
+                                <button id="zoom-out" class="icon-btn" title="Zoom Out">-</button>
+                                <button id="zoom-fit" class="icon-btn" title="Fit to View">Fit</button>
+                            </div>
+                        </div>
+                        <div id="dag-canvas" class="dag-canvas"></div>
+                    </div>
+                </section>
+
+                <!-- Node Details Panel -->
+                <aside class="details-panel" id="node-details-panel">
+                    <div class="panel-header">
+                        <h2>Node Details</h2>
+                        <button id="close-details" class="icon-btn">&times;</button>
+                    </div>
+                    <div class="panel-content">
+                        <div id="node-details" class="node-details">
+                            <p class="placeholder-text">Click a node to see details</p>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- History View -->
+            <div id="history-view" class="view">
+                <div class="history-list-panel">
+                    <div class="panel-header">
+                        <h2>Execution History</h2>
+                        <div class="filter-controls">
+                            <input type="text" id="history-filter" placeholder="Filter by script..." class="filter-input">
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div id="history-list" class="history-list"></div>
+                    </div>
+                </div>
+                <div class="history-detail-panel">
+                    <div class="panel-header">
+                        <h2>Execution Details</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="execution-detail" class="execution-detail">
+                            <p class="placeholder-text">Select an execution to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <span id="status-message">Ready</span>
+            <span id="connection-status" class="status-indicator connected">Connected</span>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <span class="loading-text">Loading...</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/dashboard/static/js/components/file-browser.js"></script>
+    <script src="/dashboard/static/js/components/dag-visualizer.js"></script>
+    <script src="/dashboard/static/js/components/execution-panel.js"></script>
+    <script src="/dashboard/static/js/main.js"></script>
+</body>
+</html>

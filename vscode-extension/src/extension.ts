@@ -7,7 +7,6 @@ import {
 import * as ws from 'ws';
 import { Duplex } from 'stream';
 import { ScriptRunnerPanel } from './panels/ScriptRunnerPanel';
-import { DagVisualizerPanel } from './panels/DagVisualizerPanel';
 import { PerformanceTracker, Operations } from './utils/performanceTracker';
 
 let client: LanguageClient | undefined;
@@ -189,21 +188,20 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(runScriptCommand);
 
-  // Register DAG visualizer command
+  // Register DAG visualizer command - opens dashboard in browser
   const dagVisualizerCommand = vscode.commands.registerCommand(
     'constellation.showDagVisualization',
     async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.document.languageId !== 'constellation') {
-        vscode.window.showWarningMessage('Open a Constellation file (.cst) to visualize');
-        return;
-      }
+      // Get server URL from configuration and construct dashboard URL
+      const config = vscode.workspace.getConfiguration('constellation');
+      const serverUrl = config.get<string>('server.url') || 'ws://localhost:8080/lsp';
 
-      const uri = editor.document.uri.toString();
-      const tracker = PerformanceTracker.getInstance();
-      const timer = tracker.startOperation(Operations.PANEL_CREATE);
-      DagVisualizerPanel.createOrShow(context.extensionUri, client, uri);
-      timer.end();
+      // Extract base URL from WebSocket URL
+      const baseUrl = serverUrl.replace(/^ws:/, 'http:').replace(/^wss:/, 'https:').replace(/\/lsp$/, '');
+      const dashboardUrl = `${baseUrl}/dashboard`;
+
+      // Open in external browser
+      vscode.env.openExternal(vscode.Uri.parse(dashboardUrl));
     }
   );
 
@@ -230,41 +228,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(showPerfStatsCommand);
 
-  // Auto-refresh DAG visualizer on document change (debounced to avoid lag)
-  // Only schedule refreshes if the panel is actually open
-  const refreshTimers = new Map<string, NodeJS.Timeout>();
-  const DEBOUNCE_MS = 750; // Wait 750ms after last keystroke before refreshing
-
-  // Clean up timers on deactivate
-  context.subscriptions.push({
-    dispose: () => {
-      refreshTimers.forEach((timer) => clearTimeout(timer));
-      refreshTimers.clear();
-    }
-  });
-
-  const documentChangeListener = vscode.workspace.onDidChangeTextDocument((e) => {
-    // Only process if panel is open and it's a constellation file
-    if (e.document.languageId === 'constellation' && DagVisualizerPanel.isPanelOpen()) {
-      const uri = e.document.uri.toString();
-
-      // Clear any pending refresh for this document
-      const existingTimer = refreshTimers.get(uri);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-      }
-
-      // Schedule a new refresh after debounce delay
-      const timer = setTimeout(() => {
-        refreshTimers.delete(uri);
-        DagVisualizerPanel.refresh(uri);
-      }, DEBOUNCE_MS);
-
-      refreshTimers.set(uri, timer);
-    }
-  });
-
-  context.subscriptions.push(documentChangeListener);
+  // Note: DAG visualization is now handled by the web dashboard
+  // The DagVisualizerPanel has been removed in favor of the browser-based dashboard
 
   // Start the client
   client.start().catch((error) => {
