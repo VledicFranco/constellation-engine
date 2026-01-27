@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <title>Constellation Engine Social Preview</title>
+  <desc>Social media preview image for Constellation Engine</desc>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0f172a"/>
+
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1e293b" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)" opacity="0.5"/>
+
+  <!-- Decorative constellation nodes in background -->
+  <g opacity="0.15">
+    <circle cx="150" cy="100" r="8" fill="#a5b4fc"/>
+    <circle cx="200" cy="180" r="6" fill="#a5b4fc"/>
+    <circle cx="100" cy="200" r="5" fill="#a5b4fc"/>
+    <line x1="150" y1="100" x2="200" y2="180" stroke="#a5b4fc" stroke-width="1"/>
+    <line x1="150" y1="100" x2="100" y2="200" stroke="#a5b4fc" stroke-width="1"/>
+
+    <circle cx="1050" cy="450" r="8" fill="#a5b4fc"/>
+    <circle cx="1100" cy="530" r="6" fill="#a5b4fc"/>
+    <circle cx="1000" cy="550" r="5" fill="#a5b4fc"/>
+    <line x1="1050" y1="450" x2="1100" y2="530" stroke="#a5b4fc" stroke-width="1"/>
+    <line x1="1050" y1="450" x2="1000" y2="550" stroke="#a5b4fc" stroke-width="1"/>
+
+    <circle cx="950" cy="80" r="4" fill="#a5b4fc"/>
+    <circle cx="1100" cy="120" r="4" fill="#a5b4fc"/>
+    <line x1="950" y1="80" x2="1100" y2="120" stroke="#a5b4fc" stroke-width="1"/>
+
+    <circle cx="80" cy="500" r="4" fill="#a5b4fc"/>
+    <circle cx="180" cy="480" r="4" fill="#a5b4fc"/>
+    <line x1="80" y1="500" x2="180" y2="480" stroke="#a5b4fc" stroke-width="1"/>
+  </g>
+
+  <!-- Main logo (centered) -->
+  <g transform="translate(520, 180)">
+    <!-- Outer circle -->
+    <circle cx="80" cy="80" r="70" fill="none" stroke="#a5b4fc" stroke-width="4"/>
+
+    <!-- Nodes (stars) -->
+    <circle cx="80" cy="50" r="12" fill="#a5b4fc"/>
+    <circle cx="50" cy="100" r="12" fill="#a5b4fc"/>
+    <circle cx="110" cy="100" r="12" fill="#a5b4fc"/>
+
+    <!-- Connections (edges) -->
+    <line x1="80" y1="62" x2="50" y2="88" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round"/>
+    <line x1="80" y1="62" x2="110" y2="88" stroke="#a5b4fc" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- Text -->
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="56" font-weight="700" fill="#f1f5f9">
+    Constellation Engine
+  </text>
+
+  <text x="600" y="480" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="24" font-weight="400" fill="#94a3b8">
+    Type-safe ML pipeline orchestration for Scala
+  </text>
+
+  <!-- Bottom accent line -->
+  <rect x="400" y="530" width="400" height="3" rx="1.5" fill="#6366f1"/>
+</svg>

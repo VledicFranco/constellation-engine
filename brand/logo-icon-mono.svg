@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Constellation Engine Logo (Monochrome)</title>
+  <desc>A constellation-inspired logo in monochrome for flexible use</desc>
+
+  <!-- Outer circle -->
+  <circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="2"/>
+
+  <!-- Nodes (stars) -->
+  <circle cx="32" cy="20" r="5" fill="currentColor"/>
+  <circle cx="20" cy="40" r="5" fill="currentColor"/>
+  <circle cx="44" cy="40" r="5" fill="currentColor"/>
+
+  <!-- Connections (edges) -->
+  <line x1="32" y1="25" x2="20" y2="35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <line x1="32" y1="25" x2="44" y2="35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

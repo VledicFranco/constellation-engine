@@ -1,7 +1,17 @@
-# Constellation Engine
+<p align="center">
+  <img src="brand/logo-icon.svg" alt="Constellation Engine" width="80" height="80">
+</p>
 
-[![CI](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/VledicFranco/constellation-engine/graph/badge.svg)](https://codecov.io/gh/VledicFranco/constellation-engine)
+<h1 align="center">Constellation Engine</h1>
+
+<p align="center">
+  <strong>Type-safe ML pipeline orchestration for Scala</strong>
+</p>
+
+<p align="center">
+  <a href="https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml"><img src="https://github.com/VledicFranco/constellation-engine/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://codecov.io/gh/VledicFranco/constellation-engine"><img src="https://codecov.io/gh/VledicFranco/constellation-engine/graph/badge.svg" alt="codecov"></a>
+</p>
 
 ## What is Constellation?
 

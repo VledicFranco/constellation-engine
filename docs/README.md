@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../brand/logo-icon.svg" alt="Constellation Engine" width="64" height="64">
+</p>
+
 # Constellation Engine Documentation
 
 Constellation Engine is a Scala 3 framework for building and executing ML pipeline DAGs (Directed Acyclic Graphs). It provides a type-safe, functional approach to orchestrating machine learning models and data transformations.
