@@ -39,9 +39,7 @@ The following optimizations are ordered by expected impact on real-world ML pipe
 | Priority | Optimization | Expected Gain | Complexity | Document |
 |----------|--------------|---------------|------------|----------|
 | **8** | [Result Streaming](./08-result-streaming.md) | Improved TTFB | High | Stream results as they complete |
-| **9** | [Timeout Tuning](./09-timeout-tuning.md) | Reduced resource waste | Low | Profile-based timeout adjustment |
-| **10** | [Parallel Compilation](./10-parallel-compilation.md) | 10-30% compile time | Medium | Parallelize independent phases |
-| **11** | [GraalVM Native Image](./11-graalvm-native-image.md) | 90%+ cold-start reduction | High | AOT compilation for serverless |
+| **9** | [Parallel Compilation](./10-parallel-compilation.md) | 10-30% compile time | Medium | Parallelize independent phases |
 
 ### Quick Wins & Profiling
 
