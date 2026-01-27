@@ -284,17 +284,24 @@ class DashboardRoutes(
 
   /** Parse a script to extract input and output declarations */
   private def parseScriptMetadata(source: String): (List[InputParam], List[OutputParam]) = {
+    // Normalize line endings to \n for consistent parsing
+    val normalizedSource = source.replace("\r\n", "\n").replace("\r", "\n")
+
     // Parse @example annotations followed by input declarations
     // Format: @example("value") or @example(value1, value2) followed by in varName: Type
-    val exampleInputPattern = """(?m)@example\(([^)]+)\)\s*\n\s*in\s+(\w+)\s*:\s*(\S+)""".r
-    val simpleInputPattern = """(?m)^\s*in\s+(\w+)\s*:\s*(\S+)""".r
+    // The annotation must be immediately before the input (only whitespace/newlines between)
+    // Type pattern: starts with letter/underscore, includes word chars and angle brackets for generics
+    // but stops at newline or end of identifier
+    val typePattern = """[A-Za-z_][\w]*(?:<[^>]+>)?"""
+    val exampleInputPattern = s"""(?m)@example\\(([^)]+)\\)\\s*\\n\\s*in\\s+(\\w+)\\s*:\\s*($typePattern)""".r
+    val simpleInputPattern = s"""(?m)^\\s*in\\s+(\\w+)\\s*:\\s*($typePattern)""".r
     val outputPattern = """(?m)^\s*out\s+(\w+)(?:\s*:\s*(\S+))?""".r
 
     // First, extract inputs with examples
-    val inputsWithExamples = exampleInputPattern.findAllMatchIn(source).map { m =>
+    val inputsWithExamples = exampleInputPattern.findAllMatchIn(normalizedSource).map { m =>
       val exampleRaw = m.group(1).trim
       val name = m.group(2)
-      val paramType = m.group(3)
+      val paramType = m.group(3).trim
 
       // Parse the example value - remove quotes if string
       val exampleValue = parseExampleValue(exampleRaw, paramType)
@@ -310,24 +317,27 @@ class DashboardRoutes(
     val inputNamesWithExamples = inputsWithExamples.map(_.name).toSet
 
     // Then extract inputs without examples (that weren't already captured)
-    val inputsWithoutExamples = simpleInputPattern.findAllMatchIn(source).map { m =>
+    val inputsWithoutExamples = simpleInputPattern.findAllMatchIn(normalizedSource).map { m =>
       InputParam(
         name = m.group(1),
-        paramType = m.group(2),
+        paramType = m.group(2).trim,
         required = true
       )
     }.filterNot(i => inputNamesWithExamples.contains(i.name)).toList
 
-    val inputs = inputsWithExamples ++ inputsWithoutExamples
+    // Filter out any invalid inputs (e.g., where name looks like a type)
+    val primitiveTypes = Set("Int", "String", "Boolean", "Float", "Double", "Long", "Any", "Unit", "List", "Map", "Set", "Option")
+    val allInputs = (inputsWithExamples ++ inputsWithoutExamples)
+      .filter(i => i.name.nonEmpty && !primitiveTypes.contains(i.name) && i.name.head.isLower)
 
-    val outputs = outputPattern.findAllMatchIn(source).map { m =>
+    val outputs = outputPattern.findAllMatchIn(normalizedSource).map { m =>
       OutputParam(
         name = m.group(1),
         paramType = Option(m.group(2)).getOrElse("Any")
       )
     }.toList
 
-    (inputs, outputs)
+    (allInputs, outputs)
   }
 
   /** Parse an example value based on the parameter type */
