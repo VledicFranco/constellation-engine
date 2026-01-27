@@ -590,9 +590,9 @@ object Runtime {
     }
 
   /** Convert an Any value to CValue based on the expected CType.
-    * Used by inline transforms to store results in the state.
+    * Used by inline transforms and synthetic modules to store results in the state.
     */
-  private def anyToCValue(value: Any, cType: CType): CValue = cType match {
+  def anyToCValue(value: Any, cType: CType): CValue = cType match {
     case CType.CString =>
       CValue.CString(value.asInstanceOf[String])
 

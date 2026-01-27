@@ -628,6 +628,9 @@ object DagCompiler {
                 for {
                   result <- evaluateBranches(0)
                   _      <- runtime.setTableData(outId, result)
+                  // Also store in state for output extraction
+                  cValue = Runtime.anyToCValue(result, outputCType)
+                  _      <- runtime.setStateData(outId, cValue)
                 } yield ()
               }
             )

@@ -162,14 +162,15 @@ object SteppedExecution {
     */
   def initializeRuntime(session: SessionState): IO[SessionState] = {
     val dag     = session.dagSpec
-    val modules = session.compiledModules
+    // Combine compiled modules with synthetic modules (branch, inline transforms, etc.)
+    val allModules = session.compiledModules ++ session.syntheticModules
 
     for {
       // Validate inputs
       _ <- validateRunIO(dag, session.inputs)
 
       // Initialize modules and create data table
-      modulesAndDataTable <- initModules(dag, modules)
+      modulesAndDataTable <- initModules(dag, allModules)
       (runnableList, dataTable) = modulesAndDataTable
       runnableMap               = runnableList.map(r => r.id -> r).toMap
 
