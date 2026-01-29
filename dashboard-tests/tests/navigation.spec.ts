@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { DashboardPage } from '../pages/dashboard.page';
 import { ApiClient } from '../helpers/api-client';
+import { FIXTURE_SCRIPTS } from '../helpers/fixtures';
 
 test.describe('Navigation', () => {
   let dashboard: DashboardPage;
@@ -66,7 +67,7 @@ test.describe('Navigation', () => {
   test('deep link: #/executions/{id} shows execution detail', async ({ request }) => {
     // Create an execution via API to get an ID
     const api = new ApiClient(request);
-    const result = await api.executeScript('simple-test.cst', { message: 'deep link test' });
+    const result = await api.executeScript(FIXTURE_SCRIPTS.SIMPLE_TEST, { message: 'deep link test' });
     const executionId = (result as any)?.executionId ?? (result as any)?.id;
 
     if (executionId) {

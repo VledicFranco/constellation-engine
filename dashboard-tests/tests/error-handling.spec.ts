@@ -38,6 +38,7 @@ test.describe('Error Handling', () => {
 
     // Perform basic operations that could potentially error
     await dashboard.fileBrowser.expectLoaded();
+    await dashboard.fileBrowser.expandAllFolders();
 
     // Select file
     const files = dashboard.fileBrowser.files();

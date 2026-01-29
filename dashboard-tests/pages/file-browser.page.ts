@@ -26,8 +26,21 @@ export class FileBrowserPage {
     await this.folders().filter({ hasText: name }).click();
   }
 
-  /** Click a .cst file to load it */
+  /** Expand all collapsed folders so all files become visible */
+  async expandAllFolders(): Promise<void> {
+    // Iteratively click collapsed folder headers until none remain
+    while (true) {
+      const collapsed = this.fileTree.locator('.folder.collapsed > .file-item');
+      const count = await collapsed.count();
+      if (count === 0) break;
+      await collapsed.first().click();
+      await this.page.waitForTimeout(150);
+    }
+  }
+
+  /** Click a .cst file to load it, expanding parent folders if needed */
   async selectFile(name: string): Promise<void> {
+    await this.expandAllFolders();
     await this.files().filter({ hasText: name }).click();
   }
 

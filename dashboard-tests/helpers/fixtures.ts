@@ -6,16 +6,16 @@ import { request } from '@playwright/test';
  */
 export const FIXTURE_SCRIPTS = {
   /** Simple uppercase transformation: in message: String -> Uppercase -> out */
-  SIMPLE_TEST: 'simple-test.cst',
+  SIMPLE_TEST: 'modules/example-app/examples/simple-test.cst',
 
   /** Multi-step text analysis: in document: String -> multiple outputs */
-  TEXT_ANALYSIS: 'text-analysis.cst',
+  TEXT_ANALYSIS: 'modules/example-app/examples/text-analysis.cst',
 
   /** Numeric data pipeline: multiple typed inputs (List<Int>, Int) */
-  DATA_PIPELINE: 'data-pipeline.cst',
+  DATA_PIPELINE: 'modules/example-app/examples/data-pipeline.cst',
 
   /** Branch expressions demo */
-  BRANCH_EXPRESSIONS: 'branch-expressions.cst',
+  BRANCH_EXPRESSIONS: 'modules/example-app/examples/branch-expressions.cst',
 } as const;
 
 /**

@@ -41,6 +41,7 @@ test.describe('File Browsing', () => {
 
   test('file selection highlights file and shows name in header', async () => {
     await dashboard.fileBrowser.expectLoaded();
+    await dashboard.fileBrowser.expandAllFolders();
 
     // Select the first .cst file
     const files = dashboard.fileBrowser.files();
@@ -67,6 +68,7 @@ test.describe('File Browsing', () => {
 
   test('selecting a different file changes the selection', async () => {
     await dashboard.fileBrowser.expectLoaded();
+    await dashboard.fileBrowser.expandAllFolders();
 
     const files = dashboard.fileBrowser.files();
     const fileCount = await files.count();
@@ -95,6 +97,7 @@ test.describe('File Browsing', () => {
 
   test('selecting a script with inputs generates input form', async () => {
     await dashboard.fileBrowser.expectLoaded();
+    await dashboard.fileBrowser.expandAllFolders();
 
     // Find and select a file (simple-test.cst has "in message: String")
     const files = dashboard.fileBrowser.files();

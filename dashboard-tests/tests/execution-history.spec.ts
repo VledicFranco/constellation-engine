@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { DashboardPage } from '../pages/dashboard.page';
 import { ApiClient } from '../helpers/api-client';
+import { FIXTURE_SCRIPTS } from '../helpers/fixtures';
 
 test.describe('Execution History', () => {
   let dashboard: DashboardPage;
@@ -8,7 +9,7 @@ test.describe('Execution History', () => {
   // Ensure at least one execution exists before tests
   test.beforeAll(async ({ request }) => {
     const api = new ApiClient(request);
-    await api.executeScript('simple-test.cst', { message: 'history setup' });
+    await api.executeScript(FIXTURE_SCRIPTS.SIMPLE_TEST, { message: 'history setup' });
   });
 
   test.beforeEach(async ({ page }) => {
@@ -48,8 +49,8 @@ test.describe('Execution History', () => {
 
     const initialCount = await dashboard.history.items().count();
 
-    // Filter by a specific term
-    await dashboard.history.filter('simple-test');
+    // Filter by the full script path (backend uses Option.contains which requires exact match)
+    await dashboard.history.filter('modules/example-app/examples/simple-test.cst');
 
     const filteredCount = await dashboard.history.items().count();
 
@@ -65,8 +66,8 @@ test.describe('Execution History', () => {
 
     const initialCount = await dashboard.history.items().count();
 
-    // Apply filter
-    await dashboard.history.filter('simple-test');
+    // Apply filter (full path needed — backend uses Option.contains for exact match)
+    await dashboard.history.filter('modules/example-app/examples/simple-test.cst');
     const filteredCount = await dashboard.history.items().count();
 
     // Clear filter
