@@ -71,6 +71,60 @@ class DagVisualizer {
                 this.deselectAll();
             }
         });
+
+        // Tooltip element
+        this.tooltip = document.getElementById('dag-tooltip');
+
+        // Hover tooltip + neighborhood highlighting
+        this.cy.on('mouseover', 'node', (evt) => {
+            const node = evt.target;
+
+            // Show tooltip
+            if (this.tooltip) {
+                const kind = node.data('kind') || '';
+                const label = node.data('label') || '';
+                const typeSig = node.data('typeSignature') || '';
+                const value = node.data('value');
+                const status = node.data('status') || 'Pending';
+
+                let html = `<span class="tooltip-kind">${kind}</span>`;
+                html += `<span class="tooltip-label">${label}</span>`;
+                if (typeSig) {
+                    html += `<span class="tooltip-type">${typeSig}</span>`;
+                }
+                if (status !== 'Pending') {
+                    html += `<span class="tooltip-status tooltip-status-${status.toLowerCase()}">${status}</span>`;
+                }
+                if (value !== undefined && value !== null) {
+                    const displayVal = typeof value === 'string' ? value : JSON.stringify(value);
+                    const truncated = displayVal.length > 120 ? displayVal.slice(0, 120) + '…' : displayVal;
+                    html += `<span class="tooltip-value">${truncated}</span>`;
+                }
+
+                this.tooltip.innerHTML = html;
+                this.tooltip.style.display = 'block';
+
+                const renderedPos = node.renderedPosition();
+                const container = this.cy.container().getBoundingClientRect();
+                this.tooltip.style.left = (container.left + renderedPos.x + 15) + 'px';
+                this.tooltip.style.top = (container.top + renderedPos.y - 15) + 'px';
+            }
+
+            // Neighborhood highlighting
+            const neighborhood = node.closedNeighborhood();
+            this.cy.elements().addClass('dimmed');
+            neighborhood.removeClass('dimmed');
+        });
+
+        this.cy.on('mouseout', 'node', () => {
+            // Hide tooltip
+            if (this.tooltip) {
+                this.tooltip.style.display = 'none';
+            }
+
+            // Restore all elements
+            this.cy.elements().removeClass('dimmed');
+        });
     }
 
     /**
@@ -129,13 +183,18 @@ class DagVisualizer {
                 selector: 'edge',
                 style: {
                     'width': 2,
-                    'line-color': '#30363d',
-                    'target-arrow-color': '#30363d',
+                    'line-color': '#484f58',
+                    'target-arrow-color': '#484f58',
                     'target-arrow-shape': 'triangle',
+                    'arrow-scale': 1.3,
                     'curve-style': 'bezier',
                     'label': 'data(label)',
-                    'font-size': '10px',
-                    'color': '#8b949e',
+                    'font-size': '11px',
+                    'color': '#e6edf3',
+                    'text-background-color': '#161b22',
+                    'text-background-opacity': 0.85,
+                    'text-background-padding': '3px',
+                    'text-background-shape': 'roundrectangle',
                     'text-rotation': 'autorotate',
                     'text-margin-y': -10
                 }
@@ -156,27 +215,44 @@ class DagVisualizer {
                     'target-arrow-color': '#ff7b72'
                 }
             },
-            // Running animation
+            // Running nodes - blue border + glow
             {
                 selector: 'node[status = "Running"]',
                 style: {
-                    'border-width': 3,
-                    'border-color': '#58a6ff'
+                    'border-width': 4,
+                    'border-color': '#58a6ff',
+                    'overlay-color': '#58a6ff',
+                    'overlay-opacity': 0.08,
+                    'overlay-padding': 6
                 }
             },
-            // Completed nodes
+            // Completed nodes - green border + glow
             {
                 selector: 'node[status = "Completed"]',
                 style: {
-                    'border-color': '#3fb950'
+                    'border-width': 4,
+                    'border-color': '#3fb950',
+                    'overlay-color': '#3fb950',
+                    'overlay-opacity': 0.08,
+                    'overlay-padding': 6
                 }
             },
-            // Failed nodes
+            // Failed nodes - red border + glow
             {
                 selector: 'node[status = "Failed"]',
                 style: {
+                    'border-width': 4,
                     'border-color': '#f85149',
-                    'border-width': 3
+                    'overlay-color': '#f85149',
+                    'overlay-opacity': 0.08,
+                    'overlay-padding': 6
+                }
+            },
+            // Dimmed state for non-hovered neighborhood
+            {
+                selector: '.dimmed',
+                style: {
+                    'opacity': 0.15
                 }
             }
         ];
@@ -219,11 +295,17 @@ class DagVisualizer {
             const status = node.executionState?.status || 'Pending';
             const borderColor = this.statusColors[status] || color;
 
+            // Better merge node labels: show "merge" instead of just "+"
+            let label = node.label;
+            if (node.kind === 'Merge' && label === '+') {
+                label = 'merge';
+            }
+
             elements.push({
                 group: 'nodes',
                 data: {
                     id: node.id,
-                    label: node.label,
+                    label: label,
                     kind: node.kind,
                     typeSignature: node.typeSignature,
                     color: color,

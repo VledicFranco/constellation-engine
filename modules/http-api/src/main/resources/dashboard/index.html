@@ -99,6 +99,14 @@
                             </div>
                         </div>
                         <div id="dag-canvas" class="dag-canvas"></div>
+                        <div id="dag-legend" class="dag-legend">
+                            <div class="legend-item"><span class="legend-dot" style="background:#56d364;border-radius:50%"></span> Input</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#d2a8ff"></span> Operation</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#58a6ff;border-radius:50%"></span> Output</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#ffa657"></span> Literal</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#ff7b72"></span> Conditional</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#f778ba"></span> Merge</div>
+                        </div>
                     </div>
                 </section>
 
@@ -154,6 +162,9 @@
         <div class="spinner"></div>
         <span class="loading-text">Loading...</span>
     </div>
+
+    <!-- DAG Tooltip (positioned fixed, managed by dag-visualizer.js) -->
+    <div id="dag-tooltip" class="dag-tooltip"></div>
 
     <!-- Scripts -->
     <script src="/dashboard/static/js/components/file-browser.js"></script>
