@@ -139,20 +139,25 @@ class DagVisualizer {
                     'label': 'data(label)',
                     'text-valign': 'center',
                     'text-halign': 'center',
-                    'font-size': '12px',
+                    'font-size': '13px',
+                    'font-weight': 600,
                     'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
                     'color': '#0d1117',
                     'text-wrap': 'wrap',
-                    'text-max-width': '100px',
+                    'text-max-width': '120px',
                     'width': 'label',
                     'height': 'label',
-                    'padding': '12px',
+                    'padding': '14px',
+                    'min-width': '60px',
+                    'min-height': '30px',
                     'shape': 'roundrectangle',
                     'background-color': 'data(color)',
                     'border-width': 2,
                     'border-color': 'data(borderColor)',
                     'text-outline-color': 'data(color)',
-                    'text-outline-width': 0
+                    'text-outline-width': 0,
+                    'transition-property': 'border-color border-width background-color',
+                    'transition-duration': '0.3s'
                 }
             },
             // Selected node
@@ -182,20 +187,24 @@ class DagVisualizer {
             {
                 selector: 'edge',
                 style: {
-                    'width': 2,
-                    'line-color': '#484f58',
-                    'target-arrow-color': '#484f58',
+                    'width': 1.5,
+                    'line-color': '#6e7681',
+                    'target-arrow-color': '#8b949e',
                     'target-arrow-shape': 'triangle',
                     'arrow-scale': 1.3,
-                    'curve-style': 'bezier',
+                    'curve-style': 'taxi',
+                    'taxi-direction': 'downward',
+                    'taxi-turn': '50px',
+                    'taxi-turn-min-distance': 10,
                     'label': 'data(label)',
-                    'font-size': '11px',
-                    'color': '#e6edf3',
+                    'font-size': '10px',
+                    'font-family': '"SF Mono", "Consolas", "Monaco", monospace',
+                    'color': '#c9d1d9',
                     'text-background-color': '#161b22',
-                    'text-background-opacity': 0.85,
+                    'text-background-opacity': 0.92,
                     'text-background-padding': '3px',
                     'text-background-shape': 'roundrectangle',
-                    'text-rotation': 'autorotate',
+                    'text-rotation': 'none',
                     'text-margin-y': -10
                 }
             },
@@ -215,37 +224,47 @@ class DagVisualizer {
                     'target-arrow-color': '#ff7b72'
                 }
             },
-            // Running nodes - blue border + glow
+            // Running nodes - pulsing blue border
             {
                 selector: 'node[status = "Running"]',
                 style: {
-                    'border-width': 4,
+                    'border-width': 5,
                     'border-color': '#58a6ff',
+                    'border-style': 'dashed',
                     'overlay-color': '#58a6ff',
-                    'overlay-opacity': 0.08,
-                    'overlay-padding': 6
+                    'overlay-opacity': 0.15,
+                    'overlay-padding': 8
                 }
             },
-            // Completed nodes - green border + glow
+            // Completed nodes - solid green border + checkmark feel
             {
                 selector: 'node[status = "Completed"]',
                 style: {
-                    'border-width': 4,
+                    'border-width': 5,
                     'border-color': '#3fb950',
                     'overlay-color': '#3fb950',
-                    'overlay-opacity': 0.08,
-                    'overlay-padding': 6
+                    'overlay-opacity': 0.15,
+                    'overlay-padding': 8
                 }
             },
-            // Failed nodes - red border + glow
+            // Failed nodes - red border
             {
                 selector: 'node[status = "Failed"]',
                 style: {
-                    'border-width': 4,
+                    'border-width': 5,
                     'border-color': '#f85149',
                     'overlay-color': '#f85149',
-                    'overlay-opacity': 0.08,
-                    'overlay-padding': 6
+                    'overlay-opacity': 0.15,
+                    'overlay-padding': 8
+                }
+            },
+            // Completed edges - green
+            {
+                selector: 'edge[status = "Completed"]',
+                style: {
+                    'line-color': '#3fb950',
+                    'target-arrow-color': '#3fb950',
+                    'width': 3
                 }
             },
             // Dimmed state for non-hovered neighborhood
@@ -340,13 +359,17 @@ class DagVisualizer {
      * Run the dagre layout
      */
     runLayout() {
+        // Update taxi direction based on layout
+        const taxiDir = this.layoutDirection === 'LR' ? 'rightward' : 'downward';
+        this.cy.edges().style('taxi-direction', taxiDir);
+
         const layout = this.cy.layout({
             name: 'dagre',
             rankDir: this.layoutDirection,
-            nodeSep: 50,
-            rankSep: 80,
-            edgeSep: 30,
-            padding: 30,
+            nodeSep: 80,
+            rankSep: 110,
+            edgeSep: 50,
+            padding: 50,
             animate: true,
             animationDuration: 300
         });
