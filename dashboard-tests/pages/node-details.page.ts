@@ -13,16 +13,15 @@ export class NodeDetailsPage {
     this.content = page.locator('#node-details');
   }
 
-  /** Assert the node details panel is showing actual node data */
+  /** Assert the node details panel is visible with node data */
   async expectVisible(): Promise<void> {
-    // The panel is always visible as a sidebar; "visible" means it has node data, not placeholder
+    await expect(this.panel).toBeVisible();
     await expect(this.content.locator('.detail-section').first()).toBeVisible();
   }
 
-  /** Assert the node details panel is showing placeholder (no node selected) */
+  /** Assert the node details panel is hidden */
   async expectHidden(): Promise<void> {
-    // The panel is always visible as a sidebar; "hidden" means it shows placeholder text
-    await expect(this.content.locator('.placeholder-text')).toBeVisible();
+    await expect(this.panel).not.toBeVisible();
   }
 
   /** Close the details panel */

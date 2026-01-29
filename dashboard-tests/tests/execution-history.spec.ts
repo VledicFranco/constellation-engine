@@ -49,8 +49,8 @@ test.describe('Execution History', () => {
 
     const initialCount = await dashboard.history.items().count();
 
-    // Filter by the full script path (backend uses Option.contains which requires exact match)
-    await dashboard.history.filter('modules/example-app/examples/simple-test.cst');
+    // Filter by partial script name (substring matching)
+    await dashboard.history.filter('simple-test');
 
     const filteredCount = await dashboard.history.items().count();
 
@@ -66,8 +66,8 @@ test.describe('Execution History', () => {
 
     const initialCount = await dashboard.history.items().count();
 
-    // Apply filter (full path needed — backend uses Option.contains for exact match)
-    await dashboard.history.filter('modules/example-app/examples/simple-test.cst');
+    // Apply filter
+    await dashboard.history.filter('simple-test');
     const filteredCount = await dashboard.history.items().count();
 
     // Clear filter

@@ -24,6 +24,14 @@ class ExecutionPanel {
         const inputsForm = document.getElementById(this.inputsFormId);
         const outputsDisplay = document.getElementById(this.outputsDisplayId);
 
+        // Show loading state while fetching script metadata
+        inputsForm.innerHTML = `
+            <div class="loading-indicator">
+                <div class="spinner" style="width: 20px; height: 20px;"></div>
+                <span>Loading script...</span>
+            </div>
+        `;
+
         try {
             // Use query param endpoint for paths with slashes
             const response = await fetch(`/api/v1/file?path=${encodeURIComponent(scriptPath)}`);
@@ -278,7 +286,20 @@ class ExecutionPanel {
      */
     renderHistoryList(container, executions) {
         if (!executions || executions.length === 0) {
-            container.innerHTML = '<p class="placeholder-text">No execution history</p>';
+            container.innerHTML = `
+                <div class="placeholder-text">
+                    <p>No execution history</p>
+                    <p><a href="#" class="link-to-scripts">Run a script from the Scripts view</a> to see results here.</p>
+                </div>
+            `;
+            const link = container.querySelector('.link-to-scripts');
+            if (link) {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const scriptsBtn = document.querySelector('.nav-btn[data-view="scripts"]');
+                    if (scriptsBtn) scriptsBtn.click();
+                });
+            }
             return;
         }
 

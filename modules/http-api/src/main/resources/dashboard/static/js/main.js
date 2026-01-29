@@ -373,6 +373,7 @@ class ConstellationDashboard {
      */
     hideNodeDetails() {
         this.elements.nodeDetails.innerHTML = '<p class="placeholder-text">Click a node to see details</p>';
+        this.elements.nodeDetailsPanel.style.display = 'none';
         this.dagVisualizer.deselectAll();
     }
 

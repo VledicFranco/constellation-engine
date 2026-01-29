@@ -270,7 +270,7 @@ object ExecutionStorage {
     def listByScript(scriptPath: String, limit: Int): IO[List[ExecutionSummary]] =
       state.get.map { s =>
         s.executions.values.toList
-          .filter(_.scriptPath.contains(scriptPath))
+          .filter(_.scriptPath.exists(_.contains(scriptPath)))
           .sortBy(-_.startTime)
           .take(limit)
           .map(ExecutionSummary.fromStored)

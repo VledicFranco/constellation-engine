@@ -48,6 +48,30 @@ class FileBrowser {
 
         this.container.innerHTML = '';
         this.renderNodes(files, this.container);
+        this.autoExpandToFiles();
+    }
+
+    /**
+     * Auto-expand all folders that contain .cst files so scripts are visible on load
+     */
+    autoExpandToFiles() {
+        const files = this.container.querySelectorAll('.file');
+        files.forEach(file => {
+            let parent = file.parentElement;
+            while (parent && parent !== this.container) {
+                if (parent.classList.contains('folder') && parent.classList.contains('collapsed')) {
+                    parent.classList.remove('collapsed');
+                    const chevron = parent.querySelector(':scope > .file-item .chevron');
+                    if (chevron) {
+                        chevron.style.transform = 'rotate(90deg)';
+                    }
+                    if (parent.dataset.path) {
+                        this.expandedFolders.add(parent.dataset.path);
+                    }
+                }
+                parent = parent.parentElement;
+            }
+        });
     }
 
     /**
@@ -71,6 +95,7 @@ class FileBrowser {
     createFolderElement(node) {
         const folder = document.createElement('div');
         folder.className = 'folder';
+        folder.dataset.path = node.path;
         if (!this.expandedFolders.has(node.path)) {
             folder.classList.add('collapsed');
         }

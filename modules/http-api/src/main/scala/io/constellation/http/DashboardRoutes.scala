@@ -215,6 +215,12 @@ class DashboardRoutes(
   private def buildFileTree(root: Path): List[FileNode] =
     buildFileTreeRec(root, root)
 
+  /** Directories excluded from the file browser (development/tooling dirs, not user scripts) */
+  private val excludedDirs = Set(
+    "node_modules", "dashboard-tests", "vscode-extension", ".git", "target", "out",
+    ".bsp", ".idea", ".vscode", "project", ".github", "agents", "scripts", "brand"
+  )
+
   /** Recursive helper that tracks the base root for relative path computation */
   private def buildFileTreeRec(baseRoot: Path, currentDir: Path): List[FileNode] = {
     if !Files.exists(currentDir) || !Files.isDirectory(currentDir) then return List.empty
@@ -222,6 +228,7 @@ class DashboardRoutes(
     Try {
       Files.list(currentDir).iterator().asScala.toList
         .filter(p => Files.isDirectory(p) || p.toString.endsWith(".cst"))
+        .filterNot(p => Files.isDirectory(p) && excludedDirs.contains(p.getFileName.toString))
         .flatMap { path =>
           val name = path.getFileName.toString
           val isDir = Files.isDirectory(path)
