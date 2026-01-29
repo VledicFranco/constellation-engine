@@ -43,6 +43,7 @@ lazy val core = project
       "io.circe" %% "circe-generic" % "0.14.6",
       "io.circe" %% "circe-parser" % "0.14.6",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
     )
   )
 
@@ -59,6 +60,7 @@ lazy val runtime = project
       "org.typelevel" %% "cats-effect" % "3.5.2",
       "com.fasterxml.jackson.core" % "jackson-core" % "2.15.3",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
     )
   )
 
@@ -84,6 +86,7 @@ lazy val langParser = (project in file("modules/lang-parser"))
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-parse" % "1.0.0",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
     )
   )
 
@@ -98,6 +101,7 @@ lazy val langCompiler = (project in file("modules/lang-compiler"))
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
     )
   )
 
