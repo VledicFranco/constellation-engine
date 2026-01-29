@@ -325,6 +325,32 @@ When modifying dashboard code:
 
 ---
 
+## Playwright Dev Loop
+
+**Use screenshot-driven iteration when modifying dashboard visuals (CSS, HTML, JS, or Cytoscape config).** The protocol captures the dashboard in 16+ states via Playwright, lets the agent visually analyze results against a stated objective, and repeats -- up to 5 autonomous iterations before presenting screenshots for human review.
+
+**Full protocol:** `docs/dev/playwright-dev-loop.md`
+
+**Key command:**
+```bash
+cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
+```
+
+**Screenshots output:** `dashboard-tests/screenshots/`
+
+### Protocol Summary
+
+| Step | Action |
+|------|--------|
+| 1 | Receive visual objective from user |
+| 2 | Make code changes (CSS/HTML/JS/Scala) |
+| 3 | `make compile` + restart server |
+| 4 | `cd dashboard-tests && npx playwright test screenshot-audit --reporter=list` |
+| 5 | Read screenshots from `dashboard-tests/screenshots/`, analyze against objective |
+| 6 | If objective met: done. If not and iteration < 5: go to step 2. If iteration = 5: present to user. |
+
+---
+
 ## Release Management
 
 **Creating releases with semantic versioning:**
