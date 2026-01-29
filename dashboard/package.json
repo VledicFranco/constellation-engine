@@ -1,0 +1,14 @@
+{
+  "name": "constellation-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Constellation Engine Dashboard (TypeScript sources)",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "tsc --build --clean"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}

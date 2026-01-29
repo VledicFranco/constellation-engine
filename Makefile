@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard
 
 # Default target
 help:
@@ -15,12 +15,14 @@ help:
 	@echo "Build Commands:"
 	@echo "  make compile    - Compile all Scala modules"
 	@echo "  make extension  - Compile VSCode extension"
+	@echo "  make dashboard  - Compile dashboard TypeScript"
 	@echo "  make all        - Compile everything (Scala + TypeScript)"
 	@echo "  make clean      - Clean all build artifacts"
 	@echo ""
 	@echo "Watch Modes:"
 	@echo "  make watch      - Watch Scala sources and recompile on changes"
-	@echo "  make ext-watch  - Watch TypeScript and recompile on changes"
+	@echo "  make ext-watch        - Watch VSCode extension TypeScript"
+	@echo "  make dashboard-watch  - Watch dashboard TypeScript"
 	@echo ""
 	@echo "Server Commands:"
 	@echo "  make server         - Start with ExampleLib (all functions)"
@@ -106,8 +108,19 @@ extension:
 	@echo "Compiling VSCode extension..."
 	cd vscode-extension && npm run compile
 
+# Compile dashboard TypeScript
+dashboard:
+	@echo "Compiling dashboard TypeScript..."
+	cd dashboard && npm run build
+
+# Watch dashboard TypeScript
+dashboard-watch:
+	@echo "Watching dashboard TypeScript sources for changes..."
+	@echo "Press Ctrl+C to stop"
+	cd dashboard && npm run watch
+
 # Compile everything
-all: compile extension
+all: compile extension dashboard
 	@echo "Build complete!"
 
 # Clean all build artifacts
@@ -115,6 +128,7 @@ clean:
 	@echo "Cleaning build artifacts..."
 	sbt clean
 	rm -rf vscode-extension/out
+	cd dashboard && npm run clean 2>/dev/null || true
 	rm -rf .bloop project/.bloop
 	rm -rf target */target
 	@echo "Clean complete!"
@@ -260,13 +274,20 @@ coverage-html:
 # Setup
 # =============================================================================
 
+# Install dashboard TypeScript dependencies
+install-dashboard:
+	@echo "Installing dashboard dependencies..."
+	cd dashboard && npm install
+
 # Install all dependencies
 install:
 	@echo "Installing dependencies..."
 	@echo "1. Fetching SBT dependencies..."
 	sbt update
-	@echo "2. Installing npm packages..."
+	@echo "2. Installing VSCode extension npm packages..."
 	cd vscode-extension && npm install
+	@echo "3. Installing dashboard npm packages..."
+	cd dashboard && npm install
 	@echo "Dependencies installed!"
 
 # =============================================================================

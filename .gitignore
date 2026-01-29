@@ -70,6 +70,10 @@ build/
 *.jar
 *.war
 
+# Dashboard TypeScript build output (compiled from dashboard/src/)
+modules/http-api/src/main/resources/dashboard/static/js/main.js
+modules/http-api/src/main/resources/dashboard/static/js/components/
+
 # =============================================================================
 # Environment / Secrets
 # =============================================================================

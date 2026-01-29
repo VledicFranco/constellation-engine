@@ -5,7 +5,17 @@
  */
 
 class ExecutionPanel {
-    constructor(options) {
+    private inputsFormId: string;
+    private outputsDisplayId: string;
+    private historyListId: string;
+    private executionDetailId: string;
+
+    private onExecutionSelect: ((execution: StoredExecution) => void) | undefined;
+    public currentScript: FileContentResponse | null;
+    public currentInputs: InputParam[];
+    private selectedExecutionId: string | null;
+
+    constructor(options: ExecutionPanelOptions) {
         this.inputsFormId = options.inputsFormId;
         this.outputsDisplayId = options.outputsDisplayId;
         this.historyListId = options.historyListId;
@@ -20,9 +30,9 @@ class ExecutionPanel {
     /**
      * Load script metadata and render input form
      */
-    async loadScript(scriptPath) {
-        const inputsForm = document.getElementById(this.inputsFormId);
-        const outputsDisplay = document.getElementById(this.outputsDisplayId);
+    async loadScript(scriptPath: string): Promise<FileContentResponse> {
+        const inputsForm = document.getElementById(this.inputsFormId)!;
+        const outputsDisplay = document.getElementById(this.outputsDisplayId)!;
 
         // Show loading state while fetching script metadata
         inputsForm.innerHTML = `
@@ -39,7 +49,7 @@ class ExecutionPanel {
                 throw new Error(`Failed to load script: ${response.statusText}`);
             }
 
-            const data = await response.json();
+            const data: FileContentResponse = await response.json();
             this.currentScript = data;
             this.currentInputs = data.inputs || [];
 
@@ -54,7 +64,7 @@ class ExecutionPanel {
             console.error('Error loading script:', error);
             inputsForm.innerHTML = `
                 <div class="output-error">
-                    Failed to load script: ${this.escapeHtml(error.message)}
+                    Failed to load script: ${this.escapeHtml((error as Error).message)}
                 </div>
             `;
             throw error;
@@ -64,7 +74,7 @@ class ExecutionPanel {
     /**
      * Render the input form
      */
-    renderInputForm(container, inputs) {
+    renderInputForm(container: HTMLElement, inputs: InputParam[]): void {
         if (!inputs || inputs.length === 0) {
             container.innerHTML = '<p class="placeholder-text">This script has no inputs</p>';
             return;
@@ -85,7 +95,7 @@ class ExecutionPanel {
     /**
      * Render an input control based on type
      */
-    renderInputControl(input) {
+    private renderInputControl(input: InputParam): string {
         const type = input.paramType.toLowerCase();
         // Handle null, undefined, and actual values
         const rawDefault = input.defaultValue;
@@ -127,15 +137,15 @@ class ExecutionPanel {
     /**
      * Get input values from the form
      */
-    getInputValues() {
-        const values = {};
+    private getInputValues(): Record<string, unknown> {
+        const values: Record<string, unknown> = {};
 
         this.currentInputs.forEach(input => {
-            const element = document.getElementById(`input-${input.name}`);
+            const element = document.getElementById(`input-${input.name}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
             if (!element) return;
 
             const type = input.paramType.toLowerCase();
-            let value = element.value;
+            const value = element.value;
 
             try {
                 if (type === 'int' || type === 'integer' || type === 'long') {
@@ -162,8 +172,8 @@ class ExecutionPanel {
     /**
      * Execute the current script
      */
-    async execute(scriptPath, dagVisualizer) {
-        const outputsDisplay = document.getElementById(this.outputsDisplayId);
+    async execute(scriptPath: string, dagVisualizer: DagVisualizer): Promise<DashboardExecuteResponse> {
+        const outputsDisplay = document.getElementById(this.outputsDisplayId)!;
         const inputs = this.getInputValues();
 
         outputsDisplay.innerHTML = `
@@ -184,7 +194,7 @@ class ExecutionPanel {
                 })
             });
 
-            const result = await response.json();
+            const result: DashboardExecuteResponse = await response.json();
 
             if (result.success) {
                 this.displaySuccess(outputsDisplay, result);
@@ -200,7 +210,7 @@ class ExecutionPanel {
             return result;
         } catch (error) {
             console.error('Execution error:', error);
-            this.displayError(outputsDisplay, error.message);
+            this.displayError(outputsDisplay, (error as Error).message);
             throw error;
         }
     }
@@ -208,7 +218,7 @@ class ExecutionPanel {
     /**
      * Display successful execution result
      */
-    displaySuccess(container, result) {
+    private displaySuccess(container: HTMLElement, result: DashboardExecuteResponse): void {
         const duration = result.durationMs ? `${result.durationMs}ms` : '';
 
         container.innerHTML = `
@@ -225,7 +235,7 @@ class ExecutionPanel {
     /**
      * Display execution error
      */
-    displayError(container, errorMessage) {
+    private displayError(container: HTMLElement, errorMessage: string): void {
         container.innerHTML = `
             <div class="output-error">
                 <div class="output-header">
@@ -239,11 +249,11 @@ class ExecutionPanel {
     /**
      * Load execution DAG for visualization
      */
-    async loadExecutionDag(executionId, dagVisualizer) {
+    private async loadExecutionDag(executionId: string, dagVisualizer: DagVisualizer): Promise<void> {
         try {
             const response = await fetch(`/api/v1/executions/${executionId}/dag`);
             if (response.ok) {
-                const dagVizIR = await response.json();
+                const dagVizIR: DagVizIR = await response.json();
                 dagVisualizer.render(dagVizIR);
             }
         } catch (error) {
@@ -254,8 +264,8 @@ class ExecutionPanel {
     /**
      * Load execution history
      */
-    async loadHistory(filter = '', limit = 50) {
-        const historyList = document.getElementById(this.historyListId);
+    async loadHistory(filter: string = '', limit: number = 50): Promise<void> {
+        const historyList = document.getElementById(this.historyListId)!;
 
         try {
             let url = `/api/v1/executions?limit=${limit}`;
@@ -268,14 +278,14 @@ class ExecutionPanel {
                 throw new Error(`Failed to load history: ${response.statusText}`);
             }
 
-            const data = await response.json();
+            const data: ExecutionListResponse = await response.json();
             this.renderHistoryList(historyList, data.executions);
 
         } catch (error) {
             console.error('Error loading history:', error);
             historyList.innerHTML = `
                 <div class="output-error">
-                    Failed to load history: ${this.escapeHtml(error.message)}
+                    Failed to load history: ${this.escapeHtml((error as Error).message)}
                 </div>
             `;
         }
@@ -284,7 +294,7 @@ class ExecutionPanel {
     /**
      * Render the execution history list
      */
-    renderHistoryList(container, executions) {
+    private renderHistoryList(container: HTMLElement, executions: ExecutionSummary[]): void {
         if (!executions || executions.length === 0) {
             container.innerHTML = `
                 <div class="placeholder-text">
@@ -294,9 +304,9 @@ class ExecutionPanel {
             `;
             const link = container.querySelector('.link-to-scripts');
             if (link) {
-                link.addEventListener('click', (e) => {
+                link.addEventListener('click', (e: Event) => {
                     e.preventDefault();
-                    const scriptsBtn = document.querySelector('.nav-btn[data-view="scripts"]');
+                    const scriptsBtn = document.querySelector('.nav-btn[data-view="scripts"]') as HTMLElement | null;
                     if (scriptsBtn) scriptsBtn.click();
                 });
             }
@@ -321,7 +331,7 @@ class ExecutionPanel {
         // Add click handlers
         container.querySelectorAll('.history-item').forEach(item => {
             item.addEventListener('click', () => {
-                this.selectExecution(item.dataset.executionId);
+                this.selectExecution((item as HTMLElement).dataset.executionId!);
             });
         });
     }
@@ -329,17 +339,17 @@ class ExecutionPanel {
     /**
      * Select an execution from history
      */
-    async selectExecution(executionId) {
+    async selectExecution(executionId: string): Promise<void> {
         this.selectedExecutionId = executionId;
 
         // Update selection UI
-        const historyList = document.getElementById(this.historyListId);
+        const historyList = document.getElementById(this.historyListId)!;
         historyList.querySelectorAll('.history-item').forEach(item => {
-            item.classList.toggle('selected', item.dataset.executionId === executionId);
+            item.classList.toggle('selected', (item as HTMLElement).dataset.executionId === executionId);
         });
 
         // Load execution details
-        const detailContainer = document.getElementById(this.executionDetailId);
+        const detailContainer = document.getElementById(this.executionDetailId)!;
 
         try {
             const response = await fetch(`/api/v1/executions/${executionId}`);
@@ -347,7 +357,7 @@ class ExecutionPanel {
                 throw new Error(`Failed to load execution: ${response.statusText}`);
             }
 
-            const execution = await response.json();
+            const execution: StoredExecution = await response.json();
             this.renderExecutionDetail(detailContainer, execution);
 
             // Notify callback
@@ -359,7 +369,7 @@ class ExecutionPanel {
             console.error('Error loading execution:', error);
             detailContainer.innerHTML = `
                 <div class="output-error">
-                    Failed to load execution: ${this.escapeHtml(error.message)}
+                    Failed to load execution: ${this.escapeHtml((error as Error).message)}
                 </div>
             `;
         }
@@ -368,7 +378,7 @@ class ExecutionPanel {
     /**
      * Render execution details
      */
-    renderExecutionDetail(container, execution) {
+    private renderExecutionDetail(container: HTMLElement, execution: StoredExecution): void {
         const statusClass = execution.status.toLowerCase();
         const duration = execution.endTime ? execution.endTime - execution.startTime : null;
 
@@ -420,7 +430,7 @@ class ExecutionPanel {
     /**
      * Format timestamp for display
      */
-    formatTime(timestamp) {
+    private formatTime(timestamp: number): string {
         const date = new Date(timestamp);
         return date.toLocaleTimeString();
     }
@@ -428,7 +438,7 @@ class ExecutionPanel {
     /**
      * Format full datetime
      */
-    formatDateTime(timestamp) {
+    private formatDateTime(timestamp: number): string {
         const date = new Date(timestamp);
         return date.toLocaleString();
     }
@@ -436,16 +446,16 @@ class ExecutionPanel {
     /**
      * Clear the outputs display
      */
-    clearOutputs() {
-        const outputsDisplay = document.getElementById(this.outputsDisplayId);
+    clearOutputs(): void {
+        const outputsDisplay = document.getElementById(this.outputsDisplayId)!;
         outputsDisplay.innerHTML = '<p class="placeholder-text">Run the script to see outputs</p>';
     }
 
     /**
      * Clear the inputs form
      */
-    clearInputs() {
-        const inputsForm = document.getElementById(this.inputsFormId);
+    clearInputs(): void {
+        const inputsForm = document.getElementById(this.inputsFormId)!;
         inputsForm.innerHTML = '<p class="placeholder-text">Load a script to see inputs</p>';
         this.currentScript = null;
         this.currentInputs = [];
@@ -454,7 +464,7 @@ class ExecutionPanel {
     /**
      * Escape HTML to prevent XSS
      */
-    escapeHtml(text) {
+    private escapeHtml(text: string): string {
         if (text === null || text === undefined) return '';
         const div = document.createElement('div');
         div.textContent = String(text);
@@ -463,4 +473,4 @@ class ExecutionPanel {
 }
 
 // Export for use in main.js
-window.ExecutionPanel = ExecutionPanel;
+(window as Window).ExecutionPanel = ExecutionPanel;

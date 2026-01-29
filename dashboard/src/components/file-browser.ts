@@ -5,8 +5,13 @@
  */
 
 class FileBrowser {
-    constructor(containerId, onFileSelect) {
-        this.container = document.getElementById(containerId);
+    private container: HTMLElement;
+    private onFileSelect: (path: string) => void;
+    private selectedFile: string | null;
+    private expandedFolders: Set<string>;
+
+    constructor(containerId: string, onFileSelect: (path: string) => void) {
+        this.container = document.getElementById(containerId)!;
         this.onFileSelect = onFileSelect;
         this.selectedFile = null;
         this.expandedFolders = new Set();
@@ -15,19 +20,19 @@ class FileBrowser {
     /**
      * Load the file tree from the API
      */
-    async load() {
+    async load(): Promise<void> {
         try {
             const response = await fetch('/api/v1/files');
             if (!response.ok) {
                 throw new Error(`Failed to load files: ${response.statusText}`);
             }
-            const data = await response.json();
+            const data: FilesResponse = await response.json();
             this.render(data.files);
         } catch (error) {
             console.error('Error loading files:', error);
             this.container.innerHTML = `
                 <div class="placeholder-text">
-                    Failed to load files: ${error.message}
+                    Failed to load files: ${(error as Error).message}
                 </div>
             `;
         }
@@ -36,7 +41,7 @@ class FileBrowser {
     /**
      * Render the file tree
      */
-    render(files) {
+    render(files: FileNode[]): void {
         if (!files || files.length === 0) {
             this.container.innerHTML = `
                 <div class="placeholder-text">
@@ -54,19 +59,19 @@ class FileBrowser {
     /**
      * Auto-expand all folders that contain .cst files so scripts are visible on load
      */
-    autoExpandToFiles() {
+    private autoExpandToFiles(): void {
         const files = this.container.querySelectorAll('.file');
         files.forEach(file => {
             let parent = file.parentElement;
             while (parent && parent !== this.container) {
                 if (parent.classList.contains('folder') && parent.classList.contains('collapsed')) {
                     parent.classList.remove('collapsed');
-                    const chevron = parent.querySelector(':scope > .file-item .chevron');
+                    const chevron = parent.querySelector(':scope > .file-item .chevron') as HTMLElement | null;
                     if (chevron) {
                         chevron.style.transform = 'rotate(90deg)';
                     }
-                    if (parent.dataset.path) {
-                        this.expandedFolders.add(parent.dataset.path);
+                    if ((parent as HTMLElement).dataset.path) {
+                        this.expandedFolders.add((parent as HTMLElement).dataset.path!);
                     }
                 }
                 parent = parent.parentElement;
@@ -77,7 +82,7 @@ class FileBrowser {
     /**
      * Render file tree nodes recursively
      */
-    renderNodes(nodes, parent) {
+    private renderNodes(nodes: FileNode[], parent: HTMLElement): void {
         nodes.forEach(node => {
             if (node.fileType === 'directory') {
                 const folder = this.createFolderElement(node);
@@ -92,7 +97,7 @@ class FileBrowser {
     /**
      * Create a folder element
      */
-    createFolderElement(node) {
+    private createFolderElement(node: FileNode): HTMLElement {
         const folder = document.createElement('div');
         folder.className = 'folder';
         folder.dataset.path = node.path;
@@ -112,7 +117,7 @@ class FileBrowser {
             </svg>
         `;
 
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', (e: Event) => {
             e.stopPropagation();
             this.toggleFolder(folder, node.path);
         });
@@ -132,7 +137,7 @@ class FileBrowser {
     /**
      * Create a file element
      */
-    createFileElement(node) {
+    private createFileElement(node: FileNode): HTMLElement {
         const file = document.createElement('div');
         file.className = 'file';
         file.dataset.path = node.path;
@@ -150,7 +155,7 @@ class FileBrowser {
             <span class="name">${this.escapeHtml(node.name)}</span>
         `;
 
-        item.addEventListener('click', (e) => {
+        item.addEventListener('click', (e: Event) => {
             e.stopPropagation();
             this.selectFile(node.path, item);
         });
@@ -162,11 +167,11 @@ class FileBrowser {
     /**
      * Toggle folder expansion
      */
-    toggleFolder(folderElement, path) {
+    private toggleFolder(folderElement: HTMLElement, path: string): void {
         const isCollapsed = folderElement.classList.contains('collapsed');
         folderElement.classList.toggle('collapsed');
 
-        const chevron = folderElement.querySelector('.chevron');
+        const chevron = folderElement.querySelector('.chevron') as HTMLElement | null;
         if (chevron) {
             chevron.style.transform = isCollapsed ? 'rotate(90deg)' : 'rotate(0)';
         }
@@ -181,7 +186,7 @@ class FileBrowser {
     /**
      * Select a file
      */
-    selectFile(path, itemElement) {
+    private selectFile(path: string, itemElement: HTMLElement): void {
         // Remove previous selection
         const previousSelected = this.container.querySelector('.file-item.selected');
         if (previousSelected) {
@@ -201,14 +206,14 @@ class FileBrowser {
     /**
      * Get the currently selected file path
      */
-    getSelectedFile() {
+    getSelectedFile(): string | null {
         return this.selectedFile;
     }
 
     /**
      * Clear the selection
      */
-    clearSelection() {
+    clearSelection(): void {
         const selected = this.container.querySelector('.file-item.selected');
         if (selected) {
             selected.classList.remove('selected');
@@ -219,7 +224,7 @@ class FileBrowser {
     /**
      * Escape HTML to prevent XSS
      */
-    escapeHtml(text) {
+    private escapeHtml(text: string): string {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -227,4 +232,4 @@ class FileBrowser {
 }
 
 // Export for use in main.js
-window.FileBrowser = FileBrowser;
+(window as Window).FileBrowser = FileBrowser;

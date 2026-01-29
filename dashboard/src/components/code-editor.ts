@@ -7,7 +7,26 @@
  */
 
 class CodeEditor {
-    constructor(options) {
+    private containerId: string;
+    private textareaId: string;
+    private errorBannerId: string;
+    private onPreviewResult: (dagVizIR: DagVizIR | null, errors: string[], inputs: InputParam[]) => void;
+
+    // DOM elements (bound in init)
+    private container: HTMLElement | null;
+    private textarea: HTMLTextAreaElement | null;
+    private errorBanner: HTMLElement | null;
+    private toggleBtn: HTMLElement | null;
+    private newScriptBtn: HTMLElement | null;
+    private statusEl: HTMLElement | null;
+
+    // State
+    private expanded: boolean;
+    private previewTimer: ReturnType<typeof setTimeout> | null;
+    private previewCounter: number;
+    private readonly DEBOUNCE_MS: number;
+
+    constructor(options: CodeEditorOptions) {
         this.containerId = options.containerId;
         this.textareaId = options.textareaId;
         this.errorBannerId = options.errorBannerId;
@@ -31,9 +50,9 @@ class CodeEditor {
     /**
      * Bind DOM elements and event listeners
      */
-    init() {
+    init(): void {
         this.container = document.getElementById(this.containerId);
-        this.textarea = document.getElementById(this.textareaId);
+        this.textarea = document.getElementById(this.textareaId) as HTMLTextAreaElement | null;
         this.errorBanner = document.getElementById(this.errorBannerId);
         this.toggleBtn = document.getElementById('editor-toggle-btn');
         this.newScriptBtn = document.getElementById('new-script-btn');
@@ -42,23 +61,24 @@ class CodeEditor {
         if (!this.container || !this.textarea) return;
 
         // Toggle expand/collapse
-        this.toggleBtn.addEventListener('click', () => this.toggle());
+        this.toggleBtn?.addEventListener('click', () => this.toggle());
 
         // New script button
-        this.newScriptBtn.addEventListener('click', () => this.newScript());
+        this.newScriptBtn?.addEventListener('click', () => this.newScript());
 
         // Live preview on input
         this.textarea.addEventListener('input', () => this.schedulePreview());
 
         // Tab key inserts spaces instead of changing focus
-        this.textarea.addEventListener('keydown', (e) => {
+        this.textarea.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Tab') {
                 e.preventDefault();
-                const start = this.textarea.selectionStart;
-                const end = this.textarea.selectionEnd;
-                const value = this.textarea.value;
-                this.textarea.value = value.substring(0, start) + '    ' + value.substring(end);
-                this.textarea.selectionStart = this.textarea.selectionEnd = start + 4;
+                const ta = this.textarea!;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const value = ta.value;
+                ta.value = value.substring(0, start) + '    ' + value.substring(end);
+                ta.selectionStart = ta.selectionEnd = start + 4;
                 this.schedulePreview();
             }
         });
@@ -67,7 +87,7 @@ class CodeEditor {
     /**
      * Load source code into the editor (e.g. when a file is selected)
      */
-    loadSource(source) {
+    loadSource(source: string): void {
         if (!this.textarea) return;
         this.textarea.value = source || '';
         this.clearErrors();
@@ -76,7 +96,7 @@ class CodeEditor {
     /**
      * Expand the editor body
      */
-    expand() {
+    expand(): void {
         if (!this.container) return;
         this.expanded = true;
         this.container.classList.remove('collapsed');
@@ -87,7 +107,7 @@ class CodeEditor {
     /**
      * Collapse the editor body
      */
-    collapse() {
+    collapse(): void {
         if (!this.container) return;
         this.expanded = false;
         this.container.classList.remove('expanded');
@@ -98,7 +118,7 @@ class CodeEditor {
     /**
      * Toggle between expanded and collapsed
      */
-    toggle() {
+    toggle(): void {
         if (this.expanded) {
             this.collapse();
         } else {
@@ -109,18 +129,18 @@ class CodeEditor {
     /**
      * Create a new script with starter template
      */
-    newScript() {
+    newScript(): void {
         const template = '# New script\nin text: String\n\nresult = Uppercase(text)\n\nout result\n';
         this.loadSource(template);
         this.expand();
-        this.textarea.focus();
+        this.textarea?.focus();
         this.schedulePreview();
     }
 
     /**
      * Schedule a debounced preview compilation
      */
-    schedulePreview() {
+    private schedulePreview(): void {
         if (this.previewTimer) {
             clearTimeout(this.previewTimer);
         }
@@ -132,8 +152,8 @@ class CodeEditor {
      * Execute a preview compilation via POST /api/v1/preview.
      * Uses a monotonic counter to discard stale responses.
      */
-    async executePreview() {
-        const source = this.textarea.value.trim();
+    private async executePreview(): Promise<void> {
+        const source = this.textarea!.value.trim();
 
         if (!source) {
             this.clearErrors();
@@ -155,7 +175,7 @@ class CodeEditor {
             // Discard if a newer request was issued
             if (requestId !== this.previewCounter) return;
 
-            const result = await response.json();
+            const result: PreviewResponse = await response.json();
 
             if (result.success && result.dagVizIR) {
                 this.clearErrors();
@@ -170,9 +190,9 @@ class CodeEditor {
             }
         } catch (error) {
             if (requestId !== this.previewCounter) return;
-            this.showErrors([error.message]);
+            this.showErrors([(error as Error).message]);
             this.setStatus('Network error');
-            this.onPreviewResult(null, [error.message], []);
+            this.onPreviewResult(null, [(error as Error).message], []);
         }
     }
 
@@ -180,7 +200,7 @@ class CodeEditor {
      * Extract input declarations from dagVizIR nodes.
      * Looks for nodes with kind === 'Input' and maps label -> name, typeSignature -> paramType.
      */
-    extractInputsFromDag(dagVizIR) {
+    private extractInputsFromDag(dagVizIR: DagVizIR): InputParam[] {
         if (!dagVizIR || !dagVizIR.nodes) return [];
         return dagVizIR.nodes
             .filter(n => n.kind === 'Input')
@@ -194,7 +214,7 @@ class CodeEditor {
     /**
      * Display compilation errors in the error banner
      */
-    showErrors(errors) {
+    private showErrors(errors: string[]): void {
         if (!this.errorBanner || !errors || errors.length === 0) {
             this.clearErrors();
             return;
@@ -208,7 +228,7 @@ class CodeEditor {
     /**
      * Clear the error banner
      */
-    clearErrors() {
+    clearErrors(): void {
         if (!this.errorBanner) return;
         this.errorBanner.innerHTML = '';
         this.errorBanner.classList.remove('visible');
@@ -217,7 +237,7 @@ class CodeEditor {
     /**
      * Update the status indicator text
      */
-    setStatus(text) {
+    private setStatus(text: string): void {
         if (this.statusEl) {
             this.statusEl.textContent = text;
         }
@@ -226,7 +246,7 @@ class CodeEditor {
     /**
      * Escape HTML to prevent XSS
      */
-    escapeHtml(text) {
+    private escapeHtml(text: string): string {
         if (text === null || text === undefined) return '';
         const div = document.createElement('div');
         div.textContent = String(text);
@@ -235,4 +255,4 @@ class CodeEditor {
 }
 
 // Export for use in main.js
-window.CodeEditor = CodeEditor;
+(window as Window).CodeEditor = CodeEditor;

@@ -5,6 +5,20 @@
  */
 
 class ConstellationDashboard {
+    // Components
+    private fileBrowser: FileBrowser | null;
+    private dagVisualizer: DagVisualizer | null;
+    private executionPanel: ExecutionPanel | null;
+    private codeEditor: CodeEditor | null;
+
+    // State
+    private currentView: 'scripts' | 'history';
+    private currentScriptPath: string | null;
+    private currentDagVizIR: DagVizIR | null;
+
+    // DOM elements
+    private elements: DashboardElements;
+
     constructor() {
         // Components
         this.fileBrowser = null;
@@ -19,29 +33,29 @@ class ConstellationDashboard {
 
         // DOM elements
         this.elements = {
-            scriptsView: document.getElementById('scripts-view'),
-            historyView: document.getElementById('history-view'),
-            runBtn: document.getElementById('run-btn'),
-            refreshBtn: document.getElementById('refresh-btn'),
-            currentFile: document.getElementById('current-file'),
-            nodeDetails: document.getElementById('node-details'),
-            nodeDetailsPanel: document.getElementById('node-details-panel'),
-            closeDetails: document.getElementById('close-details'),
-            loadingOverlay: document.getElementById('loading-overlay'),
-            statusMessage: document.getElementById('status-message'),
-            historyFilter: document.getElementById('history-filter'),
-            layoutTB: document.getElementById('layout-tb'),
-            layoutLR: document.getElementById('layout-lr'),
-            zoomIn: document.getElementById('zoom-in'),
-            zoomOut: document.getElementById('zoom-out'),
-            zoomFit: document.getElementById('zoom-fit')
+            scriptsView: document.getElementById('scripts-view')!,
+            historyView: document.getElementById('history-view')!,
+            runBtn: document.getElementById('run-btn') as HTMLButtonElement,
+            refreshBtn: document.getElementById('refresh-btn') as HTMLButtonElement,
+            currentFile: document.getElementById('current-file')!,
+            nodeDetails: document.getElementById('node-details')!,
+            nodeDetailsPanel: document.getElementById('node-details-panel')!,
+            closeDetails: document.getElementById('close-details')!,
+            loadingOverlay: document.getElementById('loading-overlay')!,
+            statusMessage: document.getElementById('status-message')!,
+            historyFilter: document.getElementById('history-filter') as HTMLInputElement,
+            layoutTB: document.getElementById('layout-tb')!,
+            layoutLR: document.getElementById('layout-lr')!,
+            zoomIn: document.getElementById('zoom-in')!,
+            zoomOut: document.getElementById('zoom-out')!,
+            zoomFit: document.getElementById('zoom-fit')!
         };
     }
 
     /**
      * Initialize the dashboard
      */
-    async init() {
+    async init(): Promise<void> {
         this.showLoading('Initializing...');
 
         try {
@@ -55,7 +69,7 @@ class ConstellationDashboard {
             this.setupEventListeners();
 
             // Load initial data
-            await this.fileBrowser.load();
+            await this.fileBrowser!.load();
 
             // Handle hash-based navigation
             this.handleHashNavigation();
@@ -73,8 +87,8 @@ class ConstellationDashboard {
     /**
      * Initialize the file browser component
      */
-    initFileBrowser() {
-        this.fileBrowser = new FileBrowser('file-tree', async (path) => {
+    private initFileBrowser(): void {
+        this.fileBrowser = new FileBrowser('file-tree', async (path: string) => {
             await this.loadScript(path);
         });
     }
@@ -82,8 +96,8 @@ class ConstellationDashboard {
     /**
      * Initialize the DAG visualizer component
      */
-    initDagVisualizer() {
-        this.dagVisualizer = new DagVisualizer('dag-canvas', (nodeData) => {
+    private initDagVisualizer(): void {
+        this.dagVisualizer = new DagVisualizer('dag-canvas', (nodeData: NodeDetailData | null) => {
             this.showNodeDetails(nodeData);
         });
         this.dagVisualizer.init();
@@ -92,16 +106,16 @@ class ConstellationDashboard {
     /**
      * Initialize the execution panel component
      */
-    initExecutionPanel() {
+    private initExecutionPanel(): void {
         this.executionPanel = new ExecutionPanel({
             inputsFormId: 'inputs-form',
             outputsDisplayId: 'outputs-display',
             historyListId: 'history-list',
             executionDetailId: 'execution-detail',
-            onExecutionSelect: async (execution) => {
+            onExecutionSelect: async (execution: StoredExecution) => {
                 // Load DAG for selected execution
                 if (execution.dagVizIR) {
-                    this.dagVisualizer.render(execution.dagVizIR);
+                    this.dagVisualizer!.render(execution.dagVizIR);
                 }
             }
         });
@@ -110,12 +124,12 @@ class ConstellationDashboard {
     /**
      * Initialize the code editor component
      */
-    initCodeEditor() {
+    private initCodeEditor(): void {
         this.codeEditor = new CodeEditor({
             containerId: 'editor-container',
             textareaId: 'code-editor-textarea',
             errorBannerId: 'editor-error-banner',
-            onPreviewResult: (dagVizIR, errors, inputs) => {
+            onPreviewResult: (dagVizIR: DagVizIR | null, errors: string[], inputs: InputParam[]) => {
                 this.handleLivePreview(dagVizIR, errors, inputs);
             }
         });
@@ -125,31 +139,31 @@ class ConstellationDashboard {
     /**
      * Handle live preview results from the code editor
      */
-    handleLivePreview(dagVizIR, errors, inputs) {
+    private handleLivePreview(dagVizIR: DagVizIR | null, errors: string[], inputs: InputParam[]): void {
         if (dagVizIR) {
-            this.dagVisualizer.render(dagVizIR);
+            this.dagVisualizer!.render(dagVizIR);
             this.currentDagVizIR = dagVizIR;
         } else if (!errors || errors.length === 0) {
             // Empty source -- clear the DAG
-            this.dagVisualizer.clear();
+            this.dagVisualizer!.clear();
             this.currentDagVizIR = null;
         }
 
         if (inputs && inputs.length > 0) {
-            const inputsForm = document.getElementById('inputs-form');
+            const inputsForm = document.getElementById('inputs-form')!;
             // Save existing input values by name
-            const savedValues = {};
+            const savedValues: Record<string, string> = {};
             inputsForm.querySelectorAll('[id^="input-"]').forEach(el => {
-                const name = el.name;
-                if (name) savedValues[name] = el.value;
+                const name = (el as HTMLInputElement).name;
+                if (name) savedValues[name] = (el as HTMLInputElement).value;
             });
             // Re-render input form with new inputs
-            this.executionPanel.currentInputs = inputs;
-            this.executionPanel.renderInputForm(inputsForm, inputs);
+            this.executionPanel!.currentInputs = inputs;
+            this.executionPanel!.renderInputForm(inputsForm, inputs);
             // Restore values for matching input names
             inputs.forEach(input => {
                 if (savedValues[input.name] !== undefined) {
-                    const el = document.getElementById(`input-${input.name}`);
+                    const el = document.getElementById(`input-${input.name}`) as HTMLInputElement | null;
                     if (el) el.value = savedValues[input.name];
                 }
             });
@@ -159,11 +173,11 @@ class ConstellationDashboard {
     /**
      * Set up event listeners
      */
-    setupEventListeners() {
+    private setupEventListeners(): void {
         // Navigation buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.switchView(btn.dataset.view);
+                this.switchView((btn as HTMLElement).dataset.view as 'scripts' | 'history');
             });
         });
 
@@ -193,28 +207,28 @@ class ConstellationDashboard {
 
         // Zoom controls
         this.elements.zoomIn.addEventListener('click', () => {
-            this.dagVisualizer.zoomIn();
+            this.dagVisualizer!.zoomIn();
         });
 
         this.elements.zoomOut.addEventListener('click', () => {
-            this.dagVisualizer.zoomOut();
+            this.dagVisualizer!.zoomOut();
         });
 
         this.elements.zoomFit.addEventListener('click', () => {
-            this.dagVisualizer.fit();
+            this.dagVisualizer!.fit();
         });
 
         // History filter
-        let filterTimeout;
-        this.elements.historyFilter.addEventListener('input', (e) => {
+        let filterTimeout: ReturnType<typeof setTimeout>;
+        this.elements.historyFilter.addEventListener('input', (e: Event) => {
             clearTimeout(filterTimeout);
             filterTimeout = setTimeout(() => {
-                this.executionPanel.loadHistory(e.target.value);
+                this.executionPanel!.loadHistory((e.target as HTMLInputElement).value);
             }, 300);
         });
 
         // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
+        document.addEventListener('keydown', (e: KeyboardEvent) => {
             // Ctrl/Cmd + Enter to run
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 if (this.currentScriptPath) {
@@ -232,12 +246,12 @@ class ConstellationDashboard {
     /**
      * Switch between views
      */
-    switchView(view) {
+    private switchView(view: 'scripts' | 'history'): void {
         this.currentView = view;
 
         // Update nav buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.view === view);
+            btn.classList.toggle('active', (btn as HTMLElement).dataset.view === view);
         });
 
         // Update view visibility
@@ -246,7 +260,7 @@ class ConstellationDashboard {
 
         // Load data for view
         if (view === 'history') {
-            this.executionPanel.loadHistory();
+            this.executionPanel!.loadHistory();
         }
 
         // Update URL hash
@@ -256,7 +270,7 @@ class ConstellationDashboard {
     /**
      * Handle URL hash navigation
      */
-    handleHashNavigation() {
+    private handleHashNavigation(): void {
         const hash = window.location.hash;
 
         if (hash.startsWith('#/history')) {
@@ -264,7 +278,7 @@ class ConstellationDashboard {
         } else if (hash.startsWith('#/executions/')) {
             const executionId = hash.replace('#/executions/', '');
             this.switchView('history');
-            this.executionPanel.selectExecution(executionId);
+            this.executionPanel!.selectExecution(executionId);
         } else {
             this.switchView('scripts');
         }
@@ -273,7 +287,7 @@ class ConstellationDashboard {
     /**
      * Load a script
      */
-    async loadScript(path) {
+    private async loadScript(path: string): Promise<void> {
         this.showLoading('Loading script...');
 
         try {
@@ -284,7 +298,7 @@ class ConstellationDashboard {
             this.elements.runBtn.disabled = false;
 
             // Load script metadata
-            const scriptData = await this.executionPanel.loadScript(path);
+            const scriptData = await this.executionPanel!.loadScript(path);
 
             // Populate code editor with file content
             if (this.codeEditor) {
@@ -298,7 +312,7 @@ class ConstellationDashboard {
 
         } catch (error) {
             console.error('Error loading script:', error);
-            this.setStatus(`Error: ${error.message}`);
+            this.setStatus(`Error: ${(error as Error).message}`);
         } finally {
             this.hideLoading();
         }
@@ -307,7 +321,7 @@ class ConstellationDashboard {
     /**
      * Compile script and show DAG visualization
      */
-    async compileAndShowDag(source) {
+    private async compileAndShowDag(source: string): Promise<void> {
         try {
             const response = await fetch('/api/v1/preview', {
                 method: 'POST',
@@ -315,13 +329,13 @@ class ConstellationDashboard {
                 body: JSON.stringify({ source: source })
             });
 
-            const result = await response.json();
+            const result: PreviewResponse = await response.json();
 
             if (result.success && result.dagVizIR) {
-                this.dagVisualizer.render(result.dagVizIR);
+                this.dagVisualizer!.render(result.dagVizIR);
             } else {
                 // Compilation failed, show placeholder
-                this.dagVisualizer.clear();
+                this.dagVisualizer!.clear();
                 if (result.errors && result.errors.length > 0) {
                     console.warn('Compilation errors:', result.errors);
                 }
@@ -329,23 +343,23 @@ class ConstellationDashboard {
 
         } catch (error) {
             console.error('Error compiling for preview:', error);
-            this.dagVisualizer.clear();
+            this.dagVisualizer!.clear();
         }
     }
 
     /**
      * Execute the current script
      */
-    async executeCurrentScript() {
+    private async executeCurrentScript(): Promise<void> {
         if (!this.currentScriptPath) return;
 
         this.showLoading('Executing...');
         this.setStatus('Executing script...');
 
         try {
-            const result = await this.executionPanel.execute(
+            const result = await this.executionPanel!.execute(
                 this.currentScriptPath,
-                this.dagVisualizer
+                this.dagVisualizer!
             );
 
             if (result.success) {
@@ -356,7 +370,7 @@ class ConstellationDashboard {
 
         } catch (error) {
             console.error('Execution error:', error);
-            this.setStatus(`Error: ${error.message}`);
+            this.setStatus(`Error: ${(error as Error).message}`);
         } finally {
             this.hideLoading();
         }
@@ -365,16 +379,16 @@ class ConstellationDashboard {
     /**
      * Set layout direction for DAG
      */
-    setLayoutDirection(direction) {
+    private setLayoutDirection(direction: string): void {
         this.elements.layoutTB.classList.toggle('active', direction === 'TB');
         this.elements.layoutLR.classList.toggle('active', direction === 'LR');
-        this.dagVisualizer.setLayoutDirection(direction);
+        this.dagVisualizer!.setLayoutDirection(direction);
     }
 
     /**
      * Show node details panel
      */
-    showNodeDetails(nodeData) {
+    private showNodeDetails(nodeData: NodeDetailData | null): void {
         if (!nodeData) {
             this.hideNodeDetails();
             return;
@@ -427,30 +441,30 @@ class ConstellationDashboard {
     /**
      * Hide node details panel
      */
-    hideNodeDetails() {
+    private hideNodeDetails(): void {
         this.elements.nodeDetails.innerHTML = '<p class="placeholder-text">Click a node to see details</p>';
         this.elements.nodeDetailsPanel.style.display = 'none';
-        this.dagVisualizer.deselectAll();
+        this.dagVisualizer!.deselectAll();
     }
 
     /**
      * Refresh current view
      */
-    async refresh() {
+    private async refresh(): Promise<void> {
         if (this.currentView === 'scripts') {
-            await this.fileBrowser.load();
+            await this.fileBrowser!.load();
             if (this.currentScriptPath) {
                 await this.loadScript(this.currentScriptPath);
             }
         } else if (this.currentView === 'history') {
-            await this.executionPanel.loadHistory(this.elements.historyFilter.value);
+            await this.executionPanel!.loadHistory(this.elements.historyFilter.value);
         }
     }
 
     /**
      * Show loading overlay
      */
-    showLoading(message = 'Loading...') {
+    private showLoading(message: string = 'Loading...'): void {
         const loadingText = this.elements.loadingOverlay.querySelector('.loading-text');
         if (loadingText) {
             loadingText.textContent = message;
@@ -461,21 +475,21 @@ class ConstellationDashboard {
     /**
      * Hide loading overlay
      */
-    hideLoading() {
+    private hideLoading(): void {
         this.elements.loadingOverlay.classList.add('hidden');
     }
 
     /**
      * Set status bar message
      */
-    setStatus(message) {
+    private setStatus(message: string): void {
         this.elements.statusMessage.textContent = message;
     }
 
     /**
      * Escape HTML to prevent XSS
      */
-    escapeHtml(text) {
+    private escapeHtml(text: string): string {
         if (text === null || text === undefined) return '';
         const div = document.createElement('div');
         div.textContent = String(text);
@@ -485,6 +499,6 @@ class ConstellationDashboard {
 
 // Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new ConstellationDashboard();
-    window.dashboard.init();
+    (window as Window).dashboard = new ConstellationDashboard();
+    (window as Window).dashboard.init();
 });

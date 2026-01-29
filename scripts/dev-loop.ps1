@@ -46,6 +46,17 @@ if ($Compile) {
     Write-Host "[2/4] Skipping compile (frontend-only changes)" -ForegroundColor Gray
 }
 
+# Step 2.5: Build dashboard TypeScript
+Write-Host "[2.5/4] Building dashboard TypeScript..." -ForegroundColor Yellow
+Push-Location (Join-Path $rootDir "dashboard")
+npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "DASHBOARD BUILD FAILED" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+Pop-Location
+
 # Step 3: Start server and wait for health
 Write-Host "[3/4] Starting server on port $Port..." -ForegroundColor Yellow
 $env:CONSTELLATION_PORT = $Port

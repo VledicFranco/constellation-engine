@@ -5,45 +5,53 @@
  */
 
 class DagVisualizer {
-    constructor(containerId, onNodeSelect) {
+    private containerId: string;
+    private onNodeSelect: ((nodeData: NodeDetailData | null) => void) | null;
+    private cy: CytoscapeInstance | null;
+    private layoutDirection: string;
+    private executionStates: Record<string, ExecutionState>;
+    private tooltip: HTMLElement | null;
+
+    // Node color mapping
+    private readonly nodeColors: Record<string, string> = {
+        Input: '#56d364',
+        Output: '#58a6ff',
+        Operation: '#d2a8ff',
+        Literal: '#ffa657',
+        Merge: '#f778ba',
+        Project: '#a5d6ff',
+        FieldAccess: '#a5d6ff',
+        Conditional: '#ff7b72',
+        Guard: '#a5d6ff',
+        Branch: '#ff7b72',
+        Coalesce: '#ffa657',
+        HigherOrder: '#d2a8ff',
+        ListLiteral: '#ffa657',
+        BooleanOp: '#ff7b72',
+        StringInterp: '#ffa657'
+    };
+
+    // Status color mapping
+    private readonly statusColors: Record<string, string> = {
+        Pending: '#6e7681',
+        Running: '#58a6ff',
+        Completed: '#3fb950',
+        Failed: '#f85149'
+    };
+
+    constructor(containerId: string, onNodeSelect: (nodeData: NodeDetailData | null) => void) {
         this.containerId = containerId;
         this.onNodeSelect = onNodeSelect;
         this.cy = null;
         this.layoutDirection = 'TB'; // TB (top-bottom) or LR (left-right)
         this.executionStates = {};
-
-        // Node color mapping
-        this.nodeColors = {
-            Input: '#56d364',
-            Output: '#58a6ff',
-            Operation: '#d2a8ff',
-            Literal: '#ffa657',
-            Merge: '#f778ba',
-            Project: '#a5d6ff',
-            FieldAccess: '#a5d6ff',
-            Conditional: '#ff7b72',
-            Guard: '#a5d6ff',
-            Branch: '#ff7b72',
-            Coalesce: '#ffa657',
-            HigherOrder: '#d2a8ff',
-            ListLiteral: '#ffa657',
-            BooleanOp: '#ff7b72',
-            StringInterp: '#ffa657'
-        };
-
-        // Status color mapping
-        this.statusColors = {
-            Pending: '#6e7681',
-            Running: '#58a6ff',
-            Completed: '#3fb950',
-            Failed: '#f85149'
-        };
+        this.tooltip = null;
     }
 
     /**
      * Initialize the Cytoscape instance
      */
-    init() {
+    init(): void {
         // Register dagre layout if available
         if (typeof cytoscape !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
             cytoscape.use(cytoscapeDagre);
@@ -60,13 +68,13 @@ class DagVisualizer {
         });
 
         // Handle node selection
-        this.cy.on('tap', 'node', (evt) => {
-            const node = evt.target;
+        this.cy.on('tap', 'node', (evt: CytoscapeEvent) => {
+            const node = evt.target as unknown as CytoscapeNode;
             this.selectNode(node);
         });
 
         // Handle background tap to deselect
-        this.cy.on('tap', (evt) => {
+        this.cy.on('tap', (evt: CytoscapeEvent) => {
             if (evt.target === this.cy) {
                 this.deselectAll();
             }
@@ -76,16 +84,16 @@ class DagVisualizer {
         this.tooltip = document.getElementById('dag-tooltip');
 
         // Hover tooltip + neighborhood highlighting
-        this.cy.on('mouseover', 'node', (evt) => {
-            const node = evt.target;
+        this.cy.on('mouseover', 'node', (evt: CytoscapeEvent) => {
+            const node = evt.target as unknown as CytoscapeNode;
 
             // Show tooltip
             if (this.tooltip) {
-                const kind = node.data('kind') || '';
-                const label = node.data('label') || '';
-                const typeSig = node.data('typeSignature') || '';
+                const kind = (node.data('kind') || '') as string;
+                const label = (node.data('label') || '') as string;
+                const typeSig = (node.data('typeSignature') || '') as string;
                 const value = node.data('value');
-                const status = node.data('status') || 'Pending';
+                const status = (node.data('status') || 'Pending') as string;
 
                 let html = `<span class="tooltip-kind">${kind}</span>`;
                 html += `<span class="tooltip-label">${label}</span>`;
@@ -97,7 +105,7 @@ class DagVisualizer {
                 }
                 if (value !== undefined && value !== null) {
                     const displayVal = typeof value === 'string' ? value : JSON.stringify(value);
-                    const truncated = displayVal.length > 120 ? displayVal.slice(0, 120) + '…' : displayVal;
+                    const truncated = displayVal.length > 120 ? displayVal.slice(0, 120) + '\u2026' : displayVal;
                     html += `<span class="tooltip-value">${truncated}</span>`;
                 }
 
@@ -105,14 +113,14 @@ class DagVisualizer {
                 this.tooltip.style.display = 'block';
 
                 const renderedPos = node.renderedPosition();
-                const container = this.cy.container().getBoundingClientRect();
+                const container = this.cy!.container().getBoundingClientRect();
                 this.tooltip.style.left = (container.left + renderedPos.x + 15) + 'px';
                 this.tooltip.style.top = (container.top + renderedPos.y - 15) + 'px';
             }
 
             // Neighborhood highlighting
             const neighborhood = node.closedNeighborhood();
-            this.cy.elements().addClass('dimmed');
+            this.cy!.elements().addClass('dimmed');
             neighborhood.removeClass('dimmed');
         });
 
@@ -123,14 +131,14 @@ class DagVisualizer {
             }
 
             // Restore all elements
-            this.cy.elements().removeClass('dimmed');
+            this.cy!.elements().removeClass('dimmed');
         });
     }
 
     /**
      * Get the Cytoscape stylesheet
      */
-    getStylesheet() {
+    private getStylesheet(): CytoscapeStylesheet[] {
         return [
             // Node styles
             {
@@ -280,13 +288,13 @@ class DagVisualizer {
     /**
      * Load and render a DAG visualization
      */
-    render(dagVizIR) {
+    render(dagVizIR: DagVizIR): void {
         if (!this.cy) {
             this.init();
         }
 
         // Clear existing elements
-        this.cy.elements().remove();
+        this.cy!.elements().remove();
 
         if (!dagVizIR || !dagVizIR.nodes || dagVizIR.nodes.length === 0) {
             return;
@@ -296,7 +304,7 @@ class DagVisualizer {
         const elements = this.convertToElements(dagVizIR);
 
         // Add elements
-        this.cy.add(elements);
+        this.cy!.add(elements);
 
         // Run layout
         this.runLayout();
@@ -305,8 +313,8 @@ class DagVisualizer {
     /**
      * Convert DagVizIR to Cytoscape elements
      */
-    convertToElements(dagVizIR) {
-        const elements = [];
+    private convertToElements(dagVizIR: DagVizIR): unknown[] {
+        const elements: unknown[] = [];
 
         // Add nodes
         dagVizIR.nodes.forEach(node => {
@@ -358,12 +366,12 @@ class DagVisualizer {
     /**
      * Run the dagre layout
      */
-    runLayout() {
+    private runLayout(): void {
         // Update taxi direction based on layout
         const taxiDir = this.layoutDirection === 'LR' ? 'rightward' : 'downward';
-        this.cy.edges().style('taxi-direction', taxiDir);
+        this.cy!.edges().style('taxi-direction', taxiDir);
 
-        const layout = this.cy.layout({
+        const layout = this.cy!.layout({
             name: 'dagre',
             rankDir: this.layoutDirection,
             nodeSep: 80,
@@ -380,7 +388,7 @@ class DagVisualizer {
     /**
      * Set the layout direction
      */
-    setLayoutDirection(direction) {
+    setLayoutDirection(direction: string): void {
         this.layoutDirection = direction;
         if (this.cy && this.cy.nodes().length > 0) {
             this.runLayout();
@@ -390,7 +398,7 @@ class DagVisualizer {
     /**
      * Zoom in
      */
-    zoomIn() {
+    zoomIn(): void {
         if (this.cy) {
             this.cy.zoom(this.cy.zoom() * 1.2);
         }
@@ -399,7 +407,7 @@ class DagVisualizer {
     /**
      * Zoom out
      */
-    zoomOut() {
+    zoomOut(): void {
         if (this.cy) {
             this.cy.zoom(this.cy.zoom() / 1.2);
         }
@@ -408,7 +416,7 @@ class DagVisualizer {
     /**
      * Fit the graph to the viewport
      */
-    fit() {
+    fit(): void {
         if (this.cy) {
             this.cy.fit(undefined, 30);
         }
@@ -417,22 +425,22 @@ class DagVisualizer {
     /**
      * Select a node and show details
      */
-    selectNode(node) {
+    private selectNode(node: CytoscapeNode): void {
         // Deselect all first
-        this.cy.nodes().unselect();
+        this.cy!.nodes().unselect();
         node.select();
 
         // Notify callback
         if (this.onNodeSelect) {
             this.onNodeSelect({
-                id: node.data('id'),
-                label: node.data('label'),
-                kind: node.data('kind'),
-                typeSignature: node.data('typeSignature'),
-                status: node.data('status'),
+                id: node.data('id') as string,
+                label: node.data('label') as string,
+                kind: node.data('kind') as string,
+                typeSignature: node.data('typeSignature') as string,
+                status: node.data('status') as string | undefined,
                 value: node.data('value'),
-                durationMs: node.data('durationMs'),
-                error: node.data('error')
+                durationMs: node.data('durationMs') as number | undefined,
+                error: node.data('error') as string | undefined
             });
         }
     }
@@ -440,7 +448,7 @@ class DagVisualizer {
     /**
      * Deselect all nodes
      */
-    deselectAll() {
+    deselectAll(): void {
         if (this.cy) {
             this.cy.nodes().unselect();
         }
@@ -452,7 +460,7 @@ class DagVisualizer {
     /**
      * Update execution state for nodes
      */
-    updateExecutionState(nodeId, state) {
+    updateExecutionState(nodeId: string, state: ExecutionState): void {
         this.executionStates[nodeId] = state;
 
         if (this.cy) {
@@ -473,10 +481,10 @@ class DagVisualizer {
     /**
      * Batch update execution states
      */
-    batchUpdateExecutionStates(updates) {
+    batchUpdateExecutionStates(updates: Array<{ nodeId: string; state: ExecutionState }>): void {
         if (!updates || !Array.isArray(updates)) return;
 
-        this.cy.batch(() => {
+        this.cy!.batch(() => {
             updates.forEach(({ nodeId, state }) => {
                 this.updateExecutionState(nodeId, state);
             });
@@ -486,13 +494,13 @@ class DagVisualizer {
     /**
      * Reset all execution states
      */
-    resetExecutionStates() {
+    resetExecutionStates(): void {
         this.executionStates = {};
 
         if (this.cy) {
             this.cy.batch(() => {
-                this.cy.nodes().forEach(node => {
-                    const kind = node.data('kind');
+                this.cy!.nodes().forEach((node: CytoscapeNode) => {
+                    const kind = node.data('kind') as string;
                     const color = this.nodeColors[kind] || '#8b949e';
 
                     node.data('status', 'Pending');
@@ -508,7 +516,7 @@ class DagVisualizer {
     /**
      * Clear the visualization
      */
-    clear() {
+    clear(): void {
         if (this.cy) {
             this.cy.elements().remove();
         }
@@ -518,7 +526,7 @@ class DagVisualizer {
     /**
      * Export the DAG as PNG
      */
-    exportPng() {
+    exportPng(): void {
         if (this.cy) {
             const png = this.cy.png({
                 output: 'blob',
@@ -536,7 +544,7 @@ class DagVisualizer {
     /**
      * Destroy the Cytoscape instance
      */
-    destroy() {
+    destroy(): void {
         if (this.cy) {
             this.cy.destroy();
             this.cy = null;
@@ -545,4 +553,4 @@ class DagVisualizer {
 }
 
 // Export for use in main.js
-window.DagVisualizer = DagVisualizer;
+(window as Window).DagVisualizer = DagVisualizer;

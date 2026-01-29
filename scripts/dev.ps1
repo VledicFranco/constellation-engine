@@ -76,10 +76,19 @@ function Start-Server {
 }
 
 function Start-ExtensionWatch {
-    Write-Host "Starting TypeScript watch..." -ForegroundColor Green
+    Write-Host "Starting VSCode extension TypeScript watch..." -ForegroundColor Green
     $extPath = Join-Path $PSScriptRoot "..\vscode-extension"
     Start-Job -ScriptBlock {
         Set-Location $using:extPath
+        npm run watch
+    } | Out-Null
+}
+
+function Start-DashboardWatch {
+    Write-Host "Starting dashboard TypeScript watch..." -ForegroundColor Green
+    $dashPath = Join-Path $PSScriptRoot "..\dashboard"
+    Start-Job -ScriptBlock {
+        Set-Location $using:dashPath
         npm run watch
     } | Out-Null
 }
@@ -103,6 +112,9 @@ if ($ServerOnly) {
 
     # Start extension watch
     Start-ExtensionWatch
+
+    # Start dashboard watch
+    Start-DashboardWatch
 
     Write-Host ""
     Write-Host "================================================" -ForegroundColor Green

@@ -15,6 +15,8 @@ This file contains actionable rules that Claude must follow when working on this
 | Run dashboard E2E tests | `make test-dashboard` |
 | Run dashboard smoke tests | `make test-dashboard-smoke` |
 | Compile everything | `make compile` |
+| Build dashboard TypeScript | `make dashboard` |
+| Watch dashboard TypeScript | `make dashboard-watch` |
 | Clean build | `make clean` |
 
 **Windows (if make unavailable):**
@@ -155,6 +157,8 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | ExampleLib | `modules/example-app/.../ExampleLib.scala` |
 | HTTP Server | `modules/http-api/.../ConstellationServer.scala` |
 | LSP Server | `modules/lang-lsp/.../ConstellationLanguageServer.scala` |
+| Dashboard TS sources | `dashboard/src/` |
+| Dashboard types | `dashboard/src/types.d.ts` |
 | Dashboard E2E Tests | `dashboard-tests/` |
 | Dashboard Page Objects | `dashboard-tests/pages/` |
 

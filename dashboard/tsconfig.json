@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "outDir": "../modules/http-api/src/main/resources/dashboard/static/js",
+    "rootDir": "src",
+    "strict": true,
+    "noEmit": false,
+    "sourceMap": false,
+    "declaration": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "moduleDetection": "auto"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
