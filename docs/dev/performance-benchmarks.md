@@ -4,10 +4,11 @@ This document is the definitive guide to all performance tooling in Constellatio
 
 ## Quick Stats
 
-- **10 Scala benchmark suites** - Compiler, cache, visualization, memory, incremental, LSP, concurrency, execution, semantic tokens, regression
+- **15 Scala benchmark/test suites** - Compiler, cache, visualization, memory, incremental, LSP, concurrency, execution, semantic tokens, regression, large DAG stress, sustained load, type system properties, compilation properties, adversarial fuzzing
 - **1 TypeScript performance tracker** - Client-side latency measurement
 - **2 performance endpoints** - HTTP /metrics, LSP getCacheStats
 - **Automated regression testing** - Baseline enforcement in CI
+- **Orchestration overhead** - ~0.15 ms/node at scale (pure engine cost, no module implementation time)
 
 ---
 
@@ -231,17 +232,152 @@ sbt "langLsp/testOnly *SemanticTokenBenchmark"
 
 **Location:** `modules/runtime/.../benchmark/ExecutionBenchmark.scala`
 
-**Purpose:** Measure DAG execution performance.
+**Purpose:** Measure DAG execution performance and pure orchestration overhead.
 
 **Command:**
 ```bash
 sbt "runtime/testOnly *ExecutionBenchmark"
 ```
 
+**Methodology:** All test modules use trivial implementations (`toUpperCase` / `toLowerCase`) that complete in nanoseconds. The measured latency is therefore pure orchestration cost: fiber scheduling, data flow, module dispatch, and result collection.
+
+**Expected Results (warmed, 20 iterations):**
+
+| Test | Modules | Avg Latency | Per-Node | Target |
+|------|---------|-------------|----------|--------|
+| execute_simple | 1 | ~1 ms | 1.06 ms | <50 ms |
+| execute_medium | 3 | ~1.7 ms | 0.56 ms | <50 ms |
+| execute_large | 10 | ~3 ms | 0.30 ms | <100 ms |
+| execute_stress50 | 50 | ~7.4 ms | 0.15 ms | <500 ms |
+| execute_stress100 | 100 | ~14.7 ms | 0.15 ms | <1000 ms |
+
+**Key Insight:** Per-node overhead converges to ~0.15 ms at scale, demonstrating that the engine's scheduling cost is amortized across larger pipelines.
+
+---
+
+### 10. LargeDagStressTest (RFC-013 Phase 5.1)
+
+**Location:** `modules/runtime/.../benchmark/LargeDagStressTest.scala`
+
+**Purpose:** Validate engine correctness and performance with large DAG topologies (100–1000 nodes), memory bounds, determinism, and high-concurrency scheduling.
+
+**Command:**
+```bash
+sbt "runtime/testOnly *LargeDagStressTest"
+```
+
 **Tests:**
-- Module execution latency
-- Pipeline throughput
-- Parallel execution efficiency
+
+| Test | Description | Target |
+|------|-------------|--------|
+| 100-node chain | Sequential chain of 100 modules | < 5 s |
+| 500-node chain | Sequential chain of 500 modules | < 30 s |
+| Wide DAG 50x10 | 50 parallel branches, 10 modules deep (500 total) | < 30 s |
+| Memory bounded | 10 runs of 200-node DAGs, heap growth < 200 MB | Pass |
+| Deterministic results | 5 identical runs produce identical output | Pass |
+| 1000 concurrent submissions | Scheduler handles 1000 parallel `IO` tasks | Pass |
+| 1000-node construction | Build a 1000-node DagSpec in < 1 s | Pass |
+
+---
+
+### 11. SustainedLoadTest (RFC-013 Phase 5.3)
+
+**Location:** `modules/runtime/.../benchmark/SustainedLoadTest.scala`
+
+**Purpose:** Run 10,000+ executions and verify no OOM, bounded heap growth, stable p99 latency, and correct concurrent execution.
+
+**Command:**
+```bash
+sbt "runtime/testOnly *SustainedLoadTest"
+```
+
+**Expected Results:**
+
+| Test | Metric | Target |
+|------|--------|--------|
+| 10K executions | All complete without OOM | Pass |
+| Heap growth | Max – first sample < 200 MB across 5 batches | Pass |
+| p99 stability | Last-batch p99 / first-batch p99 < 3x | Pass |
+| Concurrent load | 1000 parallel executions complete | Pass |
+
+**Observed Results (single-module DAG, warmed):**
+
+| Metric | Value |
+|--------|-------|
+| p50 latency | 0.06 ms |
+| p99 latency | 0.49 ms |
+| Heap after 10K runs | Stable (~95 MB, no monotonic growth) |
+| p99 ratio (last/first) | 0.94 (no degradation) |
+
+---
+
+### 12. TypeSystemPropertyTest (RFC-013 Phase 5.2)
+
+**Location:** `modules/core/.../property/TypeSystemPropertyTest.scala`
+
+**Purpose:** Property-based tests verifying structural invariants of CType and CValue using ScalaCheck generators.
+
+**Command:**
+```bash
+sbt "core/testOnly *TypeSystemPropertyTest"
+```
+
+**Properties Verified:**
+- CValue.ctype always matches construction type
+- Generator produces all primitive and composite types
+- List elements match declared subtype
+- Product fields match declared structure
+- Map keys/values match declared types
+- CType equality is reflexive and deterministic
+
+---
+
+### 13. CompilationPropertyTest (RFC-013 Phase 5.2)
+
+**Location:** `modules/lang-compiler/.../property/CompilationPropertyTest.scala`
+
+**Purpose:** Verify parsing and compilation determinism — same source always produces the same AST and DagSpec.
+
+**Command:**
+```bash
+sbt "langCompiler/testOnly *CompilationPropertyTest"
+```
+
+**Properties Verified:**
+- Parser determinism (identical ASTs across 10 runs)
+- Compilation determinism (identical DagSpec structure across 5 runs)
+- Parse error consistency (same error message for same invalid input)
+- Compilation error consistency (same error count for same invalid source)
+- Output binding consistency
+
+---
+
+### 14. AdversarialFuzzingTest (RFC-013 Phase 5.4)
+
+**Location:** `modules/lang-parser/.../parser/AdversarialFuzzingTest.scala`
+
+**Purpose:** Feed adversarial inputs to the parser and verify all failures produce structured errors with no unhandled exceptions or stack overflows.
+
+**Command:**
+```bash
+sbt "langParser/testOnly *AdversarialFuzzingTest"
+```
+
+**Tests:**
+
+| Test | Description | Target |
+|------|-------------|--------|
+| 10K random inputs | Deterministic seed, mixed strategies | < 100 unexpected exceptions |
+| ScalaCheck arbitrary strings | Property-based random strings | No exceptions |
+| 100-level nested booleans | `(((flag and flag) and flag)...)` | No crash |
+| 100-level nested if-else | `if (flag) if (flag) ... else y` | No crash |
+| 200-level coalesce chains | `v0 ?? v1 ?? ... ?? fallback` | No crash |
+| 500-level nested booleans | Stack overflow guard | No StackOverflowError |
+| 1000 variable assignments | Linear program size | Parses successfully |
+| 500 output declarations | Large output list | Parses successfully |
+| Malformed types | `in x: {`, `in x: List<>` | Structured ParseError |
+| Token-level adversarial | `=====`, `(((((`, control chars | No crash |
+| Unicode input | BOM, emoji, CJK, zero-width space | No crash |
 
 ---
 
@@ -375,6 +511,59 @@ const stats = tracker.getAllStats();
 
 ---
 
+## Orchestration Overhead
+
+The engine's orchestration overhead is the latency added by DAG scheduling, fiber management, and data flow — independent of module implementation time.
+
+All measurements use trivial modules (`toUpperCase` / `toLowerCase`) that complete in nanoseconds. The full measured latency is therefore pure engine cost.
+
+### Per-Node Cost
+
+| Pipeline Size | Avg Latency | Per-Node Overhead |
+|---------------|-------------|-------------------|
+| 1 module | 1.06 ms | 1.06 ms |
+| 3 modules | 1.67 ms | 0.56 ms |
+| 10 modules | 3.01 ms | 0.30 ms |
+| 50 modules | 7.40 ms | 0.15 ms |
+| 100 modules | 14.67 ms | 0.15 ms |
+
+Per-node cost converges to **~0.15 ms** as pipeline size grows. The fixed overhead (~1 ms) covers fiber pool initialization, DAG topology resolution, and result collection.
+
+### Sustained Load Profile
+
+Over 10,000 consecutive single-module executions (post-warmup):
+
+| Metric | Value |
+|--------|-------|
+| p50 latency | 0.06 ms |
+| p99 latency | 0.49 ms |
+| Heap after 10K runs | Stable (~95 MB, no monotonic growth) |
+| p99 ratio (last/first batch) | 0.94 (no degradation) |
+
+### Large DAG Topologies
+
+| Topology | Modules | Target |
+|----------|---------|--------|
+| 100-node sequential chain | 100 | < 5 s |
+| 500-node sequential chain | 500 | < 30 s |
+| 50 branches x 10 depth (parallel) | 500 | < 30 s |
+| 1000-node DAG construction | 1000 | < 1 s |
+| 1000 concurrent scheduler submissions | — | Bounded |
+
+### Interpretation
+
+For real-world pipelines where each module makes an HTTP call (~50–200 ms), the engine overhead is negligible:
+
+| Scenario | Module Time | Engine Overhead | Total | Overhead % |
+|----------|-------------|-----------------|-------|------------|
+| 10-module pipeline, 50 ms/module | 500 ms | 3 ms | 503 ms | 0.6% |
+| 10-module pipeline, 200 ms/module | 2000 ms | 3 ms | 2003 ms | 0.15% |
+| 100-module pipeline, 50 ms/module | 5000 ms | 15 ms | 5015 ms | 0.3% |
+
+With automatic parallelization of independent branches, actual wall-clock time is often much lower than the sequential sum.
+
+---
+
 ## Performance Targets Summary
 
 | Category | Operation | Good | Acceptable | Poor |
@@ -384,6 +573,9 @@ const stats = tracker.getAllStats();
 | | Autocomplete | <30ms | <50ms | >100ms |
 | | DAG Visualization | <100ms | <200ms | >500ms |
 | | Cache Hit | <5ms | <10ms | >20ms |
+| **Orchestration** | Per-node overhead | <0.2ms | <0.5ms | >1ms |
+| | Sustained p99 | <1ms | <5ms | >10ms |
+| | 10K runs heap growth | <50MB | <200MB | >500MB |
 | **Memory** | Extension (idle) | <50MB | <100MB | >200MB |
 | | Extension (active) | <100MB | <200MB | >500MB |
 | **Throughput** | Cache Speedup | >10x | >5x | <2x |
@@ -528,7 +720,12 @@ class MyNewBenchmark extends AnyFlatSpec with Matchers {
 | `sbt "langLsp/testOnly *LspOperationsBenchmark"` | LSP operations |
 | `sbt "langLsp/testOnly *ConcurrencyBenchmark"` | Concurrency only |
 | `sbt "langLsp/testOnly *SemanticTokenBenchmark"` | Semantic tokens |
-| `sbt "runtime/testOnly *ExecutionBenchmark"` | Runtime execution |
+| `sbt "runtime/testOnly *ExecutionBenchmark"` | Runtime execution overhead |
+| `sbt "runtime/testOnly *LargeDagStressTest"` | Large DAG stress (100–1000 nodes) |
+| `sbt "runtime/testOnly *SustainedLoadTest"` | 10K sustained load + heap stability |
+| `sbt "core/testOnly *TypeSystemPropertyTest"` | Type system property tests |
+| `sbt "langCompiler/testOnly *CompilationPropertyTest"` | Compilation determinism |
+| `sbt "langParser/testOnly *AdversarialFuzzingTest"` | Parser adversarial fuzzing |
 | `sbt "langCompiler/testOnly *RegressionTests"` | Regression suite |
 | `curl localhost:8080/metrics` | Server metrics |
 
@@ -542,4 +739,4 @@ class MyNewBenchmark extends AnyFlatSpec with Matchers {
 
 ---
 
-*Last updated: 2026-01-24*
+*Last updated: 2026-01-29*

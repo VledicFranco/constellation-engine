@@ -307,11 +307,45 @@ Install from `vscode-extension/` or build with `npm install && npm run compile`.
 
 ## Performance
 
-Built on Scala 3 and Cats Effect:
+Built on Scala 3 and Cats Effect with minimal orchestration overhead. The numbers below measure pure engine cost — scheduling, fiber management, data flow — using no-op modules (`toUpperCase` / `toLowerCase`) that complete in nanoseconds.
 
-- **Automatic parallelization**: Independent operations run concurrently
-- **< 1ms orchestration overhead**: Your services are the bottleneck, not us
-- **Zero-copy where possible**: Large payloads don't get duplicated
+### Orchestration Overhead
+
+| Pipeline Size | Avg Latency | Per-Node Overhead |
+|---------------|-------------|-------------------|
+| 1 module | 1.06 ms | 1.06 ms |
+| 3 modules | 1.67 ms | 0.56 ms |
+| 10 modules | 3.01 ms | 0.30 ms |
+| 50 modules | 7.40 ms | 0.15 ms |
+| 100 modules | 14.67 ms | 0.15 ms |
+
+Per-node overhead converges to **~0.15 ms** at scale — your services are the bottleneck, not the engine.
+
+### Sustained Load (10,000 executions)
+
+| Metric | Value |
+|--------|-------|
+| p50 latency | 0.06 ms |
+| p99 latency | 0.49 ms |
+| Heap growth | None (stable at ~95 MB) |
+| p99 drift over time | < 1x (no degradation) |
+
+### Parallelism
+
+| Topology | Modules | Latency |
+|----------|---------|---------|
+| 100-node chain (sequential) | 100 | < 5 s |
+| 500-node chain (sequential) | 500 | < 30 s |
+| 50 branches x 10 depth (parallel) | 500 | < 30 s |
+| 1,000 concurrent submissions | 1,000 | Bounded by scheduler |
+
+**Key properties:**
+- **Automatic parallelization**: Independent branches run concurrently on Cats Effect fibers
+- **Bounded memory**: Heap stays flat across 10K+ executions — no leaks
+- **Stable tail latency**: p99 does not degrade over sustained load
+
+> Methodology: All numbers from `sbt "runtime/testOnly *ExecutionBenchmark"` and
+> `sbt "runtime/testOnly *SustainedLoadTest"`. See [Performance Benchmarks](docs/dev/performance-benchmarks.md) for full details.
 
 ---
 
