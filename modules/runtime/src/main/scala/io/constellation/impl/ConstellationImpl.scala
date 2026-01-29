@@ -2,12 +2,15 @@ package io.constellation.impl
 
 import cats.effect.IO
 import io.constellation.*
+import io.constellation.cache.CacheBackend
 import io.constellation.execution.GlobalScheduler
+import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsProvider, TracerProvider}
 
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
     dagRegistry: DagRegistry,
-    scheduler: GlobalScheduler = GlobalScheduler.unbounded
+    scheduler: GlobalScheduler = GlobalScheduler.unbounded,
+    backends: ConstellationBackends = ConstellationBackends.defaults
 ) extends Constellation {
 
   def getModules: IO[List[ModuleNodeSpec]] =
@@ -50,7 +53,7 @@ final class ConstellationImpl(
         case Some(dagSpec) =>
           for {
             modules <- moduleRegistry.initModules(dagSpec)
-            context <- Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
+            context <- Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends)
           } yield context
         case None => IO.raiseError(new Exception(s"DAG $name not found"))
       }
@@ -59,7 +62,7 @@ final class ConstellationImpl(
   def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State] =
     for {
       modules <- moduleRegistry.initModules(dagSpec)
-      context <- Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
+      context <- Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends)
     } yield context
 
   def runDagWithModules(
@@ -67,7 +70,7 @@ final class ConstellationImpl(
       inputs: Map[String, CValue],
       modules: Map[java.util.UUID, Module.Uninitialized]
   ): IO[Runtime.State] =
-    Runtime.runWithScheduler(dagSpec, inputs, modules, Map.empty, scheduler)
+    Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends)
 
   def runDagWithModulesAndPriorities(
       dagSpec: DagSpec,
@@ -75,7 +78,7 @@ final class ConstellationImpl(
       modules: Map[java.util.UUID, Module.Uninitialized],
       modulePriorities: Map[java.util.UUID, Int]
   ): IO[Runtime.State] =
-    Runtime.runWithScheduler(dagSpec, inputs, modules, modulePriorities, scheduler)
+    Runtime.runWithBackends(dagSpec, inputs, modules, modulePriorities, scheduler, backends)
 }
 
 object ConstellationImpl {
@@ -101,4 +104,35 @@ object ConstellationImpl {
       dagRegistry = dagRegistry,
       scheduler = scheduler
     )
+
+  /** Create a builder for configuring ConstellationImpl with custom backends. */
+  def builder(): ConstellationBuilder = ConstellationBuilder()
+
+  /** Builder for constructing a ConstellationImpl with custom configuration.
+    *
+    * @param scheduler The global scheduler for task ordering
+    * @param backends Pluggable backend services (metrics, tracing, listener, cache)
+    */
+  final case class ConstellationBuilder(
+      scheduler: GlobalScheduler = GlobalScheduler.unbounded,
+      backends: ConstellationBackends = ConstellationBackends.defaults
+  ) {
+    def withScheduler(s: GlobalScheduler): ConstellationBuilder = copy(scheduler = s)
+    def withBackends(b: ConstellationBackends): ConstellationBuilder = copy(backends = b)
+    def withMetrics(m: MetricsProvider): ConstellationBuilder = copy(backends = backends.copy(metrics = m))
+    def withTracer(t: TracerProvider): ConstellationBuilder = copy(backends = backends.copy(tracer = t))
+    def withListener(l: ExecutionListener): ConstellationBuilder = copy(backends = backends.copy(listener = l))
+    def withCache(c: CacheBackend): ConstellationBuilder = copy(backends = backends.copy(cache = Some(c)))
+
+    def build(): IO[ConstellationImpl] =
+      for {
+        moduleRegistry <- ModuleRegistryImpl.init
+        dagRegistry    <- DagRegistryImpl.init
+      } yield new ConstellationImpl(
+        moduleRegistry = moduleRegistry,
+        dagRegistry = dagRegistry,
+        scheduler = scheduler,
+        backends = backends
+      )
+  }
 }

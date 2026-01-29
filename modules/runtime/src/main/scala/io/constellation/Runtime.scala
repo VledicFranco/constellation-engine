@@ -8,6 +8,7 @@ import cats.{Eval, Monoid}
 import io.circe.Json
 import io.constellation.execution.GlobalScheduler
 import io.constellation.pool.RuntimePool
+import io.constellation.spi.ConstellationBackends
 
 import java.util.UUID
 import scala.concurrent.TimeoutException
@@ -172,6 +173,128 @@ object Runtime {
 
       finalState <- runtime.close(latency)
     } yield finalState
+
+  /** Run DAG with pluggable backend instrumentation.
+    *
+    * Wraps execution with SPI hooks for metrics, tracing, and lifecycle callbacks.
+    * Uses fire-and-forget semantics for listener callbacks to avoid adding latency.
+    * With default (noop) backends, behavior is identical to `runWithScheduler`.
+    *
+    * @param dag The DAG specification
+    * @param initData Initial input data
+    * @param modules Module implementations
+    * @param modulePriorities Priority values per module UUID (0-100, higher = more important)
+    * @param scheduler The global scheduler for task ordering
+    * @param backends Pluggable backend services (metrics, tracing, listener, cache)
+    * @return Execution state
+    */
+  def runWithBackends(
+      dag: DagSpec,
+      initData: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler,
+      backends: ConstellationBackends
+  ): IO[Runtime.State] = {
+    val executionId = UUID.randomUUID()
+    val dagName = dag.metadata.name
+
+    backends.tracer.span("execute(" + dagName + ")", Map("dag.name" -> dagName)) {
+      for {
+        // Fire execution start (fire-and-forget)
+        _ <- backends.listener.onExecutionStart(executionId, dagName)
+          .handleErrorWith(_ => IO.unit).start
+
+        _                   <- validateRunIO(dag, initData)
+        modulesAndDataTable <- initModules(dag, modules)
+        (runnable, moduleDataTable) = modulesAndDataTable
+
+        inlineTransformTable <- initInlineTransformTable(dag)
+        userInputTable       <- initUserInputDataTable(dag)
+        dataTable = moduleDataTable ++ inlineTransformTable ++ userInputTable
+
+        contextRef <- initState(dag)
+        runtime = Runtime(state = contextRef, table = dataTable)
+        _ <- completeTopLevelDataNodes(dag, initData, runtime)
+
+        transformFibers <- startInlineTransformFibers(dag, runtime)
+
+        latency <- (
+          runnable.parTraverse { module =>
+            val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
+            val moduleName = modules.get(module.id).map(_.spec.metadata.name).getOrElse(module.id.toString)
+
+            scheduler.submit(priority, backends.tracer.span("module(" + moduleName + ")", Map("module.name" -> moduleName)) {
+              for {
+                // Fire module start (fire-and-forget)
+                _ <- backends.listener.onModuleStart(executionId, module.id, moduleName)
+                  .handleErrorWith(_ => IO.unit).start
+
+                resultAndLatency <- module.run(runtime).timed
+
+                (moduleLatency, _) = resultAndLatency
+
+                // Read module status to determine success/failure
+                state <- runtime.state.get
+                moduleStatus = state.moduleStatus.get(module.id).map(_.value)
+
+                // Fire module complete/failed (fire-and-forget)
+                _ <- moduleStatus match {
+                  case Some(Module.Status.Failed(error)) =>
+                    (backends.listener.onModuleFailed(executionId, module.id, moduleName, error)
+                      .handleErrorWith(_ => IO.unit).start *>
+                    backends.metrics.histogram(
+                      "constellation.module.duration_ms",
+                      moduleLatency.toMillis.toDouble,
+                      Map("module.name" -> moduleName, "status" -> "failed")
+                    ).handleErrorWith(_ => IO.unit)).void
+
+                  case _ =>
+                    (backends.listener.onModuleComplete(executionId, module.id, moduleName, moduleLatency.toMillis)
+                      .handleErrorWith(_ => IO.unit).start *>
+                    backends.metrics.histogram(
+                      "constellation.module.duration_ms",
+                      moduleLatency.toMillis.toDouble,
+                      Map("module.name" -> moduleName, "status" -> "success")
+                    ).handleErrorWith(_ => IO.unit)).void
+                }
+              } yield ()
+            })
+          },
+          transformFibers.parTraverse(_.join)
+        ).parMapN((_, _) => ())
+          .timed
+          .map(_._1)
+
+        finalState <- runtime.close(latency)
+
+        // Determine overall success
+        allModuleStatuses = finalState.moduleStatus.values.map(_.value).toList
+        succeeded = !allModuleStatuses.exists {
+          case Module.Status.Failed(_) => true
+          case Module.Status.Timed(_)  => true
+          case _                       => false
+        }
+
+        // Record execution-level metrics
+        _ <- backends.metrics.counter(
+          "constellation.execution.total",
+          Map("dag.name" -> dagName, "status" -> (if (succeeded) "success" else "failed"))
+        ).handleErrorWith(_ => IO.unit)
+
+        _ <- backends.metrics.histogram(
+          "constellation.execution.duration_ms",
+          latency.toMillis.toDouble,
+          Map("dag.name" -> dagName)
+        ).handleErrorWith(_ => IO.unit)
+
+        // Fire execution complete (fire-and-forget)
+        _ <- backends.listener.onExecutionComplete(executionId, dagName, succeeded, latency.toMillis)
+          .handleErrorWith(_ => IO.unit).start
+
+      } yield finalState
+    }
+  }
 
   /** Run DAG with RawValue inputs (memory-efficient path).
     *
