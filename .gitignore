@@ -95,6 +95,8 @@ dashboard-tests/reports/
 dashboard-tests/test-results/
 dashboard-tests/playwright-report/
 dashboard-tests/out/
+dashboard-tests/screenshots/manual-*
+dashboard-tests/screenshots/verify-*
 
 # =============================================================================
 # LLM
