@@ -102,6 +102,8 @@ class CodeEditor {
         this.container.classList.remove('collapsed');
         this.container.classList.add('expanded');
         if (this.toggleBtn) this.toggleBtn.textContent = 'Hide';
+        const split = document.getElementById('editor-dag-split');
+        if (split) split.classList.remove('editor-collapsed');
     }
 
     /**
@@ -113,6 +115,8 @@ class CodeEditor {
         this.container.classList.remove('expanded');
         this.container.classList.add('collapsed');
         if (this.toggleBtn) this.toggleBtn.textContent = 'Edit';
+        const split = document.getElementById('editor-dag-split');
+        if (split) split.classList.add('editor-collapsed');
     }
 
     /**

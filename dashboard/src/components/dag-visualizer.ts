@@ -418,6 +418,7 @@ class DagVisualizer {
      */
     fit(): void {
         if (this.cy) {
+            this.cy.resize();
             this.cy.fit(undefined, 30);
         }
     }

@@ -85,47 +85,52 @@
                         </div>
                     </div>
 
-                    <!-- Code Editor -->
-                    <div class="editor-container collapsed" id="editor-container">
-                        <div class="editor-header">
-                            <div class="editor-title">
-                                <h3>Code Editor</h3>
-                                <button id="new-script-btn" class="icon-btn" title="New Script">+</button>
-                            </div>
-                            <div class="editor-controls">
-                                <span id="editor-status" class="editor-status"></span>
-                                <button id="editor-toggle-btn" class="layout-btn">Edit</button>
-                            </div>
+                    <!-- Editor Header (always visible) -->
+                    <div class="editor-header" id="editor-header">
+                        <div class="editor-title">
+                            <h3>Code Editor</h3>
+                            <button id="new-script-btn" class="icon-btn" title="New Script">+</button>
                         </div>
-                        <div class="editor-body">
-                            <textarea id="code-editor-textarea" class="code-textarea"
-                                      spellcheck="false" autocomplete="off"
-                                      placeholder="Write constellation-lang code here..."></textarea>
-                            <div id="editor-error-banner" class="editor-error-banner"></div>
+                        <div class="editor-controls">
+                            <span id="editor-status" class="editor-status"></span>
+                            <button id="editor-toggle-btn" class="layout-btn">Edit</button>
+                            <span class="separator"></span>
+                            <h3 class="dag-label">DAG Visualization</h3>
+                            <button id="layout-tb" class="layout-btn active" title="Top to Bottom">TB</button>
+                            <button id="layout-lr" class="layout-btn" title="Left to Right">LR</button>
+                            <span class="separator"></span>
+                            <button id="zoom-in" class="icon-btn" title="Zoom In">+</button>
+                            <button id="zoom-out" class="icon-btn" title="Zoom Out">-</button>
+                            <button id="zoom-fit" class="icon-btn" title="Fit to View">Fit</button>
                         </div>
                     </div>
 
-                    <!-- DAG Visualization -->
-                    <div class="dag-container">
-                        <div class="dag-header">
-                            <h3>DAG Visualization</h3>
-                            <div class="dag-controls">
-                                <button id="layout-tb" class="layout-btn active" title="Top to Bottom">TB</button>
-                                <button id="layout-lr" class="layout-btn" title="Left to Right">LR</button>
-                                <span class="separator"></span>
-                                <button id="zoom-in" class="icon-btn" title="Zoom In">+</button>
-                                <button id="zoom-out" class="icon-btn" title="Zoom Out">-</button>
-                                <button id="zoom-fit" class="icon-btn" title="Fit to View">Fit</button>
+                    <!-- Editor + DAG Split -->
+                    <div class="editor-dag-split editor-collapsed" id="editor-dag-split">
+                        <!-- Code Editor (left) -->
+                        <div class="editor-container collapsed" id="editor-container">
+                            <div class="editor-body">
+                                <textarea id="code-editor-textarea" class="code-textarea"
+                                          spellcheck="false" autocomplete="off"
+                                          placeholder="Write constellation-lang code here..."></textarea>
+                                <div id="editor-error-banner" class="editor-error-banner"></div>
                             </div>
                         </div>
-                        <div id="dag-canvas" class="dag-canvas"></div>
-                        <div id="dag-legend" class="dag-legend">
-                            <div class="legend-item"><span class="legend-dot" style="background:#56d364;border-radius:50%"></span> Input</div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#d2a8ff"></span> Operation</div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#58a6ff;border-radius:50%"></span> Output</div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#ffa657"></span> Literal</div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#ff7b72"></span> Conditional</div>
-                            <div class="legend-item"><span class="legend-dot" style="background:#f778ba"></span> Merge</div>
+
+                        <!-- Drag Handle -->
+                        <div class="split-handle" id="split-handle"></div>
+
+                        <!-- DAG Visualization (right) -->
+                        <div class="dag-container" id="dag-container">
+                            <div id="dag-canvas" class="dag-canvas"></div>
+                            <div id="dag-legend" class="dag-legend">
+                                <div class="legend-item"><span class="legend-dot" style="background:#56d364;border-radius:50%"></span> Input</div>
+                                <div class="legend-item"><span class="legend-dot" style="background:#d2a8ff"></span> Operation</div>
+                                <div class="legend-item"><span class="legend-dot" style="background:#58a6ff;border-radius:50%"></span> Output</div>
+                                <div class="legend-item"><span class="legend-dot" style="background:#ffa657"></span> Literal</div>
+                                <div class="legend-item"><span class="legend-dot" style="background:#ff7b72"></span> Conditional</div>
+                                <div class="legend-item"><span class="legend-dot" style="background:#f778ba"></span> Merge</div>
+                            </div>
                         </div>
                     </div>
                 </section>

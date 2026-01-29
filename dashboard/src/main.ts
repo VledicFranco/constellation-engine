@@ -48,7 +48,9 @@ class ConstellationDashboard {
             layoutLR: document.getElementById('layout-lr')!,
             zoomIn: document.getElementById('zoom-in')!,
             zoomOut: document.getElementById('zoom-out')!,
-            zoomFit: document.getElementById('zoom-fit')!
+            zoomFit: document.getElementById('zoom-fit')!,
+            editorDagSplit: document.getElementById('editor-dag-split')!,
+            splitHandle: document.getElementById('split-handle')!
         };
     }
 
@@ -64,6 +66,7 @@ class ConstellationDashboard {
             this.initDagVisualizer();
             this.initExecutionPanel();
             this.initCodeEditor();
+            this.initSplitHandle();
 
             // Set up event listeners
             this.setupEventListeners();
@@ -134,6 +137,53 @@ class ConstellationDashboard {
             }
         });
         this.codeEditor.init();
+    }
+
+    /**
+     * Initialize the draggable split handle between editor and DAG
+     */
+    private initSplitHandle(): void {
+        const splitHandle = document.getElementById('split-handle')!;
+        const splitContainer = document.getElementById('editor-dag-split')!;
+        const editorContainer = document.getElementById('editor-container')!;
+
+        let isDragging = false;
+
+        splitHandle.addEventListener('mousedown', (e: MouseEvent) => {
+            isDragging = true;
+            e.preventDefault();
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e: MouseEvent) => {
+            if (!isDragging) return;
+            const rect = splitContainer.getBoundingClientRect();
+            const offset = e.clientX - rect.left;
+            const pct = (offset / rect.width) * 100;
+            const clamped = Math.max(15, Math.min(85, pct));
+            editorContainer.style.width = clamped + '%';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            // Notify Cytoscape to recalculate after resize
+            this.dagVisualizer?.fit();
+        });
+
+        // Refit DAG when editor is toggled (container size changes)
+        const toggleBtn = document.getElementById('editor-toggle-btn');
+        toggleBtn?.addEventListener('click', () => {
+            // Wait for layout reflow before refitting
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    this.dagVisualizer?.fit();
+                });
+            });
+        });
     }
 
     /**

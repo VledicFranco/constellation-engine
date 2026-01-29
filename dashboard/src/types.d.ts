@@ -232,6 +232,8 @@ interface DashboardElements {
     zoomIn: HTMLElement;
     zoomOut: HTMLElement;
     zoomFit: HTMLElement;
+    editorDagSplit: HTMLElement;
+    splitHandle: HTMLElement;
 }
 
 // =============================================================================
@@ -290,6 +292,7 @@ interface CytoscapeInstance {
     zoom(): number;
     zoom(level: number): void;
     fit(eles?: unknown, padding?: number): void;
+    resize(): void;
     layout(options: CytoscapeLayoutOptions): CytoscapeLayout;
     container(): HTMLElement;
     getElementById(id: string): CytoscapeCollection & CytoscapeNode;
