@@ -1,0 +1,6 @@
+# Script with no input declarations
+# Tests empty input form handling
+
+result = Uppercase("hello")
+
+out result

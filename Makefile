@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests
 
 # Default target
 help:
@@ -33,6 +33,12 @@ help:
 	@echo "  make test-compiler  - Test compiler module only"
 	@echo "  make test-lsp       - Test LSP module only"
 	@echo "  make test-fast      - Run tests without recompilation"
+	@echo ""
+	@echo "Dashboard E2E Tests:"
+	@echo "  make test-dashboard       - Run all dashboard E2E tests"
+	@echo "  make test-dashboard-smoke - Quick smoke check (~30s)"
+	@echo "  make test-dashboard-full  - Full suite with HTML report"
+	@echo "  make install-dashboard-tests - Install Playwright + browsers"
 	@echo ""
 	@echo "Benchmarks:"
 	@echo "  make benchmark          - Run all performance benchmarks"
@@ -164,6 +170,30 @@ test-http:
 
 test-stdlib:
 	sbt "langStdlib/test"
+
+# =============================================================================
+# Dashboard E2E Tests
+# =============================================================================
+
+# Run all dashboard E2E tests
+test-dashboard:
+	@echo "Running dashboard E2E tests..."
+	cd dashboard-tests && npx playwright test
+
+# Run smoke tests only (quick verification)
+test-dashboard-smoke:
+	@echo "Running dashboard smoke tests..."
+	cd dashboard-tests && npx playwright test smoke.spec.ts
+
+# Run full suite with HTML report
+test-dashboard-full:
+	@echo "Running full dashboard E2E suite with HTML report..."
+	cd dashboard-tests && npx playwright test --reporter=html
+
+# Install dashboard test dependencies
+install-dashboard-tests:
+	@echo "Installing dashboard test dependencies..."
+	cd dashboard-tests && npm ci && npx playwright install --with-deps chromium
 
 # =============================================================================
 # Performance Benchmarks

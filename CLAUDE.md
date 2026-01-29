@@ -12,6 +12,8 @@ This file contains actionable rules that Claude must follow when working on this
 | Start server only | `make server` |
 | Start server (hot-reload) | `make server-rerun` |
 | Run all tests | `make test` |
+| Run dashboard E2E tests | `make test-dashboard` |
+| Run dashboard smoke tests | `make test-dashboard-smoke` |
 | Compile everything | `make compile` |
 | Clean build | `make clean` |
 
@@ -137,6 +139,8 @@ make test           # All tests
 make test-core      # Core module
 make test-compiler  # Compiler module
 make test-lsp       # LSP module
+make test-dashboard       # Dashboard E2E tests
+make test-dashboard-smoke # Dashboard smoke tests (quick)
 ```
 
 ## File Locations
@@ -151,6 +155,8 @@ make test-lsp       # LSP module
 | ExampleLib | `modules/example-app/.../ExampleLib.scala` |
 | HTTP Server | `modules/http-api/.../ConstellationServer.scala` |
 | LSP Server | `modules/lang-lsp/.../ConstellationLanguageServer.scala` |
+| Dashboard E2E Tests | `dashboard-tests/` |
+| Dashboard Page Objects | `dashboard-tests/pages/` |
 
 ## Adding New Functions
 
@@ -228,6 +234,94 @@ When writing performance-sensitive code:
 2. Use `BenchmarkHarness.measureWithWarmup()` for measurements
 3. Use `TestFixtures` for consistent input (small/medium/large programs)
 4. Document expected results in `docs/dev/performance-benchmarks.md`
+
+---
+
+## Dashboard E2E Tests
+
+**Run E2E tests before modifying dashboard HTML, JS, CSS, or API routes:**
+
+| Command | Purpose |
+|---------|---------|
+| `make test-dashboard` | Run all dashboard E2E tests |
+| `make test-dashboard-smoke` | Quick smoke check (~30s) |
+| `make test-dashboard-full` | Full suite with HTML report |
+| `make install-dashboard-tests` | Install Playwright + browsers |
+
+### Key Test Targets
+
+| Test Suite | Coverage | Critical |
+|------------|----------|----------|
+| Smoke tests | Dashboard loads, health OK, no JS errors | Yes |
+| File browsing | Tree load, folder toggle, file selection | Yes |
+| Script execution | Input fill, Run, output verification | Yes |
+| DAG interaction | Node click, zoom, layout toggle | No |
+| Execution history | History list, filter, detail view | No |
+| Navigation | View switching, hash routing, deep links | No |
+| Keyboard shortcuts | Ctrl+Enter execution | No |
+| Error handling | Missing inputs, graceful errors | No |
+
+### Running Tests Locally
+
+```bash
+# First-time setup
+make install-dashboard-tests
+
+# Start server (in a separate terminal)
+make server
+
+# Run smoke tests (quick verification)
+make test-dashboard-smoke
+
+# Run full suite
+make test-dashboard
+```
+
+### Multi-Agent Testing
+
+Each agent can run dashboard tests against their own server instance:
+
+```bash
+# Agent 2 example (port 8082)
+cd dashboard-tests
+CONSTELLATION_PORT=8082 npx playwright test
+```
+
+### Debugging Failures
+
+```bash
+# Run tests with browser visible
+cd dashboard-tests && npx playwright test --headed
+
+# Run specific test file
+cd dashboard-tests && npx playwright test file-browsing.spec.ts
+
+# Open HTML report
+cd dashboard-tests && npx playwright show-report reports
+
+# View failure screenshots
+ls dashboard-tests/test-results/
+
+# View trace for failed test
+cd dashboard-tests && npx playwright show-trace test-results/<trace-file>.zip
+```
+
+### Dashboard E2E Documentation
+
+- **RFC:** `docs/dev/rfcs/rfc-012-dashboard-e2e-tests.md`
+- **Test directory:** `dashboard-tests/`
+- **Page objects:** `dashboard-tests/pages/` (living documentation of UI contract)
+- **CI workflow:** `.github/workflows/dashboard-tests.yml`
+
+### Adding Dashboard Tests
+
+When modifying dashboard code:
+
+1. Run `make test-dashboard-smoke` to verify nothing is broken
+2. If adding a new UI component, create a Page Object in `dashboard-tests/pages/`
+3. Add test specs in `dashboard-tests/tests/`
+4. Run `make test-dashboard` to verify the full suite
+5. Page Objects serve as machine-readable documentation of the UI contract
 
 ---
 

@@ -1,0 +1,9 @@
+# Intentionally broken script for error handling tests
+# This has invalid syntax
+
+in text: String
+
+result = Uppercase(text
+# Missing closing parenthesis above
+
+out result

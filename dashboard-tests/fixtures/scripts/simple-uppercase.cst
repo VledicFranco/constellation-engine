@@ -1,0 +1,8 @@
+# Simple uppercase transformation
+# Used as reference fixture for E2E tests
+
+in text: String
+
+result = Uppercase(text)
+
+out result

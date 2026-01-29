@@ -1,6 +1,6 @@
-# Constellation Language RFCs
+# Constellation Engine RFCs
 
-This directory contains Request for Comments (RFC) documents for proposed language features.
+This directory contains Request for Comments (RFC) documents for proposed features and infrastructure.
 
 ## Status Legend
 
@@ -97,3 +97,11 @@ result = Module(input) with
 - RFC-009: on_error
 - RFC-010: lazy
 - RFC-011: priority
+
+---
+
+## Quality Infrastructure
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-012](./rfc-012-dashboard-e2e-tests.md) | Dashboard E2E Tests | Implemented | Playwright-based end-to-end test suite for the web dashboard |

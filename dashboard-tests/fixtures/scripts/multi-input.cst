@@ -1,0 +1,9 @@
+# Multi-input script for E2E tests
+# Tests multiple input types
+
+in name: String
+in count: Int
+
+greeting = Uppercase(name)
+
+out greeting

@@ -1,0 +1,76 @@
+name: Dashboard E2E Tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'modules/http-api/**'
+      - 'dashboard-tests/**'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'modules/http-api/**'
+      - 'dashboard-tests/**'
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'sbt'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'dashboard-tests/package-lock.json'
+
+      - name: Install dashboard test dependencies
+        working-directory: dashboard-tests
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: dashboard-tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: dashboard-tests
+        env:
+          CI: 'true'
+          CONSTELLATION_PORT: '8080'
+        run: npx playwright test
+
+      - name: Upload test reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dashboard-e2e-reports
+          path: |
+            dashboard-tests/reports/
+            dashboard-tests/test-results/
+            dashboard-tests/playwright-report/
+          retention-days: 14
+
+      - name: Add test results to summary
+        if: always()
+        working-directory: dashboard-tests
+        run: |
+          echo "## Dashboard E2E Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f reports/results.json ]; then
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            head -c 5000 reports/results.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "No results file found." >> $GITHUB_STEP_SUMMARY
+          fi

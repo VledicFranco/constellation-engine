@@ -1,0 +1,8 @@
+# Script with @example annotations for default values
+# Tests that inputs are pre-filled
+
+in message: String @example("Hello, World!")
+
+result = Uppercase(message)
+
+out result
