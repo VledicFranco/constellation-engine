@@ -7,7 +7,7 @@ import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
 import io.constellation.{CValue, Constellation, Runtime}
-import io.constellation.execution.GlobalScheduler
+import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
 import io.constellation.lang.{CachingLangCompiler, LangCompiler}
@@ -23,7 +23,8 @@ class ConstellationRoutes(
     constellation: Constellation,
     compiler: LangCompiler,
     functionRegistry: FunctionRegistry,
-    scheduler: Option[GlobalScheduler] = None
+    scheduler: Option[GlobalScheduler] = None,
+    lifecycle: Option[ConstellationLifecycle] = None
 ) {
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
@@ -68,10 +69,15 @@ class ConstellationRoutes(
           case Left(error) =>
             InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
         }
-      } yield response).handleErrorWith { error =>
-        InternalServerError(
-          ExecuteResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
-        )
+      } yield response).handleErrorWith {
+        case _: QueueFullException =>
+          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later"))
+        case _: ConstellationLifecycle.ShutdownRejectedException =>
+          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down"))
+        case error =>
+          InternalServerError(
+            ExecuteResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
+          )
       }
 
     // Compile and run a script in one step (without storing the DAG)
@@ -89,10 +95,15 @@ class ConstellationRoutes(
           case Left(error) =>
             InternalServerError(RunResponse(success = false, error = Some(error.message)))
         }
-      } yield response).handleErrorWith { error =>
-        InternalServerError(
-          RunResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
-        )
+      } yield response).handleErrorWith {
+        case _: QueueFullException =>
+          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later"))
+        case _: ConstellationLifecycle.ShutdownRejectedException =>
+          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down"))
+        case error =>
+          InternalServerError(
+            RunResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
+          )
       }
 
     // List all available DAGs
@@ -172,7 +183,19 @@ class ConstellationRoutes(
 
     // Health check endpoint
     case GET -> Root / "health" =>
-      Ok(Json.obj("status" -> Json.fromString("ok")))
+      lifecycle match {
+        case Some(lc) =>
+          lc.state.flatMap {
+            case io.constellation.execution.LifecycleState.Running =>
+              Ok(Json.obj("status" -> Json.fromString("ok")))
+            case io.constellation.execution.LifecycleState.Draining =>
+              ServiceUnavailable(Json.obj("status" -> Json.fromString("draining")))
+            case io.constellation.execution.LifecycleState.Stopped =>
+              ServiceUnavailable(Json.obj("status" -> Json.fromString("stopped")))
+          }
+        case None =>
+          Ok(Json.obj("status" -> Json.fromString("ok")))
+      }
 
     // Metrics endpoint for performance monitoring
     case GET -> Root / "metrics" =>
@@ -300,7 +323,7 @@ object ConstellationRoutes {
       compiler: LangCompiler,
       functionRegistry: FunctionRegistry
   ): ConstellationRoutes =
-    new ConstellationRoutes(constellation, compiler, functionRegistry, None)
+    new ConstellationRoutes(constellation, compiler, functionRegistry, None, None)
 
   def apply(
       constellation: Constellation,
@@ -308,5 +331,14 @@ object ConstellationRoutes {
       functionRegistry: FunctionRegistry,
       scheduler: GlobalScheduler
   ): ConstellationRoutes =
-    new ConstellationRoutes(constellation, compiler, functionRegistry, Some(scheduler))
+    new ConstellationRoutes(constellation, compiler, functionRegistry, Some(scheduler), None)
+
+  def apply(
+      constellation: Constellation,
+      compiler: LangCompiler,
+      functionRegistry: FunctionRegistry,
+      scheduler: GlobalScheduler,
+      lifecycle: ConstellationLifecycle
+  ): ConstellationRoutes =
+    new ConstellationRoutes(constellation, compiler, functionRegistry, Some(scheduler), Some(lifecycle))
 }

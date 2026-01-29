@@ -8,6 +8,10 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable.TreeSet
 import scala.concurrent.duration._
 
+/** Exception thrown when the scheduler queue is full and cannot accept new tasks. */
+class QueueFullException(val currentSize: Int, val maxSize: Int)
+    extends RuntimeException(s"Scheduler queue is full ($currentSize/$maxSize)")
+
 /** Statistics for the global scheduler.
   *
   * @param activeCount Tasks currently executing
@@ -92,18 +96,21 @@ object GlobalScheduler {
   /** Create a bounded scheduler with priority queue.
     *
     * @param maxConcurrency Maximum number of tasks executing simultaneously
+    * @param maxQueueSize Maximum number of tasks waiting in the queue (0 = unlimited)
     * @param starvationTimeout Duration after which low-priority tasks get priority boost
     * @return Resource that manages the scheduler lifecycle
     */
   def bounded(
       maxConcurrency: Int,
+      maxQueueSize: Int = 0,
       starvationTimeout: FiniteDuration = 30.seconds
   ): Resource[IO, GlobalScheduler] = {
     require(maxConcurrency > 0, "maxConcurrency must be positive")
+    require(maxQueueSize >= 0, "maxQueueSize must be non-negative")
 
     for {
       scheduler <- Resource.make(
-        BoundedGlobalScheduler.create(maxConcurrency, starvationTimeout)
+        BoundedGlobalScheduler.create(maxConcurrency, starvationTimeout, maxQueueSize)
       )(_.shutdown)
     } yield scheduler
   }
@@ -115,9 +122,10 @@ object GlobalScheduler {
     */
   def boundedUnsafe(
       maxConcurrency: Int,
+      maxQueueSize: Int = 0,
       starvationTimeout: FiniteDuration = 30.seconds
   ): IO[GlobalScheduler] = {
-    BoundedGlobalScheduler.create(maxConcurrency, starvationTimeout)
+    BoundedGlobalScheduler.create(maxConcurrency, starvationTimeout, maxQueueSize)
   }
 }
 
@@ -212,6 +220,7 @@ private[execution] object SchedulerState {
 private[execution] class BoundedGlobalScheduler private (
     maxConcurrency: Int,
     starvationTimeout: FiniteDuration,
+    maxQueueSize: Int,
     stateRef: Ref[IO, SchedulerState],
     semaphore: Semaphore[IO],
     taskIdCounter: AtomicLong,
@@ -225,6 +234,10 @@ private[execution] class BoundedGlobalScheduler private (
       // Check if shutting down
       state <- stateRef.get
       _ <- IO.raiseError(new IllegalStateException("Scheduler is shutting down")).whenA(state.shuttingDown)
+
+      // Check queue capacity
+      _ <- IO.raiseError(new QueueFullException(state.queue.size, maxQueueSize))
+        .whenA(maxQueueSize > 0 && state.queue.size >= maxQueueSize)
 
       // Create entry
       now <- IO.realTime
@@ -293,7 +306,8 @@ private[execution] object BoundedGlobalScheduler {
 
   def create(
       maxConcurrency: Int,
-      starvationTimeout: FiniteDuration
+      starvationTimeout: FiniteDuration,
+      maxQueueSize: Int = 0
   ): IO[BoundedGlobalScheduler] = {
     for {
       stateRef <- Ref.of[IO, SchedulerState](SchedulerState.empty)
@@ -306,6 +320,7 @@ private[execution] object BoundedGlobalScheduler {
     } yield new BoundedGlobalScheduler(
       maxConcurrency = maxConcurrency,
       starvationTimeout = starvationTimeout,
+      maxQueueSize = maxQueueSize,
       stateRef = stateRef,
       semaphore = semaphore,
       taskIdCounter = taskIdCounter,

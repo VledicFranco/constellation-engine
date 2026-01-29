@@ -70,6 +70,15 @@ trait ExecutionListener {
       succeeded: Boolean,
       durationMs: Long
   ): IO[Unit]
+
+  /** Called when an execution is cancelled (user-initiated or timeout).
+    *
+    * Default implementation is a no-op for backwards compatibility.
+    *
+    * @param executionId The execution identifier
+    * @param dagName Name of the DAG
+    */
+  def onExecutionCancelled(executionId: UUID, dagName: String): IO[Unit] = IO.unit
 }
 
 object ExecutionListener {
@@ -81,6 +90,7 @@ object ExecutionListener {
     def onModuleComplete(executionId: UUID, moduleId: UUID, moduleName: String, durationMs: Long): IO[Unit] = IO.unit
     def onModuleFailed(executionId: UUID, moduleId: UUID, moduleName: String, error: Throwable): IO[Unit] = IO.unit
     def onExecutionComplete(executionId: UUID, dagName: String, succeeded: Boolean, durationMs: Long): IO[Unit] = IO.unit
+    override def onExecutionCancelled(executionId: UUID, dagName: String): IO[Unit] = IO.unit
   }
 
   /** Combine multiple listeners into a single listener.
@@ -115,5 +125,8 @@ object ExecutionListener {
 
     def onExecutionComplete(executionId: UUID, dagName: String, succeeded: Boolean, durationMs: Long): IO[Unit] =
       fanOut(_.onExecutionComplete(executionId, dagName, succeeded, durationMs))
+
+    override def onExecutionCancelled(executionId: UUID, dagName: String): IO[Unit] =
+      fanOut(_.onExecutionCancelled(executionId, dagName))
   }
 }

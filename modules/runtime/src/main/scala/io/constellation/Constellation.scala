@@ -1,6 +1,7 @@
 package io.constellation
 
 import cats.effect.IO
+import io.constellation.execution.CancellableExecution
 
 trait Constellation {
 
@@ -46,4 +47,16 @@ trait Constellation {
       modules: Map[java.util.UUID, Module.Uninitialized],
       modulePriorities: Map[java.util.UUID, Int]
   ): IO[Runtime.State]
+
+  /** Run a named DAG with cancellation support.
+    *
+    * Returns a `CancellableExecution` handle immediately. The caller can
+    * await results via `handle.result` or cancel via `handle.cancel`.
+    *
+    * Default implementation delegates to `runDag` wrapped in a completed handle.
+    */
+  def runDagCancellable(name: String, inputs: Map[String, CValue]): IO[CancellableExecution] =
+    runDag(name, inputs).flatMap { state =>
+      CancellableExecution.completed(java.util.UUID.randomUUID(), state)
+    }
 }

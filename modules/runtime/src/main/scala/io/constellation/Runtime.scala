@@ -3,10 +3,10 @@ package io.constellation
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, ValidatedNel}
 import cats.effect.{Deferred, IO, Ref}
-import cats.implicits.{catsSyntaxParallelTraverse1, catsSyntaxTuple2Parallel, toTraverseOps}
+import cats.implicits.{catsSyntaxParallelTraverse1, catsSyntaxTuple2Parallel, toFoldableOps, toTraverseOps}
 import cats.{Eval, Monoid}
 import io.circe.Json
-import io.constellation.execution.GlobalScheduler
+import io.constellation.execution.{CancellableExecution, ExecutionStatus, GlobalScheduler}
 import io.constellation.pool.RuntimePool
 import io.constellation.spi.ConstellationBackends
 
@@ -224,13 +224,20 @@ object Runtime {
             val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
             val moduleName = modules.get(module.id).map(_.spec.metadata.name).getOrElse(module.id.toString)
 
+            val protectedRun = backends.circuitBreakers match {
+              case Some(registry) =>
+                registry.getOrCreate(moduleName).flatMap(_.protect(module.run(runtime)))
+              case None =>
+                module.run(runtime)
+            }
+
             scheduler.submit(priority, backends.tracer.span("module(" + moduleName + ")", Map("module.name" -> moduleName)) {
               for {
                 // Fire module start (fire-and-forget)
                 _ <- backends.listener.onModuleStart(executionId, module.id, moduleName)
                   .handleErrorWith(_ => IO.unit).start
 
-                resultAndLatency <- module.run(runtime).timed
+                resultAndLatency <- protectedRun.timed
 
                 (moduleLatency, _) = resultAndLatency
 
@@ -295,6 +302,204 @@ object Runtime {
       } yield finalState
     }
   }
+
+  /** Run DAG with cancellation support.
+    *
+    * Like `runWithBackends` but returns a `CancellableExecution` handle immediately.
+    * Each module runs as an individual fiber that can be cancelled.
+    *
+    * @param dag The DAG specification
+    * @param initData Initial input data
+    * @param modules Module implementations
+    * @param modulePriorities Priority values per module UUID (0-100, higher = more important)
+    * @param scheduler The global scheduler for task ordering
+    * @param backends Pluggable backend services
+    * @return A CancellableExecution handle
+    */
+  def runCancellable(
+      dag: DagSpec,
+      initData: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler,
+      backends: ConstellationBackends
+  ): IO[CancellableExecution] = {
+    val executionId = UUID.randomUUID()
+    val dagName = dag.metadata.name
+
+    for {
+      statusRef     <- Ref.of[IO, ExecutionStatus](ExecutionStatus.Running)
+      resultDeferred <- Deferred[IO, Runtime.State]
+
+      // Validate and initialize
+      _                   <- validateRunIO(dag, initData)
+      modulesAndDataTable <- initModules(dag, modules)
+      (runnable, moduleDataTable) = modulesAndDataTable
+
+      inlineTransformTable <- initInlineTransformTable(dag)
+      userInputTable       <- initUserInputDataTable(dag)
+      dataTable = moduleDataTable ++ inlineTransformTable ++ userInputTable
+
+      contextRef <- initState(dag)
+      runtime = Runtime(state = contextRef, table = dataTable)
+      _ <- completeTopLevelDataNodes(dag, initData, runtime)
+
+      // Fire execution start
+      _ <- backends.listener.onExecutionStart(executionId, dagName)
+        .handleErrorWith(_ => IO.unit).start
+
+      // Start inline transform fibers individually
+      transformFibers <- startInlineTransformFibers(dag, runtime)
+
+      // Start each module as an individual fiber
+      moduleFibers <- runnable.traverse { module =>
+        val priority = modulePriorities.getOrElse(module.id, DefaultPriority)
+        val moduleName = modules.get(module.id).map(_.spec.metadata.name).getOrElse(module.id.toString)
+
+        val protectedRun = backends.circuitBreakers match {
+          case Some(registry) =>
+            registry.getOrCreate(moduleName).flatMap(_.protect(module.run(runtime)))
+          case None =>
+            module.run(runtime)
+        }
+
+        val wrappedRun = backends.tracer.span("module(" + moduleName + ")", Map("module.name" -> moduleName)) {
+          for {
+            _ <- backends.listener.onModuleStart(executionId, module.id, moduleName)
+              .handleErrorWith(_ => IO.unit).start
+            resultAndLatency <- protectedRun.timed
+            (moduleLatency, _) = resultAndLatency
+            state <- runtime.state.get
+            moduleStatus = state.moduleStatus.get(module.id).map(_.value)
+            _ <- moduleStatus match {
+              case Some(Module.Status.Failed(error)) =>
+                (backends.listener.onModuleFailed(executionId, module.id, moduleName, error)
+                  .handleErrorWith(_ => IO.unit).start *>
+                backends.metrics.histogram(
+                  "constellation.module.duration_ms",
+                  moduleLatency.toMillis.toDouble,
+                  Map("module.name" -> moduleName, "status" -> "failed")
+                ).handleErrorWith(_ => IO.unit)).void
+              case _ =>
+                (backends.listener.onModuleComplete(executionId, module.id, moduleName, moduleLatency.toMillis)
+                  .handleErrorWith(_ => IO.unit).start *>
+                backends.metrics.histogram(
+                  "constellation.module.duration_ms",
+                  moduleLatency.toMillis.toDouble,
+                  Map("module.name" -> moduleName, "status" -> "success")
+                ).handleErrorWith(_ => IO.unit)).void
+            }
+          } yield ()
+        }
+
+        scheduler.submit(priority, wrappedRun).start
+      }
+
+      // Start background orchestrator that joins all fibers and finalizes
+      _ <- (for {
+        startTime <- IO.monotonic
+        // Join all fibers (waits for completion or cancellation)
+        _ <- moduleFibers.traverse_(_.join)
+        _ <- transformFibers.traverse_(_.join)
+        endTime <- IO.monotonic
+        latency = endTime - startTime
+
+        finalState <- runtime.close(latency)
+
+        // Determine status and complete
+        currentStatus <- statusRef.get
+        _ <- currentStatus match {
+          case ExecutionStatus.Cancelled =>
+            // Already cancelled — result deferred completed by cancel handler or here
+            resultDeferred.complete(finalState).attempt.void *>
+            backends.listener.onExecutionCancelled(executionId, dagName)
+              .handleErrorWith(_ => IO.unit).start.void
+
+          case ExecutionStatus.Running =>
+            // Normal completion
+            val allModuleStatuses = finalState.moduleStatus.values.map(_.value).toList
+            val anyFailed = allModuleStatuses.exists {
+              case Module.Status.Failed(_) => true
+              case Module.Status.Timed(_)  => true
+              case _                       => false
+            }
+            val newStatus = if (anyFailed) {
+              val firstError = allModuleStatuses.collectFirst { case Module.Status.Failed(e) => e }
+              firstError.map(ExecutionStatus.Failed(_)).getOrElse(ExecutionStatus.Completed)
+            } else {
+              ExecutionStatus.Completed
+            }
+            statusRef.set(newStatus) *>
+            resultDeferred.complete(finalState).attempt.void *>
+            // Fire execution complete metrics
+            backends.metrics.counter(
+              "constellation.execution.total",
+              Map("dag.name" -> dagName, "status" -> (if (!anyFailed) "success" else "failed"))
+            ).handleErrorWith(_ => IO.unit) *>
+            backends.metrics.histogram(
+              "constellation.execution.duration_ms",
+              latency.toMillis.toDouble,
+              Map("dag.name" -> dagName)
+            ).handleErrorWith(_ => IO.unit) *>
+            backends.listener.onExecutionComplete(executionId, dagName, !anyFailed, latency.toMillis)
+              .handleErrorWith(_ => IO.unit).start.void
+
+          case _ =>
+            // TimedOut or other — result may already be set
+            resultDeferred.complete(finalState).attempt.void
+        }
+      } yield ()).handleErrorWith { error =>
+        // If orchestrator itself fails, try to complete the deferred with an error state
+        for {
+          partialState <- runtime.state.get
+          errorState = partialState.copy(latency = None)
+          _ <- statusRef.modify {
+            case ExecutionStatus.Running => (ExecutionStatus.Failed(error), true)
+            case other                   => (other, false)
+          }
+          _ <- resultDeferred.complete(errorState).attempt
+        } yield ()
+      }.start
+
+    } yield CancellableExecution.create(
+      executionId, statusRef, resultDeferred, moduleFibers, transformFibers
+    )
+  }
+
+  /** Run DAG with a global timeout.
+    *
+    * Starts a cancellable execution and applies a timeout. If the timeout elapses,
+    * the execution is cancelled and the partial result is returned with `TimedOut` status.
+    *
+    * @param timeout Maximum execution duration
+    * @param dag The DAG specification
+    * @param initData Initial input data
+    * @param modules Module implementations
+    * @param modulePriorities Priority values per module UUID
+    * @param scheduler The global scheduler
+    * @param backends Pluggable backend services
+    * @return Execution state (may be partial if timed out)
+    */
+  def runWithTimeout(
+      timeout: FiniteDuration,
+      dag: DagSpec,
+      initData: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      modulePriorities: Map[UUID, Int],
+      scheduler: GlobalScheduler,
+      backends: ConstellationBackends
+  ): IO[Runtime.State] =
+    runCancellable(dag, initData, modules, modulePriorities, scheduler, backends).flatMap { exec =>
+      exec.result.timeoutTo(
+        timeout,
+        exec match {
+          case impl: CancellableExecution.CancellableExecutionImpl =>
+            impl.cancelWith(ExecutionStatus.TimedOut) *> exec.result
+          case _ =>
+            exec.cancel *> exec.result
+        }
+      )
+    }
 
   /** Run DAG with RawValue inputs (memory-efficient path).
     *
