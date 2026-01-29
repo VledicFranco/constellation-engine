@@ -10,6 +10,7 @@ class ConstellationDashboard {
         this.fileBrowser = null;
         this.dagVisualizer = null;
         this.executionPanel = null;
+        this.codeEditor = null;
 
         // State
         this.currentView = 'scripts';
@@ -48,6 +49,7 @@ class ConstellationDashboard {
             this.initFileBrowser();
             this.initDagVisualizer();
             this.initExecutionPanel();
+            this.initCodeEditor();
 
             // Set up event listeners
             this.setupEventListeners();
@@ -103,6 +105,55 @@ class ConstellationDashboard {
                 }
             }
         });
+    }
+
+    /**
+     * Initialize the code editor component
+     */
+    initCodeEditor() {
+        this.codeEditor = new CodeEditor({
+            containerId: 'editor-container',
+            textareaId: 'code-editor-textarea',
+            errorBannerId: 'editor-error-banner',
+            onPreviewResult: (dagVizIR, errors, inputs) => {
+                this.handleLivePreview(dagVizIR, errors, inputs);
+            }
+        });
+        this.codeEditor.init();
+    }
+
+    /**
+     * Handle live preview results from the code editor
+     */
+    handleLivePreview(dagVizIR, errors, inputs) {
+        if (dagVizIR) {
+            this.dagVisualizer.render(dagVizIR);
+            this.currentDagVizIR = dagVizIR;
+        } else if (!errors || errors.length === 0) {
+            // Empty source -- clear the DAG
+            this.dagVisualizer.clear();
+            this.currentDagVizIR = null;
+        }
+
+        if (inputs && inputs.length > 0) {
+            const inputsForm = document.getElementById('inputs-form');
+            // Save existing input values by name
+            const savedValues = {};
+            inputsForm.querySelectorAll('[id^="input-"]').forEach(el => {
+                const name = el.name;
+                if (name) savedValues[name] = el.value;
+            });
+            // Re-render input form with new inputs
+            this.executionPanel.currentInputs = inputs;
+            this.executionPanel.renderInputForm(inputsForm, inputs);
+            // Restore values for matching input names
+            inputs.forEach(input => {
+                if (savedValues[input.name] !== undefined) {
+                    const el = document.getElementById(`input-${input.name}`);
+                    if (el) el.value = savedValues[input.name];
+                }
+            });
+        }
     }
 
     /**
@@ -234,6 +285,11 @@ class ConstellationDashboard {
 
             // Load script metadata
             const scriptData = await this.executionPanel.loadScript(path);
+
+            // Populate code editor with file content
+            if (this.codeEditor) {
+                this.codeEditor.loadSource(scriptData.content);
+            }
 
             // Try to compile and show initial DAG
             await this.compileAndShowDag(scriptData.content);

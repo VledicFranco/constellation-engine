@@ -85,6 +85,26 @@
                         </div>
                     </div>
 
+                    <!-- Code Editor -->
+                    <div class="editor-container collapsed" id="editor-container">
+                        <div class="editor-header">
+                            <div class="editor-title">
+                                <h3>Code Editor</h3>
+                                <button id="new-script-btn" class="icon-btn" title="New Script">+</button>
+                            </div>
+                            <div class="editor-controls">
+                                <span id="editor-status" class="editor-status"></span>
+                                <button id="editor-toggle-btn" class="layout-btn">Edit</button>
+                            </div>
+                        </div>
+                        <div class="editor-body">
+                            <textarea id="code-editor-textarea" class="code-textarea"
+                                      spellcheck="false" autocomplete="off"
+                                      placeholder="Write constellation-lang code here..."></textarea>
+                            <div id="editor-error-banner" class="editor-error-banner"></div>
+                        </div>
+                    </div>
+
                     <!-- DAG Visualization -->
                     <div class="dag-container">
                         <div class="dag-header">
@@ -170,6 +190,7 @@
     <script src="/dashboard/static/js/components/file-browser.js"></script>
     <script src="/dashboard/static/js/components/dag-visualizer.js"></script>
     <script src="/dashboard/static/js/components/execution-panel.js"></script>
+    <script src="/dashboard/static/js/components/code-editor.js"></script>
     <script src="/dashboard/static/js/main.js"></script>
 </body>
 </html>

@@ -33,7 +33,7 @@ export default defineConfig({
   // Server management: start Constellation before tests
   webServer: {
     command: process.platform === 'win32'
-      ? `powershell -File ../scripts/dev.ps1 -ServerOnly -Port ${PORT}`
+      ? `powershell -ExecutionPolicy Bypass -File ../scripts/dev.ps1 -ServerOnly -Port ${PORT}`
       : `make -C .. server`,
     port: parseInt(PORT),
     reuseExistingServer: !process.env.CI,
