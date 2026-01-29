@@ -71,46 +71,21 @@ The loop replaces guesswork with evidence: instead of hoping a CSS change looks 
    - JS: `modules/http-api/src/main/resources/dashboard/static/js/components/dag-visualizer.js`
    - Scala (backend): any file under `modules/`
 
-3. **Compile and restart** the server:
-   - **Frontend-only changes (CSS/HTML/JS):** These files are served from the compiled `target/` directory. You must recompile and restart.
-   - **Backend changes (Scala):** Requires `make compile` and server restart.
+3. **Compile and restart** the server, then **run the screenshot audit** (steps 3-4 combined):
 
-   Server lifecycle on Windows:
+   **Automated (recommended):** Use `dev-loop.ps1` to handle kill, compile, restart, and screenshot in one command:
    ```powershell
-   # Kill existing server on port 8080
-   $proc = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
-   if ($proc) { Stop-Process -Id $proc -Force }
-
-   # Recompile
-   make compile
-
-   # Restart server (background)
-   .\scripts\dev.ps1 -ServerOnly
+   .\scripts\dev-loop.ps1                              # Frontend-only: skip compile
+   .\scripts\dev-loop.ps1 -Compile                     # Backend changes: compile first
+   .\scripts\dev-loop.ps1 -TestFilter "1-simple"       # Run only one test (faster)
+   .\scripts\dev-loop.ps1 -Compile -Port 8082          # Agent 2 on custom port
    ```
 
-   Server lifecycle on Unix:
-   ```bash
-   # Kill existing server on port 8080
-   lsof -ti:8080 | xargs kill -9 2>/dev/null
+   **Manual (if needed):** See [Manual Server Lifecycle](#manual-server-lifecycle) below.
 
-   # Recompile and restart
-   make compile
-   make server &
-   ```
+4. **Analyze screenshots** from `dashboard-tests/screenshots/` against the stated objective.
 
-   Wait for health check to pass before proceeding:
-   ```bash
-   curl http://localhost:8080/health
-   ```
-
-4. **Run the screenshot audit:**
-   ```bash
-   cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
-   ```
-
-5. **Analyze screenshots** from `dashboard-tests/screenshots/` against the stated objective.
-
-6. **Decision:**
+5. **Decision:**
    - **Objective met:** Present the final screenshots to the user. Done.
    - **Not met, iteration < 5:** Go back to step 2 with refined changes.
    - **Iteration = 5:** Present current screenshots to the user for review and further guidance.
@@ -150,6 +125,143 @@ The screenshot audit produces the following images in `dashboard-tests/screensho
 | Overall page layout | 01, 06, 13 |
 | Node details panel | 06 |
 | Multiple script types | 07-series |
+
+## Automation Scripts
+
+Two PowerShell scripts automate the repetitive parts of the dev loop (kill server, compile, restart, wait for health, run screenshots). Use these instead of running each step manually.
+
+### `dev-loop.ps1` -- Full iteration in one command
+
+Runs a complete dev loop iteration: stops the server, optionally compiles, restarts the server, waits for health check, and runs the screenshot audit.
+
+```powershell
+.\scripts\dev-loop.ps1 [options]
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-Port` | `8080` | Server port to use |
+| `-Compile` | off | Run `sbt compile` before restarting (required for Scala changes) |
+| `-TestFilter` | `""` (all) | Run only matching tests, e.g. `"1-simple-script-dag"` |
+
+**Examples:**
+
+```powershell
+# Frontend-only change (CSS/HTML/JS) -- skip compile, run all screenshots
+.\scripts\dev-loop.ps1
+
+# Backend change (Scala) -- compile first
+.\scripts\dev-loop.ps1 -Compile
+
+# Fast iteration -- only capture simple DAG screenshots
+.\scripts\dev-loop.ps1 -TestFilter "1-simple-script-dag"
+
+# Agent 2 on port 8082
+.\scripts\dev-loop.ps1 -Port 8082
+
+# Backend change, specific test, custom port
+.\scripts\dev-loop.ps1 -Compile -TestFilter "6-executed" -Port 8082
+```
+
+**What it does internally:**
+
+| Step | Action |
+|------|--------|
+| 1/4 | Kills any process on the target port + all Java processes |
+| 2/4 | Runs `sbt compile` (if `-Compile` flag is set) |
+| 3/4 | Starts the server via `sbt exampleApp/runMain ...` in a background job, polls `/health` every 3s (up to 90s timeout) |
+| 4/4 | Runs `npx playwright test screenshot-audit` (with optional `-g` filter) |
+
+**Exit code:** 0 if screenshots captured successfully, non-zero on compile failure, server timeout, or test failure.
+
+### `restart-server.ps1` -- Server restart only
+
+Restarts the server without running screenshots. Useful when you want to test manually in the browser or run a different test suite.
+
+```powershell
+.\scripts\restart-server.ps1 [options]
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `-Port` | `8080` | Server port to use |
+| `-Compile` | off | Run `sbt compile` before restarting |
+
+**Examples:**
+
+```powershell
+# Restart server (no compile)
+.\scripts\restart-server.ps1
+
+# Recompile and restart
+.\scripts\restart-server.ps1 -Compile
+
+# Restart on agent port
+.\scripts\restart-server.ps1 -Port 8082
+```
+
+**What it does internally:**
+1. Kills any process on the target port
+2. Kills all lingering Java processes
+3. Runs `sbt compile` (if `-Compile` flag is set)
+4. Starts the server in a background PowerShell job
+5. Polls `/health` every 3s until the server responds (up to 90s timeout)
+
+### Typical workflow
+
+```
+# 1. Make your code changes (CSS/JS/HTML)
+#    ... edit files ...
+
+# 2. Run a full iteration
+.\scripts\dev-loop.ps1
+
+# 3. Analyze screenshots in dashboard-tests/screenshots/
+#    ... read images, decide if objective is met ...
+
+# 4. If not met, make more changes and repeat
+.\scripts\dev-loop.ps1
+
+# 5. For quick targeted iteration on a specific area
+.\scripts\dev-loop.ps1 -TestFilter "2-complex-script-dag"
+```
+
+## Manual Server Lifecycle
+
+If you need to manage the server manually (e.g., on Unix/macOS or for debugging):
+
+**Windows (without scripts):**
+```powershell
+# Kill existing server on port 8080
+$proc = Get-NetTCPConnection -LocalPort 8080 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
+if ($proc) { Stop-Process -Id $proc -Force }
+
+# Recompile
+make compile
+
+# Restart server (background)
+.\scripts\dev.ps1 -ServerOnly
+```
+
+**Unix/macOS:**
+```bash
+# Kill existing server on port 8080
+lsof -ti:8080 | xargs kill -9 2>/dev/null
+
+# Recompile and restart
+make compile
+make server &
+```
+
+Wait for health check to pass before running screenshots:
+```bash
+curl http://localhost:8080/health
+```
+
+Then run the screenshot audit manually:
+```bash
+cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
+```
 
 ## Key Files and Helpers
 

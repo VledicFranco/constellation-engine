@@ -331,7 +331,20 @@ When modifying dashboard code:
 
 **Full protocol:** `docs/dev/playwright-dev-loop.md`
 
-**Key command:**
+### Automation Scripts (Windows)
+
+| Command | Purpose |
+|---------|---------|
+| `.\scripts\dev-loop.ps1` | Full iteration: kill server, restart, run screenshot audit |
+| `.\scripts\dev-loop.ps1 -Compile` | Same but compile first (for Scala/backend changes) |
+| `.\scripts\dev-loop.ps1 -TestFilter "1-simple"` | Run only matching screenshot tests (faster) |
+| `.\scripts\restart-server.ps1` | Restart server only (no screenshots) |
+| `.\scripts\restart-server.ps1 -Compile` | Compile + restart server only |
+
+All scripts accept `-Port` (default `8080`) for multi-agent setups.
+
+### Manual Command
+
 ```bash
 cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
 ```
@@ -344,10 +357,9 @@ cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
 |------|--------|
 | 1 | Receive visual objective from user |
 | 2 | Make code changes (CSS/HTML/JS/Scala) |
-| 3 | `make compile` + restart server |
-| 4 | `cd dashboard-tests && npx playwright test screenshot-audit --reporter=list` |
-| 5 | Read screenshots from `dashboard-tests/screenshots/`, analyze against objective |
-| 6 | If objective met: done. If not and iteration < 5: go to step 2. If iteration = 5: present to user. |
+| 3 | `.\scripts\dev-loop.ps1` (or `.\scripts\dev-loop.ps1 -Compile` for backend changes) |
+| 4 | Read screenshots from `dashboard-tests/screenshots/`, analyze against objective |
+| 5 | If objective met: done. If not and iteration < 5: go to step 2. If iteration = 5: present to user. |
 
 ---
 
