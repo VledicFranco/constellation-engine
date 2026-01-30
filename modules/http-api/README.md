@@ -8,7 +8,10 @@ HTTP server module for the Constellation Engine, providing a REST API for compil
 - **Execution API**: Execute compiled DAGs with JSON inputs
 - **DAG Management**: List, retrieve, and manage computational DAGs
 - **Module Management**: List available modules and their specifications
-- **Health Monitoring**: Simple health check endpoint
+- **Health Monitoring**: Liveness, readiness, and detail health check endpoints
+- **API Authentication**: Static API key auth with role-based access control (opt-in)
+- **CORS Support**: Configurable cross-origin request handling (opt-in)
+- **Rate Limiting**: Per-IP token bucket rate limiting (opt-in)
 
 ## Getting Started
 
@@ -54,20 +57,46 @@ object MyServer extends IOApp.Simple {
 }
 ```
 
-## API Endpoints
+### Creating a Hardened Server
 
-### Health Check
-```bash
-GET /health
+All hardening features are opt-in and disabled by default. When not configured, the server behaves identically to before with zero overhead.
+
+```scala
+import io.constellation.http._
+
+ConstellationServer
+  .builder(constellation, compiler)
+  .withAuth(AuthConfig(apiKeys = Map(
+    "admin-key" -> ApiRole.Admin,
+    "exec-key"  -> ApiRole.Execute,
+    "read-key"  -> ApiRole.ReadOnly
+  )))
+  .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
+  .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
+  .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
+  .run
 ```
 
-Returns server status.
+## API Endpoints
 
-**Response:**
-```json
-{
-  "status": "ok"
-}
+### Health Checks
+
+```bash
+# Liveness — always returns 200 if process is alive
+GET /health/live
+# Response: {"status": "alive"}
+
+# Readiness — 200 if lifecycle Running + custom checks pass, 503 otherwise
+GET /health/ready
+# Response: {"status": "ready"} or {"status": "not_ready"}
+
+# Detail diagnostics — opt-in, shows cache/scheduler/lifecycle details
+GET /health/detail
+# Response: {"timestamp": "...", "lifecycle": {...}, "cache": {...}, "scheduler": {...}}
+
+# Legacy health check — unchanged from previous versions
+GET /health
+# Response: {"status": "ok"}
 ```
 
 ### Compile Program
@@ -209,6 +238,102 @@ List all available modules.
 }
 ```
 
+## Security Configuration
+
+All security features are **opt-in** and **disabled by default**. When not configured, the route stack is identical to an unconfigured server.
+
+### API Authentication
+
+Static API key authentication with role-based access control.
+
+```scala
+.withAuth(AuthConfig(apiKeys = Map(
+  "key1" -> ApiRole.Admin,
+  "key2" -> ApiRole.Execute,
+  "key3" -> ApiRole.ReadOnly
+)))
+```
+
+| Role | Allowed Methods |
+|------|----------------|
+| `Admin` | All (GET, POST, PUT, DELETE, etc.) |
+| `Execute` | GET, POST |
+| `ReadOnly` | GET |
+
+Clients send the key via `Authorization: Bearer <api-key>` header.
+
+**Error responses:**
+
+| Status | When |
+|--------|------|
+| `401 Unauthorized` | Missing header, invalid token format, or unknown key |
+| `403 Forbidden` | Valid key but insufficient role for the HTTP method |
+
+**Public paths** (exempt from auth): `/health`, `/health/live`, `/health/ready`, `/metrics`.
+
+**Environment variable:** `CONSTELLATION_API_KEYS=key1:Admin,key2:Execute`
+
+### CORS
+
+Cross-origin request configuration using the http4s built-in CORS middleware.
+
+```scala
+.withCors(CorsConfig(
+  allowedOrigins = Set("https://app.example.com", "https://admin.example.com"),
+  allowedMethods = Set("GET", "POST", "PUT", "DELETE", "OPTIONS"),
+  allowedHeaders = Set("Content-Type", "Authorization"),
+  allowCredentials = false,
+  maxAge = 3600L
+))
+```
+
+Use `Set("*")` for wildcard origins (development only). Cannot combine wildcard with `allowCredentials = true`.
+
+**Environment variable:** `CONSTELLATION_CORS_ORIGINS=https://app.example.com,https://admin.example.com`
+
+### Rate Limiting
+
+Per-client-IP token bucket rate limiting. Returns `429 Too Many Requests` with `Retry-After` header.
+
+```scala
+.withRateLimit(RateLimitConfig(
+  requestsPerMinute = 100,
+  burst = 20,
+  exemptPaths = Set("/health", "/health/live", "/health/ready", "/metrics")
+))
+```
+
+**Environment variables:** `CONSTELLATION_RATE_LIMIT_RPM=100`, `CONSTELLATION_RATE_LIMIT_BURST=20`
+
+IP extraction uses `X-Forwarded-For` header first, then falls back to remote address.
+
+### Health Checks
+
+```scala
+.withHealthChecks(HealthCheckConfig(
+  enableDetailEndpoint = true,
+  detailRequiresAuth = true,
+  customReadinessChecks = List(
+    ReadinessCheck("database", dbCheckIO),
+    ReadinessCheck("cache", cacheCheckIO)
+  )
+))
+```
+
+| Endpoint | Purpose | Auth required |
+|----------|---------|--------------|
+| `/health/live` | Kubernetes liveness probe | No |
+| `/health/ready` | Kubernetes readiness probe | No |
+| `/health/detail` | Full diagnostics | Yes (when auth enabled) |
+
+### Middleware Layering
+
+Middleware is applied in this order (inner to outer):
+
+1. **Auth** (innermost) — checks credentials closest to route handlers
+2. **Rate Limit** — limits after CORS preflight is handled
+3. **CORS** (outermost) — handles preflight OPTIONS before auth/rate-limit
+
 ## Example Usage
 
 ### Using curl
@@ -216,6 +341,12 @@ List all available modules.
 ```bash
 # Health check
 curl http://localhost:8080/health
+
+# Liveness probe
+curl http://localhost:8080/health/live
+
+# Readiness probe
+curl http://localhost:8080/health/ready
 
 # Compile a program
 curl -X POST http://localhost:8080/compile \
@@ -233,6 +364,19 @@ curl http://localhost:8080/dags/addition-dag
 
 # List modules
 curl http://localhost:8080/modules
+
+# With authentication (when enabled):
+curl http://localhost:8080/modules \
+  -H "Authorization: Bearer admin-key"
+
+# Execute (with auth):
+curl -X POST http://localhost:8080/execute \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer exec-key" \
+  -d '{
+    "dagName": "addition-dag",
+    "inputs": {"a": 10, "b": 20}
+  }'
 ```
 
 ### Using httpie
@@ -245,6 +389,9 @@ http POST localhost:8080/compile \
 
 # List DAGs
 http GET localhost:8080/dags
+
+# With auth:
+http GET localhost:8080/modules "Authorization: Bearer admin-key"
 ```
 
 ## Configuration
@@ -256,6 +403,10 @@ ConstellationServer
   .builder(constellation, compiler)
   .withHost("127.0.0.1")    // Default: "0.0.0.0"
   .withPort(9000)            // Default: 8080
+  .withAuth(authConfig)      // Optional: API key authentication
+  .withCors(corsConfig)      // Optional: CORS headers
+  .withRateLimit(rlConfig)   // Optional: per-IP rate limiting
+  .withHealthChecks(hcConfig) // Optional: health check tuning
   .build
 ```
 
@@ -276,18 +427,19 @@ sbt httpApi/test
 ```
 
 The tests cover:
-- Health check endpoint
+- Health check endpoints (liveness, readiness, detail)
 - Program compilation (success and error cases)
 - DAG listing and retrieval
 - Module listing
+- Authentication middleware (valid/invalid keys, roles, public paths)
+- CORS middleware (allowed/disallowed origins, preflight, wildcard)
+- Rate limiting (under/over limit, exempt paths, Retry-After header)
+- Integration (middleware composition, backward compatibility)
 - Error handling
 
 ## Future Enhancements
 
-- Full DAG execution with JSON to CValue conversion
+- JWT/OAuth authentication (swap without changing middleware interface)
 - Streaming execution results
-- WebSocket support for real-time execution monitoring
-- Authentication and authorization
-- Rate limiting
-- Metrics and observability endpoints
-- OpenAPI/Swagger documentation
+- Per-API-key rate limiting (in addition to per-IP)
+- OpenAPI/Swagger documentation generation

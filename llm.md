@@ -288,6 +288,36 @@ for {
 } yield ()
 ```
 
+### Pattern 3b: Starting a Hardened HTTP Server
+
+All hardening features are opt-in. When not configured, zero overhead.
+
+```scala
+import io.constellation.http._
+
+ConstellationServer
+  .builder(constellation, compiler)
+  .withAuth(AuthConfig(apiKeys = Map(
+    "admin-key" -> ApiRole.Admin,
+    "exec-key"  -> ApiRole.Execute,
+    "read-key"  -> ApiRole.ReadOnly
+  )))
+  .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
+  .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
+  .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
+  .run
+```
+
+**Middleware layering order** (inner to outer): Auth → Rate Limit → CORS.
+Public paths (`/health`, `/health/live`, `/health/ready`, `/metrics`) bypass auth and rate limiting.
+
+| Config class | Builder method | Env variable(s) | Enabled when |
+|-------------|----------------|-----------------|--------------|
+| `AuthConfig` | `.withAuth(...)` | `CONSTELLATION_API_KEYS` | `apiKeys.nonEmpty` |
+| `CorsConfig` | `.withCors(...)` | `CONSTELLATION_CORS_ORIGINS` | `allowedOrigins.nonEmpty` |
+| `RateLimitConfig` | `.withRateLimit(...)` | `CONSTELLATION_RATE_LIMIT_RPM`, `_BURST` | Passed to builder |
+| `HealthCheckConfig` | `.withHealthChecks(...)` | — | Always (controls `/health/detail`) |
+
 ### Pattern 4: Compiling Constellation-Lang Programs
 
 ```scala
@@ -525,8 +555,18 @@ sbt "exampleApp/runMain io.constellation.examples.app.TextProcessingApp"
 
 **Test endpoints:**
 ```bash
-# Health check
+# Health check (always available)
 curl http://localhost:8080/health
+
+# Liveness probe (always 200 if process is alive)
+curl http://localhost:8080/health/live
+
+# Readiness probe (200 if running, 503 if not ready)
+curl http://localhost:8080/health/ready
+
+# Detail diagnostics (opt-in, auth-gated)
+curl http://localhost:8080/health/detail \
+  -H "Authorization: Bearer admin-key"
 
 # List modules
 curl http://localhost:8080/modules | jq
@@ -549,6 +589,10 @@ curl -X POST http://localhost:8080/execute \
     "dagName": "test-pipeline",
     "inputs": {"text": "hello world"}
   }' | jq
+
+# With authentication (when auth is enabled):
+curl http://localhost:8080/modules \
+  -H "Authorization: Bearer your-api-key" | jq
 ```
 
 ## Common Tasks

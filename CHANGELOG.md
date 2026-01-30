@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### HTTP API Hardening (RFC-013 Phase 3)
+- **API Authentication**: Static API key authentication with role-based access control (Admin, Execute, ReadOnly). Opt-in via `.withAuth(AuthConfig(...))`. Supports `Authorization: Bearer <key>` header. Public paths (`/health`, `/metrics`) bypass auth.
+- **CORS Middleware**: Configurable cross-origin request support via `.withCors(CorsConfig(...))`. Delegates to http4s built-in CORS. Supports wildcard and specific origin lists.
+- **HTTP Rate Limiting**: Per-IP token bucket rate limiting via `.withRateLimit(RateLimitConfig(...))`. Returns `429 Too Many Requests` with `Retry-After` header. Health and metrics endpoints exempt.
+- **Deep Health Checks**: New endpoints — `/health/live` (liveness probe), `/health/ready` (readiness with custom checks), `/health/detail` (opt-in full diagnostics). Existing `/health` endpoint unchanged.
+- All hardening features disabled by default — zero overhead and identical behavior for existing users.
+
 #### Documentation
 - **README Rewrite**: Complete rewrite with sales pitch, compelling examples, and clear value proposition
 - **LICENSE File**: Added MIT license file to repository root

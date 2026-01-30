@@ -32,6 +32,9 @@ This file contains actionable rules that Claude must follow when working on this
 - HTTP API: `http://localhost:{port}` (default: 8080)
 - LSP WebSocket: `ws://localhost:{port}/lsp`
 - Health check: `GET /health`
+- Liveness probe: `GET /health/live`
+- Readiness probe: `GET /health/ready`
+- Detail diagnostics: `GET /health/detail` (opt-in, auth-gated)
 
 **Port Configuration:**
 The server port is configurable via the `CONSTELLATION_PORT` environment variable.
@@ -61,6 +64,33 @@ CONSTELLATION_SCHEDULER_ENABLED=true CONSTELLATION_SCHEDULER_MAX_CONCURRENCY=8 s
 ```
 
 For more details, see `docs/dev/global-scheduler.md`.
+
+**HTTP Hardening Configuration (all opt-in, disabled by default):**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONSTELLATION_API_KEYS` | (none) | Comma-separated `key:Role` pairs, e.g. `key1:Admin,key2:Execute` |
+| `CONSTELLATION_CORS_ORIGINS` | (none) | Comma-separated origin URLs, e.g. `https://app.example.com`. Use `*` for wildcard. |
+| `CONSTELLATION_RATE_LIMIT_RPM` | `100` | Requests per minute per client IP (only active when rate limiting enabled via builder) |
+| `CONSTELLATION_RATE_LIMIT_BURST` | `20` | Burst size for rate limiter token bucket |
+
+Example (fully hardened server):
+```scala
+ConstellationServer.builder(constellation, compiler)
+  .withAuth(AuthConfig(apiKeys = Map("key1" -> ApiRole.Admin)))
+  .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
+  .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
+  .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
+  .run
+```
+
+| Role | Permissions |
+|------|------------|
+| `Admin` | All HTTP methods |
+| `Execute` | GET + POST only |
+| `ReadOnly` | GET only |
+
+Public paths exempt from auth and rate limiting: `/health`, `/health/live`, `/health/ready`, `/metrics`.
 
 ## Code Conventions
 
@@ -156,6 +186,10 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | StdLib | `modules/lang-stdlib/.../StdLib.scala` |
 | ExampleLib | `modules/example-app/.../ExampleLib.scala` |
 | HTTP Server | `modules/http-api/.../ConstellationServer.scala` |
+| Auth Middleware | `modules/http-api/.../AuthMiddleware.scala` |
+| CORS Middleware | `modules/http-api/.../CorsMiddleware.scala` |
+| Rate Limit Middleware | `modules/http-api/.../RateLimitMiddleware.scala` |
+| Health Check Routes | `modules/http-api/.../HealthCheckRoutes.scala` |
 | LSP Server | `modules/lang-lsp/.../ConstellationLanguageServer.scala` |
 | Dashboard TS sources | `dashboard/src/` |
 | Dashboard types | `dashboard/src/types.d.ts` |

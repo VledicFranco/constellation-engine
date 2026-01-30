@@ -1,0 +1,155 @@
+package io.constellation.http
+
+import cats.data.{Kleisli, OptionT}
+import cats.effect.{IO, Ref}
+import cats.implicits.*
+import io.circe.syntax.*
+import org.http4s.{HttpRoutes, Request, Response, Status}
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.headers.`Retry-After`
+import io.constellation.execution.{RateLimit, TokenBucketRateLimiter}
+import io.constellation.http.ApiModels.ErrorResponse
+
+import scala.concurrent.duration.*
+
+/** Configuration for per-IP HTTP rate limiting.
+  *
+  * Presence as `Some(...)` in `Config` means enabled (opt-in via `.withRateLimit()`).
+  *
+  * Environment variables:
+  *   - `CONSTELLATION_RATE_LIMIT_RPM`   — requests per minute (default 100)
+  *   - `CONSTELLATION_RATE_LIMIT_BURST` — burst size (default 20)
+  *
+  * @param requestsPerMinute
+  *   Sustained request rate per client IP
+  * @param burst
+  *   Maximum burst size (token bucket capacity)
+  * @param exemptPaths
+  *   Path prefixes that bypass rate limiting
+  */
+case class RateLimitConfig(
+    requestsPerMinute: Int = 100,
+    burst: Int = 20,
+    exemptPaths: Set[String] = Set("/health", "/health/live", "/health/ready", "/metrics")
+) {
+
+  /** Validate the configuration. */
+  def validate: Either[String, RateLimitConfig] =
+    if requestsPerMinute <= 0 then Left(s"requestsPerMinute must be positive, got: $requestsPerMinute")
+    else if burst <= 0 then Left(s"burst must be positive, got: $burst")
+    else Right(this)
+}
+
+object RateLimitConfig {
+
+  /** Create configuration from environment variables. */
+  def fromEnv: RateLimitConfig = {
+    val rpm = sys.env.get("CONSTELLATION_RATE_LIMIT_RPM")
+      .flatMap(_.toIntOption)
+      .getOrElse(100)
+
+    val burst = sys.env.get("CONSTELLATION_RATE_LIMIT_BURST")
+      .flatMap(_.toIntOption)
+      .getOrElse(20)
+
+    RateLimitConfig(requestsPerMinute = rpm, burst = burst)
+  }
+
+  /** Default configuration. */
+  val default: RateLimitConfig = RateLimitConfig()
+}
+
+/** Per-IP token-bucket rate limiter for HTTP routes.
+  *
+  * Uses `tryAcquire` (non-blocking). When a client exceeds the limit a 429
+  * response is returned immediately with a `Retry-After` header.
+  */
+object RateLimitMiddleware {
+
+  /** Wrap routes with per-IP rate limiting.
+    *
+    * Returns `IO` because the shared per-IP bucket map requires a `Ref` allocation.
+    *
+    * @param config
+    *   Rate limit parameters
+    * @param routes
+    *   The routes to protect
+    * @return
+    *   Rate-limited routes (effectful due to Ref creation)
+    */
+  def apply(config: RateLimitConfig)(routes: HttpRoutes[IO]): IO[HttpRoutes[IO]] =
+    for {
+      buckets <- Ref.of[IO, Map[String, TokenBucketRateLimiter]](Map.empty)
+    } yield withBuckets(config, buckets)(routes)
+
+  /** Wrap routes using a pre-created bucket Ref.
+    *
+    * This is a pure function — no IO allocation. Useful when the Ref is created
+    * during server setup (e.g. inside `Resource.eval`) and reused in a pure callback.
+    */
+  def withBuckets(
+      config: RateLimitConfig,
+      buckets: Ref[IO, Map[String, TokenBucketRateLimiter]]
+  )(routes: HttpRoutes[IO]): HttpRoutes[IO] = {
+    val rate = RateLimit.perMinute(config.requestsPerMinute)
+
+    Kleisli { (req: Request[IO]) =>
+      val path = req.uri.path.renderString
+
+      // Check exempt paths (prefix match)
+      val exempt = config.exemptPaths.exists(p => path == p || path.startsWith(p + "/"))
+
+      if exempt then routes(req)
+      else {
+        val ip = extractClientIp(req)
+        OptionT.liftF(getOrCreateBucket(buckets, ip, rate, config.burst)).flatMap { limiter =>
+          OptionT.liftF(limiter.tryAcquire).flatMap { acquired =>
+            if acquired then routes(req)
+            else {
+              val retryAfterSeconds = 60L / config.requestsPerMinute.toLong
+              val response = Response[IO](Status.TooManyRequests)
+                .putHeaders(`Retry-After`.unsafeFromLong(retryAfterSeconds.max(1L)))
+                .withEntity(ErrorResponse(
+                  error = "RateLimitExceeded",
+                  message = "Too many requests, please try again later"
+                ))
+              OptionT.some[IO](response)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /** Extract client IP from X-Forwarded-For header or remote address. */
+  private[http] def extractClientIp(req: Request[IO]): String =
+    req.headers.get[org.http4s.headers.`X-Forwarded-For`]
+      .flatMap(_.values.head)
+      .map(_.toInetAddress.getHostAddress)
+      .orElse(req.remoteAddr.map(_.toInetAddress.getHostAddress))
+      .getOrElse("unknown")
+
+  /** Get an existing bucket for the IP or create a new one. */
+  private def getOrCreateBucket(
+      ref: Ref[IO, Map[String, TokenBucketRateLimiter]],
+      ip: String,
+      rate: RateLimit,
+      burst: Int
+  ): IO[TokenBucketRateLimiter] = {
+    ref.get.flatMap { buckets =>
+      buckets.get(ip) match {
+        case Some(limiter) => IO.pure(limiter)
+        case None =>
+          TokenBucketRateLimiter.withInitialTokens(rate, burst.toDouble).flatMap { limiter =>
+            ref.modify { current =>
+              // Double-check after creation to avoid race
+              current.get(ip) match {
+                case Some(existing) => (current, existing)
+                case None           => (current + (ip -> limiter), limiter)
+              }
+            }
+          }
+      }
+    }
+  }
+}

@@ -1,12 +1,13 @@
 package io.constellation.http
 
-import cats.effect.{IO, Resource}
+import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
 import com.comcast.ip4s.*
+import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import io.constellation.Constellation
-import io.constellation.execution.GlobalScheduler
+import io.constellation.execution.{GlobalScheduler, TokenBucketRateLimiter}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
 import org.typelevel.log4cats.Logger
@@ -30,12 +31,22 @@ import scala.concurrent.duration._
   * val constellation = ConstellationImpl.create.unsafeRunSync()
   * val compiler = LangCompiler.empty
   *
+  * // Minimal (no hardening — same as before):
   * ConstellationServer
   *   .builder(constellation, compiler)
   *   .withPort(8080)
   *   .build
   *   .use(_ => IO.never)
   *   .unsafeRunSync()
+  *
+  * // Fully hardened:
+  * ConstellationServer
+  *   .builder(constellation, compiler)
+  *   .withAuth(AuthConfig(apiKeys = Map("key1" -> ApiRole.Admin)))
+  *   .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
+  *   .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
+  *   .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
+  *   .run
   * }}}
   */
 object ConstellationServer {
@@ -99,7 +110,11 @@ object ConstellationServer {
   case class Config(
       host: String = "0.0.0.0",
       port: Int = DefaultPort,
-      dashboardConfig: Option[DashboardConfig] = None
+      dashboardConfig: Option[DashboardConfig] = None,
+      authConfig: Option[AuthConfig] = None,
+      corsConfig: Option[CorsConfig] = None,
+      rateLimitConfig: Option[RateLimitConfig] = None,
+      healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default
   )
 
   /** Builder for creating a Constellation HTTP server */
@@ -136,9 +151,30 @@ object ConstellationServer {
     def withDashboard(cstDirectory: Path): ServerBuilder =
       withDashboard(DashboardConfig.fromEnv.copy(cstDirectory = Some(cstDirectory)))
 
+    /** Enable API key authentication */
+    def withAuth(authConfig: AuthConfig): ServerBuilder =
+      new ServerBuilder(constellation, compiler, functionRegistry,
+        config.copy(authConfig = Some(authConfig)))
+
+    /** Enable CORS */
+    def withCors(corsConfig: CorsConfig): ServerBuilder =
+      new ServerBuilder(constellation, compiler, functionRegistry,
+        config.copy(corsConfig = Some(corsConfig)))
+
+    /** Enable rate limiting */
+    def withRateLimit(rateLimitConfig: RateLimitConfig): ServerBuilder =
+      new ServerBuilder(constellation, compiler, functionRegistry,
+        config.copy(rateLimitConfig = Some(rateLimitConfig)))
+
+    /** Configure health check endpoints */
+    def withHealthChecks(healthCheckConfig: HealthCheckConfig): ServerBuilder =
+      new ServerBuilder(constellation, compiler, functionRegistry,
+        config.copy(healthCheckConfig = healthCheckConfig))
+
     /** Build the HTTP server resource */
     def build: Resource[IO, Server] = {
       val httpRoutes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
+      val healthRoutes = HealthCheckRoutes.routes(config.healthCheckConfig, compiler = Some(compiler))
       val lspHandler = LspWebSocketHandler(constellation, compiler)
 
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
@@ -152,23 +188,52 @@ object ConstellationServer {
           IO.pure(None)
       }
 
-      Resource.eval(dashboardRoutesIO).flatMap { dashboardRoutesOpt =>
-        EmberServerBuilder
+      // Pre-allocate rate limiter bucket map (effectful) so middleware can be applied purely
+      val rateLimitBucketsIO: IO[Option[(RateLimitConfig, Ref[IO, Map[String, TokenBucketRateLimiter]])]] =
+        config.rateLimitConfig match {
+          case Some(rlConfig) =>
+            Ref.of[IO, Map[String, TokenBucketRateLimiter]](Map.empty).map(ref => Some((rlConfig, ref)))
+          case None =>
+            IO.pure(None)
+        }
+
+      for {
+        dashboardRoutesOpt <- Resource.eval(dashboardRoutesIO)
+        rateLimitState     <- Resource.eval(rateLimitBucketsIO)
+        server <- EmberServerBuilder
           .default[IO]
           .withHost(host)
           .withPort(port)
           .withIdleTimeout(scala.concurrent.duration.Duration.Inf) // Disable WebSocket idle timeout
           .withHttpWebSocketApp { wsb =>
-            // Combine HTTP routes, optional dashboard routes, and WebSocket routes
-            val baseRoutes = httpRoutes <+> lspHandler.routes(wsb)
-            val allRoutes = dashboardRoutesOpt match {
-              case Some(dashboardRoutes) => dashboardRoutes.routes <+> baseRoutes
-              case None                  => baseRoutes
+            // Combine core routes + health routes + optional dashboard routes + WebSocket routes
+            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
+            val withDashboard = dashboardRoutesOpt match {
+              case Some(dashboardRoutes) => dashboardRoutes.routes <+> coreRoutes
+              case None                  => coreRoutes
             }
-            allRoutes.orNotFound
+
+            // Apply middleware layers (inner to outer): Auth → Rate Limit → CORS
+            // When all disabled (default), routes pass through with zero wrapping.
+            val withAuth = config.authConfig match {
+              case Some(ac) if ac.isEnabled => AuthMiddleware(ac)(withDashboard)
+              case _                        => withDashboard
+            }
+
+            val withRateLimit = rateLimitState match {
+              case Some((rlConfig, buckets)) => RateLimitMiddleware.withBuckets(rlConfig, buckets)(withAuth)
+              case None                      => withAuth
+            }
+
+            val withCors = config.corsConfig match {
+              case Some(cc) if cc.isEnabled => CorsMiddleware(cc)(withRateLimit)
+              case _                        => withRateLimit
+            }
+
+            withCors.orNotFound
           }
           .build
-      }
+      } yield server
     }
 
     /** Run the server and return when it completes */

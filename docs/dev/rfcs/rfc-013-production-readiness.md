@@ -476,11 +476,11 @@ GET /health/detail  → Component-level diagnostics with metrics
 Readiness probe uses `ConstellationLifecycle.state` from Phase 2.4.
 
 **Acceptance criteria for Phase 3:**
-- [ ] Auth middleware rejects unauthenticated requests when enabled
-- [ ] CORS headers present when configured
-- [ ] Rate limiting returns 429 when exceeded
-- [ ] Health endpoints distinguish liveness, readiness, and detail
-- [ ] All features disabled by default (zero behavior change for existing users)
+- [x] Auth middleware rejects unauthenticated requests when enabled
+- [x] CORS headers present when configured
+- [x] Rate limiting returns 429 when exceeded
+- [x] Health endpoints distinguish liveness, readiness, and detail
+- [x] All features disabled by default (zero behavior change for existing users)
 
 ---
 
