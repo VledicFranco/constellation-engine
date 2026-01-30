@@ -61,16 +61,50 @@ make dev       # Start development server
 
 ## Documentation
 
+### Getting Started
+
 | Document | Description |
 |----------|-------------|
-| [Getting Started Tutorial](getting-started.md) | Step-by-step tutorial for new users (2 hours) |
+| [Getting Started Tutorial](getting-started.md) | Step-by-step tutorial for new users |
+| [Embedding Guide](embedding-guide.md) | Embed Constellation in your JVM application |
 | [Pipeline Examples](examples/README.md) | Real-world pipeline examples with explanations |
+
+### Language & API
+
+| Document | Description |
+|----------|-------------|
 | [constellation-lang Guide](constellation-lang/README.md) | Complete language reference for the DSL |
 | [Standard Library](stdlib.md) | Built-in functions for common operations |
-| [Architecture](architecture.md) | Technical architecture and design decisions |
 | [API Guide](api-guide.md) | Programmatic API usage and module creation |
+| [Error Reference](error-reference.md) | Structured error catalog with codes and resolutions |
+
+### Architecture & Security
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](architecture.md) | Technical architecture and design decisions |
+| [Security Model](security.md) | Trust boundaries, sandboxing, and HTTP hardening |
+| [Performance Tuning](performance-tuning.md) | Scheduler, circuit breakers, caching, JVM tuning |
+
+### Tooling
+
+| Document | Description |
+|----------|-------------|
+| [Dashboard & Tooling](tooling.md) | Web dashboard, VSCode extension, Playwright dev loop |
 | [LSP Integration](LSP_INTEGRATION.md) | Language Server Protocol setup and features |
 | [Troubleshooting](troubleshooting.md) | Common issues and solutions |
+
+### SPI Integration Guides
+
+Plug in your own metrics, tracing, event publishing, caching, and storage:
+
+| Document | Description |
+|----------|-------------|
+| [MetricsProvider](integrations/spi/metrics-provider.md) | Prometheus, Datadog integration |
+| [TracerProvider](integrations/spi/tracer-provider.md) | OpenTelemetry, Jaeger integration |
+| [ExecutionListener](integrations/spi/execution-listener.md) | Kafka events, database audit logs |
+| [CacheBackend](integrations/spi/cache-backend.md) | Redis, Caffeine integration |
+| [ExecutionStorage](integrations/spi/execution-storage.md) | PostgreSQL, SQLite storage |
 
 ### HTTP API
 
@@ -78,6 +112,12 @@ make dev       # Start development server
 |----------|-------------|
 | [OpenAPI Specification](api/openapi.yaml) | REST API specification (OpenAPI 3.0) |
 | [LSP WebSocket Protocol](api/lsp-websocket.md) | WebSocket protocol for IDE integration |
+
+### Migration
+
+| Document | Description |
+|----------|-------------|
+| [v0.3.0 Migration Guide](migration/v0.3.0.md) | Upgrading from v0.2.x to v0.3.0 |
 
 ### Development
 

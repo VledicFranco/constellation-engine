@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Documentation (RFC-013 Phase 6)
+- **Embedding Guide** (`docs/embedding-guide.md`): End-to-end guide for embedding Constellation in a JVM application — dependencies, minimal setup, complete runnable example, custom modules, production configuration (scheduler, backends, lifecycle, circuit breakers), and optional HTTP server.
+- **Security Model** (`docs/security.md`): Trust model documentation covering constellation-lang sandboxing, module permissions, HTTP hardening (auth, CORS, rate limiting), input validation, error information disclosure, dependency audit, and production recommendations.
+- **Error Reference** (`docs/error-reference.md`): Structured catalog of all error types — type errors (TYPE_MISMATCH, TYPE_CONVERSION), compiler errors (NODE_NOT_FOUND, UNDEFINED_VARIABLE, CYCLE_DETECTED, UNSUPPORTED_OPERATION), runtime errors (MODULE_NOT_FOUND, MODULE_EXECUTION, INPUT_VALIDATION, DATA_NOT_FOUND, RUNTIME_NOT_INITIALIZED, VALIDATION_ERROR), execution lifecycle errors (CircuitOpenException, QueueFullException, ShutdownRejectedException), and HTTP error responses (401, 403, 429, 503).
+- **Performance Tuning Guide** (`docs/performance-tuning.md`): Production tuning guide covering scheduler configuration (bounded vs unbounded, maxConcurrency sizing, starvation timeout), timeout strategy, circuit breaker tuning, cache configuration, object pool tuning, JVM settings (G1GC/ZGC, heap sizing), monitoring instrumentation points, and diagnostic checklist.
+- **SPI Integration Guides** (`docs/integrations/spi/`): Five integration guides with trait API documentation and example implementations:
+  - MetricsProvider — Prometheus/Micrometer and Datadog StatsD examples
+  - TracerProvider — OpenTelemetry/otel4s and Jaeger examples
+  - ExecutionListener — Kafka event publishing and Doobie database audit examples
+  - CacheBackend — Redis/redis4cats and Caffeine examples
+  - ExecutionStorage — PostgreSQL/Doobie and SQLite examples
+- **Dashboard & Tooling Guide** (`docs/tooling.md`): Documentation for the web dashboard (file browser, script editor, DAG visualization, execution history), VSCode extension (features, shortcuts, configuration), Playwright dev loop, and E2E testing.
+- **Migration Guide** (`docs/migration/v0.3.0.md`): v0.2.x to v0.3.0 migration guide covering non-breaking changes, API additions (ConstellationBackends, ConstellationBuilder, CancellableExecution, CircuitBreaker, ConstellationLifecycle, GlobalScheduler, ServerBuilder methods), opt-in steps, new environment variables, and deployment artifacts.
+- **OpenAPI Spec Update** (`docs/api/openapi.yaml`): Added `/health/live`, `/health/ready`, `/health/detail` endpoints; `bearerAuth` security scheme; `HealthLiveResponse`, `HealthReadyResponse`, `HealthDetailResponse` schemas; 401/403 error responses on applicable endpoints.
+- **Architecture Update** (`docs/architecture.md`): Added Backend SPI Layer section with ConstellationBackends diagram, Execution Lifecycle section (cancellation, lifecycle state machine, circuit breaker, bounded scheduler), and HTTP Hardening section (middleware stack order).
+- **LLM Guide Update** (`llm.md`): Added `spi/` and `execution/` directory listings to Module Structure, `http-api` middleware file listings, ConstellationBackends to Key Concepts as section 5.
+- **Core Features Update** (`docs/dev/core-features.md`): Added Lifecycle Management section (graceful shutdown, cancellable execution, circuit breakers, bounded scheduler) and SPI Hook Points section.
+- **Docs README Update** (`docs/README.md`): Reorganized documentation table with new sections for Getting Started, Architecture & Security, Tooling, SPI Integration Guides, and Migration.
+
 #### Deployment Examples (RFC-013 Phase 4)
 - **Fat JAR**: sbt-assembly integration for `exampleApp` module. Build with `make assembly`.
 - **Dockerfile**: Multi-stage build (JDK 17 builder, JRE 17 runtime). Non-root user, built-in HEALTHCHECK on `/health/live`.

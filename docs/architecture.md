@@ -321,6 +321,106 @@ Module.Status {
 }
 ```
 
+## Backend SPI Layer
+
+Constellation Engine provides a Service Provider Interface (SPI) for plugging in external infrastructure. All backends are configured through `ConstellationBackends`:
+
+```scala
+final case class ConstellationBackends(
+  metrics:         MetricsProvider    = MetricsProvider.noop,
+  tracer:          TracerProvider     = TracerProvider.noop,
+  listener:        ExecutionListener  = ExecutionListener.noop,
+  cache:           Option[CacheBackend] = None,
+  circuitBreakers: Option[CircuitBreakerRegistry] = None
+)
+```
+
+### SPI Traits
+
+```
+ConstellationBackends
+  ├── MetricsProvider    — counter(), histogram(), gauge()
+  ├── TracerProvider     — span[A](name, attrs)(body: IO[A])
+  ├── ExecutionListener  — onExecutionStart/Complete, onModuleStart/Complete/Failed
+  ├── CacheBackend       — get/set/delete with TTL and stats
+  └── CircuitBreakerRegistry — per-module circuit breakers
+```
+
+All default to no-op implementations with zero overhead. See the [SPI Integration Guides](integrations/spi/) for implementation examples.
+
+### Wiring
+
+```scala
+val backends = ConstellationBackends(
+  metrics  = myPrometheusMetrics,
+  tracer   = myOtelTracer,
+  listener = myKafkaListener,
+  cache    = Some(myRedisCache)
+)
+
+val constellation = ConstellationImpl.builder()
+  .withBackends(backends)
+  .build()
+```
+
+## Execution Lifecycle
+
+### Cancellable Execution
+
+Pipelines can be cancelled mid-execution via `CancellableExecution`:
+
+```scala
+val execution = constellation.runDagCancellable("pipeline", inputs)
+execution.flatMap(_.cancel)  // Cancel running pipeline
+```
+
+### Lifecycle State Machine
+
+`ConstellationLifecycle` manages graceful shutdown:
+
+```
+Running ──(shutdown called)──> Draining ──(all executions complete or timeout)──> Stopped
+```
+
+- **Running:** Accepts new executions
+- **Draining:** Rejects new executions, waits for in-flight to complete
+- **Stopped:** All executions finished
+
+### Circuit Breaker
+
+Per-module circuit breakers prevent cascading failures:
+
+```
+Closed ──(threshold failures)──> Open ──(resetDuration)──> HalfOpen
+  ▲                                                          │
+  └──────────────(probe success)─────────────────────────────┘
+```
+
+### Bounded Scheduler
+
+`GlobalScheduler.bounded()` provides priority-based task scheduling with configurable concurrency limits and starvation prevention.
+
+## HTTP Hardening
+
+The HTTP server supports opt-in security middleware:
+
+```
+Client Request
+  → CORS Middleware      (cross-origin handling)
+    → Rate Limit         (per-IP token bucket)
+      → Auth Middleware  (API key + role validation)
+        → Routes
+```
+
+| Feature | Config | Default |
+|---------|--------|---------|
+| Authentication | `AuthConfig` | Disabled |
+| CORS | `CorsConfig` | Disabled |
+| Rate Limiting | `RateLimitConfig` | Disabled |
+| Health Checks | `HealthCheckConfig` | Basic only |
+
+All features are opt-in via `ConstellationServer.builder()` methods. When not configured, they add zero overhead.
+
 ## Extension Points
 
 ### Adding New Functions

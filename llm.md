@@ -22,13 +22,30 @@ This document provides comprehensive context for AI code assistants working with
 constellation-engine/
 ├── modules/
 │   ├── core/              # Type system, foundational types (no dependencies)
-│   ├── runtime/           # Execution engine, ModuleBuilder, registries
+│   ├── runtime/           # Execution engine, ModuleBuilder, registries, SPI
+│   │   ├── spi/           # Service Provider Interface traits
+│   │   │   ├── ConstellationBackends.scala   # Backend bundle (metrics, tracer, listener, cache)
+│   │   │   ├── MetricsProvider.scala         # counter/histogram/gauge
+│   │   │   ├── TracerProvider.scala          # span[A] distributed tracing
+│   │   │   └── ExecutionListener.scala       # Execution lifecycle callbacks
+│   │   ├── execution/     # Execution lifecycle
+│   │   │   ├── GlobalScheduler.scala         # Bounded/unbounded task scheduling
+│   │   │   ├── CircuitBreaker.scala          # Per-module circuit breaker
+│   │   │   ├── ConstellationLifecycle.scala  # Graceful shutdown
+│   │   │   └── CancellableExecution.scala    # Cancellable pipeline execution
+│   │   └── cache/
+│   │       └── CacheBackend.scala            # Pluggable cache SPI
 │   ├── lang-ast/          # AST definitions for constellation-lang
 │   ├── lang-parser/       # Parser for constellation-lang (uses cats-parse)
 │   ├── lang-compiler/     # Semantic analysis, type checking, DAG compilation
 │   ├── lang-stdlib/       # Standard library modules and examples
 │   ├── lang-lsp/          # Language Server Protocol implementation
 │   ├── http-api/          # HTTP server with http4s + WebSocket LSP
+│   │   ├── AuthConfig.scala / AuthMiddleware.scala      # API key auth + roles
+│   │   ├── CorsConfig.scala / CorsMiddleware.scala      # CORS handling
+│   │   ├── RateLimitMiddleware.scala                    # Per-IP rate limiting
+│   │   ├── HealthCheckRoutes.scala                      # /health/live, /ready, /detail
+│   │   └── ExecutionStorage.scala                       # Execution history storage SPI
 │   └── example-app/       # Example application (demonstrates library usage)
 ├── docs/                  # Documentation
 ├── vscode-extension/      # VSCode extension for constellation-lang
@@ -199,7 +216,39 @@ out wordCount
 - `outputs: Map[String, ComponentId]` - Output mapping
 - `inputs: Map[String, CType]` - Required inputs with types
 
-### 5. Execution (`runtime` module)
+### 5. Backend SPI (`runtime` module)
+
+**File:** `modules/runtime/src/main/scala/io/constellation/spi/ConstellationBackends.scala`
+
+Bundle of pluggable backend services. All default to no-op:
+
+```scala
+final case class ConstellationBackends(
+  metrics:         MetricsProvider    = MetricsProvider.noop,
+  tracer:          TracerProvider     = TracerProvider.noop,
+  listener:        ExecutionListener  = ExecutionListener.noop,
+  cache:           Option[CacheBackend] = None,
+  circuitBreakers: Option[CircuitBreakerRegistry] = None
+)
+```
+
+**SPI Traits:**
+- `MetricsProvider` — `counter()`, `histogram()`, `gauge()` (fire-and-forget)
+- `TracerProvider` — `span[A](name, attrs)(body: IO[A])` (wraps computations)
+- `ExecutionListener` — 6 lifecycle hooks (start, complete, cancel, module start/complete/fail)
+- `CacheBackend` — `get/set/delete` with TTL, stats, `getOrCompute`
+
+**Wiring via builder:**
+```scala
+val constellation = ConstellationImpl.builder()
+  .withBackends(backends)
+  .withScheduler(scheduler)
+  .withLifecycle(lifecycle)
+  .withDefaultTimeout(60.seconds)
+  .build()
+```
+
+### 6. Execution (`runtime` module)
 
 **File:** `modules/runtime/src/main/scala/io/constellation/Runtime.scala`
 

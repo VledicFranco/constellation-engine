@@ -57,6 +57,9 @@ paths:
         Compiles constellation-lang source code and stores the resulting DAG
         with the specified name. The DAG can then be executed via `/execute`.
       operationId: compile
+      security:
+        - bearerAuth: []
+        - {}
       requestBody:
         required: true
         content:
@@ -398,7 +401,7 @@ paths:
       tags:
         - Health
       summary: Health check
-      description: Returns server health status. Use for readiness/liveness probes.
+      description: Returns server health status. Basic health endpoint for simple checks.
       operationId: healthCheck
       responses:
         '200':
@@ -414,7 +417,128 @@ paths:
               example:
                 status: "ok"
 
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: |
+        Returns 200 if the process is alive. Always succeeds when the server is running.
+        Use for Kubernetes liveness probes.
+      operationId: healthLive
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthLiveResponse'
+              example:
+                status: "alive"
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: |
+        Returns 200 if the system is ready to serve traffic, 503 otherwise.
+        Checks lifecycle state (must be Running) and any custom readiness checks.
+        Use for Kubernetes readiness probes.
+      operationId: healthReady
+      responses:
+        '200':
+          description: System is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReadyResponse'
+              example:
+                ready: true
+        '503':
+          description: System is not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthReadyResponse'
+              example:
+                ready: false
+                reason: "System is draining"
+
+  /health/detail:
+    get:
+      tags:
+        - Health
+      summary: Detailed health diagnostics
+      description: |
+        Returns component-level diagnostics including scheduler stats, lifecycle state,
+        and custom check results. This endpoint is **opt-in** — it must be explicitly
+        enabled via `HealthCheckConfig(enableDetailEndpoint = true)`.
+
+        When `detailRequiresAuth` is true (default), this endpoint requires
+        authentication via Bearer token.
+      operationId: healthDetail
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Detailed health information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDetailResponse'
+              example:
+                status: "healthy"
+                lifecycle: "Running"
+                scheduler:
+                  activeCount: 3
+                  queuedCount: 0
+                  totalSubmitted: 1500
+                  totalCompleted: 1497
+                checks:
+                  compiler: true
+                  scheduler: true
+        '401':
+          description: Missing or invalid authentication
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Unauthorized"
+                message: "Missing or invalid Authorization header"
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Forbidden"
+                message: "Insufficient permissions"
+        '404':
+          description: Detail endpoint not enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "NotFound"
+                message: "Detail endpoint is not enabled"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        API key authentication. Pass the API key as a Bearer token in the
+        Authorization header: `Authorization: Bearer <api-key>`.
+
+        Roles: Admin (all methods), Execute (GET + POST), ReadOnly (GET only).
+
+        Public paths exempt from auth: `/health`, `/health/live`, `/health/ready`, `/metrics`.
+
   schemas:
     CompileRequest:
       type: object
@@ -659,6 +783,65 @@ components:
         returns:
           type: string
           description: Return type
+
+    HealthLiveResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [alive]
+          description: Always "alive" when the process is running
+
+    HealthReadyResponse:
+      type: object
+      required:
+        - ready
+      properties:
+        ready:
+          type: boolean
+          description: Whether the system is ready to serve traffic
+        reason:
+          type: string
+          description: Reason for not being ready (only present when ready=false)
+
+    HealthDetailResponse:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          description: Overall health status
+          enum: [healthy, degraded, unhealthy]
+        lifecycle:
+          type: string
+          description: Current lifecycle state
+          enum: [Running, Draining, Stopped]
+        scheduler:
+          type: object
+          description: Scheduler statistics (present when scheduler is configured)
+          properties:
+            activeCount:
+              type: integer
+              description: Currently running tasks
+            queuedCount:
+              type: integer
+              description: Tasks waiting in queue
+            totalSubmitted:
+              type: integer
+              format: int64
+              description: Lifetime task submissions
+            totalCompleted:
+              type: integer
+              format: int64
+              description: Lifetime task completions
+        checks:
+          type: object
+          additionalProperties:
+            type: boolean
+          description: Results of custom readiness checks
 
     ErrorResponse:
       type: object

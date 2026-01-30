@@ -325,6 +325,96 @@ Runtime tracks module execution status:
 
 ---
 
+## Lifecycle Management
+
+Constellation provides execution lifecycle control for production deployments.
+
+### Graceful Shutdown
+
+`ConstellationLifecycle` manages draining of in-flight executions:
+
+```scala
+import io.constellation.execution.ConstellationLifecycle
+
+for {
+  lifecycle <- ConstellationLifecycle.create
+  constellation <- ConstellationImpl.builder()
+    .withLifecycle(lifecycle)
+    .build()
+  // On shutdown signal:
+  _ <- lifecycle.shutdown(drainTimeout = 30.seconds)
+} yield ()
+```
+
+State machine: `Running` → `Draining` → `Stopped`
+
+### Cancellable Execution
+
+Pipelines can be cancelled mid-execution:
+
+```scala
+val execution = constellation.runDagCancellable("pipeline", inputs)
+execution.flatMap(_.cancel)
+```
+
+Status: `Running` | `Completed` | `Cancelled` | `TimedOut` | `Failed`
+
+### Circuit Breakers
+
+Per-module circuit breakers prevent cascading failures:
+
+```scala
+CircuitBreakerConfig(
+  failureThreshold  = 5,
+  resetDuration     = 30.seconds,
+  halfOpenMaxProbes = 1
+)
+```
+
+State machine: `Closed` → `Open` → `HalfOpen` → `Closed`
+
+### Bounded Scheduler
+
+Priority-based task scheduling with configurable concurrency:
+
+```scala
+GlobalScheduler.bounded(
+  maxConcurrency    = 16,
+  maxQueueSize      = 1000,
+  starvationTimeout = 30.seconds
+)
+```
+
+Priority levels: Critical (100), High (80), Normal (50), Low (20), Background (0).
+
+---
+
+## SPI Hook Points
+
+The Service Provider Interface allows plugging in external infrastructure:
+
+| Trait | Hook Points | Purpose |
+|-------|-------------|---------|
+| `MetricsProvider` | counter, histogram, gauge | Emit runtime metrics |
+| `TracerProvider` | span wrapping | Distributed tracing |
+| `ExecutionListener` | 6 lifecycle callbacks | Event publishing, audit |
+| `CacheBackend` | get/set/delete | Compilation and result caching |
+
+All configured via `ConstellationBackends`:
+
+```scala
+val backends = ConstellationBackends(
+  metrics  = myPrometheus,
+  tracer   = myOtel,
+  listener = myKafka,
+  cache    = Some(myRedis)
+)
+```
+
+Default: all no-op (zero overhead). See [SPI Integration Guides](../integrations/spi/) for implementations.
+
+---
+
 ## Extension Points
 
 ### Adding Functions
