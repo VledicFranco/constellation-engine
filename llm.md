@@ -416,6 +416,9 @@ io.constellation
 | Standard library | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/StdLib.scala` |
 | HTTP server | `modules/http-api/src/main/scala/io/constellation/http/ConstellationServer.scala` |
 | Example app | `modules/example-app/src/main/scala/io/constellation/examples/app/TextProcessingApp.scala` |
+| Dockerfile | `Dockerfile` |
+| Docker Compose | `docker-compose.yml` |
+| K8s manifests | `deploy/k8s/` |
 
 ## Development Workflows
 
@@ -447,6 +450,9 @@ make ext-watch
 | `make all` | Compile everything (Scala + TypeScript) |
 | `make clean` | Clean all build artifacts |
 | `make install` | Install all dependencies |
+| `make assembly` | Build fat JAR via sbt-assembly |
+| `make docker-build` | Build Docker image |
+| `make docker-run` | Run Docker container on port 8080 |
 
 **Module-specific tests:**
 ```bash
@@ -520,6 +526,35 @@ make dev                       # Development mode with hot reload
 sbt runtime/test               # Test specific module not covered by make
 sbt ~compile                   # Continuous compilation (watch mode)
 ```
+
+### Deployment
+
+Constellation provides reference deployment artifacts for the example HTTP server. These are examples — the core product is the embeddable library.
+
+**Fat JAR:**
+```bash
+make assembly
+java -jar modules/example-app/target/scala-3.3.1/constellation-*.jar
+```
+
+**Docker:**
+```bash
+make docker-build
+make docker-run                # http://localhost:8080
+docker compose up              # Or via docker compose
+```
+
+**Kubernetes:**
+```bash
+kubectl apply -f deploy/k8s/   # namespace, deployment, service, configmap
+```
+
+**Key files:**
+- `Dockerfile` — multi-stage build (JDK 17 builder, JRE 17 runtime, non-root user)
+- `docker-compose.yml` — dev stack with health checks and env var passthrough
+- `deploy/k8s/` — namespace, deployment (probes + resource limits), service, configmap
+
+All configuration is via environment variables (`CONSTELLATION_*`). See the CLAUDE.md HTTP Hardening section for the full list.
 
 ### Adding a New Module to the Build
 

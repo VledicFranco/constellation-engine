@@ -159,7 +159,17 @@ lazy val exampleApp = (project in file("modules/example-app"))
     coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
-    ) ++ loggingDeps
+    ) ++ loggingDeps,
+    // Fat JAR packaging via sbt-assembly
+    assembly / mainClass := Some("io.constellation.examples.app.server.ExampleServer"),
+    assembly / assemblyJarName := s"constellation-${version.value}.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", _*) => MergeStrategy.concat
+      case PathList("META-INF", _*)             => MergeStrategy.discard
+      case "reference.conf"                     => MergeStrategy.concat
+      case "logback.xml"                        => MergeStrategy.first
+      case _                                    => MergeStrategy.first
+    }
   )
 
 // Root project aggregates all modules

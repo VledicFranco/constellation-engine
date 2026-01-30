@@ -100,6 +100,21 @@ sbt compile
 sbt test
 ```
 
+### Alternative: Run with Docker
+
+If you have Docker installed, you can skip the JDK/SBT prerequisites and run the server directly:
+
+```bash
+# Build and start the server
+make docker-build
+make docker-run
+
+# Or using docker compose
+docker compose up
+```
+
+The server will be available at `http://localhost:8080`. All configuration is via environment variables (see `docker-compose.yml` for defaults).
+
 ### Install VSCode Extension
 
 1. Open VSCode

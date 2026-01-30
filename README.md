@@ -360,6 +360,38 @@ make server  # Starts on http://localhost:8080
 
 ---
 
+## Deployment
+
+Constellation is an embeddable library — you integrate it into your own application. The artifacts below are **reference examples** using the included `ExampleServer`.
+
+### Fat JAR
+
+```bash
+make assembly
+java -jar modules/example-app/target/scala-3.3.1/constellation-*.jar
+```
+
+### Docker
+
+```bash
+# Build and run
+make docker-build
+make docker-run    # http://localhost:8080
+
+# Or with docker compose
+docker compose up
+```
+
+### Kubernetes
+
+```bash
+kubectl apply -f deploy/k8s/
+```
+
+Manifests include liveness/readiness probes, resource limits, and a ConfigMap for all `CONSTELLATION_*` environment variables. See `deploy/k8s/` for details.
+
+---
+
 ## Documentation
 
 | Resource | Description |

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: constellation
+  labels:
+    app.kubernetes.io/name: constellation-engine
+    app.kubernetes.io/part-of: constellation

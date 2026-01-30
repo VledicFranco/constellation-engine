@@ -18,6 +18,9 @@ This file contains actionable rules that Claude must follow when working on this
 | Build dashboard TypeScript | `make dashboard` |
 | Watch dashboard TypeScript | `make dashboard-watch` |
 | Clean build | `make clean` |
+| Build fat JAR | `make assembly` |
+| Build Docker image | `make docker-build` |
+| Run Docker container | `make docker-run` |
 
 **Windows (if make unavailable):**
 ```powershell
@@ -195,6 +198,10 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | Dashboard types | `dashboard/src/types.d.ts` |
 | Dashboard E2E Tests | `dashboard-tests/` |
 | Dashboard Page Objects | `dashboard-tests/pages/` |
+| Dockerfile | `Dockerfile` |
+| Docker Compose | `docker-compose.yml` |
+| Docker ignore | `.dockerignore` |
+| K8s Manifests | `deploy/k8s/` |
 
 ## Adding New Functions
 

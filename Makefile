@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run
 
 # Default target
 help:
@@ -59,6 +59,11 @@ help:
 	@echo "  make fmt-check      - Check formatting without changing files"
 	@echo "  make lint           - Check for lint issues with scalafix"
 	@echo "  make lint-fix       - Auto-fix lint issues where possible"
+	@echo ""
+	@echo "Deployment:"
+	@echo "  make assembly       - Build fat JAR via sbt-assembly"
+	@echo "  make docker-build   - Build Docker image"
+	@echo "  make docker-run     - Run Docker container on port 8080"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -313,6 +318,26 @@ lint:
 lint-fix:
 	@echo "Fixing lint issues..."
 	sbt scalafixAll
+
+# =============================================================================
+# Deployment
+# =============================================================================
+
+# Build fat JAR via sbt-assembly
+assembly:
+	@echo "Building fat JAR..."
+	sbt "exampleApp/assembly"
+	@echo "JAR created: modules/example-app/target/scala-3.3.1/constellation-*.jar"
+
+# Build Docker image
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t constellation-engine:latest .
+
+# Run Docker container
+docker-run:
+	@echo "Starting Constellation in Docker on http://localhost:8080..."
+	docker run -p 8080:8080 constellation-engine:latest
 
 # =============================================================================
 # Utilities

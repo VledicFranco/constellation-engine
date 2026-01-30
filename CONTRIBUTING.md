@@ -96,6 +96,9 @@ cd vscode-extension && npm run watch
 | `make test` | Run all tests |
 | `make compile` | Compile all modules |
 | `make clean` | Clean build artifacts |
+| `make assembly` | Build fat JAR for deployment |
+| `make docker-build` | Build Docker image |
+| `make docker-run` | Run in Docker container |
 
 ### Hot Reload (Server Auto-Restart)
 

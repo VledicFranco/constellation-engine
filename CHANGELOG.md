@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Deployment Examples (RFC-013 Phase 4)
+- **Fat JAR**: sbt-assembly integration for `exampleApp` module. Build with `make assembly`.
+- **Dockerfile**: Multi-stage build (JDK 17 builder, JRE 17 runtime). Non-root user, built-in HEALTHCHECK on `/health/live`.
+- **Docker Compose**: Dev stack with configurable env vars and health checks. Monitoring section scaffolded for future `/metrics` endpoint.
+- **Kubernetes Manifests**: Namespace, Deployment (liveness/readiness probes, resource limits, security context), Service (ClusterIP), and ConfigMap in `deploy/k8s/`.
+- **Makefile Targets**: `make assembly`, `make docker-build`, `make docker-run`.
+
 #### HTTP API Hardening (RFC-013 Phase 3)
 - **API Authentication**: Static API key authentication with role-based access control (Admin, Execute, ReadOnly). Opt-in via `.withAuth(AuthConfig(...))`. Supports `Authorization: Bearer <key>` header. Public paths (`/health`, `/metrics`) bypass auth.
 - **CORS Middleware**: Configurable cross-origin request support via `.withCors(CorsConfig(...))`. Delegates to http4s built-in CORS. Supports wildcard and specific origin lists.

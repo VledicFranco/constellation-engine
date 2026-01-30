@@ -1,0 +1,12 @@
+target/
+.git/
+.bloop/
+.metals/
+.idea/
+.vscode/
+vscode-extension/
+dashboard-tests/
+agents/
+node_modules/
+*.md
+!README.md

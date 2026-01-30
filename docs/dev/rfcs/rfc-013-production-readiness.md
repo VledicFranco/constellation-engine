@@ -509,10 +509,10 @@ Development stack with optional Prometheus + Grafana for monitoring the example 
 Reference deployment with liveness/readiness probes, resource limits, ConfigMap. Located in `deploy/k8s/`.
 
 **Acceptance criteria for Phase 4:**
-- [ ] `sbt "exampleApp/assembly"` produces runnable JAR
-- [ ] `docker build` + `docker run` works
-- [ ] `docker compose up` starts example server with optional monitoring
-- [ ] K8s manifests deploy a working instance with probes
+- [x] `sbt "exampleApp/assembly"` produces runnable JAR — sbt-assembly plugin added to `project/plugins.sbt`, assembly settings in `build.sbt`
+- [x] `docker build` + `docker run` works — multi-stage `Dockerfile` (JDK 17 builder → JRE 17 runtime, non-root user, HEALTHCHECK)
+- [x] `docker compose up` starts example server with optional monitoring — `docker-compose.yml` with health checks, env var passthrough, scaffolded monitoring section
+- [x] K8s manifests deploy a working instance with probes — `deploy/k8s/` with namespace, deployment (liveness/readiness probes, resource limits, security context), service, configmap
 
 ---
 
