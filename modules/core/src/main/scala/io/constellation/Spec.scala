@@ -5,6 +5,20 @@ import io.circe.Json
 import java.util.UUID
 import scala.concurrent.duration.FiniteDuration
 
+/** Specification for a directed acyclic graph (DAG) pipeline.
+  *
+  * A DAG consists of module nodes (processing steps) and data nodes (values flowing between modules),
+  * connected by directed edges. The compiler produces a `DagSpec` from constellation-lang source code,
+  * and the runtime executes it by traversing the graph in topological order.
+  *
+  * @param metadata Component metadata (name, description, version, tags)
+  * @param modules Module nodes keyed by UUID
+  * @param data Data nodes keyed by UUID
+  * @param inEdges Edges from data nodes to module nodes (module inputs)
+  * @param outEdges Edges from module nodes to data nodes (module outputs)
+  * @param declaredOutputs Explicitly declared output variable names (from `out` statements)
+  * @param outputBindings Mapping from output name to the data node UUID that produces it
+  */
 case class DagSpec(
     metadata: ComponentMetadata,
     modules: Map[UUID, ModuleNodeSpec],
@@ -79,6 +93,17 @@ final case class DataNodeSpec(
     transformInputs: Map[String, UUID] = Map.empty
 )
 
+/** Specification for a module node within a DAG.
+  *
+  * Describes the module's identity, its input/output type signatures, timeout configuration,
+  * and optional definition-time context metadata.
+  *
+  * @param metadata Component metadata (name, description, version, tags)
+  * @param consumes Input parameter types keyed by parameter name
+  * @param produces Output field types keyed by field name
+  * @param config Timeout configuration for inputs and module execution
+  * @param definitionContext Optional JSON metadata from module definition
+  */
 case class ModuleNodeSpec(
     metadata: ComponentMetadata,
     consumes: Map[String, CType] = Map.empty,
@@ -113,6 +138,11 @@ object ModuleNodeSpec {
   )
 }
 
+/** Timeout configuration for module execution.
+  *
+  * @param inputsTimeout Maximum time to wait for all input data nodes to resolve
+  * @param moduleTimeout Maximum time to wait for the module's implementation to complete
+  */
 final case class ModuleConfig(inputsTimeout: FiniteDuration, moduleTimeout: FiniteDuration)
 
 object ModuleConfig {
@@ -124,6 +154,14 @@ object ModuleConfig {
     )
 }
 
+/** Shared metadata for components (modules and DAGs).
+  *
+  * @param name Unique component name (case-sensitive)
+  * @param description Human-readable description
+  * @param tags Classification tags for filtering and discovery
+  * @param majorVersion Major semantic version
+  * @param minorVersion Minor semantic version
+  */
 final case class ComponentMetadata(
     name: String,
     description: String,
@@ -138,11 +176,17 @@ object ComponentMetadata {
     ComponentMetadata(name, "", List.empty, 0, 1)
 }
 
+/** Incremental change operations that can be applied to a [[DagSpec]]. */
 sealed trait DagChange
 
 object DagChange {
 
+  /** Add a new module node to the DAG. */
   final case class AddModule(module: ModuleNodeSpec) extends DagChange
-  final case class RemoveModule(moduleId: UUID)      extends DagChange
+
+  /** Remove a module node by its UUID. */
+  final case class RemoveModule(moduleId: UUID) extends DagChange
+
+  /** Connect a data node (source) to a module node (target). */
   final case class ConnectData(source: UUID, target: UUID)
 }

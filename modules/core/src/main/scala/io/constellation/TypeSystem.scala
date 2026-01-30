@@ -85,6 +85,11 @@ object CType {
   final case class COptional(innerType: CType) extends CType
 }
 
+/** Runtime value representation for Constellation data.
+  *
+  * Every value flowing through a DAG is represented as a `CValue`.
+  * Each variant carries its data and can report its corresponding [[CType]] via `ctype`.
+  */
 sealed trait CValue {
   def ctype: CType
 }
@@ -129,6 +134,13 @@ object CValue {
   }
 }
 
+/** Type class mapping Scala types to their [[CType]] representation at compile time.
+  *
+  * Given instances are provided for primitives (`String`, `Long`, `Double`, `Boolean`),
+  * collections (`List`, `Vector`, `Map`, `Option`), and case classes (via Scala 3 `Mirror`).
+  *
+  * @tparam A The Scala type to map
+  */
 trait CTypeTag[A] {
 
   def cType: CType
@@ -231,6 +243,13 @@ object CTypeTag {
   */
 inline def deriveType[T](using tag: CTypeTag[T]): CType = tag.cType
 
+/** Type class for extracting Scala values from [[CValue]] representations.
+  *
+  * Given instances are provided for primitives, collections, and `Option`.
+  * Extraction is effectful (`IO`) because type mismatches raise errors.
+  *
+  * @tparam A The target Scala type to extract into
+  */
 trait CValueExtractor[A] {
 
   def extract(data: CValue): IO[A]
@@ -299,6 +318,13 @@ object CValueExtractor {
   }
 }
 
+/** Type class for injecting Scala values into [[CValue]] representations.
+  *
+  * Given instances are provided for primitives, collections, and `Option`.
+  * Injection is pure (no side effects).
+  *
+  * @tparam A The source Scala type to inject from
+  */
 trait CValueInjector[A] {
 
   def inject(value: A): CValue

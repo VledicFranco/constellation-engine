@@ -8,6 +8,38 @@ import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsPr
 
 import scala.concurrent.duration.FiniteDuration
 
+/** Default implementation of the [[io.constellation.Constellation]] API.
+  *
+  * Manages module and DAG registries, delegates execution to the [[io.constellation.Runtime]],
+  * and integrates with the SPI backend layer for metrics, tracing, caching, and lifecycle management.
+  *
+  * ==Construction==
+  *
+  * Use the companion object factory methods:
+  * {{{
+  * // Minimal setup
+  * val constellation = ConstellationImpl.init
+  *
+  * // With custom scheduler
+  * val constellation = ConstellationImpl.initWithScheduler(scheduler)
+  *
+  * // Full configuration via builder
+  * val constellation = ConstellationImpl.builder()
+  *   .withScheduler(scheduler)
+  *   .withBackends(backends)
+  *   .withDefaultTimeout(30.seconds)
+  *   .build()
+  * }}}
+  *
+  * @param moduleRegistry Registry for module definitions
+  * @param dagRegistry Registry for DAG specifications
+  * @param scheduler Global scheduler for task ordering and concurrency control
+  * @param backends Pluggable SPI backends (metrics, tracing, listener, cache, circuit breakers)
+  * @param defaultTimeout Optional default timeout applied to all DAG executions
+  * @param lifecycle Optional lifecycle manager for graceful shutdown support
+  *
+  * @see [[io.constellation.impl.ConstellationImpl.ConstellationBuilder]] for the builder API
+  */
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
     dagRegistry: DagRegistry,
@@ -185,21 +217,44 @@ object ConstellationImpl {
       defaultTimeout: Option[FiniteDuration] = None,
       lifecycle: Option[ConstellationLifecycle] = None
   ) {
+    /** Set the global scheduler for task ordering and concurrency control. */
     def withScheduler(s: GlobalScheduler): ConstellationBuilder = copy(scheduler = s)
+
+    /** Replace all SPI backends at once. */
     def withBackends(b: ConstellationBackends): ConstellationBuilder = copy(backends = b)
+
+    /** Set the metrics provider (e.g., Prometheus, Datadog). */
     def withMetrics(m: MetricsProvider): ConstellationBuilder = copy(backends = backends.copy(metrics = m))
+
+    /** Set the distributed tracing provider (e.g., OpenTelemetry, Jaeger). */
     def withTracer(t: TracerProvider): ConstellationBuilder = copy(backends = backends.copy(tracer = t))
+
+    /** Set the execution event listener (e.g., Kafka, database audit log). */
     def withListener(l: ExecutionListener): ConstellationBuilder = copy(backends = backends.copy(listener = l))
+
+    /** Set the cache backend for compiled DAGs and results (e.g., Redis, Caffeine). */
     def withCache(c: CacheBackend): ConstellationBuilder = copy(backends = backends.copy(cache = Some(c)))
+
+    /** Set a default timeout applied to all DAG executions. */
     def withDefaultTimeout(t: FiniteDuration): ConstellationBuilder = copy(defaultTimeout = Some(t))
+
+    /** Set the lifecycle manager for graceful shutdown support. */
     def withLifecycle(lc: ConstellationLifecycle): ConstellationBuilder = copy(lifecycle = Some(lc))
 
+    /** Enable circuit breakers for module execution with the given configuration.
+      *
+      * This is an IO operation because it allocates the circuit breaker registry.
+      */
     import io.constellation.execution.CircuitBreakerConfig
     def withCircuitBreaker(config: CircuitBreakerConfig): IO[ConstellationBuilder] =
       io.constellation.execution.CircuitBreakerRegistry.create(config).map { registry =>
         copy(backends = backends.copy(circuitBreakers = Some(registry)))
       }
 
+    /** Build the configured [[ConstellationImpl]] instance.
+      *
+      * Allocates module and DAG registries and returns a fully configured instance.
+      */
     def build(): IO[ConstellationImpl] =
       for {
         moduleRegistry <- ModuleRegistryImpl.init

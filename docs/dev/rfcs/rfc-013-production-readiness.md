@@ -614,7 +614,7 @@ Scaladoc coverage for the entire public API surface.
 - [x] `CircuitBreaker` — state machine documented
 - [x] `SchedulerConfig` — each parameter documented with valid ranges
 - [x] `Runtime.State`, `ExecutionStatus`, all public ADTs
-- [ ] Ensure `sbt doc` generates clean output with no warnings (deferred to follow-up issue)
+- [x] Ensure `sbt doc` generates clean output with no warnings
 
 ### 6.4 HTTP API Reference
 
@@ -701,7 +701,7 @@ Document the dashboard and VSCode extension for users who opt into the http-api 
 **Acceptance criteria for Phase 6:**
 - [x] An external developer can embed and run Constellation using only the docs (no source reading)
 - [x] Every SPI trait has a working integration example
-- [ ] `sbt doc` produces clean Scaladoc for all public types (deferred to follow-up issue)
+- [x] `sbt doc` produces clean Scaladoc for all public types
 - [x] HTTP API has a machine-readable OpenAPI spec
 - [x] Architecture docs reflect the current state of the system (not stale)
 - [x] Performance tuning guide validated against benchmark results
