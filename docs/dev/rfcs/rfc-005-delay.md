@@ -1,6 +1,6 @@
 # RFC-005: Delay
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** 2 (Retry Configuration)
 **Author:** Agent 1
 **Created:** 2026-01-25

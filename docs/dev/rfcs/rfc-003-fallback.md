@@ -1,6 +1,6 @@
 # RFC-003: Fallback
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** 1 (Core Resilience)
 **Author:** Agent 1
 **Created:** 2026-01-25

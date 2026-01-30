@@ -1,6 +1,6 @@
 # RFC-008: Concurrency
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** 3 (Rate Control)
 **Author:** Agent 1
 **Created:** 2026-01-25

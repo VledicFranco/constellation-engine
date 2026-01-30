@@ -1,6 +1,6 @@
 # RFC-013: Production Readiness Roadmap
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P0 (Product Foundation)
 **Author:** Human + Claude
 **Created:** 2026-01-29
@@ -215,13 +215,13 @@ These traits already exist in the codebase. This phase formalizes them as part o
 - `CacheBackend` — already pluggable. Keep `InMemoryCacheBackend` as default.
 
 **Acceptance criteria for Phase 1:**
-- [ ] `ConstellationBackends` case class accepted by `Constellation.builder()`
-- [ ] All five traits defined with noop defaults
-- [ ] Existing code wired to call `MetricsProvider` at instrumentation points
-- [ ] Existing code wired to call `ExecutionListener` at lifecycle events
-- [ ] `TracerProvider.span()` wraps compilation and module execution
-- [ ] Zero overhead when using noop implementations (verified by benchmark)
-- [ ] Builder API documented with examples in scaladoc
+- [x] `ConstellationBackends` case class accepted by `Constellation.builder()`
+- [x] All five traits defined with noop defaults
+- [x] Existing code wired to call `MetricsProvider` at instrumentation points
+- [x] Existing code wired to call `ExecutionListener` at lifecycle events
+- [x] `TracerProvider.span()` wraps compilation and module execution
+- [x] Zero overhead when using noop implementations (verified by benchmark)
+- [x] Builder API documented with examples in scaladoc
 
 ---
 
@@ -266,10 +266,10 @@ object Runtime {
 - `ExecutionListener.onExecutionComplete` called with `Cancelled` status
 
 **Acceptance criteria:**
-- [ ] `CancellableExecution.cancel` stops all in-flight modules within 1 second
-- [ ] Cancelled execution returns `Cancelled` status with partial results
-- [ ] Resources acquired by cancelled modules are released
-- [ ] `ExecutionListener` and `MetricsProvider` called on cancellation
+- [x] `CancellableExecution.cancel` stops all in-flight modules within 1 second
+- [x] Cancelled execution returns `Cancelled` status with partial results
+- [x] Resources acquired by cancelled modules are released
+- [x] `ExecutionListener` and `MetricsProvider` called on cancellation
 
 ### 2.2 Global DAG Timeout
 
@@ -302,10 +302,10 @@ out result
 - Default timeout configurable in builder (default: 5 minutes)
 
 **Acceptance criteria:**
-- [ ] DAG execution respects global timeout regardless of per-module timeouts
-- [ ] Timed-out execution returns partial results with `TimedOut` status
-- [ ] Default timeout configurable via builder API
-- [ ] Timeout overridable per-execution call
+- [x] DAG execution respects global timeout regardless of per-module timeouts
+- [x] Timed-out execution returns partial results with `TimedOut` status
+- [x] Default timeout configurable via builder API
+- [x] Timeout overridable per-execution call
 
 ### 2.3 Circuit Breaker
 
@@ -334,11 +334,11 @@ trait CircuitBreaker {
 - In-memory only (resets on restart, which is acceptable — avoids hammering on cold start by warming up naturally)
 
 **Acceptance criteria:**
-- [ ] Circuit opens after N consecutive failures (configurable)
-- [ ] Open circuit fails immediately without calling downstream
-- [ ] Half-open state allows single probe after reset duration
-- [ ] Circuit state observable via `MetricsProvider`
-- [ ] Per-module circuit breaker instances shared across executions
+- [x] Circuit opens after N consecutive failures (configurable)
+- [x] Open circuit fails immediately without calling downstream
+- [x] Half-open state allows single probe after reset duration
+- [x] Circuit state observable via `MetricsProvider`
+- [x] Per-module circuit breaker instances shared across executions
 
 ### 2.4 Graceful Shutdown
 
@@ -368,11 +368,11 @@ trait ConstellationLifecycle {
 - Scheduler shutdown called at end
 
 **Acceptance criteria:**
-- [ ] `shutdown()` drains in-flight executions (up to timeout)
-- [ ] New submissions rejected during drain with clear error
-- [ ] Remaining executions cancelled after drain timeout
-- [ ] `inflightCount` observable by embedder for their own health checks
-- [ ] http-api module wires this to SIGTERM
+- [x] `shutdown()` drains in-flight executions (up to timeout)
+- [x] New submissions rejected during drain with clear error
+- [x] Remaining executions cancelled after drain timeout
+- [x] `inflightCount` observable by embedder for their own health checks
+- [x] http-api module wires this to SIGTERM
 
 ### 2.5 Backpressure & Queue Rejection
 
@@ -398,10 +398,10 @@ Constellation.builder()
 - http-api module maps `QueueFullException` to `429 Too Many Requests`
 
 **Acceptance criteria:**
-- [ ] Scheduler rejects submissions when queue reaches max
-- [ ] `MetricsProvider` counter incremented on rejection
-- [ ] Queue size observable via `MetricsProvider` gauge
-- [ ] Default max queue size: 1000 (configurable via builder)
+- [x] Scheduler rejects submissions when queue reaches max
+- [x] `MetricsProvider` counter incremented on rejection
+- [x] Queue size observable via `MetricsProvider` gauge
+- [x] Default max queue size: 1000 (configurable via builder)
 
 ---
 
@@ -533,9 +533,9 @@ class LargeDagStressTest extends AnyFlatSpec {
 }
 ```
 
-- [ ] 100-node and 500-node DAGs compile and execute within time bounds
-- [ ] Memory usage stays bounded (no leaks)
-- [ ] Results are deterministic
+- [x] 100-node and 500-node DAGs compile and execute within time bounds
+- [x] Memory usage stays bounded (no leaks)
+- [x] Results are deterministic
 
 ### 5.2 Property-Based Testing (ScalaCheck)
 
@@ -547,27 +547,27 @@ Add generators for random valid constellation-lang programs, type expressions, D
 - Compilation is deterministic
 - Execution is deterministic
 
-- [ ] ScalaCheck dependency added
-- [ ] Generators for core types (CType, CValue, AST nodes)
-- [ ] Roundtrip and determinism properties verified
-- [ ] Integrated into CI
+- [x] ScalaCheck dependency added
+- [x] Generators for core types (CType, CValue, AST nodes)
+- [x] Roundtrip and determinism properties verified
+- [x] Integrated into CI
 
 ### 5.3 Sustained Load Testing
 
 Run 10K+ executions, measure heap growth, GC pauses, and latency degradation.
 
-- [ ] 10K executions complete without OOM
-- [ ] Heap growth < 50MB
-- [ ] p99 latency doesn't degrade over time
-- [ ] Object pools maintain stable size
+- [x] 10K executions complete without OOM
+- [x] Heap growth < 50MB
+- [x] p99 latency doesn't degrade over time
+- [x] Object pools maintain stable size
 
 ### 5.4 Adversarial Input Fuzzing
 
 Random byte sequences, deeply nested expressions, extremely long programs.
 
-- [ ] Parser handles 10K random inputs without crashing
-- [ ] Deeply nested expressions (1000+ levels) don't stack overflow
-- [ ] All failures produce structured errors, not unhandled exceptions
+- [x] Parser handles 10K random inputs without crashing
+- [x] Deeply nested expressions (1000+ levels) don't stack overflow
+- [x] All failures produce structured errors, not unhandled exceptions
 
 ---
 
@@ -581,11 +581,11 @@ The existing docs cover constellation-lang syntax, architecture internals, and d
 
 A single guide that takes a developer from zero to running pipeline in their own JVM app.
 
-- [ ] Add Constellation as an sbt/Maven/Gradle dependency
-- [ ] Minimal `Constellation.builder()` setup with default backends
-- [ ] Compile and execute a `.cst` script programmatically
-- [ ] Read outputs from execution result
-- [ ] Complete runnable example (copy-paste-run)
+- [x] Add Constellation as an sbt/Maven/Gradle dependency
+- [x] Minimal `Constellation.builder()` setup with default backends
+- [x] Compile and execute a `.cst` script programmatically
+- [x] Read outputs from execution result
+- [x] Complete runnable example (copy-paste-run)
 
 **Location:** `docs/embedding-guide.md`
 
@@ -593,12 +593,12 @@ A single guide that takes a developer from zero to running pipeline in their own
 
 One guide per backend trait showing how to implement it with a real-world library.
 
-- [ ] **MetricsProvider guide** — example with Prometheus (micrometer) and Datadog
-- [ ] **TracerProvider guide** — example with OpenTelemetry (otel4s) and Jaeger
-- [ ] **ExecutionListener guide** — example writing events to Kafka and to a database
-- [ ] **ExecutionStorage guide** — example with PostgreSQL (Doobie/Skunk) and SQLite
-- [ ] **CacheBackend guide** — example with Redis (redis4cats) and Caffeine
-- [ ] Each guide includes: trait implementation, wiring into `ConstellationBackends`, testing the integration, gotchas
+- [x] **MetricsProvider guide** — example with Prometheus (micrometer) and Datadog
+- [x] **TracerProvider guide** — example with OpenTelemetry (otel4s) and Jaeger
+- [x] **ExecutionListener guide** — example writing events to Kafka and to a database
+- [x] **ExecutionStorage guide** — example with PostgreSQL (Doobie/Skunk) and SQLite
+- [x] **CacheBackend guide** — example with Redis (redis4cats) and Caffeine
+- [x] Each guide includes: trait implementation, wiring into `ConstellationBackends`, testing the integration, gotchas
 
 **Location:** `docs/integrations/spi/` (one file per trait)
 
@@ -606,48 +606,48 @@ One guide per backend trait showing how to implement it with a real-world librar
 
 Scaladoc coverage for the entire public API surface.
 
-- [ ] `Constellation` builder — all methods documented with examples
-- [ ] `ConstellationBackends` — each field documented
-- [ ] All five SPI traits — every method documented with contract (pre/postconditions, threading)
-- [ ] `CancellableExecution` — lifecycle states, cancel semantics
-- [ ] `ConstellationLifecycle` — shutdown/drain behavior
-- [ ] `CircuitBreaker` — state machine documented
-- [ ] `SchedulerConfig` — each parameter documented with valid ranges
-- [ ] `Runtime.State`, `ExecutionStatus`, all public ADTs
-- [ ] Ensure `sbt doc` generates clean output with no warnings
+- [x] `Constellation` builder — all methods documented with examples
+- [x] `ConstellationBackends` — each field documented
+- [x] All five SPI traits — every method documented with contract (pre/postconditions, threading)
+- [x] `CancellableExecution` — lifecycle states, cancel semantics
+- [x] `ConstellationLifecycle` — shutdown/drain behavior
+- [x] `CircuitBreaker` — state machine documented
+- [x] `SchedulerConfig` — each parameter documented with valid ranges
+- [x] `Runtime.State`, `ExecutionStatus`, all public ADTs
+- [ ] Ensure `sbt doc` generates clean output with no warnings (deferred to follow-up issue)
 
 ### 6.4 HTTP API Reference
 
 Formal endpoint documentation for the optional http-api module.
 
-- [ ] OpenAPI 3.0 spec (`docs/api/openapi.yaml`) generated or hand-written
-- [ ] Every endpoint: method, path, request/response schemas, status codes, auth requirements
-- [ ] WebSocket protocol for LSP (`docs/api/lsp-websocket.md` — already exists, update if needed)
-- [ ] Error response format documented (error codes, messages)
-- [ ] Example `curl` commands for every endpoint
+- [x] OpenAPI 3.0 spec (`docs/api/openapi.yaml`) generated or hand-written
+- [x] Every endpoint: method, path, request/response schemas, status codes, auth requirements
+- [x] WebSocket protocol for LSP (`docs/api/lsp-websocket.md` — already exists, update if needed)
+- [x] Error response format documented (error codes, messages)
+- [x] Example `curl` commands for every endpoint
 
 ### 6.5 Architecture Update
 
 Update existing architecture docs to reflect the new SPI and lifecycle model.
 
-- [ ] Update `docs/architecture.md` — add SPI layer, lifecycle management, backend wiring
-- [ ] Update `llm.md` — add ConstellationBackends, builder API, new module dependency edges
-- [ ] Add architecture diagram showing: core → runtime → SPI traits → embedder implementations
-- [ ] Document module dependency graph with the new SPI module placement
-- [ ] Update `docs/dev/core-features.md` with lifecycle and SPI features
+- [x] Update `docs/architecture.md` — add SPI layer, lifecycle management, backend wiring
+- [x] Update `llm.md` — add ConstellationBackends, builder API, new module dependency edges
+- [x] Add architecture diagram showing: core → runtime → SPI traits → embedder implementations
+- [x] Document module dependency graph with the new SPI module placement
+- [x] Update `docs/dev/core-features.md` with lifecycle and SPI features
 
 ### 6.6 Performance Tuning Guide
 
 Practical guide for embedders configuring Constellation for their workload.
 
-- [ ] Scheduler tuning: `maxConcurrency` sizing based on workload type (CPU-bound vs IO-bound)
-- [ ] Queue sizing: `maxQueueSize` trade-offs (memory vs rejection rate)
-- [ ] Timeout strategy: global vs per-module timeout interactions
-- [ ] Circuit breaker tuning: threshold and reset duration selection
-- [ ] Object pool sizing: when to adjust pool parameters
-- [ ] Cache configuration: LRU size, hit rate monitoring, cache invalidation
-- [ ] JVM flags: recommended GC settings, heap sizing for sustained load
-- [ ] Diagnostic checklist: what to check when pipelines are slow
+- [x] Scheduler tuning: `maxConcurrency` sizing based on workload type (CPU-bound vs IO-bound)
+- [x] Queue sizing: `maxQueueSize` trade-offs (memory vs rejection rate)
+- [x] Timeout strategy: global vs per-module timeout interactions
+- [x] Circuit breaker tuning: threshold and reset duration selection
+- [x] Object pool sizing: when to adjust pool parameters
+- [x] Cache configuration: LRU size, hit rate monitoring, cache invalidation
+- [x] JVM flags: recommended GC settings, heap sizing for sustained load
+- [x] Diagnostic checklist: what to check when pipelines are slow
 
 **Location:** `docs/performance-tuning.md`
 
@@ -655,11 +655,11 @@ Practical guide for embedders configuring Constellation for their workload.
 
 Structured catalog of all errors the library can produce.
 
-- [ ] Compilation errors — already partially covered in `docs/constellation-lang/error-messages.md`, ensure completeness
-- [ ] Runtime errors — `ModuleExecutionException`, `TimeoutException`, `CircuitOpenException`, `QueueFullException`, `CancelledException`
-- [ ] Builder validation errors — invalid configuration messages
-- [ ] Each error: code, message template, cause, resolution steps
-- [ ] Distinguish recoverable vs fatal errors
+- [x] Compilation errors — already partially covered in `docs/constellation-lang/error-messages.md`, ensure completeness
+- [x] Runtime errors — `ModuleExecutionException`, `TimeoutException`, `CircuitOpenException`, `QueueFullException`, `CancelledException`
+- [x] Builder validation errors — invalid configuration messages
+- [x] Each error: code, message template, cause, resolution steps
+- [x] Distinguish recoverable vs fatal errors
 
 **Location:** `docs/error-reference.md`
 
@@ -667,10 +667,10 @@ Structured catalog of all errors the library can produce.
 
 For existing users upgrading to the new API.
 
-- [ ] Breaking changes summary (if any API changed)
-- [ ] Before/after code examples for each change
-- [ ] New optional features and how to opt in
-- [ ] Deprecation notices with timelines
+- [x] Breaking changes summary (if any API changed)
+- [x] Before/after code examples for each change
+- [x] New optional features and how to opt in
+- [x] Deprecation notices with timelines
 
 **Location:** `docs/migration/` (one file per major version)
 
@@ -678,12 +678,12 @@ For existing users upgrading to the new API.
 
 Document the security boundaries and the embedder's responsibilities.
 
-- [ ] What the library trusts (module code, compiled DAGs)
-- [ ] What the library validates (inputs, types, DAG structure)
-- [ ] Embedder's responsibilities (auth, network isolation, secret management)
-- [ ] http-api module security features (auth, CORS, rate limiting — from Phase 3)
-- [ ] Script sandboxing limitations (constellation-lang cannot call arbitrary code, but modules can)
-- [ ] Dependency audit process
+- [x] What the library trusts (module code, compiled DAGs)
+- [x] What the library validates (inputs, types, DAG structure)
+- [x] Embedder's responsibilities (auth, network isolation, secret management)
+- [x] http-api module security features (auth, CORS, rate limiting — from Phase 3)
+- [x] Script sandboxing limitations (constellation-lang cannot call arbitrary code, but modules can)
+- [x] Dependency audit process
 
 **Location:** `docs/security.md`
 
@@ -691,21 +691,21 @@ Document the security boundaries and the embedder's responsibilities.
 
 Document the dashboard and VSCode extension for users who opt into the http-api module.
 
-- [ ] Dashboard feature overview with screenshots
-- [ ] Dashboard architecture (TypeScript components, Cytoscape.js, API integration)
-- [ ] VSCode extension setup and features (already partially in `vscode-extension/README.md`, consolidate)
-- [ ] MCP server setup for LLM-assisted development
+- [x] Dashboard feature overview with screenshots
+- [x] Dashboard architecture (TypeScript components, Cytoscape.js, API integration)
+- [x] VSCode extension setup and features (already partially in `vscode-extension/README.md`, consolidate)
+- [x] MCP server setup for LLM-assisted development
 
 **Location:** `docs/tooling.md`
 
 **Acceptance criteria for Phase 6:**
-- [ ] An external developer can embed and run Constellation using only the docs (no source reading)
-- [ ] Every SPI trait has a working integration example
-- [ ] `sbt doc` produces clean Scaladoc for all public types
-- [ ] HTTP API has a machine-readable OpenAPI spec
-- [ ] Architecture docs reflect the current state of the system (not stale)
-- [ ] Performance tuning guide validated against benchmark results
-- [ ] All new documentation reviewed for accuracy by running the examples
+- [x] An external developer can embed and run Constellation using only the docs (no source reading)
+- [x] Every SPI trait has a working integration example
+- [ ] `sbt doc` produces clean Scaladoc for all public types (deferred to follow-up issue)
+- [x] HTTP API has a machine-readable OpenAPI spec
+- [x] Architecture docs reflect the current state of the system (not stale)
+- [x] Performance tuning guide validated against benchmark results
+- [x] All new documentation reviewed for accuracy by running the examples
 
 ---
 
