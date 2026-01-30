@@ -259,6 +259,26 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
     after.peakActive shouldBe 0
   }
 
+  it should "reject non-positive maxConcurrent" in {
+    an[IllegalArgumentException] should be thrownBy {
+      ConcurrencyLimiter(0).unsafeRunSync()
+    }
+    an[IllegalArgumentException] should be thrownBy {
+      ConcurrencyLimiter(-1).unsafeRunSync()
+    }
+  }
+
+  it should "release permit on failure" in {
+    val result = (for {
+      limiter <- ConcurrencyLimiter(2)
+      _ <- limiter.withPermit(IO.raiseError[Int](new RuntimeException("boom"))).attempt
+      stats <- limiter.stats
+    } yield stats).unsafeRunSync()
+
+    result.currentActive shouldBe 0
+    result.availablePermits shouldBe 2
+  }
+
   it should "create mutex with single permit" in {
     val maxActive = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
@@ -371,6 +391,19 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
     result should contain key "test"
     // Allow wider tolerance due to token replenishment timing
     result("test").availableTokens should (be >= 8.5 and be <= 10.0)
+  }
+
+  it should "remove concurrency limiters" in {
+    val result = (for {
+      registry <- LimiterRegistry.create
+      _ <- registry.getConcurrencyLimiter("test", 5)
+      hasBefore <- registry.hasConcurrencyLimiter("test")
+      removed <- registry.removeConcurrencyLimiter("test")
+      hasAfter <- registry.hasConcurrencyLimiter("test")
+      notRemoved <- registry.removeConcurrencyLimiter("nonexistent")
+    } yield (hasBefore, removed, hasAfter, notRemoved)).unsafeRunSync()
+
+    result shouldBe (true, true, false, false)
   }
 
   it should "get all concurrency stats" in {

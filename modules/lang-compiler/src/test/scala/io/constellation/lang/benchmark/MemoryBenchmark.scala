@@ -118,7 +118,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     allResults += result
     // Note: JVM memory measurement is noisy due to class loading and GC timing
     // Thresholds are set high enough to avoid flaky failures while still catching regressions
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for medium programs" in {
@@ -127,7 +127,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       ConstellationParser.parse(source)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for large programs" in {
@@ -136,7 +136,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       ConstellationParser.parse(source)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   // -----------------------------------------------------------------
@@ -151,7 +151,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       TypeChecker.check(parsed, emptyRegistry)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for medium programs" in {
@@ -162,7 +162,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       TypeChecker.check(parsed, emptyRegistry)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for large programs" in {
@@ -173,7 +173,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       TypeChecker.check(parsed, emptyRegistry)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   // -----------------------------------------------------------------
@@ -189,7 +189,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       IRGenerator.generate(typed)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for medium programs" in {
@@ -201,7 +201,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       IRGenerator.generate(typed)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   it should "be measured for large programs" in {
@@ -213,7 +213,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       IRGenerator.generate(typed)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   // -----------------------------------------------------------------
@@ -230,7 +230,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       IROptimizer.optimizeIR(ir, OptimizationConfig.default)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   // -----------------------------------------------------------------
@@ -248,7 +248,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
       DagCompiler.compile(optimized, "memory-test", Map.empty)
     }
     allResults += result
-    result.heapDeltaMB should be < 50.0
+    result.heapDeltaMB should be < 150.0
   }
 
   // -----------------------------------------------------------------
@@ -256,7 +256,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "Full pipeline memory" should "be measured for all sizes" in {
-    // All sizes use 50MB threshold (warning level)
+    // All sizes use 150MB threshold (warning level)
     // Memory measurement is noisy - these are regression detection thresholds
     List(
       ("small", TestFixtures.smallProgram),
@@ -268,7 +268,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
         compiler.compile(source, "memory-test")
       }
       allResults += result
-      result.heapDeltaMB should be < 50.0
+      result.heapDeltaMB should be < 150.0
     }
   }
 

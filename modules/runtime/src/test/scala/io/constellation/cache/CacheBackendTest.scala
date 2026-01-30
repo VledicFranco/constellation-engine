@@ -294,12 +294,114 @@ class CacheKeyGeneratorTest extends AnyFlatSpec with Matchers {
     key.length should be > 20 // SHA-256 base64 is 43 chars
   }
 
+  it should "handle CFloat values" in {
+    val inputs = Map("num" -> CValue.CFloat(3.14))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "handle CBoolean values" in {
+    val inputs = Map("flag" -> CValue.CBoolean(true))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "handle CMap values" in {
+    val inputs = Map("data" -> CValue.CMap(
+      Vector(
+        (CValue.CString("a"), CValue.CInt(1)),
+        (CValue.CString("b"), CValue.CInt(2))
+      ),
+      CType.CString,
+      CType.CInt
+    ))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "handle CUnion values" in {
+    val inputs = Map("either" -> CValue.CUnion(
+      CValue.CString("value"),
+      Map("left" -> CType.CString, "right" -> CType.CInt),
+      "left"
+    ))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "handle CSome values" in {
+    val inputs = Map("opt" -> CValue.CSome(CValue.CInt(42), CType.CInt))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "handle CNone values" in {
+    val inputs = Map("opt" -> CValue.CNone(CType.CInt))
+    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    key.nonEmpty shouldBe true
+  }
+
+  it should "produce deterministic keys for CMap regardless of insertion order" in {
+    val map1 = CValue.CMap(
+      Vector(
+        (CValue.CString("b"), CValue.CInt(2)),
+        (CValue.CString("a"), CValue.CInt(1))
+      ),
+      CType.CString, CType.CInt
+    )
+    val map2 = CValue.CMap(
+      Vector(
+        (CValue.CString("a"), CValue.CInt(1)),
+        (CValue.CString("b"), CValue.CInt(2))
+      ),
+      CType.CString, CType.CInt
+    )
+
+    val key1 = CacheKeyGenerator.generateKey("Mod", Map("data" -> map1))
+    val key2 = CacheKeyGenerator.generateKey("Mod", Map("data" -> map2))
+
+    key1 shouldBe key2
+  }
+
   it should "generate short keys for display" in {
     val inputs = Map("text" -> CValue.CString("hello"))
 
     val shortKey = CacheKeyGenerator.generateShortKey("MyModule", inputs, 8)
 
     shortKey.length shouldBe 8
+  }
+
+  it should "generate short keys with default length of 8" in {
+    val inputs = Map("text" -> CValue.CString("hello"))
+
+    val shortKey = CacheKeyGenerator.generateShortKey("MyModule", inputs)
+
+    shortKey.length shouldBe 8
+  }
+
+  it should "generate short key as prefix of full key" in {
+    val inputs = Map("text" -> CValue.CString("hello"))
+
+    val fullKey = CacheKeyGenerator.generateKey("MyModule", inputs)
+    val shortKey = CacheKeyGenerator.generateShortKey("MyModule", inputs)
+
+    fullKey should startWith(shortKey)
+  }
+
+  "hashBytes" should "produce consistent hash for same bytes" in {
+    val bytes = "hello world".getBytes("UTF-8")
+
+    val hash1 = CacheKeyGenerator.hashBytes(bytes)
+    val hash2 = CacheKeyGenerator.hashBytes(bytes)
+
+    hash1 shouldBe hash2
+  }
+
+  it should "produce different hashes for different bytes" in {
+    val hash1 = CacheKeyGenerator.hashBytes("hello".getBytes("UTF-8"))
+    val hash2 = CacheKeyGenerator.hashBytes("world".getBytes("UTF-8"))
+
+    hash1 should not be hash2
   }
 }
 
@@ -400,5 +502,49 @@ class CacheRegistryTest extends AnyFlatSpec with Matchers {
     // Should work
     fallback.set("key", "value", 1.minute).unsafeRunSync()
     fallback.get[String]("key").unsafeRunSync() shouldBe defined
+  }
+
+  it should "return false when setting unknown default" in {
+    val registry = CacheRegistry.create.unsafeRunSync()
+
+    registry.setDefault("nonexistent").unsafeRunSync() shouldBe false
+  }
+
+  it should "unregister backends" in {
+    val registry = CacheRegistry.create.unsafeRunSync()
+
+    registry.register("memory", InMemoryCacheBackend()).unsafeRunSync()
+    registry.unregister("memory").unsafeRunSync() shouldBe true
+    registry.get("memory").unsafeRunSync() shouldBe None
+  }
+
+  it should "return false when unregistering unknown backend" in {
+    val registry = CacheRegistry.create.unsafeRunSync()
+
+    registry.unregister("nonexistent").unsafeRunSync() shouldBe false
+  }
+
+  "CacheRegistry.withMemory" should "create working registry with memory backend" in {
+    val registry = CacheRegistry.withMemory.unsafeRunSync()
+
+    registry.list.unsafeRunSync() shouldBe List("memory")
+
+    val defaultBackend = registry.default.unsafeRunSync()
+    defaultBackend.isInstanceOf[InMemoryCacheBackend] shouldBe true
+
+    // Verify it works
+    defaultBackend.set("key", "value", 1.minute).unsafeRunSync()
+    val entry = defaultBackend.get[String]("key").unsafeRunSync()
+    entry shouldBe defined
+    entry.get.value shouldBe "value"
+  }
+
+  "CacheRegistry.withBackends" should "register multiple backends" in {
+    val registry = CacheRegistry.withBackends(
+      "backend1" -> InMemoryCacheBackend(),
+      "backend2" -> InMemoryCacheBackend()
+    ).unsafeRunSync()
+
+    registry.list.unsafeRunSync() shouldBe List("backend1", "backend2")
   }
 }

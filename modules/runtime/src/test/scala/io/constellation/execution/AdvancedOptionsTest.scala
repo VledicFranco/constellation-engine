@@ -480,6 +480,20 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
 
     result shouldBe 1.0 // All completed
   }
+
+  it should "return 1.0 completion rate when none submitted" in {
+    PrioritySchedulerStats.empty.completionRate shouldBe 1.0
+  }
+
+  it should "return None for unregistered priority" in {
+    val result = (for {
+      scheduler <- PriorityScheduler.create
+      _ <- scheduler.submit(IO.pure(1), PriorityLevel.High)
+      stats <- scheduler.stats
+    } yield stats.forPriority(PriorityLevel.Critical)).unsafeRunSync()
+
+    result shouldBe None
+  }
 }
 
 class PriorityStatsTest extends AnyFlatSpec with Matchers {
