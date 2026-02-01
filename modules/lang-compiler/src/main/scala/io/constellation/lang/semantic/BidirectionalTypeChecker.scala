@@ -4,6 +4,8 @@ import cats.data.{Validated, ValidatedNel}
 import cats.syntax.all.*
 import io.constellation.lang.ast.*
 
+import java.util.concurrent.atomic.AtomicInteger
+
 /** Bidirectional type checker for constellation-lang.
   *
   * Implements the bidirectional typing algorithm where types flow both:
@@ -38,27 +40,31 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
   type TypeResult[A] = ValidatedNel[CompileError, A]
 
-  // Counter for generating fresh row variables
-  private var rowVarCounter = 0
+  // Thread-safe counter for generating fresh row variables
+  // AtomicInteger ensures concurrent type checks don't produce duplicate IDs
+  private val rowVarCounter = new AtomicInteger(0)
 
-  // Mutable collection for warnings (accumulated during type checking)
-  private val collectedWarnings = scala.collection.mutable.ListBuffer[CompileWarning]()
+  // Thread-local warnings collection
+  // Each thread gets its own mutable buffer, avoiding concurrent modification issues
+  private val collectedWarnings = new ThreadLocal[scala.collection.mutable.ListBuffer[CompileWarning]] {
+    override def initialValue(): scala.collection.mutable.ListBuffer[CompileWarning] =
+      scala.collection.mutable.ListBuffer.empty
+  }
 
   /** Generate a fresh row variable for row polymorphism instantiation */
   private def freshRowVar(): RowVar = {
-    rowVarCounter += 1
-    RowVar(rowVarCounter)
+    RowVar(rowVarCounter.incrementAndGet())
   }
 
   /** Add a warning to the collection */
   private def addWarning(warning: CompileWarning): Unit = {
-    collectedWarnings += warning
+    collectedWarnings.get() += warning
   }
 
   /** Type check a program */
   def check(program: Program): Either[List[CompileError], TypedProgram] = {
-    // Reset warnings for a fresh check
-    collectedWarnings.clear()
+    // Reset warnings for this thread's type check invocation
+    collectedWarnings.get().clear()
     val initialEnv = TypeEnvironment(functions = functions)
 
     val result = program.declarations
@@ -74,7 +80,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case TypedDeclaration.OutputDecl(name, semanticType, span) =>
             (name, semanticType, span)
         }
-        TypedProgram(typedDecls, outputs, collectedWarnings.toList)
+        TypedProgram(typedDecls, outputs, collectedWarnings.get().toList)
       }
 
     result.toEither.left.map(_.toList)
