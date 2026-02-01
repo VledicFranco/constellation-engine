@@ -16,9 +16,13 @@ import io.circe.syntax.*
 import io.circe.Json
 
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
 import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, MalformedMessageBodyFailure, MediaType}
 import org.http4s.headers.`Content-Type`
+import org.typelevel.ci.*
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -29,8 +33,19 @@ class ConstellationRoutes(
     lifecycle: Option[ConstellationLifecycle] = None
 ) {
 
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationRoutes])
+
   // Maximum request body size (10MB)
   private val maxBodySize: Long = 10 * 1024 * 1024
+
+  /** Extract or generate a request ID for tracing. */
+  private def requestId(req: org.http4s.Request[IO]): String =
+    req.headers.get(ci"X-Request-ID").map(_.head.value)
+      .getOrElse(UUID.randomUUID().toString)
+
+  /** Null-safe error message extraction. */
+  private def safeMessage(t: Throwable): String =
+    Option(t.getMessage).getOrElse(t.getClass.getSimpleName)
 
   /** Validate a program reference (name or hash).
     *
@@ -100,6 +115,7 @@ class ConstellationRoutes(
 
     // Execute a program by reference (name, structural hash, or legacy dagName)
     case req @ POST -> Root / "execute" =>
+      val reqId = requestId(req)
       (for {
         execReq <- req.as[ExecuteRequest]
         effectiveRef = execReq.effectiveRef
@@ -115,28 +131,31 @@ class ConstellationRoutes(
                   case Right(outputs) =>
                     Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
                   case Left(ApiError.NotFoundError(_, name)) =>
-                    NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found"))
+                    NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found", requestId = Some(reqId)))
                   case Left(ApiError.InputError(msg)) =>
                     BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
-                  case Left(error) =>
-                    InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
+                  case Left(apiErr) =>
+                    logger.error(s"[$reqId] Execute error: ${apiErr.message}") *>
+                    InternalServerError(ExecuteResponse(success = false, error = Some(apiErr.message)))
                 }
             }
         }
       } yield result).handleErrorWith {
         case _: QueueFullException =>
-          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later"))
+          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later", requestId = Some(reqId)))
         case _: ConstellationLifecycle.ShutdownRejectedException =>
-          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down"))
+          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down", requestId = Some(reqId)))
         case error =>
+          logger.error(error)(s"[$reqId] Unexpected error in /execute") *>
           InternalServerError(
-            ExecuteResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
+            ExecuteResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
           )
       }
 
     // Compile and run a script in one step
     // Now stores the image and returns structuralHash
     case req @ POST -> Root / "run" =>
+      val reqId = requestId(req)
       (for {
         runReq <- req.as[RunRequest]
         result <- compileStoreAndRun(runReq).value
@@ -147,17 +166,19 @@ class ConstellationRoutes(
             BadRequest(RunResponse(success = false, compilationErrors = errors))
           case Left(ApiError.InputError(msg)) =>
             BadRequest(RunResponse(success = false, error = Some(s"Input error: $msg")))
-          case Left(error) =>
-            InternalServerError(RunResponse(success = false, error = Some(error.message)))
+          case Left(apiErr) =>
+            logger.error(s"[$reqId] Run error: ${apiErr.message}") *>
+            InternalServerError(RunResponse(success = false, error = Some(apiErr.message)))
         }
       } yield response).handleErrorWith {
         case _: QueueFullException =>
-          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later"))
+          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later", requestId = Some(reqId)))
         case _: ConstellationLifecycle.ShutdownRejectedException =>
-          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down"))
+          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down", requestId = Some(reqId)))
         case error =>
+          logger.error(error)(s"[$reqId] Unexpected error in /run") *>
           InternalServerError(
-            RunResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
+            RunResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
           )
       }
 

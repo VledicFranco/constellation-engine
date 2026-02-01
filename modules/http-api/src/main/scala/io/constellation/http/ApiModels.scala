@@ -166,10 +166,11 @@ object ApiModels {
     given Decoder[ModuleInfo] = deriveDecoder
   }
 
-  /** Error response */
+  /** Error response with optional request ID for tracing */
   case class ErrorResponse(
       error: String,
-      message: String
+      message: String,
+      requestId: Option[String] = None
   )
 
   object ErrorResponse {
