@@ -15,7 +15,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
   "CompileRequest" should "serialize to JSON" in {
     val request = CompileRequest(
       source = "in x: Int\nout x",
-      dagName = "test-dag"
+      dagName = Some("test-dag")
     )
 
     val json = request.asJson.noSpaces
@@ -24,21 +24,48 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     json should include("\"dagName\":\"test-dag\"")
   }
 
-  it should "deserialize from JSON" in {
+  it should "deserialize from JSON with dagName (legacy)" in {
     val jsonStr = """{"source":"in x: Int","dagName":"my-dag"}"""
     val parsed = parser.decode[CompileRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
         request.source shouldBe "in x: Int"
-        request.dagName shouldBe "my-dag"
+        request.dagName shouldBe Some("my-dag")
+        request.effectiveName shouldBe Some("my-dag")
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
+  }
+
+  it should "deserialize from JSON with name (new API)" in {
+    val jsonStr = """{"source":"in x: Int","name":"my-program"}"""
+    val parsed = parser.decode[CompileRequest](jsonStr)
+
+    parsed match {
+      case Right(request) =>
+        request.source shouldBe "in x: Int"
+        request.name shouldBe Some("my-program")
+        request.effectiveName shouldBe Some("my-program")
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
+  }
+
+  it should "prefer name over dagName when both present" in {
+    val jsonStr = """{"source":"in x: Int","name":"new-name","dagName":"old-name"}"""
+    val parsed = parser.decode[CompileRequest](jsonStr)
+
+    parsed match {
+      case Right(request) =>
+        request.effectiveName shouldBe Some("new-name")
       case Left(error) =>
         fail(s"Failed to parse: ${error.getMessage}")
     }
   }
 
   it should "round-trip through JSON" in {
-    val original = CompileRequest("in y: String\nout y", "roundtrip-dag")
+    val original = CompileRequest("in y: String\nout y", dagName = Some("roundtrip-dag"))
     val json = original.asJson
     val parsed = json.as[CompileRequest]
 
@@ -61,6 +88,21 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     json should include("\"errors\":[]")
   }
 
+  it should "serialize success response with hashes" in {
+    val response = CompileResponse(
+      success = true,
+      structuralHash = Some("abc123"),
+      syntacticHash = Some("def456"),
+      name = Some("my-program")
+    )
+
+    val json = response.asJson.noSpaces
+
+    json should include("\"structuralHash\":\"abc123\"")
+    json should include("\"syntacticHash\":\"def456\"")
+    json should include("\"name\":\"my-program\"")
+  }
+
   it should "serialize error response" in {
     val response = CompileResponse(
       success = false,
@@ -77,7 +119,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip through JSON" in {
-    val original = CompileResponse(true, Some("dag"), List("warning"))
+    val original = CompileResponse(true, dagName = Some("dag"), errors = List("warning"))
     val json = original.asJson
     val parsed = json.as[CompileResponse]
 
@@ -86,9 +128,9 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   // ========== ExecuteRequest Tests ==========
 
-  "ExecuteRequest" should "serialize with JSON inputs" in {
+  "ExecuteRequest" should "serialize with JSON inputs (new ref API)" in {
     val request = ExecuteRequest(
-      dagName = "exec-dag",
+      ref = Some("my-program"),
       inputs = Map(
         "x" -> Json.fromInt(42),
         "name" -> Json.fromString("Alice")
@@ -97,26 +139,40 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
     val json = request.asJson.noSpaces
 
-    json should include("\"dagName\":\"exec-dag\"")
+    json should include("\"ref\":\"my-program\"")
     json should include("\"x\":42")
     json should include("\"name\":\"Alice\"")
   }
 
-  it should "deserialize complex inputs" in {
+  it should "deserialize with dagName (legacy)" in {
     val jsonStr = """{"dagName":"complex","inputs":{"list":[1,2,3],"nested":{"a":"b"}}}"""
     val parsed = parser.decode[ExecuteRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
-        request.dagName shouldBe "complex"
+        request.dagName shouldBe Some("complex")
+        request.effectiveRef shouldBe Some("complex")
         request.inputs.keySet should contain allOf ("list", "nested")
       case Left(error) =>
         fail(s"Failed to parse: ${error.getMessage}")
     }
   }
 
+  it should "deserialize with ref (new API)" in {
+    val jsonStr = """{"ref":"sha256:abc123","inputs":{"x":1}}"""
+    val parsed = parser.decode[ExecuteRequest](jsonStr)
+
+    parsed match {
+      case Right(request) =>
+        request.ref shouldBe Some("sha256:abc123")
+        request.effectiveRef shouldBe Some("sha256:abc123")
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
+  }
+
   it should "handle empty inputs" in {
-    val request = ExecuteRequest("empty-inputs", Map.empty)
+    val request = ExecuteRequest(dagName = Some("empty-inputs"), inputs = Map.empty)
     val json = request.asJson
     val parsed = json.as[ExecuteRequest]
 
@@ -197,6 +253,18 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     json should include("\"compilationErrors\":[]")
   }
 
+  it should "serialize success response with structuralHash" in {
+    val response = RunResponse(
+      success = true,
+      outputs = Map("result" -> Json.fromString("output")),
+      structuralHash = Some("abc123")
+    )
+
+    val json = response.asJson.noSpaces
+
+    json should include("\"structuralHash\":\"abc123\"")
+  }
+
   it should "serialize with compilation errors" in {
     val response = RunResponse(
       success = false,
@@ -226,9 +294,46 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip through JSON" in {
-    val original = RunResponse(true, Map("a" -> Json.fromInt(1)), List.empty, None)
+    val original = RunResponse(true, Map("a" -> Json.fromInt(1)), error = None)
     val json = original.asJson
     val parsed = json.as[RunResponse]
+
+    parsed shouldBe Right(original)
+  }
+
+  // ========== ProgramSummary Tests ==========
+
+  "ProgramSummary" should "serialize all fields" in {
+    val summary = ProgramSummary(
+      structuralHash = "abc123",
+      syntacticHash = "def456",
+      aliases = List("my-program", "prod"),
+      compiledAt = "2026-01-15T10:30:00Z",
+      moduleCount = 3,
+      declaredOutputs = List("result", "status")
+    )
+
+    val json = summary.asJson.noSpaces
+
+    json should include("\"structuralHash\":\"abc123\"")
+    json should include("\"aliases\":[\"my-program\",\"prod\"]")
+    json should include("\"moduleCount\":3")
+  }
+
+  it should "round-trip through JSON" in {
+    val original = ProgramSummary("h1", "h2", List("a"), "2026-01-01T00:00:00Z", 1, List("out"))
+    val json = original.asJson
+    val parsed = json.as[ProgramSummary]
+
+    parsed shouldBe Right(original)
+  }
+
+  // ========== AliasRequest Tests ==========
+
+  "AliasRequest" should "round-trip through JSON" in {
+    val original = AliasRequest("abc123")
+    val json = original.asJson
+    val parsed = json.as[AliasRequest]
 
     parsed shouldBe Right(original)
   }

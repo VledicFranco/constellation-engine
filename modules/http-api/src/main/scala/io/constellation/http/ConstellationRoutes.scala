@@ -6,7 +6,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, Runtime}
+import io.constellation.{CValue, Constellation, JsonCValueConverter, ProgramImage, Runtime}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -30,20 +30,35 @@ class ConstellationRoutes(
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
     // Compile constellation-lang source code
+    // Now stores ProgramImage in ProgramStore and returns structuralHash/syntacticHash
     case req @ POST -> Root / "compile" =>
       for {
         compileReq <- req.as[CompileRequest]
-        result = compiler.compile(compileReq.source, compileReq.dagName)
+        effectiveName = compileReq.effectiveName
+        result = effectiveName match {
+          case Some(n) => compiler.compile(compileReq.source, n)
+          case None    => compiler.compile(compileReq.source, "unnamed")
+        }
         response <- result match {
           case Right(compiled) =>
-            constellation.setDag(compileReq.dagName, compiled.dagSpec).flatMap { _ =>
-              Ok(
+            val image = compiled.program.image
+            for {
+              // Store the image in ProgramStore (content-addressed)
+              _ <- constellation.programStore.store(image)
+              // Create alias if name was provided
+              _ <- effectiveName.traverse_(n => constellation.programStore.alias(n, image.structuralHash))
+              // Also store in legacy DagRegistry for backward compatibility
+              _ <- effectiveName.traverse_(n => constellation.setDag(n, compiled.program.image.dagSpec))
+              resp <- Ok(
                 CompileResponse(
                   success = true,
-                  dagName = Some(compileReq.dagName)
+                  structuralHash = Some(image.structuralHash),
+                  syntacticHash = Some(image.syntacticHash),
+                  dagName = effectiveName,
+                  name = effectiveName
                 )
               )
-            }
+            } yield resp
           case Left(errors) =>
             BadRequest(
               CompileResponse(
@@ -54,22 +69,27 @@ class ConstellationRoutes(
         }
       } yield response
 
-    // Execute a DAG with inputs
+    // Execute a program by reference (name, structural hash, or legacy dagName)
     case req @ POST -> Root / "execute" =>
       (for {
         execReq <- req.as[ExecuteRequest]
-        result  <- executeStoredDag(execReq).value
-        response <- result match {
-          case Right(outputs) =>
-            Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
-          case Left(ApiError.NotFoundError(_, name)) =>
-            NotFound(ErrorResponse(error = "DagNotFound", message = s"DAG '$name' not found"))
-          case Left(ApiError.InputError(msg)) =>
-            BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
-          case Left(error) =>
-            InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
+        effectiveRef = execReq.effectiveRef
+        result <- effectiveRef match {
+          case None =>
+            BadRequest(ExecuteResponse(success = false, error = Some("Missing 'ref' or 'dagName' field")))
+          case Some(ref) =>
+            executeByRef(ref, execReq.inputs).value.flatMap {
+              case Right(outputs) =>
+                Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
+              case Left(ApiError.NotFoundError(_, name)) =>
+                NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found"))
+              case Left(ApiError.InputError(msg)) =>
+                BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
+              case Left(error) =>
+                InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
+            }
         }
-      } yield response).handleErrorWith {
+      } yield result).handleErrorWith {
         case _: QueueFullException =>
           TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later"))
         case _: ConstellationLifecycle.ShutdownRejectedException =>
@@ -80,14 +100,15 @@ class ConstellationRoutes(
           )
       }
 
-    // Compile and run a script in one step (without storing the DAG)
+    // Compile and run a script in one step
+    // Now stores the image and returns structuralHash
     case req @ POST -> Root / "run" =>
       (for {
         runReq <- req.as[RunRequest]
-        result <- compileAndRunDag(runReq).value
+        result <- compileStoreAndRun(runReq).value
         response <- result match {
-          case Right(outputs) =>
-            Ok(RunResponse(success = true, outputs = outputs))
+          case Right((outputs, structuralHash)) =>
+            Ok(RunResponse(success = true, outputs = outputs, structuralHash = Some(structuralHash)))
           case Left(ApiError.CompilationError(errors)) =>
             BadRequest(RunResponse(success = false, compilationErrors = errors))
           case Left(ApiError.InputError(msg)) =>
@@ -105,6 +126,125 @@ class ConstellationRoutes(
             RunResponse(success = false, error = Some(s"Unexpected error: ${error.getMessage}"))
           )
       }
+
+    // ---------------------------------------------------------------------------
+    // Program management endpoints (Phase 5)
+    // ---------------------------------------------------------------------------
+
+    // List all stored programs
+    case GET -> Root / "programs" =>
+      for {
+        images  <- constellation.programStore.listImages
+        aliases <- constellation.programStore.listAliases
+        // Build reverse map: structuralHash -> List[alias]
+        aliasMap = aliases.toList.groupMap(_._2)(_._1)
+        summaries = images.map { img =>
+          ProgramSummary(
+            structuralHash = img.structuralHash,
+            syntacticHash = img.syntacticHash,
+            aliases = aliasMap.getOrElse(img.structuralHash, Nil),
+            compiledAt = img.compiledAt.toString,
+            moduleCount = img.dagSpec.modules.size,
+            declaredOutputs = img.dagSpec.declaredOutputs
+          )
+        }
+        response <- Ok(ProgramListResponse(summaries))
+      } yield response
+
+    // Get program metadata by reference (name or structural hash)
+    case GET -> Root / "programs" / ref =>
+      for {
+        imageOpt <- resolveImage(ref)
+        aliases  <- constellation.programStore.listAliases
+        response <- imageOpt match {
+          case Some(img) =>
+            val imageAliases = aliases.toList.collect {
+              case (name, hash) if hash == img.structuralHash => name
+            }
+            val modules = img.dagSpec.modules.values.map { spec =>
+              ModuleInfo(
+                name = spec.name,
+                description = spec.description,
+                version = s"${spec.majorVersion}.${spec.minorVersion}",
+                inputs = spec.consumes.map { case (k, v) => k -> v.toString },
+                outputs = spec.produces.map { case (k, v) => k -> v.toString }
+              )
+            }.toList
+            val inputSchema = img.dagSpec.userInputDataNodes.values.map { ds =>
+              ds.name -> ds.cType.toString
+            }.toMap
+            val outputSchema = img.dagSpec.declaredOutputs.flatMap { outName =>
+              img.dagSpec.outputBindings.get(outName).flatMap { uuid =>
+                img.dagSpec.data.get(uuid).map(ds => outName -> ds.cType.toString)
+              }
+            }.toMap
+            Ok(ProgramDetailResponse(
+              structuralHash = img.structuralHash,
+              syntacticHash = img.syntacticHash,
+              aliases = imageAliases,
+              compiledAt = img.compiledAt.toString,
+              modules = modules,
+              declaredOutputs = img.dagSpec.declaredOutputs,
+              inputSchema = inputSchema,
+              outputSchema = outputSchema
+            ))
+          case None =>
+            NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+        }
+      } yield response
+
+    // Delete a program by reference
+    case DELETE -> Root / "programs" / ref =>
+      for {
+        imageOpt <- resolveImage(ref)
+        response <- imageOpt match {
+          case None =>
+            NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+          case Some(img) =>
+            for {
+              aliases <- constellation.programStore.listAliases
+              pointingAliases = aliases.toList.collect {
+                case (name, hash) if hash == img.structuralHash => name
+              }
+              resp <- if (pointingAliases.nonEmpty) then {
+                Conflict(ErrorResponse(
+                  error = "AliasConflict",
+                  message = s"Cannot delete program: aliases [${pointingAliases.mkString(", ")}] point to it"
+                ))
+              } else {
+                constellation.programStore.remove(img.structuralHash).flatMap { removed =>
+                  if (removed) Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
+                  else NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+                }
+              }
+            } yield resp
+        }
+      } yield response
+
+    // Repoint an alias to a different structural hash
+    case req @ PUT -> Root / "programs" / name / "alias" =>
+      for {
+        aliasReq <- req.as[AliasRequest]
+        imageOpt <- constellation.programStore.get(aliasReq.structuralHash)
+        response <- imageOpt match {
+          case None =>
+            NotFound(ErrorResponse(
+              error = "NotFound",
+              message = s"Program with hash '${aliasReq.structuralHash}' not found"
+            ))
+          case Some(_) =>
+            constellation.programStore.alias(name, aliasReq.structuralHash).flatMap { _ =>
+              Ok(Json.obj(
+                "name" -> Json.fromString(name),
+                "structuralHash" -> Json.fromString(aliasReq.structuralHash)
+              ))
+            }
+        }
+      } yield response
+
+    // ---------------------------------------------------------------------------
+    // Legacy DAG endpoints (kept for backward compatibility)
+    // ---------------------------------------------------------------------------
 
     // List all available DAGs
     case GET -> Root / "dags" =>
@@ -249,32 +389,82 @@ class ConstellationRoutes(
 
   // ========== Private Helper Methods ==========
 
-  /** Execute a stored DAG using EitherT for clean error handling */
-  private def executeStoredDag(req: ExecuteRequest): EitherT[IO, ApiError, Map[String, Json]] =
+  /** Resolve a program image from a reference (name or "sha256:<hash>"). */
+  private def resolveImage(ref: String): IO[Option[ProgramImage]] =
+    if (ref.startsWith("sha256:"))
+      constellation.programStore.get(ref.stripPrefix("sha256:"))
+    else
+      constellation.programStore.getByName(ref)
+
+  /** Execute a program by reference using the new API.
+    *
+    * First tries ProgramStore (content-addressed). Falls back to legacy DagRegistry.
+    */
+  private def executeByRef(
+      ref: String,
+      jsonInputs: Map[String, Json]
+  ): EitherT[IO, ApiError, Map[String, Json]] =
+    EitherT(
+      resolveImage(ref).flatMap {
+        case Some(image) =>
+          // New path: use ProgramStore + constellation.run
+          val dagSpec = image.dagSpec
+          convertInputs(jsonInputs, dagSpec).value.flatMap {
+            case Left(err) => IO.pure(Left(err))
+            case Right(inputs) =>
+              val loaded = io.constellation.ProgramImage.rehydrate(image)
+              constellation.run(loaded, inputs).attempt.map {
+                case Right(sig) =>
+                  val outputs = sig.outputs.map { case (k, v) =>
+                    k -> JsonCValueConverter.cValueToJson(v)
+                  }
+                  Right(outputs)
+                case Left(err) =>
+                  Left(ApiError.ExecutionError(s"Execution failed: ${err.getMessage}"))
+              }
+          }
+        case None =>
+          // Fall back to legacy DagRegistry
+          executeStoredDag(ref, jsonInputs).value
+      }
+    )
+
+  /** Legacy: execute a stored DAG by name using EitherT for clean error handling */
+  private def executeStoredDag(dagName: String, jsonInputs: Map[String, Json]): EitherT[IO, ApiError, Map[String, Json]] =
     for {
       dagSpec <- EitherT(
-        constellation.getDag(req.dagName).map {
+        constellation.getDag(dagName).map {
           case Some(spec) => Right(spec)
-          case None       => Left(ApiError.NotFoundError("DAG", req.dagName))
+          case None       => Left(ApiError.NotFoundError("Program", dagName))
         }
       )
-      inputs  <- convertInputs(req.inputs, dagSpec)
-      state   <- executeDag(req.dagName, inputs)
+      inputs  <- convertInputs(jsonInputs, dagSpec)
+      state   <- executeDag(dagName, inputs)
       outputs <- extractOutputs(state)
     } yield outputs
 
-  /** Compile and run a DAG in one step using EitherT */
-  private def compileAndRunDag(req: RunRequest): EitherT[IO, ApiError, Map[String, Json]] =
+  /** Compile, store, and run a script in one step. Returns (outputs, structuralHash). */
+  private def compileStoreAndRun(req: RunRequest): EitherT[IO, ApiError, (Map[String, Json], String)] =
     for {
       compiled <- EitherT.fromEither[IO](
         compiler.compile(req.source, "ephemeral").leftMap { errors =>
           ApiError.CompilationError(errors.map(_.message))
         }
       )
-      inputs  <- convertInputs(req.inputs, compiled.dagSpec)
-      state   <- executeDagWithModules(compiled.dagSpec, inputs, compiled.syntheticModules)
-      outputs <- extractOutputs(state)
-    } yield outputs
+      image = compiled.program.image
+      // Store image in ProgramStore for dedup and future reference
+      _ <- EitherT.liftF(constellation.programStore.store(image))
+      inputs  <- convertInputs(req.inputs, compiled.program.image.dagSpec)
+      // Use new API: constellation.run with LoadedProgram
+      sig <- ErrorHandling.liftIO(constellation.run(compiled.program, inputs)) { t =>
+        ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+      }
+    } yield {
+      val outputs = sig.outputs.map { case (k, v) =>
+        k -> JsonCValueConverter.cValueToJson(v)
+      }
+      (outputs, image.structuralHash)
+    }
 
   /** Convert JSON inputs to CValue, wrapping errors */
   private def convertInputs(
@@ -291,16 +481,6 @@ class ConstellationRoutes(
       inputs: Map[String, CValue]
   ): EitherT[IO, ApiError, Runtime.State] =
     ErrorHandling.liftIO(constellation.runDag(dagName, inputs)) { t =>
-      ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
-    }
-
-  /** Execute a DAG with pre-resolved modules */
-  private def executeDagWithModules(
-      dagSpec: io.constellation.DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[java.util.UUID, io.constellation.Module.Uninitialized]
-  ): EitherT[IO, ApiError, Runtime.State] =
-    ErrorHandling.liftIO(constellation.runDagWithModules(dagSpec, inputs, modules)) { t =>
       ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
     }
 

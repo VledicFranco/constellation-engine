@@ -37,7 +37,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in y: Int
         out x
       """,
-      dagName = "test-dag"
+      dagName = Some("test-dag")
     )
 
     val request = Request[IO](Method.POST, uri"/compile")
@@ -58,7 +58,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in x: Int
         out undefined_variable
       """,
-      dagName = "invalid-dag"
+      dagName = Some("invalid-dag")
     )
 
     val request = Request[IO](Method.POST, uri"/compile")
@@ -76,7 +76,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // First compile a DAG
     val compileRequest = CompileRequest(
       source = "in x: Int\nout x",
-      dagName = "list-test-dag"
+      dagName = Some("list-test-dag")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -96,7 +96,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // First compile a DAG
     val compileRequest = CompileRequest(
       source = "in x: Int\nout x",
-      dagName = "get-test-dag"
+      dagName = Some("get-test-dag")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -139,7 +139,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in text: String
         out text
       """,
-      dagName = "passthrough-pipeline"
+      dagName = Some("passthrough-pipeline")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -148,7 +148,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Execute the DAG
     val executeRequest = ExecuteRequest(
-      dagName = "passthrough-pipeline",
+      dagName = Some("passthrough-pipeline"),
       inputs = Map("text" -> Json.fromString("HELLO WORLD"))
     )
 
@@ -166,7 +166,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
   it should "return 404 for executing non-existent DAG" in {
     val executeRequest = ExecuteRequest(
-      dagName = "non-existent-dag",
+      dagName = Some("non-existent-dag"),
       inputs = Map("input" -> Json.fromString("test"))
     )
 
@@ -176,7 +176,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     response.status shouldBe Status.NotFound
     val body = response.as[ErrorResponse].unsafeRunSync()
-    body.error shouldBe "DagNotFound"
+    body.error shouldBe "NotFound"
   }
 
   it should "return 400 for missing required input" in {
@@ -187,7 +187,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in y: Int
         out x
       """,
-      dagName = "two-input-pipeline"
+      dagName = Some("two-input-pipeline")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -196,7 +196,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Try to execute with only one input (missing y)
     val executeRequest = ExecuteRequest(
-      dagName = "two-input-pipeline",
+      dagName = Some("two-input-pipeline"),
       inputs = Map("x" -> Json.fromLong(5))
       // missing "y"
     )
@@ -218,7 +218,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in x: Int
         out x
       """,
-      dagName = "passthrough-int"
+      dagName = Some("passthrough-int")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -227,7 +227,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Try to execute with wrong type (string instead of int)
     val executeRequest = ExecuteRequest(
-      dagName = "passthrough-int",
+      dagName = Some("passthrough-int"),
       inputs = Map("x" -> Json.fromString("not a number"))
     )
 
@@ -248,7 +248,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         in items: List<String>
         out items
       """,
-      dagName = "list-passthrough"
+      dagName = Some("list-passthrough")
     )
 
     val compileReq = Request[IO](Method.POST, uri"/compile")
@@ -257,7 +257,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Execute with a list input
     val executeRequest = ExecuteRequest(
-      dagName = "list-passthrough",
+      dagName = Some("list-passthrough"),
       inputs = Map(
         "items" -> Json.fromValues(
           List(
@@ -543,7 +543,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     // First make a compile request to populate cache stats
     val compileRequest = CompileRequest(
       source = "in x: Int\nout x",
-      dagName = "cache-test"
+      dagName = Some("cache-test")
     )
     val compileReq = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
     cachingRoutes.orNotFound.run(compileReq).unsafeRunSync()
