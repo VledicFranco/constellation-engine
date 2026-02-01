@@ -5,7 +5,7 @@ import cats.implicits.*
 import io.constellation.execution.GlobalScheduler
 import io.constellation.spi.ConstellationBackends
 
-import java.time.{Duration, Instant}
+import java.time.Instant
 import java.util.UUID
 
 // Error types for resume validation
@@ -89,7 +89,8 @@ object SuspendableExecution {
       } yield {
         val newResumptionCount = suspended.resumptionCount + 1
         buildDataSignature(state, dagSpec, suspended.structuralHash,
-          mergedInputs, options, startedAt, newResumptionCount, suspended.moduleOptions)
+          mergedInputs, options, startedAt, newResumptionCount, suspended.moduleOptions,
+          resolvedNodeNames = resolvedNodes.keySet)
       }
     }
   }
@@ -169,7 +170,8 @@ object SuspendableExecution {
       options: ExecutionOptions,
       startedAt: Instant,
       resumptionCount: Int,
-      moduleOptions: Map[UUID, ModuleCallOptions]
+      moduleOptions: Map[UUID, ModuleCallOptions],
+      resolvedNodeNames: Set[String] = Set.empty
   ): DataSignature = {
     val uuidToName: Map[UUID, String] = dagSpec.data.map { case (uuid, spec) => uuid -> spec.name }
 
@@ -200,10 +202,10 @@ object SuspendableExecution {
       else PipelineStatus.Suspended
 
     val completedAt = Instant.now()
-    val metadata = SignatureMetadata(
-      startedAt = Some(startedAt),
-      completedAt = Some(completedAt),
-      totalDuration = Some(Duration.between(startedAt, completedAt))
+    val metadata = MetadataBuilder.build(
+      state, dagSpec, options, startedAt, completedAt,
+      inputNodeNames = inputs.keySet,
+      resolvedNodeNames = resolvedNodeNames
     )
 
     val suspendedState: Option[SuspendedExecution] =

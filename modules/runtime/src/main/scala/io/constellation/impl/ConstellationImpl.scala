@@ -7,7 +7,7 @@ import io.constellation.cache.CacheBackend
 import io.constellation.execution.{CancellableExecution, ConstellationLifecycle, GlobalScheduler}
 import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsProvider, TracerProvider}
 
-import java.time.{Duration, Instant}
+import java.time.Instant
 import java.util.UUID
 import scala.concurrent.duration.FiniteDuration
 
@@ -51,7 +51,8 @@ final class ConstellationImpl(
     scheduler: GlobalScheduler = GlobalScheduler.unbounded,
     backends: ConstellationBackends = ConstellationBackends.defaults,
     defaultTimeout: Option[FiniteDuration] = None,
-    lifecycle: Option[ConstellationLifecycle] = None
+    lifecycle: Option[ConstellationLifecycle] = None,
+    suspensionStoreOpt: Option[SuspensionStore] = None
 ) extends Constellation {
 
   def getModules: IO[List[ModuleNodeSpec]] =
@@ -110,6 +111,42 @@ final class ConstellationImpl(
     }
   }
 
+  override def suspensionStore: Option[SuspensionStore] = suspensionStoreOpt
+
+  def resumeFromStore(
+      handle: SuspensionHandle,
+      additionalInputs: Map[String, CValue],
+      resolvedNodes: Map[String, CValue],
+      options: ExecutionOptions
+  ): IO[DataSignature] =
+    suspensionStoreOpt match {
+      case None =>
+        IO.raiseError(new IllegalStateException("No SuspensionStore configured"))
+      case Some(store) =>
+        store.load(handle).flatMap {
+          case None =>
+            IO.raiseError(new NoSuchElementException(s"Suspension not found: ${handle.id}"))
+          case Some(suspended) =>
+            for {
+              // Resolve registry modules
+              registryModules <- moduleRegistry.initModules(suspended.dagSpec)
+              // Reconstruct synthetic modules from DagSpec
+              syntheticModules = SyntheticModuleFactory.fromDagSpec(suspended.dagSpec)
+              allModules = syntheticModules ++ registryModules
+              // Delegate to SuspendableExecution.resume
+              result <- SuspendableExecution.resume(
+                suspended = suspended,
+                additionalInputs = additionalInputs,
+                resolvedNodes = resolvedNodes,
+                modules = allModules,
+                options = options,
+                scheduler = scheduler,
+                backends = backends
+              )
+            } yield result
+        }
+    }
+
   /** Build a DataSignature from a Runtime.State. */
   private def buildDataSignature(
       state: Runtime.State,
@@ -163,10 +200,9 @@ final class ConstellationImpl(
       else PipelineStatus.Suspended
 
     val completedAt = Instant.now()
-    val metadata = SignatureMetadata(
-      startedAt = Some(startedAt),
-      completedAt = Some(completedAt),
-      totalDuration = Some(Duration.between(startedAt, completedAt))
+    val metadata = MetadataBuilder.build(
+      state, dagSpec, options, startedAt, completedAt,
+      inputNodeNames = inputs.keySet
     )
 
     // Build suspended state if not completed
@@ -363,13 +399,15 @@ object ConstellationImpl {
     * @param defaultTimeout Optional default timeout for DAG executions
     * @param lifecycle Optional lifecycle manager for graceful shutdown
     * @param programStoreOpt Optional pre-configured ProgramStore
+    * @param suspensionStoreOpt Optional SuspensionStore for persist/resume of suspended executions
     */
   final case class ConstellationBuilder(
       scheduler: GlobalScheduler = GlobalScheduler.unbounded,
       backends: ConstellationBackends = ConstellationBackends.defaults,
       defaultTimeout: Option[FiniteDuration] = None,
       lifecycle: Option[ConstellationLifecycle] = None,
-      programStoreOpt: Option[ProgramStore] = None
+      programStoreOpt: Option[ProgramStore] = None,
+      suspensionStoreOpt: Option[SuspensionStore] = None
   ) {
     /** Set the global scheduler for task ordering and concurrency control. */
     def withScheduler(s: GlobalScheduler): ConstellationBuilder = copy(scheduler = s)
@@ -398,6 +436,9 @@ object ConstellationImpl {
     /** Set a pre-configured ProgramStore instance. */
     def withProgramStore(ps: ProgramStore): ConstellationBuilder = copy(programStoreOpt = Some(ps))
 
+    /** Set a SuspensionStore for persisting and resuming suspended executions. */
+    def withSuspensionStore(ss: SuspensionStore): ConstellationBuilder = copy(suspensionStoreOpt = Some(ss))
+
     /** Enable circuit breakers for module execution with the given configuration.
       *
       * This is an IO operation because it allocates the circuit breaker registry.
@@ -424,7 +465,8 @@ object ConstellationImpl {
         scheduler = scheduler,
         backends = backends,
         defaultTimeout = defaultTimeout,
-        lifecycle = lifecycle
+        lifecycle = lifecycle,
+        suspensionStoreOpt = suspensionStoreOpt
       )
   }
 }

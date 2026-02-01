@@ -94,6 +94,36 @@ trait Constellation {
   ): IO[DataSignature]
 
   // ---------------------------------------------------------------------------
+  // Suspension Store API (Phase 4)
+  // ---------------------------------------------------------------------------
+
+  /** Access the optional suspension store.
+    *
+    * Returns `None` if no SuspensionStore was configured via the builder.
+    */
+  def suspensionStore: Option[SuspensionStore] = None
+
+  /** Resume a suspended execution from the SuspensionStore.
+    *
+    * Loads the suspended execution by handle, merges additional inputs and
+    * resolved nodes, and re-executes the pipeline.
+    *
+    * @param handle           Handle returned by `SuspensionStore.save`
+    * @param additionalInputs New input values to provide
+    * @param resolvedNodes    Manually-resolved data node values
+    * @param options          Execution options controlling metadata collection
+    * @return A DataSignature describing the resumed execution outcome
+    * @throws IllegalStateException if no SuspensionStore is configured
+    * @throws NoSuchElementException if the handle is not found
+    */
+  def resumeFromStore(
+      handle: SuspensionHandle,
+      additionalInputs: Map[String, CValue] = Map.empty,
+      resolvedNodes: Map[String, CValue] = Map.empty,
+      options: ExecutionOptions = ExecutionOptions()
+  ): IO[DataSignature]
+
+  // ---------------------------------------------------------------------------
   // Legacy API (deprecated, kept for backward compatibility)
   // ---------------------------------------------------------------------------
 
