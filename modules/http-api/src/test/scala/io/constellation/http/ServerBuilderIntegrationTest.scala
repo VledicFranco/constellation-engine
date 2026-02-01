@@ -48,7 +48,7 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
     val compiler = LangCompiler.empty
 
     val builder = ConstellationServer.builder(constellation, compiler)
-      .withAuth(AuthConfig(apiKeys = Map("key1" -> ApiRole.Admin)))
+      .withAuth(AuthConfig(hashedKeys = List(HashedApiKey("key1", ApiRole.Admin))))
 
     // Should not throw
     noException should be thrownBy {
@@ -97,7 +97,7 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
     val compiler = LangCompiler.empty
 
     val builder = ConstellationServer.builder(constellation, compiler)
-      .withAuth(AuthConfig(apiKeys = Map("key1" -> ApiRole.Admin)))
+      .withAuth(AuthConfig(hashedKeys = List(HashedApiKey("key1", ApiRole.Admin))))
       .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
       .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
       .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
@@ -109,9 +109,9 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   // --- Config validation ---
 
-  "Config validation" should "catch invalid auth config" in {
-    val config = AuthConfig(apiKeys = Map("" -> ApiRole.Admin))
-    config.validate shouldBe a[Left[_, _]]
+  "Config validation" should "accept valid auth config" in {
+    val config = AuthConfig(hashedKeys = List(HashedApiKey("valid-key", ApiRole.Admin)))
+    config.validate shouldBe a[Right[_, _]]
   }
 
   it should "catch invalid CORS config" in {
@@ -134,7 +134,7 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
     }
 
     val authConfig = AuthConfig(
-      apiKeys = Map("test-key" -> ApiRole.Admin),
+      hashedKeys = List(HashedApiKey("test-key", ApiRole.Admin)),
       publicPaths = Set("/health")
     )
     val corsConfig = CorsConfig(allowedOrigins = Set("*"))

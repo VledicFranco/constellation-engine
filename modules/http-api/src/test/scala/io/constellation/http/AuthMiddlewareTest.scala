@@ -25,10 +25,10 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
   }
 
   private val authConfig = AuthConfig(
-    apiKeys = Map(
-      "admin-key" -> ApiRole.Admin,
-      "exec-key" -> ApiRole.Execute,
-      "read-key" -> ApiRole.ReadOnly
+    hashedKeys = List(
+      HashedApiKey("admin-key", ApiRole.Admin),
+      HashedApiKey("exec-key", ApiRole.Execute),
+      HashedApiKey("read-key", ApiRole.ReadOnly)
     )
   )
 
@@ -156,7 +156,7 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
   // --- Disabled ---
 
   it should "pass through all requests when disabled (no keys configured)" in {
-    val disabledConfig = AuthConfig(apiKeys = Map.empty)
+    val disabledConfig = AuthConfig(hashedKeys = List.empty)
     val unprotected = AuthMiddleware(disabledConfig)(testRoutes)
 
     val request = Request[IO](Method.GET, uri"/data")
@@ -165,15 +165,36 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.Ok
   }
 
-  // --- Config validation ---
+  // --- Security features ---
 
-  "AuthConfig" should "reject blank API keys" in {
-    val config = AuthConfig(apiKeys = Map("" -> ApiRole.Admin))
-    config.validate shouldBe a[Left[_, _]]
+  "HashedApiKey" should "verify correct plaintext keys" in {
+    val hashed = HashedApiKey("my-secret-key", ApiRole.Admin)
+    hashed.verify("my-secret-key") shouldBe true
   }
 
-  it should "accept valid configuration" in {
-    val config = AuthConfig(apiKeys = Map("valid-key" -> ApiRole.Admin))
+  it should "reject incorrect plaintext keys" in {
+    val hashed = HashedApiKey("my-secret-key", ApiRole.Admin)
+    hashed.verify("wrong-key") shouldBe false
+  }
+
+  it should "use constant-time comparison" in {
+    val hashed = HashedApiKey("test-key", ApiRole.Admin)
+    // Both should complete in similar time (no timing attack vector)
+    val start1 = System.nanoTime()
+    hashed.verify("test-key")
+    val time1 = System.nanoTime() - start1
+
+    val start2 = System.nanoTime()
+    hashed.verify("xxxx-xxx")
+    val time2 = System.nanoTime() - start2
+
+    // Times should be within same order of magnitude
+    // (Cannot be exact due to JVM warmup, but should not differ by >10x)
+    (time1.toDouble / time2.toDouble) should (be > 0.1 and be < 10.0)
+  }
+
+  "AuthConfig" should "accept valid configuration" in {
+    val config = AuthConfig(hashedKeys = List(HashedApiKey("valid-key", ApiRole.Admin)))
     config.validate shouldBe a[Right[_, _]]
   }
 

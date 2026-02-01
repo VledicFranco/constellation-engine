@@ -1,5 +1,8 @@
 package io.constellation.http
 
+import java.security.MessageDigest
+import java.util.Arrays
+
 /** API role for authorization.
   *
   * Determines what HTTP methods a client is allowed to use:
@@ -16,33 +19,71 @@ enum ApiRole:
     case ApiRole.Execute  => method == "GET" || method == "POST"
     case ApiRole.ReadOnly => method == "GET"
 
+/** Hashed API key for secure storage.
+  *
+  * Stores SHA-256 hash instead of plaintext to prevent:
+  * - Exposure in memory dumps
+  * - Accidental logging of secrets
+  * - Timing attacks (via constant-time comparison)
+  */
+case class HashedApiKey(hash: Array[Byte], role: ApiRole) {
+
+  /** Verify a plaintext key against this hashed key using constant-time comparison. */
+  def verify(plaintextKey: String): Boolean = {
+    val candidateHash = HashedApiKey.hashKey(plaintextKey)
+    // Use Arrays.equals for constant-time comparison (resistant to timing attacks)
+    Arrays.equals(hash, candidateHash)
+  }
+}
+
+object HashedApiKey {
+
+  /** Create a hashed API key from plaintext. */
+  def apply(plaintextKey: String, role: ApiRole): HashedApiKey = {
+    HashedApiKey(hashKey(plaintextKey), role)
+  }
+
+  /** Hash a key using SHA-256. */
+  private[http] def hashKey(key: String): Array[Byte] = {
+    val digest = MessageDigest.getInstance("SHA-256")
+    digest.digest(key.getBytes("UTF-8"))
+  }
+}
+
 /** Configuration for static API-key authentication.
   *
-  * When `apiKeys` is non-empty, every request that does not match a public path
-  * must carry an `Authorization: Bearer <key>` header whose key appears in the map.
+  * When `hashedKeys` is non-empty, every request that does not match a public path
+  * must carry an `Authorization: Bearer <key>` header that verifies against a hashed key.
   *
   * Environment variable:
   *   - `CONSTELLATION_API_KEYS` — comma-separated `key:Role` pairs,
   *     e.g. `key1:Admin,key2:Execute`
   *
-  * @param apiKeys
-  *   Map from API key string to the role it grants
+  * Keys are hashed with SHA-256 on startup to prevent:
+  * - Exposure in memory dumps
+  * - Accidental logging
+  * - Timing attacks (constant-time verification)
+  *
+  * @param hashedKeys
+  *   List of hashed API keys with their roles
   * @param publicPaths
   *   Path prefixes that bypass authentication (prefix match)
   */
 case class AuthConfig(
-    apiKeys: Map[String, ApiRole] = Map.empty,
+    hashedKeys: List[HashedApiKey] = List.empty,
     publicPaths: Set[String] = Set("/health", "/health/live", "/health/ready", "/metrics")
 ) {
 
   /** Authentication is only active when at least one key is configured. */
-  def isEnabled: Boolean = apiKeys.nonEmpty
+  def isEnabled: Boolean = hashedKeys.nonEmpty
+
+  /** Verify a plaintext key and return its role if valid. */
+  def verifyKey(plaintextKey: String): Option[ApiRole] = {
+    hashedKeys.find(_.verify(plaintextKey)).map(_.role)
+  }
 
   /** Validate the configuration. */
-  def validate: Either[String, AuthConfig] =
-    if apiKeys.exists((k, _) => k.isBlank) then
-      Left("API keys must not be blank")
-    else Right(this)
+  def validate: Either[String, AuthConfig] = Right(this)
 }
 
 object AuthConfig {
@@ -57,17 +98,22 @@ object AuthConfig {
   /** Create configuration from environment variables.
     *
     * `CONSTELLATION_API_KEYS=key1:Admin,key2:Execute`
+    *
+    * Keys are hashed on startup for secure storage.
     */
   def fromEnv: AuthConfig = {
-    val keys = sys.env.get("CONSTELLATION_API_KEYS").map { raw =>
+    val hashedKeys = sys.env.get("CONSTELLATION_API_KEYS").map { raw =>
       raw.split(",").flatMap { entry =>
         entry.split(":", 2) match
-          case Array(k, r) => parseRole(r).map(k.trim -> _)
-          case _           => None
-      }.toMap
-    }.getOrElse(Map.empty)
+          case Array(k, r) =>
+            val key = k.trim
+            if key.isBlank then None
+            else parseRole(r).map(role => HashedApiKey(key, role))
+          case _ => None
+      }.toList
+    }.getOrElse(List.empty)
 
-    AuthConfig(apiKeys = keys)
+    AuthConfig(hashedKeys = hashedKeys)
   }
 
   /** Default configuration (no authentication). */

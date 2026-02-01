@@ -43,7 +43,7 @@ object AuthMiddleware {
                 "Unauthorized", "Missing or invalid Authorization header. Expected: Bearer <api-key>"))
 
             case Some(token) =>
-              config.apiKeys.get(token) match {
+              config.verifyKey(token) match {
                 case None =>
                   OptionT.liftF(errorResponse(Status.Unauthorized,
                     "Unauthorized", "Invalid API key"))
