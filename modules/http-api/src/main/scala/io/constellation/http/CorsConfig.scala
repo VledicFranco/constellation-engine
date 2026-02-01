@@ -45,14 +45,63 @@ case class CorsConfig(
 
 object CorsConfig {
 
+  /** Validate a CORS origin URL.
+    *
+    * @param origin The origin URL to validate
+    * @return Either an error message or the validated origin
+    */
+  private[http] def validateOrigin(origin: String): Either[String, String] = {
+    if (origin == "*") {
+      Right(origin) // Wildcard is valid
+    } else {
+      try {
+        val url = new java.net.URL(origin)
+        val scheme = url.getProtocol.toLowerCase
+
+        // Require HTTPS unless localhost
+        val isLocalhost = url.getHost.toLowerCase.matches("localhost|127\\.0\\.0\\.1|\\[::1\\]")
+
+        if (scheme == "https" || (scheme == "http" && isLocalhost)) {
+          Right(origin)
+        } else if (scheme == "http") {
+          Left(s"HTTP not allowed for non-localhost origins (use HTTPS): $origin")
+        } else {
+          Left(s"Invalid scheme '$scheme' (expected http/https): $origin")
+        }
+      } catch {
+        case e: java.net.MalformedURLException =>
+          Left(s"Malformed URL: ${e.getMessage}")
+      }
+    }
+  }
+
   /** Create configuration from environment variables.
     *
     * `CONSTELLATION_CORS_ORIGINS=https://app.example.com,https://admin.example.com`
+    *
+    * Invalid origins are logged as warnings and skipped.
     */
   def fromEnv: CorsConfig = {
     val origins = sys.env.get("CONSTELLATION_CORS_ORIGINS").map { raw =>
-      raw.split(',').map(_.trim).filter(_.nonEmpty).toSet
+      raw.split(',').zipWithIndex.flatMap { case (origin, idx) =>
+        val trimmed = origin.trim
+        if (trimmed.isEmpty) {
+          None
+        } else {
+          validateOrigin(trimmed) match {
+            case Right(validOrigin) =>
+              Some(validOrigin)
+            case Left(error) =>
+              System.err.println(s"[WARN] CORS origin #${idx + 1} invalid: $error")
+              None
+          }
+        }
+      }.toSet
     }.getOrElse(Set.empty)
+
+    if (origins.nonEmpty) {
+      System.err.println(s"[INFO] Loaded ${origins.size} CORS origin(s)")
+    }
 
     CorsConfig(allowedOrigins = origins)
   }

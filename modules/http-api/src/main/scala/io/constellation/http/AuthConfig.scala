@@ -83,35 +83,82 @@ case class AuthConfig(
   }
 
   /** Validate the configuration. */
-  def validate: Either[String, AuthConfig] = Right(this)
+  def validate: Either[String, AuthConfig] = {
+    // No validation needed for hashed keys (validation done during fromEnv)
+    Right(this)
+  }
 }
 
 object AuthConfig {
 
+  /** Minimum API key length for security. */
+  private val MinKeyLength = 24
+
   /** Parse role from string (case-insensitive). */
-  private def parseRole(s: String): Option[ApiRole] = s.trim.toLowerCase match
+  private[http] def parseRole(s: String): Option[ApiRole] = s.trim.toLowerCase match
     case "admin"    => Some(ApiRole.Admin)
     case "execute"  => Some(ApiRole.Execute)
     case "readonly" => Some(ApiRole.ReadOnly)
     case _          => None
+
+  /** Validate an API key meets security requirements.
+    *
+    * @param key The plaintext API key to validate
+    * @return Either an error message or the validated key
+    */
+  private[http] def validateApiKey(key: String): Either[String, String] = {
+    if (key.isBlank) {
+      Left("API key cannot be blank or whitespace-only")
+    } else if (key.length < MinKeyLength) {
+      Left(s"API key too short: ${key.length} chars (minimum $MinKeyLength required)")
+    } else if (key.exists(c => c.isControl)) {
+      Left(s"API key contains control characters")
+    } else {
+      Right(key)
+    }
+  }
 
   /** Create configuration from environment variables.
     *
     * `CONSTELLATION_API_KEYS=key1:Admin,key2:Execute`
     *
     * Keys are hashed on startup for secure storage.
+    * Invalid keys are logged as warnings and skipped.
     */
   def fromEnv: AuthConfig = {
     val hashedKeys = sys.env.get("CONSTELLATION_API_KEYS").map { raw =>
-      raw.split(",").flatMap { entry =>
-        entry.split(":", 2) match
+      raw.split(",").zipWithIndex.flatMap { case (entry, idx) =>
+        entry.split(":", 2) match {
           case Array(k, r) =>
             val key = k.trim
-            if key.isBlank then None
-            else parseRole(r).map(role => HashedApiKey(key, role))
-          case _ => None
+
+            // Validate API key
+            val keyValidation = validateApiKey(key)
+            val roleValidation = parseRole(r).toRight(s"Invalid role: '$r'")
+
+            (keyValidation, roleValidation) match {
+              case (Right(validKey), Right(role)) =>
+                Some(HashedApiKey(validKey, role))
+
+              case (Left(keyError), _) =>
+                System.err.println(s"[WARN] API key #${idx + 1} invalid: $keyError")
+                None
+
+              case (_, Left(roleError)) =>
+                System.err.println(s"[WARN] API key #${idx + 1}: $roleError")
+                None
+            }
+
+          case _ =>
+            System.err.println(s"[WARN] API key #${idx + 1} malformed: expected 'key:Role' format")
+            None
+        }
       }.toList
     }.getOrElse(List.empty)
+
+    if (hashedKeys.nonEmpty) {
+      System.err.println(s"[INFO] Loaded ${hashedKeys.length} API key(s)")
+    }
 
     AuthConfig(hashedKeys = hashedKeys)
   }

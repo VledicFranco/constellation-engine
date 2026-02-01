@@ -193,7 +193,7 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
     (time1.toDouble / time2.toDouble) should (be > 0.1 and be < 10.0)
   }
 
-  "AuthConfig" should "accept valid configuration" in {
+  "AuthConfig" should "always pass validation (validation done in fromEnv)" in {
     val config = AuthConfig(hashedKeys = List(HashedApiKey("valid-key", ApiRole.Admin)))
     config.validate shouldBe a[Right[_, _]]
   }

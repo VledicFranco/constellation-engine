@@ -11,9 +11,10 @@ import io.constellation.http.ApiModels.ErrorResponse
 
 /** Middleware that enforces static API-key authentication.
   *
-  * Extracts the `Authorization: Bearer <token>` header, looks up the key in
-  * `AuthConfig.apiKeys`, and checks that the associated `ApiRole` permits the
-  * HTTP method. Public paths (prefix match) bypass authentication entirely.
+  * Extracts the `Authorization: Bearer <token>` header, verifies it against
+  * hashed keys in `AuthConfig.hashedKeys`, and checks that the associated
+  * `ApiRole` permits the HTTP method. Public paths (prefix match) bypass
+  * authentication entirely.
   */
 object AuthMiddleware {
 

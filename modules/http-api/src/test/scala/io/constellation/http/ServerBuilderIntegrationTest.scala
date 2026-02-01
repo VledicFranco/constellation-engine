@@ -109,7 +109,7 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   // --- Config validation ---
 
-  "Config validation" should "accept valid auth config" in {
+  "Config validation" should "always pass for auth config (validation in fromEnv)" in {
     val config = AuthConfig(hashedKeys = List(HashedApiKey("valid-key", ApiRole.Admin)))
     config.validate shouldBe a[Right[_, _]]
   }
