@@ -80,7 +80,7 @@ final case class DataSignature(
   pendingOutputs: List[String],        // Output names not yet resolved
 
   // --- State ---
-  suspendedState: Option[SuspendedExecution], // Structured suspension IR (None if Completed)
+  suspendedState: Option[SuspendedExecution], // Suspension IR: None if Completed, Some if Suspended or Failed
 
   // --- Metadata ---
   metadata: SignatureMetadata           // Timing and execution metadata
@@ -92,6 +92,15 @@ object ExecutionStatus {
   case object Suspended extends ExecutionStatus
   case class Failed(errors: List[ExecutionError]) extends ExecutionStatus
 }
+
+/** Details about a module execution failure within a DAG run. */
+final case class ExecutionError(
+  nodeName: String,                       // Variable name of the data node whose module failed
+  moduleName: String,                     // Name of the module that failed (e.g. "CreditCheck")
+  message: String,                        // Human-readable error description
+  cause: Option[Throwable] = None,        // Underlying exception, if available
+  retriesAttempted: Int = 0               // How many retries were attempted before giving up
+)
 ```
 
 ### Metadata (Baseline)
@@ -169,7 +178,9 @@ trait Constellation {
   ): IO[DataSignature]
 
   /** Convenience: load from SuspensionStore, rehydrate program, merge modules, resume.
-    * Requires a SuspensionStore to be configured via builder.
+    * Requires both a SuspensionStore and ProgramStore to be configured via builder.
+    * Loads SuspendedExecution from SuspensionStore, resolves ProgramImage from ProgramStore
+    * (using the suspension's structuralHash), rehydrates to get synthetic modules, then resumes.
     */
   def resumeFromStore(
     handle: SuspensionHandle,
@@ -282,7 +293,7 @@ sigN.outputs         // Map("account_id" -> CValue.CString("ACC-12345"), ...)
 
 // If a module fails (e.g. CreditCheck external API is down):
 val sigFailed = SuspendableExecution.resume(suspended, ...).unsafeRunSync()
-sigFailed.status       // Failed(errors = List(ExecutionError("CreditCheck", ...)))
+sigFailed.status       // Failed(errors = List(ExecutionError("credit_score", "CreditCheck", "External API unavailable")))
 sigFailed.failedNodes  // Map("credit_score" -> ExecutionError(...))
 
 // Option A: Retry after fixing the external condition
@@ -344,6 +355,9 @@ final case class SuspendedExecution(
   // --- DAG ---
   dagSpec: DagSpec,                                 // The compiled DAG structure
 
+  // --- Module Options ---
+  moduleOptions: Map[UUID, IRModuleCallOptions],    // Runtime options for each module (retry, cache, etc.)
+
   // --- Accumulated State ---
   providedInputs: Map[String, CValue],              // All inputs across all resumptions
   computedValues: Map[UUID, CValue],                // Results for all executed data nodes
@@ -357,6 +371,7 @@ final case class SuspendedExecution(
 | `structuralHash` | Detect if the program semantically changed since suspension |
 | `resumptionCount` | Track how many times execution has been resumed |
 | `dagSpec` | The compiled DAG — needed to determine what to execute next. Intentionally embedded (not referenced by hash) so the IR is self-contained and resumable without a ProgramStore lookup. |
+| `moduleOptions` | Runtime execution options (retry, timeout, cache, priority, etc.) for each module. Embedded so that `resume()` can apply correct options to newly-firing modules without requiring a `ProgramImage` lookup. Serializable data — same rationale as embedding `dagSpec`. |
 | `providedInputs` | Cumulative inputs across all resumptions |
 | `computedValues` | `CValue` results for every data node that has been computed |
 | `moduleStatuses` | Which modules have fired and their execution outcomes |
@@ -632,8 +647,13 @@ final case class ProgramImage(
   syntacticHash: String,                               // Normalized AST hash (cheap cache key)
 
   // --- Content ---
-  dagSpec: DagSpec,                                    // The compiled DAG structure
-  moduleOptions: Map[UUID, IRModuleCallOptions],       // Per-module runtime options
+  dagSpec: DagSpec,                                    // The compiled DAG structure (topology + type signatures)
+  moduleOptions: Map[UUID, IRModuleCallOptions],       // Per-module runtime options (retry, cache, throttle, priority, etc.)
+  // Note: moduleOptions is NOT redundant with dagSpec. DagSpec contains structural
+  // information (types, edges, topology). moduleOptions contains runtime execution
+  // behavior (retry, backoff, caching, rate limiting, priority) parsed from module
+  // call options in the source. They are stored separately because DagSpec describes
+  // *what* to execute while moduleOptions describes *how* to execute it.
 
   // --- Provenance ---
   compiledAt: Instant,                                 // When this image was first created
@@ -876,6 +896,17 @@ trait SuspensionStore {
   def list(filter: SuspensionFilter = SuspensionFilter.All): IO[List[SuspensionSummary]]
 }
 
+/** Filter criteria for listing suspended executions. */
+final case class SuspensionFilter(
+  structuralHash: Option[String] = None,    // Only suspensions for this program
+  executionId: Option[UUID] = None,         // Specific execution chain
+  minResumptionCount: Option[Int] = None,   // At least N resumptions
+  maxResumptionCount: Option[Int] = None    // At most N resumptions
+)
+object SuspensionFilter {
+  val All: SuspensionFilter = SuspensionFilter()
+}
+
 final case class SuspensionHandle(id: String)
 
 final case class SuspensionSummary(
@@ -910,11 +941,13 @@ The constellation library ships with an `InMemorySuspensionStore` for developmen
 
 ### Plugging Into Constellation
 
+The existing `ConstellationImpl.builder()` is extended with new configuration methods:
+
 ```scala
-// Consumer setup
-val constellation = Constellation.builder()
-  .withModules(myModules)
-  .withSuspensionStore(store)  // Optional
+// Consumer setup (extends existing builder pattern)
+val constellation = ConstellationImpl.builder()
+  .withProgramStore(programStore)    // New — replaces DagRegistry internally
+  .withSuspensionStore(store)        // New — optional, enables resumeFromStore
   .build
 
 // If store is configured, convenience methods are available:
@@ -931,8 +964,8 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 | Component | Change |
 |-----------|--------|
 | `constellation-core` | `ExecutionStatus`, `ExecutionOptions`, `DataSignature`, `ProgramImage` case classes |
-| `constellation-runtime` | `LoadedProgram`, `ProgramStore` (replaces `DagRegistry`), `SuspendableExecution` executor, `SuspendedExecution` IR, `SuspensionCodec` trait, `CirceJsonSuspensionCodec`, rehydration logic |
-| `constellation-runtime` (optional) | `SuspensionStore` trait, `InMemorySuspensionStore` |
+| `constellation-runtime` | `LoadedProgram`, `ProgramStore` (replaces `DagRegistry`), `SuspendableExecution` executor, `SuspendedExecution` IR, `SuspensionCodec` trait, `CirceJsonSuspensionCodec`, `SyntheticModuleFactory`, rehydration logic. `ConstellationImpl.builder()` extended with `.withProgramStore()` and `.withSuspensionStore()`. `Constellation` trait gains `run(loaded, ...)`, `run(ref, ...)`, `resumeFromStore(...)`. |
+| `constellation-runtime` (optional) | `SuspensionStore` trait, `SuspensionFilter`, `InMemorySuspensionStore` |
 | `constellation-compiler` | `LangCompiler` returns `CompilationOutput` (`LoadedProgram` + warnings) instead of `CompileResult`. `CachingLangCompiler` delegates to `ProgramStore.lookupSyntactic`. Syntactic normalization + hashing added to parse phase. |
 | `constellation-http-api` | `POST /execute` accepts name or structural hash. `POST /run` returns structural hash. New endpoints: `GET /programs`, `GET /programs/:ref`, `DELETE /programs/:ref`, `PUT /programs/:name/alias`. |
 
@@ -968,7 +1001,7 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 
 - `DataSignature` type with core fields
 - `SuspendedExecution` IR case class (references `structuralHash`)
-- `ExecutionStatus` enum
+- `ExecutionStatus` enum and `ExecutionError` case class
 - `SuspensionCodec` trait with `CirceJsonSuspensionCodec` default implementation
 - Convenience methods: `SuspendedExecution.serialize` / `deserialize` (delegate to JSON codec)
 - `Constellation.run(loaded, inputs)` returns `DataSignature`
@@ -1217,8 +1250,28 @@ val dagSpec: Option[DagSpec] = constellation.getDag("myprogram").unsafeRunSync()
 
 // AFTER
 val image: Option[ProgramImage] = programStore.getByName("myprogram").unsafeRunSync()
-val image: Option[ProgramImage] = programStore.get("sha256:abc123...").unsafeRunSync()
+val image: Option[ProgramImage] = programStore.get("abc123...").unsafeRunSync()  // Raw hash, no prefix
 val loaded: LoadedProgram = ProgramImage.rehydrate(image.get)   // When you need to execute
+```
+
+### Constellation Builder
+
+```scala
+// BEFORE
+val constellation = ConstellationImpl.builder()
+  .withScheduler(scheduler)
+  .withCache(cacheBackend)
+  .build()
+
+// AFTER — builder gains new methods, existing methods unchanged
+val constellation = ConstellationImpl.builder()
+  .withScheduler(scheduler)
+  .withCache(cacheBackend)
+  .withProgramStore(programStore)       // New — replaces internal DagRegistry
+  .withSuspensionStore(suspensionStore) // New — optional, enables resumeFromStore
+  .build()
+
+// If no ProgramStore is provided, builder creates a default InMemoryProgramStore.
 ```
 
 ### Internal Files Requiring Migration
