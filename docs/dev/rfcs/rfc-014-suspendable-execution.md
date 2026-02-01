@@ -174,6 +174,7 @@ trait Constellation {
   def resumeFromStore(
     handle: SuspensionHandle,
     additionalInputs: Map[String, CValue],
+    resolvedNodes: Map[String, CValue] = Map.empty,
     options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 }
@@ -522,6 +523,18 @@ case class NodeAlreadyResolvedError(
 )
 ```
 
+### Program Resolution Errors
+
+When `Constellation.run(ref, ...)` cannot resolve a program reference:
+
+```scala
+case class ProgramNotFoundError(
+  ref: String
+) extends RuntimeException(
+  s"No program found for ref '$ref'. Checked as name alias and structural hash."
+)
+```
+
 ### Interaction with Existing Features
 
 | Feature | Interaction |
@@ -599,7 +612,7 @@ ProgramStore                                     ← CONTENT-ADDRESSED with name
 ├── images: Map[StructuralHash, ProgramImage]    (immutable, deduplicated)
 ├── aliases: Map[String, StructuralHash]         (mutable name → hash, like git branches)
 └── syntacticIndex: Map[(SyntacticHash, RegistryHash), StructuralHash]  (compilation cache)
-    ↓ loaded.run(inputs, options)
+    ↓ constellation.run(loaded, inputs, options)
 DataSignature                                    ← Unified result: completed, suspended, or failed
     ↓ (if suspended)
 SuspendedExecution                               ← Serializable snapshot, resumable
@@ -695,11 +708,15 @@ final case class CompilationOutput(
 2. Sort all map entries by key
 3. Normalize field ordering within specs
 
-The syntactic hash is the **compilation cache key** — combined with a `registryHash` (SHA-256 of the registered function signatures), it identifies a unique compilation context. If two source strings have the same syntactic hash and the module registry hasn't changed, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the program actually does.
+The syntactic hash is the **compilation cache key** — combined with a `registryHash`, it identifies a unique compilation context. If two source strings have the same syntactic hash and the module registry hasn't changed, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the program actually does.
+
+**Registry hash computation:** SHA-256 of the sorted list of `(moduleName, majorVersion, minorVersion, inputTypeSignature, outputTypeSignature)` tuples for all registered `FunctionSignature`s. Sorting is lexicographic by `moduleName`. Type signatures use their canonical `CType.toString` form. This ensures that adding, removing, or changing any registered module invalidates the syntactic cache.
 
 ### Content-Addressed Program Store
 
 The `ProgramStore` replaces the current `DagRegistry`. Programs are stored by structural hash (immutable, deduplicated) and referenced by name (mutable alias) or hash.
+
+**Note:** `ProgramStore` always operates on raw hashes (no `sha256:` prefix). The `sha256:` convention is a consumer-facing concern — `Constellation.run(ref)` strips the prefix before delegating to `ProgramStore.get`.
 
 ```scala
 trait ProgramStore {
@@ -870,6 +887,10 @@ final case class SuspensionSummary(
   createdAt: Instant,
   lastResumedAt: Option[Instant]
 )
+// Note: `createdAt` and `lastResumedAt` are store-level metadata maintained by
+// the SuspensionStore implementation, not derived from the SuspendedExecution IR.
+// Implementations set `createdAt` on save() and update `lastResumedAt` on each
+// subsequent save() of the same executionId.
 ```
 
 ### Backend SPI
@@ -932,6 +953,7 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 
 - `ProgramImage` case class with `structuralHash`, `syntacticHash`, `dagSpec`, `moduleOptions`, provenance fields
 - `LoadedProgram` case class wrapping `ProgramImage` + `syntheticModules`
+- `CompilationOutput` case class wrapping `LoadedProgram` + `List[CompileWarning]`
 - Structural hash computation: canonical DagSpec → SHA-256
 - Syntactic hash computation: parse → normalize AST → SHA-256
 - `ProgramStore` trait and `ProgramStoreImpl` (content-addressed images, mutable aliases, syntactic index)
