@@ -15,17 +15,32 @@ import scala.collection.mutable
   */
 trait MemoizationSupport {
 
-  /** Thread-local cache for expression parsing results.
+  /** Maximum cache size per thread to prevent memory leaks.
+    * When exceeded, least recently used entries are evicted.
+    */
+  private val MaxCacheSize = 1000
+
+  /** Thread-local LRU cache for expression parsing results.
     * Key: (offset, parserId)
     * Value: Parsing result
     *
-    * Note: Cache is scoped to a single parse invocation (cleared before each parse),
-    * so using offset alone is safe - different parses use different cache instances.
+    * Uses LinkedHashMap in access-order mode for LRU eviction.
+    * Limited to MaxCacheSize entries to prevent unbounded growth.
     */
   private val expressionCache =
-    new ThreadLocal[mutable.Map[(Int, Int), Either[P.Error, Any]]] {
-      override def initialValue(): mutable.Map[(Int, Int), Either[P.Error, Any]] =
-        mutable.Map.empty
+    new ThreadLocal[mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]]] {
+      override def initialValue(): mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]] =
+        new mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]]() {
+          override def put(key: (Int, Int), value: Either[P.Error, Any]): Option[Either[P.Error, Any]] = {
+            // LRU eviction: remove eldest entry if size limit exceeded
+            if (size >= MaxCacheSize) {
+              // Remove the first (eldest) entry
+              val eldest = head
+              remove(eldest._1)
+            }
+            super.put(key, value)
+          }
+        }
     }
 
   /** Thread-local hit/miss counters for cache statistics */
@@ -61,9 +76,13 @@ trait MemoizationSupport {
     */
   protected def checkCache[A](input: String, offset: Int, parserId: Int): Option[Either[P.Error, A]] = {
     val key    = (offset, parserId)
-    val cached = expressionCache.get().get(key)
+    val cache  = expressionCache.get()
+    val cached = cache.get(key)
     cached match {
       case Some(result) =>
+        // Re-insert to mark as recently used (LRU)
+        cache.remove(key)
+        cache.put(key, result)
         cacheHits.set(cacheHits.get() + 1)
         Some(result.asInstanceOf[Either[P.Error, A]])
       case None =>
