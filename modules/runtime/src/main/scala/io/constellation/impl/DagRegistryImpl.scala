@@ -3,6 +3,7 @@ package io.constellation.impl
 import cats.effect.{IO, Ref}
 import io.constellation.{ComponentMetadata, DagRegistry, DagSpec}
 
+@deprecated("Use ProgramStoreImpl for program image management", "0.3.0")
 class DagRegistryImpl(dagsRef: Ref[IO, Map[String, DagSpec]]) extends DagRegistry {
 
   override def list: IO[Map[String, ComponentMetadata]] =

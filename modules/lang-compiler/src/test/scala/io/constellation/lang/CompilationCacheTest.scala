@@ -3,18 +3,19 @@ package io.constellation.lang
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.*
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.time.Instant
 import java.util.UUID
 import scala.concurrent.duration._
 
 class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
-  /** Create a mock CompileResult for testing */
-  private def mockCompileResult(name: String = "test-dag"): CompileResult = {
+  /** Create a mock CompilationOutput for testing */
+  private def mockCompileResult(name: String = "test-dag"): CompilationOutput = {
     val dagSpec = DagSpec(
       metadata = ComponentMetadata.empty(name),
       modules = Map.empty,
@@ -24,7 +25,15 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
       declaredOutputs = List.empty,
       outputBindings = Map.empty
     )
-    CompileResult(dagSpec, Map.empty)
+    val image = ProgramImage(
+      structuralHash = ContentHash.computeStructuralHash(dagSpec),
+      syntacticHash = "",
+      dagSpec = dagSpec,
+      moduleOptions = Map.empty,
+      compiledAt = Instant.now(),
+      sourceHash = None
+    )
+    CompilationOutput(LoadedProgram(image, Map.empty), Nil)
   }
 
   // ============================================
@@ -186,7 +195,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -208,7 +217,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -229,7 +238,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -250,7 +259,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Left(List(io.constellation.lang.ast.CompileError.InternalError("test error")))
       }
@@ -272,7 +281,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -297,7 +306,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompileResult] = {
+      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }

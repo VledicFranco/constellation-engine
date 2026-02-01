@@ -1,7 +1,7 @@
 package io.constellation.lang
 
 import cats.effect.{IO, Ref}
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.CompilationOutput
 
 import scala.concurrent.duration._
 
@@ -19,7 +19,7 @@ case class CacheStats(
 case class CacheEntry(
     sourceHash: Int,
     registryHash: Int,
-    result: CompileResult,
+    result: CompilationOutput,
     createdAt: Long,
     lastAccessed: Long
 )
@@ -49,7 +49,7 @@ class CompilationCache private (
     *
     * Updates lastAccessed time on cache hit for LRU tracking.
     */
-  def get(dagName: String, sourceHash: Int, registryHash: Int): IO[Option[CompileResult]] = {
+  def get(dagName: String, sourceHash: Int, registryHash: Int): IO[Option[CompilationOutput]] = {
     val now = System.currentTimeMillis()
     cache.modify { entries =>
       entries.get(dagName) match {
@@ -74,7 +74,7 @@ class CompilationCache private (
     *
     * If the cache is at maximum capacity, evicts the least recently used entry.
     */
-  def put(dagName: String, sourceHash: Int, registryHash: Int, result: CompileResult): IO[Unit] = {
+  def put(dagName: String, sourceHash: Int, registryHash: Int, result: CompilationOutput): IO[Unit] = {
     val now   = System.currentTimeMillis()
     val entry = CacheEntry(sourceHash, registryHash, result, now, now)
 

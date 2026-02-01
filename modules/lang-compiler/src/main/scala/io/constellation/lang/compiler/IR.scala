@@ -1,5 +1,6 @@
 package io.constellation.lang.compiler
 
+import io.constellation.ModuleCallOptions
 import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy, PriorityLevel, Span}
 import io.constellation.lang.semantic.SemanticType
 
@@ -31,6 +32,31 @@ final case class IRModuleCallOptions(
     fallback.isEmpty && cacheMs.isEmpty && cacheBackend.isEmpty &&
     throttleCount.isEmpty && throttlePerMs.isEmpty && concurrency.isEmpty &&
     onError.isEmpty && lazyEval.isEmpty && priority.isEmpty
+
+  /** Convert to runtime-level [[ModuleCallOptions]] (drops IR-specific `fallback`). */
+  def toModuleCallOptions: ModuleCallOptions = ModuleCallOptions(
+    retry = retry,
+    timeoutMs = timeoutMs,
+    delayMs = delayMs,
+    backoff = backoff.map {
+      case BackoffStrategy.Fixed       => "fixed"
+      case BackoffStrategy.Linear      => "linear"
+      case BackoffStrategy.Exponential => "exponential"
+    },
+    cacheMs = cacheMs,
+    cacheBackend = cacheBackend,
+    throttleCount = throttleCount,
+    throttlePerMs = throttlePerMs,
+    concurrency = concurrency,
+    onError = onError.map {
+      case ErrorStrategy.Propagate => "propagate"
+      case ErrorStrategy.Skip      => "skip"
+      case ErrorStrategy.Log       => "log"
+      case ErrorStrategy.Wrap      => "wrap"
+    },
+    lazyEval = lazyEval,
+    priority = priority
+  )
 }
 
 object IRModuleCallOptions {

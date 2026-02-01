@@ -9,7 +9,22 @@ import io.constellation.execution.CancellableExecution
   * and executing pipelines. This is the primary interface that embedders
   * interact with to compile and run constellation-lang pipelines.
   *
-  * ==Usage==
+  * ==New API (0.3.0+)==
+  *
+  * {{{
+  * for {
+  *   constellation <- ConstellationImpl.init
+  *   _             <- constellation.setModule(myModule)
+  *   // Use LoadedProgram + run
+  *   result        <- constellation.run(loadedProgram, inputs)
+  *   // Or use ProgramStore ref + run
+  *   _             <- constellation.programStore.store(image)
+  *   _             <- constellation.programStore.alias("pipeline", image.structuralHash)
+  *   result        <- constellation.run("pipeline", inputs)
+  * } yield result
+  * }}}
+  *
+  * ==Legacy API (deprecated)==
   *
   * {{{
   * for {
@@ -42,76 +57,84 @@ trait Constellation {
     */
   def setModule(module: Module.Uninitialized): IO[Unit]
 
-  /** Check whether a DAG with the given name exists in the registry.
+  // ---------------------------------------------------------------------------
+  // New API (Phase 1)
+  // ---------------------------------------------------------------------------
+
+  /** Access the program store for managing compiled program images. */
+  def programStore: ProgramStore
+
+  /** Execute a loaded program with the given inputs.
     *
-    * @param name The DAG name to check
-    * @return `true` if a DAG with that name is registered
+    * @param loaded  A LoadedProgram (from compilation or rehydration)
+    * @param inputs  Input values keyed by variable name
+    * @param options Execution options controlling metadata collection
+    * @return A DataSignature describing the execution outcome
     */
+  def run(
+      loaded: LoadedProgram,
+      inputs: Map[String, CValue],
+      options: ExecutionOptions = ExecutionOptions()
+  ): IO[DataSignature]
+
+  /** Execute a program by reference (alias name or "sha256:<hash>").
+    *
+    * Resolves the reference via the ProgramStore, rehydrates the LoadedProgram,
+    * and delegates to `run(loaded, inputs, options)`.
+    *
+    * @param ref     A program alias name or "sha256:<hash>" structural hash
+    * @param inputs  Input values keyed by variable name
+    * @param options Execution options controlling metadata collection
+    * @return A DataSignature describing the execution outcome
+    */
+  def run(
+      ref: String,
+      inputs: Map[String, CValue],
+      options: ExecutionOptions
+  ): IO[DataSignature]
+
+  // ---------------------------------------------------------------------------
+  // Legacy API (deprecated, kept for backward compatibility)
+  // ---------------------------------------------------------------------------
+
+  /** Check whether a DAG with the given name exists in the registry. */
+  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
   def dagExists(name: String): IO[Boolean]
 
-  /** Create a new empty DAG with the given name.
-    *
-    * @param name The DAG name
-    * @return `Some(dagSpec)` if created, `None` if a DAG with that name already exists
-    */
+  /** Create a new empty DAG with the given name. */
+  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
   def createDag(name: String): IO[Option[DagSpec]]
 
-  /** Register or replace a DAG specification.
-    *
-    * @param name The DAG name
-    * @param spec The DAG specification to store
-    */
+  /** Register or replace a DAG specification. */
+  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
   def setDag(name: String, spec: DagSpec): IO[Unit]
 
   /** List all registered DAGs with their metadata. */
+  @deprecated("Use ProgramStore.listImages", "0.3.0")
   def listDags: IO[Map[String, ComponentMetadata]]
 
-  /** Retrieve a DAG specification by name.
-    *
-    * @param name The DAG name
-    * @return `Some(dagSpec)` if found, `None` otherwise
-    */
+  /** Retrieve a DAG specification by name. */
+  @deprecated("Use ProgramStore.getByName", "0.3.0")
   def getDag(name: String): IO[Option[DagSpec]]
 
-  /** Execute a named DAG with the given inputs.
-    *
-    * Resolves modules from the registry and runs the full pipeline.
-    *
-    * @param name The name of a registered DAG
-    * @param inputs Input values keyed by variable name
-    * @return The final execution state containing all computed values
-    */
+  /** Execute a named DAG with the given inputs. */
+  @deprecated("Use Constellation.run(ref, inputs, options)", "0.3.0")
   def runDag(name: String, inputs: Map[String, CValue]): IO[Runtime.State]
 
-  /** Run a DAG specification directly without storing it in the registry.
-    *
-    * @param dagSpec The DAG specification to execute
-    * @param inputs Input values keyed by variable name
-    * @return The final execution state
-    */
+  /** Run a DAG specification directly without storing it in the registry. */
+  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
   def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State]
 
-  /** Run a DAG with pre-resolved modules (typically from compilation).
-    *
-    * @param dagSpec The DAG specification
-    * @param inputs Input values keyed by variable name
-    * @param modules Module implementations keyed by node UUID
-    * @return The final execution state
-    */
+  /** Run a DAG with pre-resolved modules. */
+  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
   def runDagWithModules(
       dagSpec: DagSpec,
       inputs: Map[String, CValue],
       modules: Map[java.util.UUID, Module.Uninitialized]
   ): IO[Runtime.State]
 
-  /** Run a DAG with pre-resolved modules and priority scheduling.
-    *
-    * @param dagSpec The DAG specification
-    * @param inputs Input data
-    * @param modules Module implementations keyed by UUID
-    * @param modulePriorities Priority values per module UUID (0-100, higher = more important)
-    * @return Execution state
-    */
+  /** Run a DAG with pre-resolved modules and priority scheduling. */
+  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
   def runDagWithModulesAndPriorities(
       dagSpec: DagSpec,
       inputs: Map[String, CValue],
@@ -119,13 +142,7 @@ trait Constellation {
       modulePriorities: Map[java.util.UUID, Int]
   ): IO[Runtime.State]
 
-  /** Run a named DAG with cancellation support.
-    *
-    * Returns a `CancellableExecution` handle immediately. The caller can
-    * await results via `handle.result` or cancel via `handle.cancel`.
-    *
-    * Default implementation delegates to `runDag` wrapped in a completed handle.
-    */
+  /** Run a named DAG with cancellation support. */
   def runDagCancellable(name: String, inputs: Map[String, CValue]): IO[CancellableExecution] =
     runDag(name, inputs).flatMap { state =>
       CancellableExecution.completed(java.util.UUID.randomUUID(), state)

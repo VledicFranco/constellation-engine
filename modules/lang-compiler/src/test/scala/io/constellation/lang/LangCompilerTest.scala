@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.*
 import io.constellation.lang.ast.CompileError
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

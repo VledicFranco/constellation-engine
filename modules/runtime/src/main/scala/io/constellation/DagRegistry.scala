@@ -2,6 +2,7 @@ package io.constellation
 
 import cats.effect.IO
 
+@deprecated("Use ProgramStore for program image management", "0.3.0")
 trait DagRegistry {
 
   def list: IO[Map[String, ComponentMetadata]]

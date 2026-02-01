@@ -1,11 +1,14 @@
 package io.constellation.impl
 
 import cats.effect.IO
+import cats.implicits.*
 import io.constellation.*
 import io.constellation.cache.CacheBackend
 import io.constellation.execution.{CancellableExecution, ConstellationLifecycle, GlobalScheduler}
 import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsProvider, TracerProvider}
 
+import java.time.{Duration, Instant}
+import java.util.UUID
 import scala.concurrent.duration.FiniteDuration
 
 /** Default implementation of the [[io.constellation.Constellation]] API.
@@ -33,6 +36,7 @@ import scala.concurrent.duration.FiniteDuration
   *
   * @param moduleRegistry Registry for module definitions
   * @param dagRegistry Registry for DAG specifications
+  * @param programStoreInstance Program image store
   * @param scheduler Global scheduler for task ordering and concurrency control
   * @param backends Pluggable SPI backends (metrics, tracing, listener, cache, circuit breakers)
   * @param defaultTimeout Optional default timeout applied to all DAG executions
@@ -43,6 +47,7 @@ import scala.concurrent.duration.FiniteDuration
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
     dagRegistry: DagRegistry,
+    programStoreInstance: ProgramStore,
     scheduler: GlobalScheduler = GlobalScheduler.unbounded,
     backends: ConstellationBackends = ConstellationBackends.defaults,
     defaultTimeout: Option[FiniteDuration] = None,
@@ -57,6 +62,147 @@ final class ConstellationImpl(
 
   def setModule(factory: Module.Uninitialized): IO[Unit] =
     moduleRegistry.register(factory.spec.name, factory)
+
+  // ---------------------------------------------------------------------------
+  // New API
+  // ---------------------------------------------------------------------------
+
+  def programStore: ProgramStore = programStoreInstance
+
+  def run(
+      loaded: LoadedProgram,
+      inputs: Map[String, CValue],
+      options: ExecutionOptions = ExecutionOptions()
+  ): IO[DataSignature] = {
+    val dagSpec = loaded.image.dagSpec
+    val startedAt = Instant.now()
+
+    for {
+      // Merge registry modules with synthetic modules from the loaded program
+      registryModules <- moduleRegistry.initModules(dagSpec)
+      allModules = registryModules ++ loaded.syntheticModules
+
+      // Execute
+      state <- executeWithTimeout(
+        Runtime.runWithBackends(dagSpec, inputs, allModules, Map.empty, scheduler, backends),
+        dagSpec, inputs, allModules, Map.empty
+      )
+    } yield buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
+  }
+
+  def run(
+      ref: String,
+      inputs: Map[String, CValue],
+      options: ExecutionOptions
+  ): IO[DataSignature] = {
+    val hashLookup: IO[Option[ProgramImage]] =
+      if (ref.startsWith("sha256:"))
+        programStoreInstance.get(ref.stripPrefix("sha256:"))
+      else
+        programStoreInstance.getByName(ref)
+
+    hashLookup.flatMap {
+      case Some(image) =>
+        val loaded = ProgramImage.rehydrate(image)
+        run(loaded, inputs, options)
+      case None =>
+        IO.raiseError(new Exception(s"Program not found: $ref"))
+    }
+  }
+
+  /** Build a DataSignature from a Runtime.State. */
+  private def buildDataSignature(
+      state: Runtime.State,
+      loaded: LoadedProgram,
+      inputs: Map[String, CValue],
+      options: ExecutionOptions,
+      startedAt: Instant,
+      resumptionCount: Int
+  ): DataSignature = {
+    val dagSpec = loaded.image.dagSpec
+
+    // Build UUID->name lookup from data nodes
+    val uuidToName: Map[UUID, String] = dagSpec.data.map { case (uuid, spec) => uuid -> spec.name }
+
+    // Convert state.data to name-keyed map
+    val computedNodes: Map[String, CValue] = state.data.flatMap { case (uuid, evalCValue) =>
+      uuidToName.get(uuid).map(name => name -> evalCValue.value)
+    }
+
+    // Determine outputs (declared outputs that have been computed)
+    val outputs: Map[String, CValue] = dagSpec.declaredOutputs.flatMap { name =>
+      computedNodes.get(name).map(name -> _)
+    }.toMap
+
+    // Missing inputs
+    val expectedInputNames = dagSpec.userInputDataNodes.values.flatMap(_.nicknames.values).toSet
+    val providedInputNames = inputs.keySet
+    val missingInputs = (expectedInputNames -- providedInputNames).toList.sorted
+
+    // Pending outputs
+    val pendingOutputs = dagSpec.declaredOutputs.filterNot(outputs.contains)
+
+    // Determine status
+    val failedModules = state.moduleStatus.toList.flatMap { case (uuid, evalStatus) =>
+      evalStatus.value match {
+        case Module.Status.Failed(error) =>
+          val moduleName = dagSpec.modules.get(uuid).map(_.name).getOrElse(uuid.toString)
+          Some(ExecutionError(
+            nodeName = moduleName,
+            moduleName = moduleName,
+            message = error.getMessage,
+            cause = Some(error)
+          ))
+        case _ => None
+      }
+    }
+
+    val status: PipelineStatus =
+      if (failedModules.nonEmpty) PipelineStatus.Failed(failedModules)
+      else if (pendingOutputs.isEmpty && missingInputs.isEmpty) PipelineStatus.Completed
+      else PipelineStatus.Suspended
+
+    val completedAt = Instant.now()
+    val metadata = SignatureMetadata(
+      startedAt = Some(startedAt),
+      completedAt = Some(completedAt),
+      totalDuration = Some(Duration.between(startedAt, completedAt))
+    )
+
+    // Build suspended state if not completed
+    val suspendedState: Option[SuspendedExecution] =
+      if (status == PipelineStatus.Completed) None
+      else Some(SuspendedExecution(
+        executionId = state.processUuid,
+        structuralHash = loaded.structuralHash,
+        resumptionCount = resumptionCount,
+        dagSpec = dagSpec,
+        moduleOptions = loaded.image.moduleOptions,
+        providedInputs = inputs,
+        computedValues = state.data.map { case (uuid, evalCValue) => uuid -> evalCValue.value },
+        moduleStatuses = state.moduleStatus.map { case (uuid, evalStatus) =>
+          uuid -> evalStatus.value.toString
+        }
+      ))
+
+    DataSignature(
+      executionId = state.processUuid,
+      structuralHash = loaded.structuralHash,
+      resumptionCount = resumptionCount,
+      status = status,
+      inputs = inputs,
+      computedNodes = computedNodes,
+      outputs = outputs,
+      missingInputs = missingInputs,
+      pendingOutputs = pendingOutputs,
+      suspendedState = suspendedState,
+      metadata = metadata
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Legacy API (deprecated)
+  // ---------------------------------------------------------------------------
 
   def dagExists(name: String): IO[Boolean] =
     dagRegistry.exists(name)
@@ -98,7 +244,6 @@ final class ConstellationImpl(
         exec.flatMap { handle =>
           lc.registerExecution(handle.executionId, handle).flatMap {
             case true =>
-              // Deregister when result completes
               val wrapped = new CancellableExecution {
                 def executionId = handle.executionId
                 def cancel = handle.cancel
@@ -184,7 +329,12 @@ object ConstellationImpl {
     for {
       moduleRegistry <- ModuleRegistryImpl.init
       dagRegistry    <- DagRegistryImpl.init
-    } yield new ConstellationImpl(moduleRegistry = moduleRegistry, dagRegistry = dagRegistry)
+      ps             <- ProgramStoreImpl.init
+    } yield new ConstellationImpl(
+      moduleRegistry = moduleRegistry,
+      dagRegistry = dagRegistry,
+      programStoreInstance = ps
+    )
 
   /** Initialize with a custom scheduler for priority-based execution.
     *
@@ -195,9 +345,11 @@ object ConstellationImpl {
     for {
       moduleRegistry <- ModuleRegistryImpl.init
       dagRegistry    <- DagRegistryImpl.init
+      ps             <- ProgramStoreImpl.init
     } yield new ConstellationImpl(
       moduleRegistry = moduleRegistry,
       dagRegistry = dagRegistry,
+      programStoreInstance = ps,
       scheduler = scheduler
     )
 
@@ -210,12 +362,14 @@ object ConstellationImpl {
     * @param backends Pluggable backend services (metrics, tracing, listener, cache)
     * @param defaultTimeout Optional default timeout for DAG executions
     * @param lifecycle Optional lifecycle manager for graceful shutdown
+    * @param programStoreOpt Optional pre-configured ProgramStore
     */
   final case class ConstellationBuilder(
       scheduler: GlobalScheduler = GlobalScheduler.unbounded,
       backends: ConstellationBackends = ConstellationBackends.defaults,
       defaultTimeout: Option[FiniteDuration] = None,
-      lifecycle: Option[ConstellationLifecycle] = None
+      lifecycle: Option[ConstellationLifecycle] = None,
+      programStoreOpt: Option[ProgramStore] = None
   ) {
     /** Set the global scheduler for task ordering and concurrency control. */
     def withScheduler(s: GlobalScheduler): ConstellationBuilder = copy(scheduler = s)
@@ -241,6 +395,9 @@ object ConstellationImpl {
     /** Set the lifecycle manager for graceful shutdown support. */
     def withLifecycle(lc: ConstellationLifecycle): ConstellationBuilder = copy(lifecycle = Some(lc))
 
+    /** Set a pre-configured ProgramStore instance. */
+    def withProgramStore(ps: ProgramStore): ConstellationBuilder = copy(programStoreOpt = Some(ps))
+
     /** Enable circuit breakers for module execution with the given configuration.
       *
       * This is an IO operation because it allocates the circuit breaker registry.
@@ -259,9 +416,11 @@ object ConstellationImpl {
       for {
         moduleRegistry <- ModuleRegistryImpl.init
         dagRegistry    <- DagRegistryImpl.init
+        ps             <- programStoreOpt.map(IO.pure).getOrElse(ProgramStoreImpl.init)
       } yield new ConstellationImpl(
         moduleRegistry = moduleRegistry,
         dagRegistry = dagRegistry,
+        programStoreInstance = ps,
         scheduler = scheduler,
         backends = backends,
         defaultTimeout = defaultTimeout,

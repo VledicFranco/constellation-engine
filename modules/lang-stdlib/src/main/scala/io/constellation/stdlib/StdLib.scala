@@ -2,7 +2,7 @@ package io.constellation.stdlib
 
 import cats.effect.IO
 import io.constellation.*
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
 import io.constellation.lang.semantic.*
 import io.constellation.stdlib.categories.*
@@ -86,12 +86,15 @@ object StdLib
         // Include stdlib modules that are referenced by the DAG
         // Match module specs in the DAG to stdlib modules by name
         val neededStdModules: Map[UUID, Module.Uninitialized] =
-          result.dagSpec.modules.flatMap { case (moduleId, spec) =>
+          result.program.image.dagSpec.modules.flatMap { case (moduleId, spec) =>
             stdModules
               .find { case (name, _) => spec.name.contains(name) }
               .map { case (_, module) => moduleId -> module }
           }
-        result.copy(syntheticModules = result.syntheticModules ++ neededStdModules)
+        val updatedProgram = result.program.copy(
+          syntheticModules = result.program.syntheticModules ++ neededStdModules
+        )
+        result.copy(program = updatedProgram)
       }
 
     def compileToIR(source: String, dagName: String) =

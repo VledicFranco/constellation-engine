@@ -2,7 +2,7 @@ package io.constellation.lang
 
 import cats.effect.unsafe.implicits.global
 import io.constellation.lang.ast.CompileError
-import io.constellation.lang.compiler.{CompileResult, IRProgram}
+import io.constellation.lang.compiler.{CompilationOutput, IRProgram}
 import io.constellation.lang.semantic.FunctionRegistry
 
 import java.util.concurrent.ConcurrentHashMap
@@ -26,13 +26,13 @@ class CachingLangCompiler(
     cache: CompilationCache
 ) extends LangCompiler {
 
-  // Simple in-memory cache for IR results (separate from CompileResult cache)
+  // Simple in-memory cache for IR results (separate from CompilationOutput cache)
   // Key: (sourceHash, registryHash), Value: IRProgram
   private val irCache = new ConcurrentHashMap[(Int, Int), IRProgram]()
 
   def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
-  def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] = {
+  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
     val sourceHash   = source.hashCode
     val registryHash = functionRegistry.all.hashCode
 

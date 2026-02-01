@@ -2,7 +2,7 @@ package io.constellation.lang.benchmark
 
 import cats.effect.unsafe.implicits.global
 import io.constellation.lang._
-import io.constellation.lang.compiler.CompileResult
+import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.FunctionRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

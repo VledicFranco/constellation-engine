@@ -8,13 +8,14 @@ import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.*
 
+import java.time.Instant
 import java.util.UUID
 
 /** Main interface for compiling constellation-lang programs */
 trait LangCompiler {
 
-  /** Compile a constellation-lang source to a DagSpec and synthetic modules */
-  def compile(source: String, dagName: String): Either[List[CompileError], CompileResult]
+  /** Compile a constellation-lang source to a CompilationOutput (LoadedProgram + warnings). */
+  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput]
 
   /** Compile to IR only (for visualization) */
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram]
@@ -120,7 +121,7 @@ private class LangCompilerImpl(
 
   def functionRegistry: FunctionRegistry = registry
 
-  def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] =
+  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] =
     for {
       // Phase 1: Parse
       program <- ConstellationParser.parse(source).left.map(List(_))
@@ -138,7 +139,26 @@ private class LangCompilerImpl(
       result <- DagCompiler.compile(optimizedIR, dagName, modules).left.map { err =>
         List(CompileError.InternalError(err.message))
       }
-    } yield result.copy(warnings = typedProgram.warnings)
+    } yield {
+      // Wrap CompileResult into CompilationOutput
+      val sourceHash = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+      val structuralHash = ProgramImage.computeStructuralHash(result.dagSpec)
+      val moduleOptions = result.moduleOptions.map { case (uuid, irOpts) =>
+        uuid -> irOpts.toModuleCallOptions
+      }
+
+      val image = ProgramImage(
+        structuralHash = structuralHash,
+        syntacticHash = sourceHash,
+        dagSpec = result.dagSpec,
+        moduleOptions = moduleOptions,
+        compiledAt = Instant.now(),
+        sourceHash = Some(sourceHash)
+      )
+
+      val loaded = LoadedProgram(image, result.syntheticModules)
+      CompilationOutput(loaded, typedProgram.warnings)
+    }
 
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
     for {

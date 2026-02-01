@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.CType
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.compiler.{CompileResult, IRModuleCallOptions, ModuleOptionsExecutor}
+import io.constellation.lang.compiler.{CompilationOutput, CompileResult, DagCompiler, IRModuleCallOptions, ModuleOptionsExecutor}
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -34,9 +34,15 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
       .build
   }
 
+  /** Compile source and extract IRModuleCallOptions from the underlying CompileResult.
+    * Uses compileToIR + DagCompiler to get the raw IR-level options needed by ModuleOptionsExecutor.
+    */
   private def compileAndGetOptions(source: String, moduleName: String): Either[Any, (CompileResult, IRModuleCallOptions)] = {
     val compiler = compilerWithFunction(moduleName)
-    compiler.compile(source, "test-dag").map { result =>
+    for {
+      ir <- compiler.compileToIR(source, "test-dag")
+      result <- DagCompiler.compile(ir, "test-dag", Map.empty).left.map(e => List(e))
+    } yield {
       val options = result.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
       (result, options)
     }
@@ -377,10 +383,13 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
       )
       .build
 
-    val compiled = compiler.compile(source, "test-dag")
-    compiled.isRight shouldBe true
+    val ir = compiler.compileToIR(source, "test-dag")
+    ir.isRight shouldBe true
 
-    val options = compiled.toOption.get.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
+    val dagResult = DagCompiler.compile(ir.toOption.get, "test-dag", Map.empty)
+    dagResult.isRight shouldBe true
+
+    val options = dagResult.toOption.get.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
 
     options.retry shouldBe Some(2)
     options.timeoutMs shouldBe Some(1000L)

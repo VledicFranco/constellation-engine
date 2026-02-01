@@ -9,7 +9,11 @@ import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
 
-/** Compilation result containing the DagSpec, synthetic modules, module options, and warnings */
+/** Compilation result containing the DagSpec, synthetic modules, module options, and warnings.
+  *
+  * @deprecated Use [[CompilationOutput]] which wraps a [[io.constellation.LoadedProgram]].
+  */
+@deprecated("Use CompilationOutput with LoadedProgram", "0.3.0")
 final case class CompileResult(
     dagSpec: DagSpec,
     syntheticModules: Map[UUID, Module.Uninitialized],

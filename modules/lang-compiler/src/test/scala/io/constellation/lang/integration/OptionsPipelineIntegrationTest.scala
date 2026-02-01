@@ -1,15 +1,15 @@
 package io.constellation.lang.integration
 
+import io.constellation.ModuleCallOptions
 import io.constellation.lang.*
-import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy}
-import io.constellation.lang.compiler.{CompileResult, IRModuleCallOptions}
+import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
  * Integration tests for verifying module call options flow through the full
- * compilation pipeline from source to CompileResult.
+ * compilation pipeline from source to CompilationOutput.
  */
 class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
@@ -27,12 +27,12 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
       .build
   }
 
-  private def compileWithModule(source: String, moduleName: String): Either[Any, CompileResult] = {
+  private def compileWithModule(source: String, moduleName: String): Either[Any, CompilationOutput] = {
     val compiler = compilerWithFunction(moduleName)
     compiler.compile(source, "test-dag")
   }
 
-  private def getModuleOptions(result: CompileResult): Option[IRModuleCallOptions] = {
+  private def getModuleOptions(result: CompilationOutput): Option[ModuleCallOptions] = {
     result.moduleOptions.values.headOption
   }
 
@@ -94,7 +94,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
     val options = getModuleOptions(result.toOption.get)
     options shouldBe defined
-    options.get.backoff shouldBe Some(BackoffStrategy.Exponential)
+    options.get.backoff shouldBe Some("exponential")
   }
 
   it should "compile program with cache option" in {
@@ -165,7 +165,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
     val options = getModuleOptions(result.toOption.get)
     options shouldBe defined
-    options.get.onError shouldBe Some(ErrorStrategy.Skip)
+    options.get.onError shouldBe Some("skip")
   }
 
   it should "compile program with lazy option" in {
@@ -244,7 +244,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     options shouldBe defined
     options.get.retry shouldBe Some(5)
     options.get.delayMs shouldBe Some(1000L)
-    options.get.backoff shouldBe Some(BackoffStrategy.Exponential)
+    options.get.backoff shouldBe Some("exponential")
   }
 
   it should "compile program with rate control options" in {
@@ -288,13 +288,13 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     options.get.retry shouldBe Some(3)
     options.get.timeoutMs shouldBe Some(30000L)
     options.get.delayMs shouldBe Some(1000L)
-    options.get.backoff shouldBe Some(BackoffStrategy.Exponential)
+    options.get.backoff shouldBe Some("exponential")
     options.get.cacheMs shouldBe Some(300000L)
     options.get.cacheBackend shouldBe Some("memory")
     options.get.throttleCount shouldBe Some(100)
     options.get.throttlePerMs shouldBe Some(60000L)
     options.get.concurrency shouldBe Some(5)
-    options.get.onError shouldBe Some(ErrorStrategy.Log)
+    options.get.onError shouldBe Some("log")
     options.get.lazyEval shouldBe Some(true)
     options.get.priority shouldBe defined
   }
@@ -313,11 +313,11 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     val result = compileWithModule(source, "TestModule")
     result.isRight shouldBe true
 
+    // Fallback is resolved at IR level (not in ModuleCallOptions)
+    // Verify compilation succeeds and options are present
     val compiled = result.toOption.get
     val options = getModuleOptions(compiled)
     options shouldBe defined
-    // Fallback should be an IR node reference (UUID)
-    options.get.fallback shouldBe defined
   }
 
   it should "compile program with fallback as literal" in {
@@ -329,9 +329,9 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     val result = compileWithModule(source, "TestModule")
     result.isRight shouldBe true
 
+    // Fallback is resolved at IR level (not in ModuleCallOptions)
     val options = getModuleOptions(result.toOption.get)
     options shouldBe defined
-    options.get.fallback shouldBe defined
   }
 
   // ============================================================================
@@ -385,10 +385,10 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "correctly convert all error strategies" in {
     val testCases = List(
-      ("on_error: propagate", ErrorStrategy.Propagate),
-      ("on_error: skip", ErrorStrategy.Skip),
-      ("on_error: log", ErrorStrategy.Log),
-      ("on_error: wrap", ErrorStrategy.Wrap)
+      ("on_error: propagate", "propagate"),
+      ("on_error: skip", "skip"),
+      ("on_error: log", "log"),
+      ("on_error: wrap", "wrap")
     )
 
     for ((optionStr, expectedStrategy) <- testCases) {
@@ -411,9 +411,9 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "correctly convert all backoff strategies" in {
     val testCases = List(
-      ("backoff: fixed", BackoffStrategy.Fixed),
-      ("backoff: linear", BackoffStrategy.Linear),
-      ("backoff: exponential", BackoffStrategy.Exponential)
+      ("backoff: fixed", "fixed"),
+      ("backoff: linear", "linear"),
+      ("backoff: exponential", "exponential")
     )
 
     for ((optionStr, expectedStrategy) <- testCases) {

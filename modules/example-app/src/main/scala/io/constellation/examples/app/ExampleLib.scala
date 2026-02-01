@@ -355,12 +355,15 @@ object ExampleLib {
       underlying.compile(source, dagName).map { result =>
         // Include modules that are referenced by the DAG
         val neededModules: Map[UUID, Module.Uninitialized] =
-          result.dagSpec.modules.flatMap { case (moduleId, spec) =>
+          result.program.image.dagSpec.modules.flatMap { case (moduleId, spec) =>
             modules
               .find { case (name, _) => spec.name.contains(name) }
               .map { case (_, module) => moduleId -> module }
           }
-        result.copy(syntheticModules = result.syntheticModules ++ neededModules)
+        val updatedProgram = result.program.copy(
+          syntheticModules = result.program.syntheticModules ++ neededModules
+        )
+        result.copy(program = updatedProgram)
       }
 
     def compileToIR(source: String, dagName: String) =
