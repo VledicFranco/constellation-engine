@@ -171,8 +171,24 @@ object ConstellationServer {
       new ServerBuilder(constellation, compiler, functionRegistry,
         config.copy(healthCheckConfig = healthCheckConfig))
 
-    /** Build the HTTP server resource */
+    /** Build the HTTP server resource.
+      *
+      * Validates all configuration at startup. Fails fast with clear errors
+      * if any config is invalid.
+      */
     def build: Resource[IO, Server] = {
+      // Validate all configs at startup (fail fast)
+      val validationErrors = List(
+        config.authConfig.flatMap(_.validate.left.toOption.map(e => s"AuthConfig: $e")),
+        config.corsConfig.flatMap(_.validate.left.toOption.map(e => s"CorsConfig: $e")),
+        config.rateLimitConfig.flatMap(_.validate.left.toOption.map(e => s"RateLimitConfig: $e"))
+      ).flatten
+
+      if (validationErrors.nonEmpty) {
+        val msg = validationErrors.mkString("Configuration validation failed:\n  - ", "\n  - ", "")
+        return Resource.eval(IO.raiseError(new IllegalArgumentException(msg)))
+      }
+
       val httpRoutes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
       val healthRoutes = HealthCheckRoutes.routes(config.healthCheckConfig, compiler = Some(compiler))
       val lspHandler = LspWebSocketHandler(constellation, compiler)
@@ -239,8 +255,11 @@ object ConstellationServer {
     /** Run the server and return when it completes */
     def run: IO[Unit] =
       build.use { server =>
+        val authSummary = config.authConfig.filter(_.isEnabled).map(c => s"auth=${c.hashedKeys.size} keys").getOrElse("auth=off")
+        val corsSummary = config.corsConfig.filter(_.isEnabled).map(c => s"cors=${c.allowedOrigins.size} origins").getOrElse("cors=off")
+        val rateSummary = config.rateLimitConfig.map(c => s"rateLimit=${c.requestsPerMinute}rpm").getOrElse("rateLimit=off")
         logger.info(
-          s"Constellation HTTP API server started at http://${config.host}:${config.port}"
+          s"Constellation HTTP API server started at http://${config.host}:${config.port} [$authSummary, $corsSummary, $rateSummary]"
         ) *>
           IO.never
       }

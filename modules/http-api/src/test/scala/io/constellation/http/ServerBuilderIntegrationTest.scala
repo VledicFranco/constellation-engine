@@ -124,6 +124,32 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
     config.validate shouldBe a[Left[_, _]]
   }
 
+  it should "fail to build with invalid CORS config" in {
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    val compiler = LangCompiler.empty
+
+    val builder = ConstellationServer.builder(constellation, compiler)
+      .withCors(CorsConfig(allowedOrigins = Set("*"), allowCredentials = true))
+
+    val error = intercept[IllegalArgumentException] {
+      builder.build.use(_ => IO.unit).unsafeRunSync()
+    }
+    error.getMessage should include("CorsConfig")
+  }
+
+  it should "fail to build with invalid rate limit config" in {
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    val compiler = LangCompiler.empty
+
+    val builder = ConstellationServer.builder(constellation, compiler)
+      .withRateLimit(RateLimitConfig(requestsPerMinute = -1))
+
+    val error = intercept[IllegalArgumentException] {
+      builder.build.use(_ => IO.unit).unsafeRunSync()
+    }
+    error.getMessage should include("RateLimitConfig")
+  }
+
   // --- Middleware composition (unit-level) ---
 
   "AuthMiddleware + CorsMiddleware composition" should "work together on routes" in {
