@@ -16,8 +16,11 @@ import scala.collection.mutable
 trait MemoizationSupport {
 
   /** Thread-local cache for expression parsing results.
-    * Key: (source substring hashcode, offset)
+    * Key: (offset, parserId)
     * Value: Parsing result
+    *
+    * Note: Cache is scoped to a single parse invocation (cleared before each parse),
+    * so using offset alone is safe - different parses use different cache instances.
     */
   private val expressionCache =
     new ThreadLocal[mutable.Map[(Int, Int), Either[P.Error, Any]]] {
@@ -51,13 +54,13 @@ trait MemoizationSupport {
 
   /** Check cache for a previously computed result.
     *
-    * @param input The input string being parsed
+    * @param input The input string being parsed (unused - kept for API compatibility)
     * @param offset The current position in the input
     * @param parserId Unique identifier for the parser type
     * @return Cached result if available
     */
   protected def checkCache[A](input: String, offset: Int, parserId: Int): Option[Either[P.Error, A]] = {
-    val key    = (input.substring(offset).hashCode, parserId)
+    val key    = (offset, parserId)
     val cached = expressionCache.get().get(key)
     cached match {
       case Some(result) =>
@@ -71,7 +74,7 @@ trait MemoizationSupport {
 
   /** Store a parsing result in the cache.
     *
-    * @param input The input string being parsed
+    * @param input The input string being parsed (unused - kept for API compatibility)
     * @param offset The position where parsing started
     * @param parserId Unique identifier for the parser type
     * @param result The parsing result to cache
@@ -82,7 +85,7 @@ trait MemoizationSupport {
       parserId: Int,
       result: Either[P.Error, A]
   ): Unit = {
-    val key = (input.substring(offset).hashCode, parserId)
+    val key = (offset, parserId)
     expressionCache.get().put(key, result)
   }
 
@@ -92,10 +95,13 @@ trait MemoizationSupport {
     * @param parserId Unique identifier for this parser
     * @param parser The underlying parser to memoize
     * @return A function that performs cached parsing
+    *
+    * Note: Uses offset 0 as key since this caches full-input parses.
+    * Cache is cleared before each parse, so offset 0 uniquely identifies the input.
     */
   protected def cachedParse[A](parserId: Int, parser: P[A]): String => Either[P.Error, (String, A)] = {
     input =>
-      val key = (input.hashCode, parserId)
+      val key = (0, parserId) // offset 0 for full-input parsing
       expressionCache.get().get(key) match {
         case Some(Right((remaining: String, value))) =>
           cacheHits.set(cacheHits.get() + 1)
