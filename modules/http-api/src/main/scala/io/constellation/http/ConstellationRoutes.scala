@@ -18,11 +18,12 @@ import io.circe.Json
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, MalformedMessageBodyFailure, MediaType}
-import org.http4s.headers.`Content-Type`
+import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, MalformedMessageBodyFailure, MediaType, Response, Status}
+import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.typelevel.ci.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
+import scala.concurrent.duration._
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -46,6 +47,23 @@ class ConstellationRoutes(
   /** Null-safe error message extraction. */
   private def safeMessage(t: Throwable): String =
     Option(t.getMessage).getOrElse(t.getClass.getSimpleName)
+
+  /** Compilation timeout (30 seconds). */
+  private val compilationTimeout: FiniteDuration = 30.seconds
+
+  /** Check if request body exceeds maximum allowed size.
+    * Returns Some(413 response) if too large, None if OK.
+    */
+  private def checkBodySize(req: org.http4s.Request[IO]): Option[IO[org.http4s.Response[IO]]] =
+    req.headers.get[`Content-Length`].flatMap { cl =>
+      if (cl.length > maxBodySize) {
+        Some(IO.pure(Response[IO](Status.PayloadTooLarge)
+          .withEntity(ErrorResponse(
+            error = "PayloadTooLarge",
+            message = s"Request body too large: ${cl.length} bytes (max ${maxBodySize})"
+          ))))
+      } else None
+    }
 
   /** Validate a program reference (name or hash).
     *
@@ -76,13 +94,18 @@ class ConstellationRoutes(
     // Compile constellation-lang source code
     // Now stores ProgramImage in ProgramStore and returns structuralHash/syntacticHash
     case req @ POST -> Root / "compile" =>
+      checkBodySize(req) match {
+        case Some(tooLarge) => tooLarge
+        case None =>
       for {
         compileReq <- req.as[CompileRequest]
         effectiveName = compileReq.effectiveName
-        result <- effectiveName match {
+        result <- (effectiveName match {
           case Some(n) => compiler.compileIO(compileReq.source, n)
           case None    => compiler.compileIO(compileReq.source, "unnamed")
-        }
+        }).timeoutTo(compilationTimeout, IO.raiseError(
+          new java.util.concurrent.TimeoutException(s"Compilation timed out after $compilationTimeout")
+        ))
         response <- result match {
           case Right(compiled) =>
             val image = compiled.program.image
@@ -112,9 +135,13 @@ class ConstellationRoutes(
             )
         }
       } yield response
+      }
 
     // Execute a program by reference (name, structural hash, or legacy dagName)
     case req @ POST -> Root / "execute" =>
+      checkBodySize(req) match {
+        case Some(tooLarge) => tooLarge
+        case None =>
       val reqId = requestId(req)
       (for {
         execReq <- req.as[ExecuteRequest]
@@ -151,10 +178,14 @@ class ConstellationRoutes(
             ExecuteResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
           )
       }
+      }
 
     // Compile and run a script in one step
     // Now stores the image and returns structuralHash
     case req @ POST -> Root / "run" =>
+      checkBodySize(req) match {
+        case Some(tooLarge) => tooLarge
+        case None =>
       val reqId = requestId(req)
       (for {
         runReq <- req.as[RunRequest]
@@ -180,6 +211,7 @@ class ConstellationRoutes(
           InternalServerError(
             RunResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
           )
+      }
       }
 
     // ---------------------------------------------------------------------------
