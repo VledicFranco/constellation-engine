@@ -2,6 +2,8 @@ package io.constellation.execution
 
 import cats.effect.IO
 import io.constellation.{CType, CValue}
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Error handling strategies for module execution.
   *
@@ -54,6 +56,7 @@ final case class ModuleError(
 
 /** Executor for error handling strategies. */
 object ErrorStrategyExecutor {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.ErrorStrategyExecutor")
 
   /** Execute an operation with the specified error strategy.
     *
@@ -80,7 +83,7 @@ object ErrorStrategyExecutor {
 
       case ErrorStrategy.Log =>
         operation.handleErrorWith { error =>
-          IO.println(s"[WARN] [$moduleName] failed: ${error.getMessage}. Skipping with zero value.") >>
+          logger.warn(error)(s"[$moduleName] failed: ${error.getMessage}. Skipping with zero value.") >>
             IO.pure(zeroValue(outputType).asInstanceOf[A])
         }
 

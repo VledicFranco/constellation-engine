@@ -3,6 +3,8 @@ package io.constellation.execution
 import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.effect.std.{Queue, Semaphore}
 import cats.implicits._
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable.TreeSet
@@ -303,6 +305,7 @@ private[execution] class BoundedGlobalScheduler private (
 }
 
 private[execution] object BoundedGlobalScheduler {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.BoundedGlobalScheduler")
 
   def create(
       maxConcurrency: Int,
@@ -376,7 +379,7 @@ private[execution] object BoundedGlobalScheduler {
 
     loop.handleErrorWith { error =>
       // Log error but don't crash - aging is best-effort
-      IO.println(s"[WARN] GlobalScheduler aging fiber error: ${error.getMessage}") *>
+      logger.warn(error)(s"GlobalScheduler aging fiber error: ${error.getMessage}") *>
         IO.sleep(agingInterval) *>
         loop
     }

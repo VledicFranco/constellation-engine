@@ -61,7 +61,7 @@ lazy val runtime = project
       "com.fasterxml.jackson.core" % "jackson-core" % "2.15.3",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
       "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
-    )
+    ) ++ loggingDeps
   )
 
 // Language AST - syntax tree definitions
@@ -102,7 +102,7 @@ lazy val langCompiler = (project in file("modules/lang-compiler"))
       "org.typelevel" %% "cats-effect" % "3.5.2",
       "org.scalatest" %% "scalatest" % "3.2.17" % Test,
       "org.scalatestplus" %% "scalacheck-1-17" % "3.2.17.0" % Test,
-    )
+    ) ++ loggingDeps
   )
 
 // Standard Library - built-in modules and examples

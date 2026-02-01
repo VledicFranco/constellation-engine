@@ -6,6 +6,8 @@ import io.constellation.{CType, CValue}
 import io.constellation.cache.{CacheBackend, CacheKeyGenerator, CacheRegistry, InMemoryCacheBackend}
 import io.constellation.execution._
 import io.constellation.lang.ast.{BackoffStrategy => ASTBackoffStrategy, ErrorStrategy => ASTErrorStrategy}
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import scala.concurrent.duration._
 import java.util.UUID
@@ -42,6 +44,7 @@ class ModuleOptionsExecutor private (
     limiterRegistry: LimiterRegistry,
     scheduler: GlobalScheduler = GlobalScheduler.unbounded
 ) {
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ModuleOptionsExecutor])
 
   /** Execute an operation with the specified module call options.
     *
@@ -130,8 +133,8 @@ class ModuleOptionsExecutor private (
         backoff = options.backoff.map(convertBackoffStrategy),
         maxDelay = Some(30.seconds),
         fallback = getFallbackValue.map(f => f()),
-        onRetry = Some((attempt, error) => IO.println(s"[WARN] [$moduleName] retry $attempt: ${error.getMessage}")),
-        onFallback = Some((error) => IO.println(s"[WARN] [$moduleName] using fallback: ${error.getMessage}"))
+        onRetry = Some((attempt, error) => logger.warn(error)(s"[$moduleName] retry $attempt: ${error.getMessage}")),
+        onFallback = Some((error) => logger.warn(error)(s"[$moduleName] using fallback: ${error.getMessage}"))
       )
 
       ModuleExecutor.execute(operation.widen[Any], execOptions)

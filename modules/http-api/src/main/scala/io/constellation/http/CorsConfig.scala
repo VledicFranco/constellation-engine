@@ -1,5 +1,7 @@
 package io.constellation.http
 
+import org.slf4j.LoggerFactory
+
 /** Configuration for Cross-Origin Resource Sharing (CORS).
   *
   * When `allowedOrigins` is non-empty the CORS middleware is applied.
@@ -44,6 +46,7 @@ case class CorsConfig(
 }
 
 object CorsConfig {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /** Validate a CORS origin URL.
     *
@@ -94,7 +97,7 @@ object CorsConfig {
               Some(validOrigin)
             case Left(error) =>
               // Log error category without exposing the origin value
-              System.err.println(s"[WARN] CORS origin #${idx + 1} rejected: validation failed")
+              logger.warn("CORS origin #{} rejected: validation failed", idx + 1)
               None
           }
         }
@@ -103,7 +106,7 @@ object CorsConfig {
 
     if (origins.nonEmpty) {
       val wildcardNote = if (origins.contains("*")) " (wildcard)" else ""
-      System.err.println(s"[INFO] Loaded ${origins.size} CORS origin(s)$wildcardNote")
+      logger.info("Loaded {} CORS origin(s){}", origins.size, wildcardNote)
     }
 
     CorsConfig(allowedOrigins = origins)

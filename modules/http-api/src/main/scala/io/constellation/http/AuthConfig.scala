@@ -1,5 +1,6 @@
 package io.constellation.http
 
+import org.slf4j.LoggerFactory
 import java.security.MessageDigest
 import java.util.Arrays
 
@@ -90,6 +91,7 @@ case class AuthConfig(
 }
 
 object AuthConfig {
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /** Minimum API key length for security. */
   private val MinKeyLength = 24
@@ -143,16 +145,16 @@ object AuthConfig {
 
               case (Left(keyError), _) =>
                 // Log error category only — never log key content or length hints
-                System.err.println(s"[WARN] API key #${idx + 1} rejected: validation failed")
+                logger.warn("API key #{} rejected: validation failed", idx + 1)
                 None
 
               case (_, Left(roleError)) =>
-                System.err.println(s"[WARN] API key #${idx + 1}: $roleError")
+                logger.warn("API key #{}: {}", idx + 1, roleError)
                 None
             }
 
           case _ =>
-            System.err.println(s"[WARN] API key #${idx + 1}: expected 'key:Role' format")
+            logger.warn("API key #{}: expected 'key:Role' format", idx + 1)
             None
         }
       }.toList
@@ -160,7 +162,7 @@ object AuthConfig {
 
     if (hashedKeys.nonEmpty) {
       val roleCounts = hashedKeys.groupBy(_.role).map { case (role, keys) => s"$role=${keys.size}" }.mkString(", ")
-      System.err.println(s"[INFO] Loaded ${hashedKeys.length} API key(s) [$roleCounts]")
+      logger.info("Loaded {} API key(s) [{}]", hashedKeys.length, roleCounts)
     }
 
     AuthConfig(hashedKeys = hashedKeys)
