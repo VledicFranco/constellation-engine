@@ -277,4 +277,72 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
     sameCache shouldBe true
     sameLimiter shouldBe true
   }
+
+  it should "cache based on input values, not just module name" in {
+    import io.constellation.CValue
+
+    val counter = new AtomicInteger(0)
+    val moduleId = UUID.randomUUID()
+
+    val result = (for {
+      executor <- ModuleOptionsExecutor.create
+
+      // First call with input "hello"
+      result1 <- executor.executeWithOptions(
+        operation = IO { s"result-${counter.incrementAndGet()}" },
+        moduleId = moduleId,
+        moduleName = "InputSensitiveCache",
+        options = IRModuleCallOptions(cacheMs = Some(60000)),
+        outputType = CType.CString,
+        inputs = Map("text" -> CValue.CString("hello"))
+      )
+
+      // Second call with same input "hello" - should hit cache
+      result2 <- executor.executeWithOptions(
+        operation = IO { s"result-${counter.incrementAndGet()}" },
+        moduleId = moduleId,
+        moduleName = "InputSensitiveCache",
+        options = IRModuleCallOptions(cacheMs = Some(60000)),
+        outputType = CType.CString,
+        inputs = Map("text" -> CValue.CString("hello"))
+      )
+
+      // Third call with different input "world" - should NOT hit cache
+      result3 <- executor.executeWithOptions(
+        operation = IO { s"result-${counter.incrementAndGet()}" },
+        moduleId = moduleId,
+        moduleName = "InputSensitiveCache",
+        options = IRModuleCallOptions(cacheMs = Some(60000)),
+        outputType = CType.CString,
+        inputs = Map("text" -> CValue.CString("world"))
+      )
+
+      // Fourth call with "world" again - should hit cache
+      result4 <- executor.executeWithOptions(
+        operation = IO { s"result-${counter.incrementAndGet()}" },
+        moduleId = moduleId,
+        moduleName = "InputSensitiveCache",
+        options = IRModuleCallOptions(cacheMs = Some(60000)),
+        outputType = CType.CString,
+        inputs = Map("text" -> CValue.CString("world"))
+      )
+    } yield (result1, result2, result3, result4, counter.get())).unsafeRunSync()
+
+    val (result1, result2, result3, result4, finalCount) = result
+
+    // First call executes (counter = 1)
+    result1 shouldBe "result-1"
+
+    // Second call hits cache (counter still 1)
+    result2 shouldBe "result-1"
+
+    // Third call with different input executes (counter = 2)
+    result3 shouldBe "result-2"
+
+    // Fourth call hits cache (counter still 2)
+    result4 shouldBe "result-2"
+
+    // Only 2 executions should have happened
+    finalCount shouldBe 2
+  }
 }

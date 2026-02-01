@@ -50,6 +50,7 @@ class ModuleOptionsExecutor private (
     * @param moduleName The module name (for logging)
     * @param options The module call options from the compiler
     * @param outputType The expected output type (for error strategy zero values)
+    * @param inputs The input values passed to the module (for cache key generation)
     * @param getFallbackValue Optional function to get fallback value (evaluated lazily)
     * @return The result of execution with all options applied
     */
@@ -59,6 +60,7 @@ class ModuleOptionsExecutor private (
       moduleName: String,
       options: IRModuleCallOptions,
       outputType: CType,
+      inputs: Map[String, CValue] = Map.empty,
       getFallbackValue: Option[() => IO[Any]] = None
   ): IO[Any] = {
     if (options.isEmpty) {
@@ -86,7 +88,7 @@ class ModuleOptionsExecutor private (
 
       // Apply caching
       options.cacheMs.foreach { ttlMs =>
-        wrapped = applyCaching(wrapped, moduleId, moduleName, ttlMs.millis, options.cacheBackend)
+        wrapped = applyCaching(wrapped, moduleId, moduleName, inputs, ttlMs.millis, options.cacheBackend)
       }
 
       // Apply rate control (throttle + concurrency)
@@ -141,12 +143,22 @@ class ModuleOptionsExecutor private (
       operation: IO[A],
       moduleId: UUID,
       moduleName: String,
+      inputs: Map[String, CValue],
       ttl: FiniteDuration,
       backendName: Option[String]
   ): IO[Any] = {
-    // Generate a simple cache key based on module name
-    // TODO: Include input values for proper cache key generation
-    val cacheKey = s"module:$moduleName:$moduleId"
+    // Generate cache key including input values to prevent wrong results
+    val inputHash = if (inputs.isEmpty) {
+      "no-inputs"
+    } else {
+      import io.constellation.ContentHash
+      val inputsRepr = inputs.toList
+        .sortBy(_._1)
+        .map { case (k, v) => s"$k:${v.toString}" }
+        .mkString(",")
+      ContentHash.computeSHA256(inputsRepr.getBytes("UTF-8"))
+    }
+    val cacheKey = s"module:$moduleName:$moduleId:$inputHash"
 
     for {
       backend <- backendName match {
