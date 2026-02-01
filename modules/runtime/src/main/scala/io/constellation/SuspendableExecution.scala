@@ -7,6 +7,7 @@ import io.constellation.spi.ConstellationBackends
 
 import java.time.Instant
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 // Error types for resume validation
 final case class InputTypeMismatchError(name: String, expected: CType, actual: CType)
@@ -30,13 +31,24 @@ final case class ProgramChangedError(expected: String, actual: String)
 final case class ProgramNotFoundError(ref: String)
     extends RuntimeException(s"Program not found: $ref")
 
+final case class ResumeInProgressError(executionId: UUID)
+    extends RuntimeException(s"Resume operation already in progress for execution $executionId")
+
 /** Provides the ability to resume a suspended pipeline execution.
   *
   * Given a [[SuspendedExecution]] snapshot, additional inputs, and optionally
   * manually-resolved node values, this re-executes the pipeline from where
   * it left off.
+  *
+  * Thread-safety: Concurrent resume calls for the same executionId are
+  * prevented by an in-flight operation tracker. Only one resume can proceed
+  * at a time per suspended execution.
   */
 object SuspendableExecution {
+
+  // Track in-flight resume operations to prevent concurrent modifications
+  // Key: executionId, Value: timestamp when resume started
+  private val inFlightResumes = new ConcurrentHashMap[UUID, Long]()
 
   /** Resume a suspended execution with additional inputs and/or resolved nodes.
     *
@@ -58,8 +70,37 @@ object SuspendableExecution {
       scheduler: GlobalScheduler = GlobalScheduler.unbounded,
       backends: ConstellationBackends = ConstellationBackends.defaults
   ): IO[DataSignature] = {
+    val executionId = suspended.executionId
     val dagSpec = suspended.dagSpec
     val startedAt = Instant.now()
+
+    // Atomic check-and-set: claim this execution for resume or fail
+    val claimResult = Option(inFlightResumes.putIfAbsent(executionId, System.currentTimeMillis()))
+
+    claimResult match {
+      case Some(_) =>
+        // Another resume is already in progress for this execution
+        IO.raiseError(ResumeInProgressError(executionId))
+
+      case None =>
+        // Successfully claimed - proceed with resume, ensuring cleanup on completion/failure
+        doResume(suspended, additionalInputs, resolvedNodes, modules, options, scheduler, backends, startedAt)
+          .guarantee(IO.delay(inFlightResumes.remove(executionId)))
+    }
+  }
+
+  /** Internal resume implementation - called after successfully claiming the execution. */
+  private def doResume(
+      suspended: SuspendedExecution,
+      additionalInputs: Map[String, CValue],
+      resolvedNodes: Map[String, CValue],
+      modules: Map[UUID, Module.Uninitialized],
+      options: ExecutionOptions,
+      scheduler: GlobalScheduler,
+      backends: ConstellationBackends,
+      startedAt: Instant
+  ): IO[DataSignature] = {
+    val dagSpec = suspended.dagSpec
 
     // Validate additional inputs
     val inputValidation = validateAdditionalInputs(dagSpec, suspended.providedInputs, additionalInputs)
