@@ -156,6 +156,27 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     limitedCache.get[String]("key4").unsafeRunSync() shouldBe defined
   }
 
+  it should "handle concurrent writes without race conditions" in {
+    import cats.syntax.all._
+
+    val limitedCache = InMemoryCacheBackend.withMaxSize(10)
+
+    // Launch 100 concurrent set operations
+    val writes = (1 to 100).toList.map { i =>
+      IO {
+        limitedCache.set(s"key-$i", s"value-$i", 1.minute).unsafeRunSync()
+      }
+    }
+
+    // All writes should succeed without ConcurrentModificationException
+    val result = writes.parSequence.attempt.unsafeRunSync()
+    result.isRight shouldBe true
+
+    val stats = limitedCache.stats.unsafeRunSync()
+    // Cache size should not exceed maxSize
+    stats.size should be <= 10
+  }
+
   // -------------------------------------------------------------------------
   // getOrCompute
   // -------------------------------------------------------------------------

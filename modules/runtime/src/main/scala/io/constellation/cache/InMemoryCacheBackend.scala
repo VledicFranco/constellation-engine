@@ -70,9 +70,12 @@ class InMemoryCacheBackend(
 
   override def set[A](key: String, value: A, ttl: FiniteDuration): IO[Unit] = IO {
     // Check max size and evict if necessary
+    // Use synchronized block to prevent race conditions between size check and eviction
     maxSize.foreach { max =>
-      while (storage.size() >= max) {
-        evictLRU()
+      this.synchronized {
+        while (storage.size() >= max) {
+          evictLRU()
+        }
       }
     }
 
@@ -106,9 +109,12 @@ class InMemoryCacheBackend(
     )
   }
 
-  /** Evict the least recently used entry. */
+  /** Evict the least recently used entry.
+    * Must be called from within a synchronized block to prevent races.
+    */
   private def evictLRU(): Unit = {
-    val oldest = accessTimes.entrySet().asScala
+    // Convert to list first to avoid ConcurrentModificationException
+    val oldest = accessTimes.entrySet().asScala.toList
       .minByOption(_.getValue)
       .map(_.getKey)
 
@@ -122,7 +128,8 @@ class InMemoryCacheBackend(
   /** Remove all expired entries. */
   private def cleanupExpired(): Unit = {
     val now = System.currentTimeMillis()
-    storage.entrySet().asScala.foreach { entry =>
+    // Convert to list first to avoid ConcurrentModificationException
+    storage.entrySet().asScala.toList.foreach { entry =>
       if (entry.getValue.expiresAt < now) {
         storage.remove(entry.getKey)
         accessTimes.remove(entry.getKey)
