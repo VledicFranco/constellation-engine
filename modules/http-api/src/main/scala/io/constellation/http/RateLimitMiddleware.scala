@@ -10,6 +10,7 @@ import org.http4s.headers.`Retry-After`
 import io.constellation.execution.{RateLimit, TokenBucketRateLimiter}
 import io.constellation.http.ApiModels.ErrorResponse
 
+import org.typelevel.ci.*
 import scala.concurrent.duration.*
 
 /** Configuration for per-IP HTTP rate limiting.
@@ -30,6 +31,8 @@ import scala.concurrent.duration.*
 case class RateLimitConfig(
     requestsPerMinute: Int = 100,
     burst: Int = 20,
+    keyRequestsPerMinute: Int = 200,
+    keyBurst: Int = 40,
     exemptPaths: Set[String] = Set("/health", "/health/live", "/health/ready", "/metrics")
 ) {
 
@@ -37,6 +40,8 @@ case class RateLimitConfig(
   def validate: Either[String, RateLimitConfig] =
     if requestsPerMinute <= 0 then Left(s"requestsPerMinute must be positive, got: $requestsPerMinute")
     else if burst <= 0 then Left(s"burst must be positive, got: $burst")
+    else if keyRequestsPerMinute <= 0 then Left(s"keyRequestsPerMinute must be positive, got: $keyRequestsPerMinute")
+    else if keyBurst <= 0 then Left(s"keyBurst must be positive, got: $keyBurst")
     else Right(this)
 }
 
@@ -59,10 +64,17 @@ object RateLimitConfig {
   val default: RateLimitConfig = RateLimitConfig()
 }
 
-/** Per-IP token-bucket rate limiter for HTTP routes.
+/** Per-IP and per-API-key token-bucket rate limiter for HTTP routes.
   *
   * Uses `tryAcquire` (non-blocking). When a client exceeds the limit a 429
   * response is returned immediately with a `Retry-After` header.
+  *
+  * Rate limiting is applied in two layers:
+  *   1. Per-IP: every client is rate-limited by source IP
+  *   2. Per-API-key: authenticated clients are also rate-limited by their key
+  *
+  * A request must pass both checks. This prevents a single API key from
+  * monopolizing the IP's budget and vice versa.
   */
 object RateLimitMiddleware {
 
@@ -91,7 +103,8 @@ object RateLimitMiddleware {
       config: RateLimitConfig,
       buckets: Ref[IO, Map[String, TokenBucketRateLimiter]]
   )(routes: HttpRoutes[IO]): HttpRoutes[IO] = {
-    val rate = RateLimit.perMinute(config.requestsPerMinute)
+    val ipRate = RateLimit.perMinute(config.requestsPerMinute)
+    val keyRate = RateLimit.perMinute(config.keyRequestsPerMinute)
 
     Kleisli { (req: Request[IO]) =>
       val path = req.uri.path.renderString
@@ -102,19 +115,35 @@ object RateLimitMiddleware {
       if exempt then routes(req)
       else {
         val ip = extractClientIp(req)
-        OptionT.liftF(getOrCreateBucket(buckets, ip, rate, config.burst)).flatMap { limiter =>
-          OptionT.liftF(limiter.tryAcquire).flatMap { acquired =>
-            if acquired then routes(req)
-            else {
-              val retryAfterSeconds = 60L / config.requestsPerMinute.toLong
-              val response = Response[IO](Status.TooManyRequests)
-                .putHeaders(`Retry-After`.unsafeFromLong(retryAfterSeconds.max(1L)))
-                .withEntity(ErrorResponse(
-                  error = "RateLimitExceeded",
-                  message = "Too many requests, please try again later"
-                ))
-              OptionT.some[IO](response)
-            }
+        val apiKey = extractBearerToken(req)
+
+        // Check IP-based rate limit
+        val ipCheck = getOrCreateBucket(buckets, s"ip:$ip", ipRate, config.burst)
+          .flatMap(_.tryAcquire)
+
+        // Check per-API-key rate limit (if authenticated)
+        val keyCheck = apiKey match {
+          case Some(key) =>
+            val keyId = s"key:${HashedApiKey.hashKey(key).take(8).map("%02x".format(_)).mkString}"
+            getOrCreateBucket(buckets, keyId, keyRate, config.keyBurst)
+              .flatMap(_.tryAcquire)
+          case None => IO.pure(true)
+        }
+
+        OptionT.liftF(ipCheck.flatMap { ipOk =>
+          if (!ipOk) IO.pure(false)
+          else keyCheck
+        }).flatMap { acquired =>
+          if acquired then routes(req)
+          else {
+            val retryAfterSeconds = 60L / config.requestsPerMinute.toLong
+            val response = Response[IO](Status.TooManyRequests)
+              .putHeaders(`Retry-After`.unsafeFromLong(retryAfterSeconds.max(1L)))
+              .withEntity(ErrorResponse(
+                error = "RateLimitExceeded",
+                message = "Too many requests, please try again later"
+              ))
+            OptionT.some[IO](response)
           }
         }
       }
@@ -128,6 +157,16 @@ object RateLimitMiddleware {
       .map(_.toInetAddress.getHostAddress)
       .orElse(req.remoteAddr.map(_.toInetAddress.getHostAddress))
       .getOrElse("unknown")
+
+  /** Extract Bearer token from Authorization header (for per-key rate limiting). */
+  private def extractBearerToken(req: Request[IO]): Option[String] =
+    req.headers.get[org.http4s.headers.Authorization].flatMap { auth =>
+      auth.credentials match {
+        case org.http4s.Credentials.Token(scheme, token) if scheme == ci"Bearer" =>
+          Some(token)
+        case _ => None
+      }
+    }
 
   /** Get an existing bucket for the IP or create a new one. */
   private def getOrCreateBucket(
