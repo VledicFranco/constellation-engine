@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Constellation Engine API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     REST API for the Constellation Engine - a type-safe, composable ML orchestration framework.
 
@@ -38,14 +38,18 @@ tags:
     description: Compile constellation-lang source code
   - name: Execution
     description: Execute compiled DAGs
+  - name: Programs
+    description: Manage stored programs (content-addressed)
   - name: DAGs
-    description: Query and manage DAGs
+    description: Query and manage DAGs (legacy)
   - name: Modules
     description: Query available modules
   - name: Namespaces
     description: Query function namespaces
   - name: Health
-    description: Server health check
+    description: Server health and readiness checks
+  - name: Metrics
+    description: Server metrics and statistics
 
 paths:
   /compile:
@@ -95,6 +99,23 @@ paths:
                 errors:
                   - "Undefined function: Upppercase"
                   - "Type mismatch: expected String, got Int"
+        '413':
+          description: Request body too large (max 10MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds to wait before retrying
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /execute:
     post:
@@ -526,6 +547,166 @@ paths:
                 error: "NotFound"
                 message: "Detail endpoint is not enabled"
 
+  /programs:
+    get:
+      tags:
+        - Programs
+      summary: List all stored programs
+      description: |
+        Returns all programs stored in the ProgramStore, including their
+        structural hash, syntactic hash, name, and metadata.
+      operationId: listPrograms
+      responses:
+        '200':
+          description: List of stored programs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  programs:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        structuralHash:
+                          type: string
+                        syntacticHash:
+                          type: string
+
+  /programs/{ref}:
+    get:
+      tags:
+        - Programs
+      summary: Get a program by reference
+      description: |
+        Retrieve a stored program by name, structural hash, or syntactic hash.
+        Returns program details including modules, inputs, and outputs.
+      operationId: getProgram
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          description: Program reference (name, structural hash, or syntactic hash)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Program found
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: Program not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Programs
+      summary: Delete a program
+      description: Remove a stored program by reference.
+      operationId: deleteProgram
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: ref
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Program deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  ref:
+                    type: string
+        '404':
+          description: Program not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /programs/{name}/alias:
+    put:
+      tags:
+        - Programs
+      summary: Repoint a program alias
+      description: |
+        Update a named program alias to point to a different structural hash.
+        Allows blue-green deployments by atomically switching which version a name resolves to.
+      operationId: updateProgramAlias
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - structuralHash
+              properties:
+                structuralHash:
+                  type: string
+                  description: Target structural hash to alias to
+      responses:
+        '200':
+          description: Alias updated
+        '404':
+          description: Target hash not found
+
+  /metrics:
+    get:
+      tags:
+        - Metrics
+      summary: Server metrics
+      description: |
+        Returns server statistics including uptime, request count,
+        compilation cache metrics, and scheduler statistics.
+      operationId: getMetrics
+      responses:
+        '200':
+          description: Current server metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsResponse'
+              example:
+                timestamp: "2026-01-15T10:30:00Z"
+                server:
+                  uptime_seconds: 3600
+                  requests_total: 15000
+                cache:
+                  hits: 12000
+                  misses: 3000
+                  hitRate: 0.8
+                  evictions: 50
+                  entries: 200
+                scheduler:
+                  enabled: true
+                  activeCount: 3
+                  queuedCount: 0
+                  totalSubmitted: 15000
+                  totalCompleted: 14997
+
 components:
   securitySchemes:
     bearerAuth:
@@ -843,6 +1024,68 @@ components:
             type: boolean
           description: Results of custom readiness checks
 
+    MetricsResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO-8601 timestamp
+        server:
+          type: object
+          properties:
+            uptime_seconds:
+              type: integer
+              format: int64
+              description: Server uptime in seconds
+            requests_total:
+              type: integer
+              format: int64
+              description: Total HTTP requests served
+        cache:
+          type: object
+          description: Compilation cache statistics (present when caching compiler is used)
+          properties:
+            hits:
+              type: integer
+              format: int64
+            misses:
+              type: integer
+              format: int64
+            hitRate:
+              type: number
+              format: double
+            evictions:
+              type: integer
+              format: int64
+            entries:
+              type: integer
+        scheduler:
+          type: object
+          description: Scheduler statistics
+          properties:
+            enabled:
+              type: boolean
+            activeCount:
+              type: integer
+            queuedCount:
+              type: integer
+            totalSubmitted:
+              type: integer
+              format: int64
+            totalCompleted:
+              type: integer
+              format: int64
+            highPriorityCompleted:
+              type: integer
+              format: int64
+            lowPriorityCompleted:
+              type: integer
+              format: int64
+            starvationPromotions:
+              type: integer
+              format: int64
+
     ErrorResponse:
       type: object
       required:
@@ -857,3 +1100,7 @@ components:
           type: string
           description: Human-readable error message
           example: "DAG 'unknown-pipeline' not found"
+        requestId:
+          type: string
+          description: Request ID for tracing (from X-Request-ID header or auto-generated)
+          example: "550e8400-e29b-41d4-a716-446655440000"
