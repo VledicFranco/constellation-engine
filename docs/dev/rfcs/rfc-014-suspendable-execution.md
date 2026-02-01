@@ -988,6 +988,234 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 - New `PUT /programs/:name/alias` — repoint alias
 - Tests: compile + execute by hash, compile + alias + execute by name, hot-load repoint, dedup via /run, rollback via alias update
 
+### Phase 6: Documentation
+
+- Embedder guide: "Suspendable Execution" — concepts, API walkthrough, examples
+- Embedder guide: "Program Lifecycle" — ProgramImage, LoadedProgram, ProgramStore, hashing
+- Embedder guide: "Healing Failed Executions" — resolvedNodes, failedNodes, audit trails
+- API reference: all new types with Scaladoc
+- Migration guide: `CompileResult` → `CompilationOutput`/`LoadedProgram`, `DagRegistry` → `ProgramStore`, `runDag` → `Constellation.run`
+- Update `llm.md` and `CLAUDE.md` with new types and commands
+- Update example-app to use new API
+
+---
+
+## Test Strategy
+
+### Canonical Fixture Programs
+
+Tests across all phases use a shared set of `.cst` fixture programs with known dependency structures:
+
+**Fixture 1: `three-step-onboarding.cst`** — Three-tier dependency chain for incremental suspension.
+
+```constellation
+# Tier 1: requires name + email
+in name: String
+in email: String
+validated_email = ValidateEmail(email)
+greeting = FormatGreeting(name)
+
+# Tier 2: requires address (depends on tier 1 outputs)
+in address: String
+full_profile = BuildProfile(greeting, validated_email, address)
+
+# Tier 3: requires funding_source (depends on tier 2)
+in funding_source: String
+account = CreateAccount(full_profile, funding_source)
+
+out account
+out greeting
+```
+
+**Usage:** Provide `name` + `email` → tier 1 executes, suspends. Provide `address` → tier 2 executes, suspends. Provide `funding_source` → completes.
+
+**Fixture 2: `parallel-branches.cst`** — Independent branches to test maximum progress.
+
+```constellation
+in x: String
+in y: Int
+
+# Branch A (depends only on x)
+a1 = Uppercase(x)
+a2 = Trim(a1)
+
+# Branch B (depends only on y)
+b1 = Double(y)
+
+# Merge (depends on both branches)
+in z: String
+result = Merge(a2, b1, z)
+
+out a2
+out b1
+out result
+```
+
+**Usage:** Provide `x` only → branch A completes, branch B blocked, merge blocked. Provide `y` → branch B completes, merge still blocked (missing `z`). Tests maximum progress with parallel independent branches.
+
+**Fixture 3: `failable-pipeline.cst`** — For testing failure preservation and healing.
+
+```constellation
+in ssn: String
+credit_score = CreditCheck(ssn)
+risk_level = RiskAssess(credit_score)
+decision = Approve(risk_level)
+
+out decision
+out credit_score
+```
+
+**Usage:** `CreditCheck` is configured to fail in tests. Consumer heals by providing `credit_score` via `resolvedNodes`. `RiskAssess` and `Approve` then execute normally.
+
+**Fixture 4: `trivial-complete.cst`** — All inputs provided, no suspension.
+
+```constellation
+in text: String
+result = Uppercase(text)
+out result
+```
+
+**Usage:** Provide `text` → executes to completion immediately. `status = Completed`, `suspendedState = None`. Verifies that suspendable execution works transparently when no inputs are missing.
+
+### Property-Based Tests (ScalaCheck)
+
+| Property | Invariant |
+|----------|-----------|
+| **Syntactic normalization idempotency** | `normalize(normalize(ast)) == normalize(ast)` for any AST |
+| **Syntactic hash determinism** | Same source string → same syntactic hash, always |
+| **Structural hash determinism** | Same DagSpec → same structural hash, always |
+| **Structural hash uniqueness** | Different DagSpecs → different structural hashes (probabilistic — no SHA-256 collisions) |
+| **Rehydration equivalence** | For any `LoadedProgram`, `rehydrate(loaded.image)` produces synthetic modules that yield identical outputs for the same inputs |
+| **Codec round-trip** | `decode(encode(state)) == Right(state)` for any `SuspendedExecution` |
+| **Input accumulation** | After N resumptions, `suspendedState.providedInputs == union of all inputs across all steps` |
+| **Additive-only inputs** | `resume(state, Map("x" -> v1))` followed by `resume(_, Map("x" -> v2))` where `v1 != v2` always fails with `InputAlreadyProvidedError` |
+| **Node resolution finality** | `resume(state, resolvedNodes = Map("n" -> v))` followed by `resume(_, resolvedNodes = Map("n" -> v2))` always fails with `NodeAlreadyResolvedError` |
+| **Alias repoint** | `alias("name", h1)` then `alias("name", h2)` → `resolve("name") == Some(h2)` and `get(h1)` still succeeds |
+
+### Integration Test: Full Lifecycle
+
+A single end-to-end test exercises the complete lifecycle using `three-step-onboarding.cst`:
+
+```
+1. Compile source → CompilationOutput (LoadedProgram + warnings)
+2. Store image → ProgramStore.store(image) → structuralHash
+3. Create alias → ProgramStore.alias("onboarding", hash)
+4. Run by ref → constellation.run("onboarding", tier1Inputs) → DataSignature (Suspended)
+5. Verify sig1: status=Suspended, computedNodes has tier 1 values, missingInputs has tier 2+3
+6. Serialize → SuspendedExecution.serialize(sig1.suspendedState.get) → bytes
+7. Deserialize → SuspendedExecution.deserialize(bytes) → SuspendedExecution
+8. Rehydrate → ProgramImage.rehydrate(image) → LoadedProgram (simulates different JVM)
+9. Resume → SuspendableExecution.resume(suspended, tier2Inputs, loaded.syntheticModules) → sig2 (Suspended)
+10. Verify sig2: resumptionCount=1, computedNodes has tier 1+2, missingInputs has tier 3 only
+11. Resume → resume(sig2.suspendedState.get, tier3Inputs, ...) → sig3 (Completed)
+12. Verify sig3: status=Completed, all outputs resolved, suspendedState=None
+13. Verify dedup: compile same source again → same structuralHash, store is no-op
+```
+
+### Integration Test: Healing
+
+Using `failable-pipeline.cst`:
+
+```
+1. Compile and run with ssn → CreditCheck fails → DataSignature (Failed, suspendedState=Some)
+2. Verify failedNodes contains "credit_score"
+3. Resume with resolvedNodes = Map("credit_score" -> CInt(750)) → RiskAssess + Approve execute
+4. Verify status=Completed, resolution sources show credit_score=FromManualResolution
+```
+
+### Performance Benchmarks
+
+| Operation | Target | Rationale |
+|-----------|--------|-----------|
+| Syntactic hash computation | <2ms (small), <10ms (large) | Must be faster than compilation to justify cache |
+| Structural hash computation | <5ms | Computed once post-compile, amortized over all executions |
+| Rehydration | <5ms | Must be near-instant — called on every run-by-reference |
+| Codec round-trip (JSON) | <10ms (small state), <50ms (large state) | Serialization on suspend, deserialization on resume |
+| ProgramStore lookup (by hash) | <1ms | Hot path for run-by-reference |
+| ProgramStore lookup (by name) | <1ms | Alias resolve + hash lookup |
+
+---
+
+## Migration Guide
+
+Although there are no external users, the internal codebase (example-app, HTTP API, tests, benchmarks) uses the current API. This section maps old patterns to new ones for implementers.
+
+### Compilation
+
+```scala
+// BEFORE
+val result: CompileResult = compiler.compile(source, dagName).toOption.get
+val dagSpec = result.dagSpec
+val modules = result.syntheticModules
+
+// AFTER
+val output: CompilationOutput = compiler.compile(source, dagName).toOption.get
+output.warnings.foreach(w => logger.warn(w.message))
+val loaded: LoadedProgram = output.program
+val image: ProgramImage = loaded.image       // Serializable artifact
+val modules = loaded.syntheticModules         // Runtime-only
+```
+
+### Storing Programs
+
+```scala
+// BEFORE
+constellation.setDag("myprogram", compileResult.dagSpec)
+
+// AFTER
+programStore.store(loaded.image).unsafeRunSync()               // Content-addressed
+programStore.alias("myprogram", loaded.structuralHash).unsafeRunSync()  // Named reference
+```
+
+### Executing Programs
+
+```scala
+// BEFORE — by name (returns Runtime.State)
+val state = constellation.runDag("myprogram", inputs).unsafeRunSync()
+val outputs = state.data.map { case (k, v) => k -> v.value }
+
+// BEFORE — with modules (returns Runtime.State)
+val state = constellation.runDagWithModules(dagSpec, inputs, syntheticModules).unsafeRunSync()
+
+// AFTER — by LoadedProgram (returns DataSignature)
+val sig = constellation.run(loaded, inputs).unsafeRunSync()
+sig.outputs          // Already resolved by variable name
+sig.computedNodes    // All intermediate values
+
+// AFTER — by reference (returns DataSignature)
+val sig = constellation.run("myprogram", inputs).unsafeRunSync()
+val sig = constellation.run("sha256:abc123...", inputs).unsafeRunSync()
+```
+
+### Retrieving Programs
+
+```scala
+// BEFORE
+val dagSpec: Option[DagSpec] = constellation.getDag("myprogram").unsafeRunSync()
+
+// AFTER
+val image: Option[ProgramImage] = programStore.getByName("myprogram").unsafeRunSync()
+val image: Option[ProgramImage] = programStore.get("sha256:abc123...").unsafeRunSync()
+val loaded: LoadedProgram = ProgramImage.rehydrate(image.get)   // When you need to execute
+```
+
+### Internal Files Requiring Migration
+
+| File | Changes |
+|------|---------|
+| `modules/runtime/.../Constellation.scala` | Remove `setDag`/`getDag`/`runDag`/`runDagWithModules`. Add `run(loaded, ...)` and `run(ref, ...)`. Replace `DagRegistry` with `ProgramStore`. |
+| `modules/runtime/.../DagRegistry.scala` | Delete — replaced by `ProgramStore`. |
+| `modules/runtime/.../impl/DagRegistryImpl.scala` | Delete — replaced by `ProgramStoreImpl`. |
+| `modules/runtime/.../impl/ConstellationImpl.scala` | Rewrite to use `ProgramStore`. Module merging logic moves here (registered + synthetic). |
+| `modules/lang-compiler/.../LangCompiler.scala` | Return `CompilationOutput` instead of `CompileResult`. |
+| `modules/lang-compiler/.../compiler/DagCompiler.scala` | Delegate synthetic module creation to `SyntheticModuleFactory`. Compute structural hash. |
+| `modules/lang-compiler/.../CachingLangCompiler.scala` | Replace internal cache with `ProgramStore.lookupSyntactic`. |
+| `modules/lang-compiler/.../CompilationCache.scala` | Delete — absorbed into `ProgramStore`. |
+| `modules/http-api/.../ConstellationRoutes.scala` | Update all route handlers for new API. Add `/programs` endpoints. |
+| `modules/http-api/.../ApiModels.scala` | Update request/response models (`ref` instead of `dagName`, add `structuralHash` to responses). |
+| `modules/example-app/.../ExampleApp.scala` | Update to use `CompilationOutput`, `ProgramStore`, `constellation.run`. |
+| All existing tests using `CompileResult` | Update to unwrap `CompilationOutput.program`. |
+
 ---
 
 ## Future Work (Out of Scope for This RFC)
