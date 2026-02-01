@@ -177,6 +177,42 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     stats.size should be <= 10
   }
 
+  it should "cache stats results for performance (5 second TTL)" in {
+    cache.set("key1", "value1", 1.minute).unsafeRunSync()
+    cache.set("key2", "value2", 1.minute).unsafeRunSync()
+
+    // First stats call - triggers cleanup and computation
+    val stats1 = cache.stats.unsafeRunSync()
+    stats1.size shouldBe 2
+
+    // Add more entries
+    cache.set("key3", "value3", 1.minute).unsafeRunSync()
+
+    // Second stats call within TTL - should return cached stats (size still 2)
+    val stats2 = cache.stats.unsafeRunSync()
+    stats2.size shouldBe 2 // Cached value, doesn't reflect key3 yet
+
+    // Wait for cache to expire (TTL is 5 seconds)
+    Thread.sleep(5100)
+
+    // Third stats call after TTL - should recompute (size now 3)
+    val stats3 = cache.stats.unsafeRunSync()
+    stats3.size shouldBe 3
+  }
+
+  it should "invalidate cached stats when cache is cleared" in {
+    cache.set("key1", "value1", 1.minute).unsafeRunSync()
+    val stats1 = cache.stats.unsafeRunSync()
+    stats1.size shouldBe 1
+
+    // Clear cache
+    cache.clear.unsafeRunSync()
+
+    // Stats should immediately reflect cleared cache (not cached)
+    val stats2 = cache.stats.unsafeRunSync()
+    stats2.size shouldBe 0
+  }
+
   // -------------------------------------------------------------------------
   // getOrCompute
   // -------------------------------------------------------------------------

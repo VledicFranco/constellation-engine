@@ -48,6 +48,10 @@ class InMemoryCacheBackend(
   // Access timestamps for LRU eviction
   private val accessTimes = new ConcurrentHashMap[String, Long]()
 
+  // Cached stats with TTL (5 seconds) to avoid O(n) cleanup on every stats() call
+  @volatile private var cachedStats: Option[(CacheStats, Long)] = None
+  private val statsCacheTTL: Long = 5000 // milliseconds
+
   override def get[A](key: String): IO[Option[CacheEntry[A]]] = IO {
     Option(storage.get(key)) match {
       case Some(entry) if !entry.isExpired =>
@@ -93,20 +97,36 @@ class InMemoryCacheBackend(
   override def clear: IO[Unit] = IO {
     storage.clear()
     accessTimes.clear()
+    cachedStats = None // Invalidate cached stats
     // Don't reset stats on clear - they track lifetime metrics
   }
 
   override def stats: IO[CacheStats] = IO {
-    // Clean up expired entries for accurate size
-    cleanupExpired()
+    val now = System.currentTimeMillis()
 
-    CacheStats(
-      hits = hitCount.get(),
-      misses = missCount.get(),
-      evictions = evictionCount.get(),
-      size = storage.size(),
-      maxSize = maxSize
-    )
+    // Check if cached stats are still fresh
+    cachedStats match {
+      case Some((stats, timestamp)) if (now - timestamp) < statsCacheTTL =>
+        // Return cached stats (O(1), no cleanup needed)
+        stats
+
+      case _ =>
+        // Cache expired or missing - recompute
+        // Clean up expired entries for accurate size
+        cleanupExpired()
+
+        val newStats = CacheStats(
+          hits = hitCount.get(),
+          misses = missCount.get(),
+          evictions = evictionCount.get(),
+          size = storage.size(),
+          maxSize = maxSize
+        )
+
+        // Cache for future calls
+        cachedStats = Some((newStats, now))
+        newStats
+    }
   }
 
   /** Evict the least recently used entry.
@@ -143,6 +163,7 @@ class InMemoryCacheBackend(
   def forceCleanup: IO[Int] = IO {
     val sizeBefore = storage.size()
     cleanupExpired()
+    cachedStats = None // Invalidate cached stats after cleanup
     sizeBefore - storage.size()
   }
 
