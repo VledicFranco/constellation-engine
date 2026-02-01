@@ -4,6 +4,7 @@ import cats.effect.{IO, Ref}
 import cats.effect.std.Queue
 import cats.implicits._
 import fs2.{Pipe, Stream}
+import scala.concurrent.duration._
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.server.websocket.WebSocketBuilder2
@@ -33,6 +34,11 @@ class LspWebSocketHandler(
 ) {
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[LspWebSocketHandler])
 
+  /** Timeout for queue offer operations. If the queue is full for this long,
+    * the message is dropped and a warning is logged.
+    */
+  private val queueOfferTimeout: FiniteDuration = 5.seconds
+
   def routes(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = HttpRoutes.of[IO] {
     case GET -> Root / "lsp" =>
       // Queue for complete LSP messages (after buffering)
@@ -41,85 +47,115 @@ class LspWebSocketHandler(
         Queue.bounded[IO, String](100).flatMap { serverMessages =>
           // Buffer for accumulating partial LSP messages from WebSocket frames
           Ref.of[IO, String]("").flatMap { bufferRef =>
-            ConstellationLanguageServer
-              .create(
-                constellation,
-                compiler,
-                publishDiagnostics = { params =>
-                  val notification = Notification(
-                    method = "textDocument/publishDiagnostics",
-                    params = Some(params.asJson)
-                  )
-                  val message = formatLspMessage(notification.asJson.noSpaces)
-                  serverMessages.offer(message)
-                }
-              )
-              .flatMap { languageServer =>
-                // Process incoming messages from client
-                val processClientMessages: IO[Unit] =
-                  Stream
-                    .fromQueueUnterminated(clientMessages)
-                    .filter(msg =>
-                      msg.trim.nonEmpty
-                    ) // Silently ignore empty messages (keep-alive pings)
-                    .evalMap { message =>
-                      parseMessage(message)
-                        .flatMap {
-                          case Left(request) =>
-                            // Handle request, send response
-                            for {
-                              _ <- logger.debug(s"Processing request method: ${request.method}")
-                              response <- languageServer.handleRequest(request)
-                              json = response.asJson.noSpaces
-                              _ <- logger.debug(s"Sending response: ${json
-                                  .take(200)}${if json.length > 200 then "..." else ""}")
-                              message = formatLspMessage(json)
-                              _ <- serverMessages.offer(message)
-                            } yield ()
-                          case Right(notification) =>
-                            // Handle notification, no response
-                            for {
-                              _ <- logger
-                                .debug(s"Processing notification method: ${notification.method}")
-                              _ <- languageServer.handleNotification(notification)
-                            } yield ()
-                        }
-                        .handleErrorWith { error =>
-                          logger.error(s"Error processing message: ${error.getMessage}")
-                        }
+            // Track dropped message counts for diagnostics
+            Ref.of[IO, Long](0L).flatMap { droppedClientRef =>
+              Ref.of[IO, Long](0L).flatMap { droppedServerRef =>
+                ConstellationLanguageServer
+                  .create(
+                    constellation,
+                    compiler,
+                    publishDiagnostics = { params =>
+                      val notification = Notification(
+                        method = "textDocument/publishDiagnostics",
+                        params = Some(params.asJson)
+                      )
+                      val message = formatLspMessage(notification.asJson.noSpaces)
+                      offerWithTimeout(serverMessages, message, "server->client", droppedServerRef)
                     }
-                    .compile
-                    .drain
-
-                // Start processing in background
-                processClientMessages.start.flatMap { _ =>
-                  // WebSocket message handlers
-                  val toClient: Stream[IO, WebSocketFrame] =
-                    Stream
-                      .fromQueueUnterminated(serverMessages)
-                      .map(msg => WebSocketFrame.Text(msg))
-
-                  val fromClient: Pipe[IO, WebSocketFrame, Unit] = { stream =>
-                    stream.evalMap {
-                      case WebSocketFrame.Text(data, _) =>
-                        // Buffer incoming data and extract complete LSP messages
-                        bufferAndExtractMessages(bufferRef, data).flatMap { messages =>
-                          messages.traverse_(msg => clientMessages.offer(msg))
+                  )
+                  .flatMap { languageServer =>
+                    // Process incoming messages from client
+                    val processClientMessages: IO[Unit] =
+                      Stream
+                        .fromQueueUnterminated(clientMessages)
+                        .filter(msg =>
+                          msg.trim.nonEmpty
+                        ) // Silently ignore empty messages (keep-alive pings)
+                        .evalMap { message =>
+                          parseMessage(message)
+                            .flatMap {
+                              case Left(request) =>
+                                // Handle request, send response
+                                for {
+                                  _ <- logger.debug(s"Processing request method: ${request.method}")
+                                  response <- languageServer.handleRequest(request)
+                                  json = response.asJson.noSpaces
+                                  _ <- logger.debug(s"Sending response: ${json
+                                      .take(200)}${if json.length > 200 then "..." else ""}")
+                                  message = formatLspMessage(json)
+                                  _ <- offerWithTimeout(serverMessages, message, "response", droppedServerRef)
+                                } yield ()
+                              case Right(notification) =>
+                                // Handle notification, no response
+                                for {
+                                  _ <- logger
+                                    .debug(s"Processing notification method: ${notification.method}")
+                                  _ <- languageServer.handleNotification(notification)
+                                } yield ()
+                            }
+                            .handleErrorWith { error =>
+                              logger.error(s"Error processing message: ${error.getMessage}")
+                            }
                         }
-                      case WebSocketFrame.Close(_) =>
-                        IO.unit
-                      case _ =>
-                        IO.unit
+                        .compile
+                        .drain
+
+                    // Start processing in background
+                    processClientMessages.start.flatMap { _ =>
+                      // WebSocket message handlers
+                      val toClient: Stream[IO, WebSocketFrame] =
+                        Stream
+                          .fromQueueUnterminated(serverMessages)
+                          .map(msg => WebSocketFrame.Text(msg))
+
+                      val fromClient: Pipe[IO, WebSocketFrame, Unit] = { stream =>
+                        stream.evalMap {
+                          case WebSocketFrame.Text(data, _) =>
+                            // Buffer incoming data and extract complete LSP messages
+                            bufferAndExtractMessages(bufferRef, data).flatMap { messages =>
+                              messages.traverse_ { msg =>
+                                offerWithTimeout(clientMessages, msg, "client->server", droppedClientRef)
+                              }
+                            }
+                          case WebSocketFrame.Close(_) =>
+                            IO.unit
+                          case _ =>
+                            IO.unit
+                        }
+                      }
+
+                      wsb.build(toClient, fromClient)
                     }
                   }
-
-                  wsb.build(toClient, fromClient)
-                }
               }
+            }
           }
         }
       }
   }
+
+  /** Offer a message to a bounded queue with a timeout.
+    * If the queue is full after the timeout, the message is dropped and a warning logged.
+    */
+  private def offerWithTimeout(
+      queue: Queue[IO, String],
+      message: String,
+      direction: String,
+      droppedRef: Ref[IO, Long]
+  ): IO[Unit] =
+    queue.tryOffer(message).flatMap {
+      case true => IO.unit
+      case false =>
+        // Queue is full — wait briefly then drop
+        IO.sleep(queueOfferTimeout) *>
+          queue.tryOffer(message).flatMap {
+            case true => IO.unit
+            case false =>
+              droppedRef.updateAndGet(_ + 1).flatMap { count =>
+                logger.warn(s"LSP $direction queue full, message dropped (total dropped: $count)")
+              }
+          }
+    }
 
   /** Buffer incoming WebSocket data and extract complete LSP messages.
     * LSP messages have format: "Content-Length: XXX\r\n\r\n{json}"
