@@ -79,9 +79,9 @@ class ConstellationRoutes(
       for {
         compileReq <- req.as[CompileRequest]
         effectiveName = compileReq.effectiveName
-        result = effectiveName match {
-          case Some(n) => compiler.compile(compileReq.source, n)
-          case None    => compiler.compile(compileReq.source, "unnamed")
+        result <- effectiveName match {
+          case Some(n) => compiler.compileIO(compileReq.source, n)
+          case None    => compiler.compileIO(compileReq.source, "unnamed")
         }
         response <- result match {
           case Right(compiled) =>
@@ -501,10 +501,10 @@ class ConstellationRoutes(
   /** Compile, store, and run a script in one step. Returns (outputs, structuralHash). */
   private def compileStoreAndRun(req: RunRequest): EitherT[IO, ApiError, (Map[String, Json], String)] =
     for {
-      compiled <- EitherT.fromEither[IO](
-        compiler.compile(req.source, "ephemeral").leftMap { errors =>
+      compiled <- EitherT(
+        compiler.compileIO(req.source, "ephemeral").map(_.leftMap { errors =>
           ApiError.CompilationError(errors.map(_.message))
-        }
+        })
       )
       image = compiled.program.image
       // Store image in ProgramStore for dedup and future reference

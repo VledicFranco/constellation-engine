@@ -1,5 +1,6 @@
 package io.constellation.lang
 
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.ContentHash
 import io.constellation.lang.ast.CompileError
@@ -33,26 +34,31 @@ class CachingLangCompiler(
 
   def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
-  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
+  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] =
+    compileIO(source, dagName).unsafeRunSync()
+
+  override def compileIO(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]] = {
     val sourceHash   = ContentHash.computeSHA256(source.getBytes("UTF-8"))
     val registryHash = ContentHash.computeSHA256(
       functionRegistry.all.map(_.toString).sorted.mkString(",").getBytes("UTF-8")
     )
 
-    // Note: Using unsafeRunSync() because LangCompiler.compile returns Either,
-    // not IO. For a fully IO-based interface, the trait signature would need
-    // to change to: def compile(...): IO[Either[...]]
-    cache.get(dagName, sourceHash, registryHash).unsafeRunSync() match {
+    cache.get(dagName, sourceHash, registryHash).flatMap {
       case Some(cached) =>
-        // Cache hit - return cached result
-        Right(cached)
+        // Cache hit
+        IO.pure(Right(cached))
       case None =>
         // Cache miss - compile and cache the result
-        val result = underlying.compile(source, dagName)
-        result.foreach { r =>
-          cache.put(dagName, sourceHash, registryHash, r).unsafeRunSync()
+        IO {
+          underlying.compile(source, dagName)
+        }.flatMap { result =>
+          result match {
+            case Right(r) =>
+              cache.put(dagName, sourceHash, registryHash, r).as(result)
+            case Left(_) =>
+              IO.pure(result)
+          }
         }
-        result
     }
   }
 
@@ -82,15 +88,26 @@ class CachingLangCompiler(
     }
   }
 
-  /** Get cache statistics */
+  /** Get cache statistics (IO-based, preferred). */
+  def cacheStatsIO: IO[CacheStats] = cache.stats
+
+  /** Get cache statistics (blocking, for backward compatibility). */
   def cacheStats: CacheStats =
     cache.stats.unsafeRunSync()
 
-  /** Invalidate a specific cached compilation */
+  /** Invalidate a specific cached compilation (IO-based). */
+  def invalidateIO(dagName: String): IO[Unit] =
+    cache.invalidate(dagName)
+
+  /** Invalidate a specific cached compilation (blocking). */
   def invalidate(dagName: String): Unit =
     cache.invalidate(dagName).unsafeRunSync()
 
-  /** Invalidate all cached compilations */
+  /** Invalidate all cached compilations (IO-based). */
+  def invalidateAllIO: IO[Unit] =
+    cache.invalidateAll().map(_ => irCache.clear())
+
+  /** Invalidate all cached compilations (blocking). */
   def invalidateAll(): Unit = {
     cache.invalidateAll().unsafeRunSync()
     irCache.clear()

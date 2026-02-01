@@ -17,6 +17,14 @@ trait LangCompiler {
   /** Compile a constellation-lang source to a CompilationOutput (LoadedProgram + warnings). */
   def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput]
 
+  /** Async variant of compile that avoids blocking threads.
+    *
+    * Override in subclasses that use IO-based caching. The default
+    * implementation wraps the synchronous `compile` in IO.
+    */
+  def compileIO(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]] =
+    IO(compile(source, dagName))
+
   /** Compile to IR only (for visualization) */
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram]
 

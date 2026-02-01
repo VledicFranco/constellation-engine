@@ -385,10 +385,10 @@ class DashboardRoutes(
       content <- EitherT(readScriptFile(req.scriptPath))
 
       // Compile the script
-      compiled <- EitherT.fromEither[IO](
-        compiler.compile(content, "dashboard_exec").leftMap { errors =>
+      compiled <- EitherT(
+        compiler.compileIO(content, "dashboard_exec").map(_.leftMap { errors =>
           ApiError.CompilationError(errors.map(_.message))
-        }
+        })
       )
 
       // Also compile to IR for DAG visualization (best effort)
