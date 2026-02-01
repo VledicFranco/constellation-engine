@@ -130,25 +130,32 @@ The baseline metadata (identity, status, timing totals) is always present with n
 
 ### Executing with Suspension Support
 
-The primary execution path is through `LoadedProgram.run`, which returns `DataSignature`:
+Execution always goes through `Constellation`, which owns the module registry and merges registered modules (from `ModuleBuilder`) with synthetic modules (from compilation) internally. `LoadedProgram` is a pure data holder — it does not have a standalone `run` method.
 
 ```scala
 trait Constellation {
-  // --- Existing methods (unchanged, backwards compatible) ---
-  def runDag(name: String, inputs: Map[String, CValue]): IO[Runtime.State]
-  // ...
+  // --- Suspendable execution ---
 
-  // --- New: suspendable execution by reference ---
+  /** Execute a LoadedProgram. Merges registered + synthetic modules internally. */
   def run(
-    ref: String,                                    // Name alias OR structural hash
+    loaded: LoadedProgram,
+    inputs: Map[String, CValue],
+    options: ExecutionOptions = ExecutionOptions()
+  ): IO[DataSignature]
+
+  /** Execute by reference (name alias or structural hash).
+    * Resolves from ProgramStore, rehydrates, merges modules, executes.
+    *
+    * Convention: refs starting with "sha256:" are resolved as structural hashes
+    * (prefix stripped, looked up by hash). All other refs are resolved as name aliases.
+    * Name aliases cannot start with "sha256:".
+    */
+  def run(
+    ref: String,
     inputs: Map[String, CValue],
     options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 }
-
-// Or directly via LoadedProgram:
-val loaded: LoadedProgram = compiler.compile(source, name).toOption.get
-val sig = loaded.run(inputs, options).unsafeRunSync()
 ```
 
 ### Resuming from Suspended State
@@ -176,15 +183,18 @@ The `modules` parameter provides the synthetic modules (inline transforms, condi
 ### Consumer Flow
 
 ```scala
-// Compile the program once → get a LoadedProgram (executable, with synthetic modules)
-val loaded: LoadedProgram = compiler.compile(onboardingSource, "onboarding").toOption.get
+// Compile the program once → get a CompilationOutput (program + warnings)
+val output = compiler.compile(onboardingSource, "onboarding").toOption.get
+output.warnings.foreach(w => logger.warn(w.message))  // Log warnings
+val loaded: LoadedProgram = output.program
 
 // Optionally store the image for future reference / other instances
 val hash = programStore.store(loaded.image).unsafeRunSync()
 programStore.alias("onboarding", hash).unsafeRunSync()
 
 // Step 1: Initial execution with partial inputs
-val sig1 = loaded.run(
+val sig1 = constellation.run(
+  loaded,
   inputs = Map(
     "name"  -> CValue.CString("Alice"),
     "email" -> CValue.CString("alice@example.com")
@@ -292,12 +302,12 @@ final case class SuspendedExecution(
 | `executionId` | Stable ID linking all resumptions of the same execution |
 | `structuralHash` | Detect if the program semantically changed since suspension |
 | `resumptionCount` | Track how many times execution has been resumed |
-| `dagSpec` | The compiled DAG — needed to determine what to execute next |
+| `dagSpec` | The compiled DAG — needed to determine what to execute next. Intentionally embedded (not referenced by hash) so the IR is self-contained and resumable without a ProgramStore lookup. |
 | `providedInputs` | Cumulative inputs across all resumptions |
 | `computedValues` | `CValue` results for every data node that has been computed |
 | `moduleStatuses` | Which modules have fired and their execution outcomes |
 
-**Note:** Synthetic modules (compiler-generated functions for inline transforms and conditionals) are **not** stored in the IR. They are Scala functions that cannot be meaningfully serialized. The consumer provides them when calling `resume()` — typically from the same `CompileResult` used for the initial execution. This keeps the IR fully serializable as pure data.
+**Note:** Synthetic modules (compiler-generated functions for inline transforms and conditionals) are **not** stored in the IR. They are Scala functions that cannot be meaningfully serialized. The consumer provides them when calling `resume()` — typically from the same `LoadedProgram` used for the initial execution, or by rehydrating a stored `ProgramImage`. This keeps the IR fully serializable as pure data.
 
 ### Serialization
 
@@ -474,7 +484,7 @@ LoadedProgram                                    ← CLEAR SPLIT: serializable i
 ProgramStore                                     ← CONTENT-ADDRESSED with name aliases
 ├── images: Map[StructuralHash, ProgramImage]    (immutable, deduplicated)
 ├── aliases: Map[String, StructuralHash]         (mutable name → hash, like git branches)
-└── syntacticIndex: Map[SyntacticHash, StructuralHash]  (compilation cache key)
+└── syntacticIndex: Map[(SyntacticHash, RegistryHash), StructuralHash]  (compilation cache)
     ↓ loaded.run(inputs, options)
 DataSignature                                    ← Unified result: completed, suspended, or failed
     ↓ (if suspended)
@@ -505,27 +515,49 @@ final case class ProgramImage(
 
 /** Executable form — a ProgramImage loaded into a running JVM with live synthetic modules.
   * Created by compiling source or rehydrating a ProgramImage. NOT serializable.
+  * Pure data holder — execution goes through Constellation, which merges registered modules.
   */
 final case class LoadedProgram(
   image: ProgramImage,
   syntheticModules: Map[UUID, Module.Uninitialized]    // Compiler-generated Scala functions
 ) {
   def structuralHash: String = image.structuralHash
-
-  /** Execute with the given inputs (suspendable). */
-  def run(
-    inputs: Map[String, CValue],
-    options: ExecutionOptions = ExecutionOptions()
-  ): IO[DataSignature]
 }
 
 object ProgramImage {
   /** Rehydrate a serializable image into an executable form.
-    * Deterministically reconstructs synthetic modules from the DagSpec structure.
+    * Delegates to SyntheticModuleFactory to deterministically reconstruct
+    * synthetic modules from DagSpec metadata (InlineTransform, ModuleNodeSpec).
     * Cheap — no compilation needed, no source code needed.
     */
-  def rehydrate(image: ProgramImage): LoadedProgram
+  def rehydrate(image: ProgramImage): LoadedProgram =
+    LoadedProgram(image, SyntheticModuleFactory.fromDagSpec(image.dagSpec))
 }
+
+/** Single source of truth for creating synthetic modules from DagSpec metadata.
+  * Lives in constellation-runtime. Called by the compiler during compilation
+  * and by ProgramImage.rehydrate() during deserialization recovery.
+  *
+  * Synthetic modules are deterministic pure functions derived from:
+  * - DataNodeSpec.inlineTransform (merge, project, field access, conditional, etc.)
+  * - ModuleNodeSpec input/output types
+  * - DataNodeSpec.transformInputs wiring
+  *
+  * Dependency direction: compiler → runtime (calls factory), not the reverse.
+  */
+object SyntheticModuleFactory {
+  def fromDagSpec(dagSpec: DagSpec): Map[UUID, Module.Uninitialized]
+}
+```
+
+```scala
+/** Compiler output — separates the reusable program from ephemeral compiler feedback.
+  * LangCompiler.compile returns Either[List[CompileError], CompilationOutput].
+  */
+final case class CompilationOutput(
+  program: LoadedProgram,
+  warnings: List[CompileWarning]
+)
 ```
 
 **The serialization boundary is now a type-level guarantee:** if you have a `ProgramImage`, you can serialize it. If you have a `LoadedProgram`, you can execute it. The compiler produces `LoadedProgram` (both). Deserialization produces `ProgramImage` (artifact only). `rehydrate` bridges the gap.
@@ -549,7 +581,7 @@ object ProgramImage {
 2. Sort all map entries by key
 3. Normalize field ordering within specs
 
-The syntactic hash is the **compilation cache key** — if two source strings have the same syntactic hash, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the program actually does.
+The syntactic hash is the **compilation cache key** — combined with a `registryHash` (SHA-256 of the registered function signatures), it identifies a unique compilation context. If two source strings have the same syntactic hash and the module registry hasn't changed, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the program actually does.
 
 ### Content-Addressed Program Store
 
@@ -581,11 +613,14 @@ trait ProgramStore {
   def getByName(name: String): IO[Option[ProgramImage]]
 
   // --- Syntactic index (compilation cache) ---
-  /** Register syntactic hash → structural hash mapping. */
-  def indexSyntactic(syntacticHash: String, structuralHash: String): IO[Unit]
+  /** Register (syntacticHash, registryHash) → structural hash mapping.
+    * registryHash captures the module registry state (function signatures).
+    * When the registry changes, old entries become naturally unreachable.
+    */
+  def indexSyntactic(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit]
 
-  /** Lookup by syntactic hash (cache hit = skip compilation). */
-  def lookupSyntactic(syntacticHash: String): IO[Option[String]]
+  /** Lookup by syntactic + registry hash (cache hit = skip compilation). */
+  def lookupSyntactic(syntacticHash: String, registryHash: String): IO[Option[String]]
 
   // --- Lifecycle ---
   def listImages: IO[List[ProgramImage]]
@@ -604,14 +639,15 @@ Names are **mutable aliases** — like git branch pointers. Compiling v2 of `"on
 
 | Current Type | Becomes | Nature of Change |
 |-------------|---------|-----------------|
-| `CompileResult` | `LoadedProgram` | Split. `dagSpec` + `moduleOptions` + hashes → `ProgramImage` (serializable). `syntheticModules` stays on `LoadedProgram` (runtime-only). `warnings` remains a compiler output, not part of the program. |
+| `CompileResult` | `CompilationOutput` → `LoadedProgram` | Split. `dagSpec` + `moduleOptions` + hashes → `ProgramImage` (serializable). `syntheticModules` stays on `LoadedProgram` (runtime-only). `warnings` stays on the new `CompilationOutput` wrapper — ephemeral compiler feedback, not stored. |
 | `DagRegistry` | `ProgramStore` | Replaced. `Map[String, DagSpec]` → content-addressed store with `images`, `aliases`, and `syntacticIndex`. |
 | `DagRegistryImpl` | `ProgramStoreImpl` | Replaced. Three internal `Ref[IO, Map[...]]` instances. |
 | `CompilationCache` | Absorbed | The syntactic index in `ProgramStore` replaces the standalone compilation cache. No separate cache layer — the store IS the cache. |
-| `CachingLangCompiler` | Refactored | Instead of its own cache, delegates to `ProgramStore.lookupSyntactic()` on compile. On cache miss, compiles and stores. |
-| `Constellation.setDag` | `ProgramStore.store` + `alias` | Stores image by hash, creates name alias. |
-| `Constellation.getDag` | `ProgramStore.getByName` | Resolves alias, returns `ProgramImage`. |
+| `CachingLangCompiler` | Refactored | Instead of its own cache, delegates to `ProgramStore.lookupSyntactic(syntacticHash, registryHash)` on compile. On cache miss, compiles and stores. Registry changes naturally invalidate stale entries. |
+| `Constellation.setDag` | Removed | Consumers use `ProgramStore.store` + `alias` directly. |
+| `Constellation.getDag` | Removed | Consumers use `ProgramStore.getByName` or `get` directly. |
 | `Constellation.runDag(name, inputs)` | `Constellation.run(ref, inputs)` | `ref` accepts name OR structural hash. Resolves to `ProgramImage`, rehydrates to `LoadedProgram`, executes. |
+| `Constellation.runDagWithModules(...)` | `Constellation.run(loaded, inputs)` | Consumer passes `LoadedProgram` directly. |
 
 ### Impact on HTTP API
 
@@ -680,7 +716,7 @@ An un-run `LoadedProgram` is a `SuspendedExecution` at resumption 0:
 | DagSpec | Present | Present |
 | Can execute | Yes (with inputs) | Yes (with more inputs) |
 
-This means `loaded.run(partialInputs)` and `SuspendableExecution.resume(suspended, moreInputs)` are the same operation at different lifecycle points. The unified `DataSignature` return type works for both. The `structuralHash` in `ProgramImage` is the same `structuralHash` referenced in `SuspendedExecution` and `DataSignature` — a single identity threading through the entire lifecycle.
+This means `constellation.run(loaded, partialInputs)` and `SuspendableExecution.resume(suspended, moreInputs, modules)` are the same operation at different lifecycle points. The unified `DataSignature` return type works for both. The `structuralHash` in `ProgramImage` is the same `structuralHash` referenced in `SuspendedExecution` and `DataSignature` — a single identity threading through the entire lifecycle.
 
 ---
 
@@ -766,7 +802,7 @@ val sig    = constellation.resumeFromStore(handle, moreInputs, loaded.syntheticM
 | `constellation-core` | `ExecutionStatus`, `ExecutionOptions`, `DataSignature`, `ProgramImage` case classes |
 | `constellation-runtime` | `LoadedProgram`, `ProgramStore` (replaces `DagRegistry`), `SuspendableExecution` executor, `SuspendedExecution` IR, `SuspensionCodec` trait, `CirceJsonSuspensionCodec`, rehydration logic |
 | `constellation-runtime` (optional) | `SuspensionStore` trait, `InMemorySuspensionStore` |
-| `constellation-compiler` | `LangCompiler` returns `LoadedProgram` instead of `CompileResult`. `CachingLangCompiler` delegates to `ProgramStore.lookupSyntactic`. Syntactic normalization + hashing added to parse phase. |
+| `constellation-compiler` | `LangCompiler` returns `CompilationOutput` (`LoadedProgram` + warnings) instead of `CompileResult`. `CachingLangCompiler` delegates to `ProgramStore.lookupSyntactic`. Syntactic normalization + hashing added to parse phase. |
 | `constellation-http-api` | `POST /execute` accepts name or structural hash. `POST /run` returns structural hash. New endpoints: `GET /programs`, `GET /programs/:ref`, `DELETE /programs/:ref`, `PUT /programs/:name/alias`. |
 
 ## What Doesn't Change
@@ -776,7 +812,7 @@ val sig    = constellation.resumeFromStore(handle, moreInputs, loaded.syntheticM
 | constellation-lang syntax | Suspension is implicit from DAG dependencies; hashing is transparent |
 | Parser grammar | No new AST nodes (normalization is a post-parse transform) |
 | Module system / ModuleBuilder | Modules are unaware of suspension and content addressing |
-| Existing `runDag` methods | Backwards compatible — existing behavior unchanged, `ProgramStore` serves the same lookups `DagRegistry` did |
+| Existing `runDag` / `setDag` / `getDag` methods | Removed — replaced by `Constellation.run` and `ProgramStore`. No existing users to break. |
 
 ---
 
@@ -789,11 +825,12 @@ val sig    = constellation.resumeFromStore(handle, moreInputs, loaded.syntheticM
 - Structural hash computation: canonical DagSpec → SHA-256
 - Syntactic hash computation: parse → normalize AST → SHA-256
 - `ProgramStore` trait and `ProgramStoreImpl` (content-addressed images, mutable aliases, syntactic index)
-- Refactor `LangCompiler` to return `LoadedProgram` instead of `CompileResult`
-- Refactor `CachingLangCompiler` to use `ProgramStore.lookupSyntactic` instead of standalone cache
-- Rehydration: `ProgramImage.rehydrate()` → reconstructs synthetic modules from DagSpec
-- Migrate `Constellation` to use `ProgramStore` internally (backwards-compatible `runDag` still works)
-- Tests: structural hash determinism, syntactic normalization equivalence, store/alias/resolve round-trip, deduplication, rehydration correctness, backwards compatibility with existing `runDag`
+- Refactor `LangCompiler` to return `CompilationOutput` (wraps `LoadedProgram` + `warnings`) instead of `CompileResult`
+- Refactor `CachingLangCompiler` to use `ProgramStore.lookupSyntactic(syntacticHash, registryHash)` instead of standalone cache
+- Extract `SyntheticModuleFactory` into `constellation-runtime` — single source of truth for creating synthetic modules from DagSpec metadata. Refactor `DagCompiler` to delegate to this factory instead of inline creation.
+- Rehydration: `ProgramImage.rehydrate()` → delegates to `SyntheticModuleFactory.fromDagSpec`
+- Replace `DagRegistry` with `ProgramStore` in `Constellation`. Remove `setDag`/`getDag`/`runDag` — replaced by `ProgramStore` and `Constellation.run`.
+- Tests: structural hash determinism, syntactic normalization equivalence, store/alias/resolve round-trip, deduplication, rehydration correctness (rehydrated modules produce same results as compiler-created ones)
 
 ### Phase 2: Core Suspend/Resume
 
@@ -802,7 +839,7 @@ val sig    = constellation.resumeFromStore(handle, moreInputs, loaded.syntheticM
 - `ExecutionStatus` enum
 - `SuspensionCodec` trait with `CirceJsonSuspensionCodec` default implementation
 - Convenience methods: `SuspendedExecution.serialize` / `deserialize` (delegate to JSON codec)
-- `LoadedProgram.run` returns `DataSignature`
+- `Constellation.run(loaded, inputs)` returns `DataSignature`
 - `SuspendableExecution.resume` accepting `SuspendedExecution` + consumer-provided modules
 - Program change detection on resume (structural hash comparison)
 - Tests: round-trip suspend/resume, incremental multi-step, all inputs provided (no suspension), codec round-trip (JSON), custom codec pluggability, cross-JVM resume via rehydration, error cases
@@ -848,6 +885,9 @@ val sig    = constellation.resumeFromStore(handle, moreInputs, loaded.syntheticM
 | **Suspension-aware HTTP endpoints** | REST API for suspend/resume/list operations on the optional HTTP server module. |
 | **Distributed suspension** | Coordination for suspended executions across multiple server instances. |
 | **TTL and expiry** | Automatic cleanup of suspended executions that haven't been resumed within a time limit (consumer concern for now). |
+| **Persistent ProgramStore** | In-memory `ProgramStoreImpl` is sufficient for v1. A persistent implementation (backed by database, filesystem, or object storage) would survive JVM restarts. Follows the same SPI pattern as `SuspensionStore`. |
+| **Image garbage collection** | When aliases are repointed, orphaned images accumulate. A GC strategy (reference counting, mark-and-sweep over aliases + active suspensions) would reclaim storage. |
+| **ProgramImage codec** | `SuspensionCodec` handles `SuspendedExecution`. A parallel `ProgramImageCodec` (or a generalized codec) would enable persistent ProgramStore implementations with pluggable serialization. For v1, Circe JSON is sufficient. |
 
 ---
 
