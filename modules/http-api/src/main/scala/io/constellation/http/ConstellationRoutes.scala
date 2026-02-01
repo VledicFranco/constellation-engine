@@ -17,6 +17,8 @@ import io.circe.Json
 
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
+import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, MalformedMessageBodyFailure, MediaType}
+import org.http4s.headers.`Content-Type`
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -26,6 +28,33 @@ class ConstellationRoutes(
     scheduler: Option[GlobalScheduler] = None,
     lifecycle: Option[ConstellationLifecycle] = None
 ) {
+
+  // Maximum request body size (10MB)
+  private val maxBodySize: Long = 10 * 1024 * 1024
+
+  /** Validate a program reference (name or hash).
+    *
+    * Refs can be:
+    * - Program name (any non-empty string, max 256 chars)
+    * - SHA-256 structural hash (exactly 64 hex characters)
+    *
+    * If a ref is exactly 64 chars, it MUST be valid hex (treated as hash).
+    */
+  private def validateRef(ref: String): Either[String, String] = {
+    if (ref.isBlank) {
+      Left("Program reference cannot be blank")
+    } else if (ref.length == 64) {
+      // Must be a SHA-256 hash - validate it's valid hex
+      if (ref.matches("[a-fA-F0-9]{64}")) Right(ref)
+      else Left(s"Invalid hash format: '$ref' (expected 64 hex characters)")
+    } else if (ref.length > 256) {
+      // Prevent excessively long names
+      Left(s"Program reference too long: ${ref.length} characters (max 256)")
+    } else {
+      // Treat as program name
+      Right(ref)
+    }
+  }
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
@@ -78,15 +107,20 @@ class ConstellationRoutes(
           case None =>
             BadRequest(ExecuteResponse(success = false, error = Some("Missing 'ref' or 'dagName' field")))
           case Some(ref) =>
-            executeByRef(ref, execReq.inputs).value.flatMap {
-              case Right(outputs) =>
-                Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
-              case Left(ApiError.NotFoundError(_, name)) =>
-                NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found"))
-              case Left(ApiError.InputError(msg)) =>
-                BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
-              case Left(error) =>
-                InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
+            validateRef(ref) match {
+              case Left(validationError) =>
+                BadRequest(ExecuteResponse(success = false, error = Some(s"Invalid ref: $validationError")))
+              case Right(validatedRef) =>
+                executeByRef(validatedRef, execReq.inputs).value.flatMap {
+                  case Right(outputs) =>
+                    Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
+                  case Left(ApiError.NotFoundError(_, name)) =>
+                    NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found"))
+                  case Left(ApiError.InputError(msg)) =>
+                    BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
+                  case Left(error) =>
+                    InternalServerError(ExecuteResponse(success = false, error = Some(error.message)))
+                }
             }
         }
       } yield result).handleErrorWith {

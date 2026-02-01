@@ -179,6 +179,70 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     body.error shouldBe "NotFound"
   }
 
+  it should "reject blank program references" in {
+    val executeRequest = ExecuteRequest(
+      ref = Some(""),
+      inputs = Map.empty
+    )
+
+    val request = Request[IO](Method.POST, uri"/execute")
+      .withEntity(executeRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.BadRequest
+    val body = response.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe false
+    body.error.get should include("cannot be blank")
+  }
+
+  it should "reject invalid hex hash formats" in {
+    val executeRequest = ExecuteRequest(
+      ref = Some("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"), // 64 chars but not hex
+      inputs = Map.empty
+    )
+
+    val request = Request[IO](Method.POST, uri"/execute")
+      .withEntity(executeRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.BadRequest
+    val body = response.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe false
+    body.error.get should include("Invalid hash format")
+  }
+
+  it should "reject excessively long program names" in {
+    val longName = "a" * 300 // 300 characters
+    val executeRequest = ExecuteRequest(
+      ref = Some(longName),
+      inputs = Map.empty
+    )
+
+    val request = Request[IO](Method.POST, uri"/execute")
+      .withEntity(executeRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.BadRequest
+    val body = response.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe false
+    body.error.get should include("too long")
+  }
+
+  it should "accept valid SHA-256 hashes (64 hex chars)" in {
+    val validHash = "a" * 64 // Valid hex hash
+    val executeRequest = ExecuteRequest(
+      ref = Some(validHash),
+      inputs = Map.empty
+    )
+
+    val request = Request[IO](Method.POST, uri"/execute")
+      .withEntity(executeRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    // Should get 404 (program not found), not 400 (validation error)
+    response.status shouldBe Status.NotFound
+  }
+
   it should "return 400 for missing required input" in {
     // First compile a DAG with two inputs (both are top-level data nodes)
     val compileRequest = CompileRequest(
