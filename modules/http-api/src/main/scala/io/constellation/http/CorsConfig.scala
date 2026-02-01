@@ -80,6 +80,7 @@ object CorsConfig {
     * `CONSTELLATION_CORS_ORIGINS=https://app.example.com,https://admin.example.com`
     *
     * Invalid origins are logged as warnings and skipped.
+    * Only origin counts are logged — specific domains are not exposed in logs.
     */
   def fromEnv: CorsConfig = {
     val origins = sys.env.get("CONSTELLATION_CORS_ORIGINS").map { raw =>
@@ -92,7 +93,8 @@ object CorsConfig {
             case Right(validOrigin) =>
               Some(validOrigin)
             case Left(error) =>
-              System.err.println(s"[WARN] CORS origin #${idx + 1} invalid: $error")
+              // Log error category without exposing the origin value
+              System.err.println(s"[WARN] CORS origin #${idx + 1} rejected: validation failed")
               None
           }
         }
@@ -100,7 +102,8 @@ object CorsConfig {
     }.getOrElse(Set.empty)
 
     if (origins.nonEmpty) {
-      System.err.println(s"[INFO] Loaded ${origins.size} CORS origin(s)")
+      val wildcardNote = if (origins.contains("*")) " (wildcard)" else ""
+      System.err.println(s"[INFO] Loaded ${origins.size} CORS origin(s)$wildcardNote")
     }
 
     CorsConfig(allowedOrigins = origins)

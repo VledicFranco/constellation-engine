@@ -124,6 +124,7 @@ object AuthConfig {
     *
     * Keys are hashed on startup for secure storage.
     * Invalid keys are logged as warnings and skipped.
+    * API key values are NEVER logged — only counts and error categories.
     */
   def fromEnv: AuthConfig = {
     val hashedKeys = sys.env.get("CONSTELLATION_API_KEYS").map { raw =>
@@ -134,14 +135,15 @@ object AuthConfig {
 
             // Validate API key
             val keyValidation = validateApiKey(key)
-            val roleValidation = parseRole(r).toRight(s"Invalid role: '$r'")
+            val roleValidation = parseRole(r).toRight(s"Invalid role format")
 
             (keyValidation, roleValidation) match {
               case (Right(validKey), Right(role)) =>
                 Some(HashedApiKey(validKey, role))
 
               case (Left(keyError), _) =>
-                System.err.println(s"[WARN] API key #${idx + 1} invalid: $keyError")
+                // Log error category only — never log key content or length hints
+                System.err.println(s"[WARN] API key #${idx + 1} rejected: validation failed")
                 None
 
               case (_, Left(roleError)) =>
@@ -150,14 +152,15 @@ object AuthConfig {
             }
 
           case _ =>
-            System.err.println(s"[WARN] API key #${idx + 1} malformed: expected 'key:Role' format")
+            System.err.println(s"[WARN] API key #${idx + 1}: expected 'key:Role' format")
             None
         }
       }.toList
     }.getOrElse(List.empty)
 
     if (hashedKeys.nonEmpty) {
-      System.err.println(s"[INFO] Loaded ${hashedKeys.length} API key(s)")
+      val roleCounts = hashedKeys.groupBy(_.role).map { case (role, keys) => s"$role=${keys.size}" }.mkString(", ")
+      System.err.println(s"[INFO] Loaded ${hashedKeys.length} API key(s) [$roleCounts]")
     }
 
     AuthConfig(hashedKeys = hashedKeys)
