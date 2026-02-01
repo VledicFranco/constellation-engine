@@ -17,8 +17,8 @@ case class CacheStats(
 
 /** A single entry in the compilation cache */
 case class CacheEntry(
-    sourceHash: Int,
-    registryHash: Int,
+    sourceHash: String,
+    registryHash: String,
     result: CompilationOutput,
     createdAt: Long,
     lastAccessed: Long
@@ -49,7 +49,7 @@ class CompilationCache private (
     *
     * Updates lastAccessed time on cache hit for LRU tracking.
     */
-  def get(dagName: String, sourceHash: Int, registryHash: Int): IO[Option[CompilationOutput]] = {
+  def get(dagName: String, sourceHash: String, registryHash: String): IO[Option[CompilationOutput]] = {
     val now = System.currentTimeMillis()
     cache.modify { entries =>
       entries.get(dagName) match {
@@ -74,7 +74,7 @@ class CompilationCache private (
     *
     * If the cache is at maximum capacity, evicts the least recently used entry.
     */
-  def put(dagName: String, sourceHash: Int, registryHash: Int, result: CompilationOutput): IO[Unit] = {
+  def put(dagName: String, sourceHash: String, registryHash: String, result: CompilationOutput): IO[Unit] = {
     val now   = System.currentTimeMillis()
     val entry = CacheEntry(sourceHash, registryHash, result, now, now)
 
@@ -112,7 +112,7 @@ class CompilationCache private (
   def size: IO[Int] =
     cache.get.map(_.size)
 
-  private def isValid(entry: CacheEntry, sourceHash: Int, registryHash: Int, now: Long): Boolean =
+  private def isValid(entry: CacheEntry, sourceHash: String, registryHash: String, now: Long): Boolean =
     entry.sourceHash == sourceHash &&
       entry.registryHash == registryHash &&
       (now - entry.createdAt) < config.maxAge.toMillis

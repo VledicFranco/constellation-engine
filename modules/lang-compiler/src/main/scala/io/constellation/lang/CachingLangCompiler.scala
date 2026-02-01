@@ -1,6 +1,7 @@
 package io.constellation.lang
 
 import cats.effect.unsafe.implicits.global
+import io.constellation.ContentHash
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.{CompilationOutput, IRProgram}
 import io.constellation.lang.semantic.FunctionRegistry
@@ -28,13 +29,15 @@ class CachingLangCompiler(
 
   // Simple in-memory cache for IR results (separate from CompilationOutput cache)
   // Key: (sourceHash, registryHash), Value: IRProgram
-  private val irCache = new ConcurrentHashMap[(Int, Int), IRProgram]()
+  private val irCache = new ConcurrentHashMap[(String, String), IRProgram]()
 
   def functionRegistry: FunctionRegistry = underlying.functionRegistry
 
   def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
-    val sourceHash   = source.hashCode
-    val registryHash = functionRegistry.all.hashCode
+    val sourceHash   = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+    val registryHash = ContentHash.computeSHA256(
+      functionRegistry.all.map(_.toString).sorted.mkString(",").getBytes("UTF-8")
+    )
 
     // Note: Using unsafeRunSync() because LangCompiler.compile returns Either,
     // not IO. For a fully IO-based interface, the trait signature would need
@@ -54,8 +57,10 @@ class CachingLangCompiler(
   }
 
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] = {
-    val sourceHash   = source.hashCode
-    val registryHash = functionRegistry.all.hashCode
+    val sourceHash   = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+    val registryHash = ContentHash.computeSHA256(
+      functionRegistry.all.map(_.toString).sorted.mkString(",").getBytes("UTF-8")
+    )
     val cacheKey     = (sourceHash, registryHash)
 
     // Check IR cache first

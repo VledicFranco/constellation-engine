@@ -44,15 +44,15 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val cache  = CompilationCache.createUnsafe()
     val result = mockCompileResult()
 
-    cache.put("test", 123, 456, result).unsafeRunSync()
-    val retrieved = cache.get("test", 123, 456).unsafeRunSync()
+    cache.put("test", "hash123", "hash456", result).unsafeRunSync()
+    val retrieved = cache.get("test", "hash123", "hash456").unsafeRunSync()
 
     retrieved shouldBe Some(result)
   }
 
   it should "return None on cache miss" in {
     val cache = CompilationCache.createUnsafe()
-    val retrieved = cache.get("test", 123, 456).unsafeRunSync()
+    val retrieved = cache.get("test", "hash123", "hash456").unsafeRunSync()
 
     retrieved shouldBe None
   }
@@ -61,8 +61,8 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val cache  = CompilationCache.createUnsafe()
     val result = mockCompileResult()
 
-    cache.put("test", 123, 456, result).unsafeRunSync()
-    val retrieved = cache.get("test", 999, 456).unsafeRunSync() // Different source hash
+    cache.put("test", "hash123", "hash456", result).unsafeRunSync()
+    val retrieved = cache.get("test", "hash999", "hash456").unsafeRunSync() // Different source hash
 
     retrieved shouldBe None
   }
@@ -71,8 +71,8 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val cache  = CompilationCache.createUnsafe()
     val result = mockCompileResult()
 
-    cache.put("test", 123, 456, result).unsafeRunSync()
-    val retrieved = cache.get("test", 123, 999).unsafeRunSync() // Different registry hash
+    cache.put("test", "hash123", "hash456", result).unsafeRunSync()
+    val retrieved = cache.get("test", "hash123", "hash999").unsafeRunSync() // Different registry hash
 
     retrieved shouldBe None
   }
@@ -81,47 +81,47 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val config = CompilationCache.Config(maxEntries = 2)
     val cache  = CompilationCache.createUnsafe(config)
 
-    cache.put("a", 1, 1, mockCompileResult("a")).unsafeRunSync()
+    cache.put("a", "hash1", "hash1", mockCompileResult("a")).unsafeRunSync()
     Thread.sleep(5) // Ensure different timestamps
-    cache.put("b", 2, 2, mockCompileResult("b")).unsafeRunSync()
+    cache.put("b", "hash2", "hash2", mockCompileResult("b")).unsafeRunSync()
     Thread.sleep(5) // Ensure different timestamps
-    cache.get("a", 1, 1).unsafeRunSync() // Access 'a' to make it more recent than 'b'
+    cache.get("a", "hash1", "hash1").unsafeRunSync() // Access 'a' to make it more recent than 'b'
     Thread.sleep(5) // Ensure different timestamps
-    cache.put("c", 3, 3, mockCompileResult("c")).unsafeRunSync() // Should evict 'b'
+    cache.put("c", "hash3", "hash3", mockCompileResult("c")).unsafeRunSync() // Should evict 'b'
 
-    cache.get("a", 1, 1).unsafeRunSync() should not be empty
-    cache.get("b", 2, 2).unsafeRunSync() shouldBe None // Evicted
-    cache.get("c", 3, 3).unsafeRunSync() should not be empty
+    cache.get("a", "hash1", "hash1").unsafeRunSync() should not be empty
+    cache.get("b", "hash2", "hash2").unsafeRunSync() shouldBe None // Evicted
+    cache.get("c", "hash3", "hash3").unsafeRunSync() should not be empty
   }
 
   it should "expire entries after TTL" in {
     val config = CompilationCache.Config(maxAge = 50.millis)
     val cache  = CompilationCache.createUnsafe(config)
 
-    cache.put("test", 123, 456, mockCompileResult()).unsafeRunSync()
+    cache.put("test", "hash123", "hash456", mockCompileResult()).unsafeRunSync()
 
     // Should be present immediately
-    cache.get("test", 123, 456).unsafeRunSync() should not be empty
+    cache.get("test", "hash123", "hash456").unsafeRunSync() should not be empty
 
     // Wait for TTL to expire
     Thread.sleep(100)
 
     // Should be expired now
-    cache.get("test", 123, 456).unsafeRunSync() shouldBe None
+    cache.get("test", "hash123", "hash456").unsafeRunSync() shouldBe None
   }
 
   it should "track cache statistics correctly" in {
     val cache = CompilationCache.createUnsafe()
 
     // Cache miss
-    cache.get("test", 123, 456).unsafeRunSync()
+    cache.get("test", "hash123", "hash456").unsafeRunSync()
     var stats = cache.stats.unsafeRunSync()
     stats.misses shouldBe 1
     stats.hits shouldBe 0
 
     // Put and cache hit
-    cache.put("test", 123, 456, mockCompileResult()).unsafeRunSync()
-    cache.get("test", 123, 456).unsafeRunSync()
+    cache.put("test", "hash123", "hash456", mockCompileResult()).unsafeRunSync()
+    cache.get("test", "hash123", "hash456").unsafeRunSync()
     stats = cache.stats.unsafeRunSync()
     stats.hits shouldBe 1
     stats.misses shouldBe 1
@@ -132,8 +132,8 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val config = CompilationCache.Config(maxEntries = 1)
     val cache  = CompilationCache.createUnsafe(config)
 
-    cache.put("a", 1, 1, mockCompileResult()).unsafeRunSync()
-    cache.put("b", 2, 2, mockCompileResult()).unsafeRunSync() // Should evict 'a'
+    cache.put("a", "hash1", "hash1", mockCompileResult()).unsafeRunSync()
+    cache.put("b", "hash2", "hash2", mockCompileResult()).unsafeRunSync() // Should evict 'a'
 
     val stats = cache.stats.unsafeRunSync()
     stats.evictions shouldBe 1
@@ -142,25 +142,25 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
   it should "invalidate specific entries" in {
     val cache = CompilationCache.createUnsafe()
 
-    cache.put("a", 1, 1, mockCompileResult("a")).unsafeRunSync()
-    cache.put("b", 2, 2, mockCompileResult("b")).unsafeRunSync()
+    cache.put("a", "hash1", "hash1", mockCompileResult("a")).unsafeRunSync()
+    cache.put("b", "hash2", "hash2", mockCompileResult("b")).unsafeRunSync()
 
     cache.invalidate("a").unsafeRunSync()
 
-    cache.get("a", 1, 1).unsafeRunSync() shouldBe None
-    cache.get("b", 2, 2).unsafeRunSync() should not be empty
+    cache.get("a", "hash1", "hash1").unsafeRunSync() shouldBe None
+    cache.get("b", "hash2", "hash2").unsafeRunSync() should not be empty
   }
 
   it should "invalidate all entries" in {
     val cache = CompilationCache.createUnsafe()
 
-    cache.put("a", 1, 1, mockCompileResult("a")).unsafeRunSync()
-    cache.put("b", 2, 2, mockCompileResult("b")).unsafeRunSync()
+    cache.put("a", "hash1", "hash1", mockCompileResult("a")).unsafeRunSync()
+    cache.put("b", "hash2", "hash2", mockCompileResult("b")).unsafeRunSync()
 
     cache.invalidateAll().unsafeRunSync()
 
-    cache.get("a", 1, 1).unsafeRunSync() shouldBe None
-    cache.get("b", 2, 2).unsafeRunSync() shouldBe None
+    cache.get("a", "hash1", "hash1").unsafeRunSync() shouldBe None
+    cache.get("b", "hash2", "hash2").unsafeRunSync() shouldBe None
     cache.size.unsafeRunSync() shouldBe 0
   }
 
@@ -168,11 +168,11 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val cache = CompilationCache.createUnsafe()
 
     // 2 misses, then 2 hits
-    cache.get("test", 123, 456).unsafeRunSync() // miss
-    cache.get("test", 123, 456).unsafeRunSync() // miss
-    cache.put("test", 123, 456, mockCompileResult()).unsafeRunSync()
-    cache.get("test", 123, 456).unsafeRunSync() // hit
-    cache.get("test", 123, 456).unsafeRunSync() // hit
+    cache.get("test", "hash123", "hash456").unsafeRunSync() // miss
+    cache.get("test", "hash123", "hash456").unsafeRunSync() // miss
+    cache.put("test", "hash123", "hash456", mockCompileResult()).unsafeRunSync()
+    cache.get("test", "hash123", "hash456").unsafeRunSync() // hit
+    cache.get("test", "hash123", "hash456").unsafeRunSync() // hit
 
     val stats = cache.stats.unsafeRunSync()
     stats.hits shouldBe 2
@@ -369,8 +369,8 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     // Run many concurrent operations
     val operations = (0 until 100).map { i =>
       IO {
-        cache.put(s"dag$i", i, i, mockCompileResult(s"dag$i")).unsafeRunSync()
-        cache.get(s"dag$i", i, i).unsafeRunSync()
+        cache.put(s"dag$i", s"hash$i", s"hash$i", mockCompileResult(s"dag$i")).unsafeRunSync()
+        cache.get(s"dag$i", s"hash$i", s"hash$i").unsafeRunSync()
       }
     }
 
