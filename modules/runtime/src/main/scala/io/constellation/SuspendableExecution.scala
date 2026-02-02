@@ -77,19 +77,17 @@ object SuspendableExecution {
       backends: ConstellationBackends = ConstellationBackends.defaults
   ): IO[DataSignature] = {
     val executionId = suspended.executionId
-    val dagSpec     = suspended.dagSpec
-    val startedAt   = Instant.now()
 
-    // Atomic check-and-set: claim this execution for resume or fail
-    val claimResult = Option(inFlightResumes.putIfAbsent(executionId, System.currentTimeMillis()))
-
-    claimResult match {
+    // Atomic check-and-set wrapped in IO.delay so both acquisition and release
+    // happen during IO execution (not at IO construction time).
+    // Using IO.delay + flatMap instead of IO.defer to avoid scoverage
+    // instrumentation breaking by-name evaluation semantics.
+    IO.delay {
+      Option(inFlightResumes.putIfAbsent(executionId, System.currentTimeMillis()))
+    }.flatMap {
       case Some(_) =>
-        // Another resume is already in progress for this execution
         IO.raiseError(ResumeInProgressError(executionId))
-
       case None =>
-        // Successfully claimed - proceed with resume, ensuring cleanup on completion/failure
         doResume(
           suspended,
           additionalInputs,
@@ -98,9 +96,9 @@ object SuspendableExecution {
           options,
           scheduler,
           backends,
-          startedAt
+          Instant.now()
         )
-          .guarantee(IO.delay(inFlightResumes.remove(executionId)))
+          .guarantee(IO.delay { inFlightResumes.remove(executionId); () })
     }
   }
 
