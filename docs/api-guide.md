@@ -7,7 +7,7 @@ This guide covers programmatic usage of Constellation Engine, including compilin
 - [Compiling Programs](#compiling-programs)
 - [Registering Functions](#registering-functions)
 - [Creating Modules](#creating-modules)
-- [Running DAGs](#running-dags)
+- [Running Programs](#running-programs)
 - [Working with Types](#working-with-types)
 - [Error Handling](#error-handling)
 
@@ -16,7 +16,7 @@ This guide covers programmatic usage of Constellation Engine, including compilin
 ### Basic Compilation
 
 ```scala
-import io.constellation.lang.runtime.LangCompiler
+import io.constellation.lang.LangCompiler
 
 val compiler = LangCompiler.empty
 
@@ -30,9 +30,10 @@ val result = compiler.compile(source, "my-dag")
 
 result match {
   case Right(compiled) =>
-    println(s"DAG name: ${compiled.dagSpec.name}")
-    println(s"Modules: ${compiled.dagSpec.modules.size}")
-    println(s"Data nodes: ${compiled.dagSpec.data.size}")
+    val dagSpec = compiled.program.image.dagSpec
+    println(s"DAG name: ${dagSpec.name}")
+    println(s"Modules: ${dagSpec.modules.size}")
+    println(s"Data nodes: ${dagSpec.data.size}")
 
   case Left(errors) =>
     errors.foreach(e => println(e.format))
@@ -42,7 +43,7 @@ result match {
 ### Using the Builder
 
 ```scala
-import io.constellation.lang.runtime.LangCompiler
+import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic._
 
 val compiler = LangCompiler.builder
@@ -71,8 +72,13 @@ val compiler = LangCompiler.builder
 ### Compilation Result
 
 ```scala
-case class CompileResult(
-  dagSpec: DagSpec,                              // The compiled DAG
+final case class CompilationOutput(
+  program: LoadedProgram,        // The compiled program
+  warnings: List[CompileWarning] // Non-fatal warnings
+)
+
+final case class LoadedProgram(
+  image: ProgramImage,                           // Contains dagSpec + metadata
   syntheticModules: Map[UUID, Module.Uninitialized]  // Generated modules
 )
 ```
@@ -115,7 +121,7 @@ registry.register(signature)
 For modules with existing specs, use `ModuleBridge`:
 
 ```scala
-import io.constellation.lang.runtime.ModuleBridge
+import io.constellation.lang.ModuleBridge
 
 // Extract types from module spec
 val params = ModuleBridge.extractParams(myModule)
@@ -135,7 +141,7 @@ val sig = ModuleBridge.signatureFromModule(
 ### Using ModuleBuilder
 
 ```scala
-import io.constellation.api.ModuleBuilder
+import io.constellation.ModuleBuilder
 import cats.effect.IO
 
 // Define input/output case classes
@@ -203,62 +209,58 @@ val module = ModuleBuilder
   .build
 ```
 
-## Running DAGs
+## Running Programs
 
 ### Basic Execution
 
 ```scala
-import io.constellation.api.Runtime
+import io.constellation._
 import cats.effect.unsafe.implicits.global
 
 val result = for {
+  constellation <- impl.ConstellationImpl.init
+  _ <- modules.traverse(constellation.setModule)
+
   // Compile the program
   compiled <- IO.fromEither(
     compiler.compile(source, "my-dag").left.map(e => new Exception(e.head.format))
   )
 
-  // Prepare initial data
-  initData = Map(
+  // Prepare inputs
+  inputs = Map(
     "x" -> CValue.CInt(42),
     "y" -> CValue.CString("hello")
   )
 
-  // Combine registered modules with synthetic modules
-  allModules = registeredModules ++ compiled.syntheticModules
+  // Run the program
+  sig <- constellation.run(compiled.program, inputs)
+} yield sig
 
-  // Run the DAG
-  state <- Runtime.run(compiled.dagSpec, initData, allModules)
-} yield state
-
-val finalState = result.unsafeRunSync()
+val signature = result.unsafeRunSync()
 ```
 
 ### Accessing Results
 
 ```scala
-val state: Runtime.State = result.unsafeRunSync()
+val sig: DataSignature = result.unsafeRunSync()
 
-// Get execution latency
-state.latency.foreach(l => println(s"Total time: $l"))
+// Check execution status
+println(s"Status: ${sig.status}")
+println(s"Execution ID: ${sig.executionId}")
 
-// Get module statuses
-state.moduleStatus.foreach { case (moduleId, status) =>
-  status.value match {
-    case Module.Status.Fired(latency, context) =>
-      println(s"Module $moduleId completed in $latency")
-    case Module.Status.Failed(error) =>
-      println(s"Module $moduleId failed: ${error.getMessage}")
-    case Module.Status.Timed(timeout) =>
-      println(s"Module $moduleId timed out after $timeout")
-    case Module.Status.Unfired =>
-      println(s"Module $moduleId never ran")
-  }
+// Get declared outputs
+sig.outputs.foreach { case (name, value) =>
+  println(s"Output $name: $value")
 }
 
-// Get data values
-state.data.foreach { case (dataId, value) =>
-  println(s"Data $dataId: ${value.value}")
+// Get all computed intermediate values
+sig.computedNodes.foreach { case (name, value) =>
+  println(s"Node $name: $value")
 }
+
+// Check for missing inputs
+if (sig.missingInputs.nonEmpty)
+  println(s"Missing inputs: ${sig.missingInputs}")
 ```
 
 ## Working with Types
@@ -293,7 +295,7 @@ val candidatesType = SemanticType.SCandidates(recordType)
 Used at runtime for data representation:
 
 ```scala
-import io.constellation.api.CType
+import io.constellation.CType
 
 // Primitives
 val stringType = CType.CString
@@ -323,7 +325,7 @@ val semType = SemanticType.fromCType(cType)
 ### CValue (Runtime Values)
 
 ```scala
-import io.constellation.api.CValue
+import io.constellation.CValue
 
 // Create values
 val stringVal = CValue.CString("hello")
@@ -388,19 +390,22 @@ compiler.compile(source, "dag") match {
 ```scala
 import cats.effect.IO
 
-val result: IO[Runtime.State] = Runtime.run(dag, data, modules)
+val result: IO[DataSignature] = constellation.run(compiled.program, inputs)
 
 result.attempt.map {
-  case Right(state) =>
-    // Check individual module failures
-    val failures = state.moduleStatus.collect {
-      case (id, status) if status.value.isInstanceOf[Module.Status.Failed] =>
-        id -> status.value.asInstanceOf[Module.Status.Failed].error
+  case Right(sig) =>
+    sig.status match {
+      case PipelineStatus.Completed =>
+        println(s"Success: ${sig.outputs}")
+      case PipelineStatus.Failed(errors) =>
+        errors.foreach(e => println(s"Node ${e.nodeName} failed: ${e.message}"))
+      case PipelineStatus.Suspended =>
+        println(s"Suspended, missing: ${sig.missingInputs}")
     }
 
   case Left(error) =>
     // Global execution failure
-    println(s"DAG execution failed: ${error.getMessage}")
+    println(s"Execution failed: ${error.getMessage}")
 }
 ```
 
@@ -408,8 +413,10 @@ result.attempt.map {
 
 ```scala
 import cats.effect.{IO, IOApp}
-import io.constellation.api._
-import io.constellation.lang.runtime._
+import cats.implicits._
+import io.constellation._
+import io.constellation.impl.ConstellationImpl
+import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic._
 
 object MyPipeline extends IOApp.Simple {
@@ -442,22 +449,25 @@ object MyPipeline extends IOApp.Simple {
   """
 
   def run: IO[Unit] = for {
+    // Initialize
+    constellation <- ConstellationImpl.init
+    _ <- constellation.setModule(processModule)
+
     // Compile
     compiled <- IO.fromEither(
       compiler.compile(source, "my-pipeline")
         .left.map(e => new Exception(e.map(_.format).mkString("\n")))
     )
 
-    // Prepare
-    initData = Map("data" -> CValue.CString("hello world"))
-    modules = Map(processModule.spec.name -> processModule) ++ compiled.syntheticModules
-
     // Run
-    state <- Runtime.run(compiled.dagSpec, initData, modules)
+    sig <- constellation.run(
+      compiled.program,
+      Map("data" -> TypeSystem.CValue.VString("hello world"))
+    )
 
     // Output
-    _ <- IO.println(s"Completed in ${state.latency}")
-    _ <- IO.println(s"Results: ${state.data}")
+    _ <- IO.println(s"Status: ${sig.status}")
+    _ <- IO.println(s"Results: ${sig.outputs}")
   } yield ()
 }
 ```

@@ -13,7 +13,7 @@ Constellation Engine is organized into two main subsystems:
 │  │ Parser  │ → │ TypeChecker │ → │   IR    │ → │ DagCompiler │  │
 │  └─────────┘   └─────────────┘   └─────────┘   └─────────────┘  │
 │       ↓              ↓                ↓              ↓          │
-│      AST         TypedAST        IRProgram    CompileResult     │
+│      AST         TypedAST        IRProgram    CompilationOutput  │
 └─────────────────────────────────────────────────────────────────┘
                                                       │
                                                       ↓
@@ -107,6 +107,9 @@ object Module {
 4. **Completion**: Data flows through the DAG as modules complete
 
 ```scala
+// High-level API:
+constellation.run(compiled.program, inputs): IO[DataSignature]
+// Low-level (internal):
 Runtime.run(dagSpec, initData, modules): IO[Runtime.State]
 ```
 
@@ -221,7 +224,14 @@ Converts IR to DagSpec with synthetic modules.
 | `if (c) a else b` | ConditionalModule - branching |
 
 ```scala
-case class CompileResult(
+// Public API (returned by LangCompiler.compile):
+final case class CompilationOutput(
+  program: LoadedProgram,
+  warnings: List[CompileWarning]
+)
+
+// Internal (used by DagCompiler):
+case class DagCompileOutput(
   dagSpec: DagSpec,
   syntheticModules: Map[UUID, Module.Uninitialized]
 )
@@ -367,11 +377,11 @@ val constellation = ConstellationImpl.builder()
 
 ### Cancellable Execution
 
-Pipelines can be cancelled mid-execution via `CancellableExecution`:
+Pipelines can be cancelled or timed out using `IO.timeout`:
 
 ```scala
-val execution = constellation.runDagCancellable("pipeline", inputs)
-execution.flatMap(_.cancel)  // Cancel running pipeline
+constellation.run(compiled.program, inputs)
+  .timeout(30.seconds)
 ```
 
 ### Lifecycle State Machine

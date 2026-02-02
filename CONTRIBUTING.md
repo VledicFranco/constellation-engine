@@ -327,16 +327,16 @@ import cats.data.EitherT
 import io.constellation.errors.{ApiError, ErrorHandling}
 
 // Define a chain of operations using EitherT
-private def executeStoredDag(req: ExecuteRequest): EitherT[IO, ApiError, Map[String, Json]] =
+private def executeByRef(req: ExecuteRequest): EitherT[IO, ApiError, DataSignature] =
   for {
-    dagSpec <- EitherT(constellation.getDag(req.dagName).map {
-      case Some(spec) => Right(spec)
-      case None       => Left(ApiError.NotFoundError("DAG", req.dagName))
+    image   <- EitherT(constellation.programStore.getByName(req.ref).map {
+      case Some(img) => Right(img)
+      case None      => Left(ApiError.NotFoundError("Program", req.ref))
     })
-    inputs  <- ErrorHandling.liftIO(convertInputs(req.inputs, dagSpec))(t => ApiError.InputError(t.getMessage))
-    state   <- ErrorHandling.liftIO(constellation.runDag(req.dagName, inputs))(t => ApiError.ExecutionError(t.getMessage))
-    outputs <- ErrorHandling.liftIO(extractOutputs(state))(t => ApiError.OutputError(t.getMessage))
-  } yield outputs
+    loaded  = LoadedProgram(image, Map.empty)
+    inputs  <- ErrorHandling.liftIO(convertInputs(req.inputs))(t => ApiError.InputError(t.getMessage))
+    sig     <- ErrorHandling.liftIO(constellation.run(loaded, inputs))(t => ApiError.ExecutionError(t.getMessage))
+  } yield sig
 
 // In the route handler, pattern match on the result
 case req @ POST -> Root / "execute" =>

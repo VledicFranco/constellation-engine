@@ -256,18 +256,21 @@ val constellation = ConstellationImpl.builder()
 1. Initialize modules with runtime context (`Module.Initialized`)
 2. Build execution plan from DAG
 3. Execute components in dependency order
-4. Return outputs as `Map[String, CValue]`
+4. Return outputs as `DataSignature`
 
 ```scala
 // Register module
 constellation.setModule(myModule)
 
-// Register compiled DAG
-constellation.setDag("my-pipeline", dagSpec)
+// Execute with a compiled program
+val sig: IO[DataSignature] =
+  constellation.run(compiled.program, inputs = Map("text" -> VString("hello")))
 
-// Execute
-val result: IO[Map[String, CValue]] =
-  constellation.execute("my-pipeline", inputs = Map("text" -> VString("hello")))
+// Or store and execute by name
+constellation.programStore.store(compiled.program.image).flatMap { hash =>
+  constellation.programStore.alias("my-pipeline", hash) >>
+  constellation.run("my-pipeline", inputs, ExecutionOptions())
+}
 ```
 
 ## Common Patterns
@@ -381,10 +384,11 @@ val source = """
 val compiler = LangCompiler.empty
 compiler.compile(source, "my-dag") match {
   case Right(compiled) =>
-    // compiled.dagSpec: DagSpec
-    constellation.setDag("my-dag", compiled.dagSpec)
+    // compiled.program: LoadedProgram
+    // compiled.program.image.dagSpec: DagSpec
+    constellation.run(compiled.program, inputs)
   case Left(errors) =>
-    // errors: List[CompilationError]
+    // errors: List[CompileError]
     errors.foreach(e => println(e.message))
 }
 ```
@@ -429,7 +433,7 @@ io.constellation
 ├── Constellation.scala        (runtime module)
 ├── impl/
 │   ├── ConstellationImpl.scala
-│   ├── DagRegistryImpl.scala
+│   ├── ProgramStoreImpl.scala
 │   └── ModuleRegistryImpl.scala
 ├── lang/
 │   ├── ast/AST.scala          (lang-ast module)
@@ -663,14 +667,14 @@ curl -X POST http://localhost:8080/compile \
     "dagName": "test-pipeline"
   }' | jq
 
-# List compiled DAGs
-curl http://localhost:8080/dags | jq
+# List stored programs
+curl http://localhost:8080/programs | jq
 
 # Execute pipeline
 curl -X POST http://localhost:8080/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "dagName": "test-pipeline",
+    "ref": "test-pipeline",
     "inputs": {"text": "hello world"}
   }' | jq
 
@@ -916,21 +920,7 @@ constellation <- ConstellationImpl.create  // Wrong - method doesn't exist
 constellation <- ConstellationImpl.init  // Correct
 ```
 
-### Pitfall 6: Using createDag Instead of getDag
-
-**Problem:**
-```scala
-// This creates a new empty DAG, not what you want!
-dag <- constellation.createDag(dagName)
-```
-
-**Solution:**
-```scala
-// This retrieves an existing compiled DAG
-dag <- constellation.getDag(dagName)
-```
-
-### Pitfall 7: Field Name Mismatch
+### Pitfall 6: Field Name Mismatch
 
 **Problem:**
 ```scala
@@ -948,7 +938,7 @@ case class MyInput(text: String)  // Field: text
 result = MyModule(text)  // Now matches
 ```
 
-### Pitfall 8: Circular Module Dependencies
+### Pitfall 7: Circular Module Dependencies
 
 **Problem:** Trying to make `core` depend on `runtime` or `runtime` depend on `lang-compiler`.
 
@@ -1033,11 +1023,13 @@ import cats.effect.unsafe.implicits.global
   val result = (for {
     constellation <- ConstellationImpl.init
     _ <- constellation.setModule(myModule)
-    _ <- constellation.setDag("test", dagSpec)
-    outputs <- constellation.execute("test", Map("input" -> VString("hello")))
-  } yield outputs).unsafeRunSync()
+    compiled <- IO.fromEither(
+      compiler.compile(source, "test").left.map(e => new RuntimeException(e.head.format))
+    )
+    sig <- constellation.run(compiled.program, Map("input" -> VString("hello")))
+  } yield sig).unsafeRunSync()
 
-  result("output") shouldBe VString("HELLO")
+  result.outputs("output") shouldBe VString("HELLO")
 }
 ```
 

@@ -371,10 +371,10 @@ curl -X POST http://orchestrator:8080/compile \
 
 # Execute pipeline
 curl -X POST http://orchestrator:8080/execute \
-  -d '{"dagName": "search-v2", "inputs": {"query": "laptops"}}'
+  -d '{"ref": "search-v2", "inputs": {"query": "laptops"}}'
 
 # Monitor metrics
-curl http://orchestrator:8080/dags/search-v2/metrics
+curl http://orchestrator:8080/metrics
 ```
 
 **Impact:**
@@ -563,7 +563,7 @@ curl -X POST http://orchestrator:9000/compile \
 curl -X POST http://orchestrator:9000/execute \
   -H "Content-Type: application/json" \
   -d '{
-    "dagName": "search-v1",
+    "ref": "search-v1",
     "inputs": {
       "query": "red dress for wedding",
       "userId": "user123"
@@ -614,8 +614,8 @@ def search(query: String, userId: String): IO[Results] = {
 **Monitor both:**
 ```bash
 # Compare metrics
-curl http://orchestrator:9000/dags/search-v1/metrics
-curl http://orchestrator:9000/dags/search-v2/metrics
+curl http://orchestrator:9000/metrics
+curl http://orchestrator:9001/metrics
 ```
 
 **Result:**
@@ -752,7 +752,7 @@ curl -X POST http://localhost:8080/compile \
   -d '{"source": "...", "dagName": "my-pipeline"}'
 
 curl -X POST http://localhost:8080/execute \
-  -d '{"dagName": "my-pipeline", "inputs": {"text": "hello"}}'
+  -d '{"ref": "my-pipeline", "inputs": {"text": "hello"}}'
 ```
 
 ---

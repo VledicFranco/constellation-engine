@@ -295,10 +295,10 @@ Runtime not initialized: modules not loaded
 3. Check initialization order:
    ```scala
    // Correct order
-   val constellation = Constellation.create()
+   val constellation = ConstellationImpl.init
    modules.foreach(m => constellation.setModule(m))
-   val dagSpec = compiler.compile(source)
-   constellation.runDag(dagSpec, inputs)  // Run after setup
+   val compiled = compiler.compile(source, "my-dag")
+   constellation.run(compiled.program, inputs)  // Run after setup
    ```
 
 ---
@@ -447,7 +447,7 @@ Cannot convert from JSON Array to CProduct: expected object
    curl -X POST http://localhost:8080/execute \
      -H "Content-Type: application/json" \
      -d '{
-       "dagName": "my-pipeline",
+       "ref": "my-pipeline",
        "inputs": {
          "text": "hello world",
          "count": 5
@@ -458,25 +458,25 @@ Cannot convert from JSON Array to CProduct: expected object
 
 ---
 
-### 404 Not Found for DAG
+### 404 Not Found for Program
 
 **Error Response:**
 ```json
 {
-  "error": "DAG_NOT_FOUND",
-  "message": "DAG 'my-pipelin' not found"
+  "error": "PROGRAM_NOT_FOUND",
+  "message": "Program 'my-pipelin' not found"
 }
 ```
 
-**Cause:** DAG name misspelled or not compiled.
+**Cause:** Program name misspelled or not compiled.
 
 **Solution:**
-1. Check DAG name spelling (case-sensitive)
-2. List available DAGs:
+1. Check program name spelling (case-sensitive)
+2. List available programs:
    ```bash
-   curl http://localhost:8080/dags
+   curl http://localhost:8080/programs
    ```
-3. Compile the DAG before executing
+3. Compile the program before executing
 
 ---
 
@@ -564,19 +564,16 @@ When debug mode catches a type error:
 [TYPE_MISMATCH] Expected Long, but got String [location=HOF lambda argument extraction, value=hello world]
 ```
 
-### Inspecting DAG State
+### Inspecting Program State
 
-Use the HTTP API to inspect DAG state:
+Use the HTTP API to inspect program state:
 
 ```bash
-# Get DAG specification
-curl http://localhost:8080/dags/my-pipeline
+# Get program metadata
+curl http://localhost:8080/programs/my-pipeline
 
-# Get execution status
-curl http://localhost:8080/dags/my-pipeline/status
-
-# Get node values (during step-through)
-curl http://localhost:8080/dags/my-pipeline/nodes
+# List all stored programs
+curl http://localhost:8080/programs
 ```
 
 ### Structured Logging

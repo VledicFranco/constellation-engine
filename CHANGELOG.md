@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CI/CD Pipeline**: Fixed GitHub Actions CI workflow — added `sbt/setup-sbt@v1` (ubuntu-latest no longer ships sbt), upgraded codecov-action to v5 with token-based upload
+- **Benchmark Workflow**: Changed benchmark CI from automatic (push/PR) to manual-only (`workflow_dispatch`) to reduce CI resource usage
+- **Resume Lock Bug**: Fixed `SuspendableExecution.resume()` eager/lazy lock mismatch that caused `ResumeInProgressError` under scoverage instrumentation
+- **Flaky Test Exclusion**: Excluded timing-sensitive `SustainedLoadTest` and `Benchmark` tests from default test execution (run manually via `make benchmark`)
+- **Code Formatting**: Auto-formatted all 233 Scala source files with scalafmt
+
 ### Removed (Breaking)
 
 #### Deprecated API Removal (v1 RC)

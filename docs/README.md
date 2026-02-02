@@ -156,7 +156,7 @@ out result
 ### Compiling and Running
 
 ```scala
-import io.constellation.lang.runtime.LangCompiler
+import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.*
 
 // Create compiler with registered functions

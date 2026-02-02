@@ -353,8 +353,9 @@ State machine: `Running` → `Draining` → `Stopped`
 Pipelines can be cancelled mid-execution:
 
 ```scala
-val execution = constellation.runDagCancellable("pipeline", inputs)
-execution.flatMap(_.cancel)
+// Use IO.timeout for cancellation:
+constellation.run(compiled.program, inputs)
+  .timeout(30.seconds)
 ```
 
 Status: `Running` | `Completed` | `Cancelled` | `TimedOut` | `Failed`

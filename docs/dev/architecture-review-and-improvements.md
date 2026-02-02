@@ -251,7 +251,7 @@ object DeadCodeElimination extends OptimizationPass {
 Each compilation starts from scratch:
 
 ```scala
-def compile(source: String, dagName: String): Either[List[CompileError], CompileResult] = {
+def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
   for {
     program <- ConstellationParser.parse(source)  // Full re-parse
     typedProgram <- TypeChecker.check(program, registry)  // Full re-check
@@ -274,7 +274,7 @@ case class CompilationCache(
 )
 
 class IncrementalCompiler(cache: Ref[IO, Map[String, CompilationCache]]) {
-  def compile(source: String, dagName: String): IO[Either[List[CompileError], CompileResult]] = {
+  def compile(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]] = {
     cache.get.flatMap { cached =>
       val hash = source.hashCode
       cached.get(dagName) match {
