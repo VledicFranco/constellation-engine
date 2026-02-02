@@ -19,9 +19,9 @@ use stdlib.string as str
 
 @example("Hello from namespace!")
 in greeting: String
-upper_greeting = str.upper(greeting)
+trimmed_greeting = str.trim(greeting)
 
 # Outputs
 out result1
 out result2
-out upper_greeting
+out trimmed_greeting

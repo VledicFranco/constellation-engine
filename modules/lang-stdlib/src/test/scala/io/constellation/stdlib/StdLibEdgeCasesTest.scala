@@ -485,10 +485,10 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CString("a\nb\tc")
   }
 
-  "String upper" should "handle empty string" in {
+  "String trim" should "handle empty string" in {
     val source = """
       in value: String
-      result = upper(value)
+      result = trim(value)
       out result
     """
     val result = runProgram(
@@ -499,80 +499,24 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CString("")
   }
 
-  it should "handle already uppercase" in {
+  it should "trim leading and trailing whitespace" in {
     val source = """
       in value: String
-      result = upper(value)
+      result = trim(value)
       out result
     """
     val result = runProgram(
       source,
-      Map("value" -> CValue.CString("HELLO")),
+      Map("value" -> CValue.CString("  hello  ")),
       "result"
     )
-    result shouldBe CValue.CString("HELLO")
+    result shouldBe CValue.CString("hello")
   }
 
-  it should "handle mixed case" in {
+  it should "handle string with no whitespace" in {
     val source = """
       in value: String
-      result = upper(value)
-      out result
-    """
-    val result = runProgram(
-      source,
-      Map("value" -> CValue.CString("HeLLo WoRLd")),
-      "result"
-    )
-    result shouldBe CValue.CString("HELLO WORLD")
-  }
-
-  it should "handle unicode characters" in {
-    val source = """
-      in value: String
-      result = upper(value)
-      out result
-    """
-    val result = runProgram(
-      source,
-      Map("value" -> CValue.CString("café")),
-      "result"
-    )
-    result shouldBe CValue.CString("CAFÉ")
-  }
-
-  it should "handle numbers and special chars (unchanged)" in {
-    val source = """
-      in value: String
-      result = upper(value)
-      out result
-    """
-    val result = runProgram(
-      source,
-      Map("value" -> CValue.CString("abc123!@#")),
-      "result"
-    )
-    result shouldBe CValue.CString("ABC123!@#")
-  }
-
-  "String lower" should "handle empty string" in {
-    val source = """
-      in value: String
-      result = lower(value)
-      out result
-    """
-    val result = runProgram(
-      source,
-      Map("value" -> CValue.CString("")),
-      "result"
-    )
-    result shouldBe CValue.CString("")
-  }
-
-  it should "handle already lowercase" in {
-    val source = """
-      in value: String
-      result = lower(value)
+      result = trim(value)
       out result
     """
     val result = runProgram(
@@ -583,32 +527,123 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CString("hello")
   }
 
-  it should "handle mixed case" in {
+  it should "handle string that is only whitespace" in {
     val source = """
       in value: String
-      result = lower(value)
+      result = trim(value)
       out result
     """
     val result = runProgram(
       source,
-      Map("value" -> CValue.CString("HeLLo WoRLd")),
+      Map("value" -> CValue.CString("   ")),
       "result"
     )
-    result shouldBe CValue.CString("hello world")
+    result shouldBe CValue.CString("")
   }
 
-  it should "handle unicode characters" in {
+  "String contains" should "find existing substring" in {
     val source = """
       in value: String
-      result = lower(value)
+      in substring: String
+      result = contains(value, substring)
       out result
     """
     val result = runProgram(
       source,
-      Map("value" -> CValue.CString("CAFÉ")),
+      Map("value" -> CValue.CString("hello world"), "substring" -> CValue.CString("world")),
       "result"
     )
-    result shouldBe CValue.CString("café")
+    result shouldBe CValue.CBoolean(true)
+  }
+
+  it should "return false for missing substring" in {
+    val source = """
+      in value: String
+      in substring: String
+      result = contains(value, substring)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CString("hello world"), "substring" -> CValue.CString("xyz")),
+      "result"
+    )
+    result shouldBe CValue.CBoolean(false)
+  }
+
+  it should "handle empty substring" in {
+    val source = """
+      in value: String
+      in substring: String
+      result = contains(value, substring)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CString("hello"), "substring" -> CValue.CString("")),
+      "result"
+    )
+    result shouldBe CValue.CBoolean(true)
+  }
+
+  "String replace" should "replace occurrences" in {
+    val source = """
+      in value: String
+      in target: String
+      in replacement: String
+      result = replace(value, target, replacement)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "value" -> CValue.CString("hello world"),
+        "target" -> CValue.CString("world"),
+        "replacement" -> CValue.CString("there")
+      ),
+      "result"
+    )
+    result shouldBe CValue.CString("hello there")
+  }
+
+  it should "replace all occurrences" in {
+    val source = """
+      in value: String
+      in target: String
+      in replacement: String
+      result = replace(value, target, replacement)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "value" -> CValue.CString("aaa"),
+        "target" -> CValue.CString("a"),
+        "replacement" -> CValue.CString("b")
+      ),
+      "result"
+    )
+    result shouldBe CValue.CString("bbb")
+  }
+
+  it should "handle no match" in {
+    val source = """
+      in value: String
+      in target: String
+      in replacement: String
+      result = replace(value, target, replacement)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "value" -> CValue.CString("hello"),
+        "target" -> CValue.CString("xyz"),
+        "replacement" -> CValue.CString("abc")
+      ),
+      "result"
+    )
+    result shouldBe CValue.CString("hello")
   }
 
   "String length" should "handle empty string" in {
@@ -1322,4 +1357,519 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
   // Note: Boolean operators (and, or, not) are built-in language keywords,
   // not StdLib functions. They are tested in the orchestration tests.
   // See TypeCheckerTest and LangCompilerTest for coverage.
+
+  // ============================================================
+  // New Math Functions Edge Cases
+  // ============================================================
+
+  "Math abs" should "handle positive number" in {
+    val source = """
+      in value: Int
+      result = abs(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(5)),
+      "result"
+    )
+    result shouldBe CValue.CInt(5)
+  }
+
+  it should "handle negative number" in {
+    val source = """
+      in value: Int
+      result = abs(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(-5)),
+      "result"
+    )
+    result shouldBe CValue.CInt(5)
+  }
+
+  it should "handle zero" in {
+    val source = """
+      in value: Int
+      result = abs(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(0)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  "Math modulo" should "handle basic modulo" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = modulo(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("a" -> CValue.CInt(7), "b" -> CValue.CInt(3)),
+      "result"
+    )
+    result shouldBe CValue.CInt(1)
+  }
+
+  it should "handle division by zero (safe default)" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = modulo(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("a" -> CValue.CInt(5), "b" -> CValue.CInt(0)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  it should "handle exact divisibility" in {
+    val source = """
+      in a: Int
+      in b: Int
+      result = modulo(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("a" -> CValue.CInt(6), "b" -> CValue.CInt(3)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  "Math negate" should "negate positive number" in {
+    val source = """
+      in value: Int
+      result = negate(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(5)),
+      "result"
+    )
+    result shouldBe CValue.CInt(-5)
+  }
+
+  it should "negate negative number" in {
+    val source = """
+      in value: Int
+      result = negate(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(-5)),
+      "result"
+    )
+    result shouldBe CValue.CInt(5)
+  }
+
+  it should "handle zero" in {
+    val source = """
+      in value: Int
+      result = negate(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(0)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  "Math round" should "round down" in {
+    val source = """
+      in value: Float
+      result = round(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(3.2)),
+      "result"
+    )
+    result shouldBe CValue.CInt(3)
+  }
+
+  it should "round up" in {
+    val source = """
+      in value: Float
+      result = round(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(3.7)),
+      "result"
+    )
+    result shouldBe CValue.CInt(4)
+  }
+
+  it should "handle exactly 0.5" in {
+    val source = """
+      in value: Float
+      result = round(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(3.5)),
+      "result"
+    )
+    result shouldBe CValue.CInt(4)
+  }
+
+  it should "handle negative value" in {
+    val source = """
+      in value: Float
+      result = round(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(-2.7)),
+      "result"
+    )
+    result shouldBe CValue.CInt(-3)
+  }
+
+  // ============================================================
+  // New List Functions Edge Cases
+  // ============================================================
+
+  "List sum" should "handle empty list" in {
+    val source = """
+      in list: List<Int>
+      result = list-sum(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  it should "sum elements" in {
+    val source = """
+      in list: List<Int>
+      result = list-sum(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector(1L, 2L, 3L, 4L, 5L).map(CValue.CInt.apply), CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CInt(15)
+  }
+
+  it should "handle negative numbers" in {
+    val source = """
+      in list: List<Int>
+      result = list-sum(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector(-1L, -2L, 3L).map(CValue.CInt.apply), CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  "List contains" should "find existing element" in {
+    val source = """
+      in list: List<Int>
+      in value: Int
+      result = list-contains(list, value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "list" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+        "value" -> CValue.CInt(2)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CBoolean(true)
+  }
+
+  it should "not find missing element" in {
+    val source = """
+      in list: List<Int>
+      in value: Int
+      result = list-contains(list, value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "list" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+        "value" -> CValue.CInt(5)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CBoolean(false)
+  }
+
+  it should "handle empty list" in {
+    val source = """
+      in list: List<Int>
+      in value: Int
+      result = list-contains(list, value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "list" -> CValue.CList(Vector.empty, CType.CInt),
+        "value" -> CValue.CInt(1)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CBoolean(false)
+  }
+
+  "List reverse" should "reverse list" in {
+    val source = """
+      in list: List<Int>
+      result = list-reverse(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector(3L, 2L, 1L).map(CValue.CInt.apply), CType.CInt)
+  }
+
+  it should "handle empty list" in {
+    val source = """
+      in list: List<Int>
+      result = list-reverse(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector.empty, CType.CInt)
+  }
+
+  it should "handle single element list" in {
+    val source = """
+      in list: List<Int>
+      result = list-reverse(list)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("list" -> CValue.CList(Vector(CValue.CInt(42)), CType.CInt)),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector(CValue.CInt(42)), CType.CInt)
+  }
+
+  "List concat" should "concatenate two lists" in {
+    val source = """
+      in a: List<Int>
+      in b: List<Int>
+      result = list-concat(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "a" -> CValue.CList(Vector(1L, 2L).map(CValue.CInt.apply), CType.CInt),
+        "b" -> CValue.CList(Vector(3L, 4L).map(CValue.CInt.apply), CType.CInt)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector(1L, 2L, 3L, 4L).map(CValue.CInt.apply), CType.CInt)
+  }
+
+  it should "handle first list empty" in {
+    val source = """
+      in a: List<Int>
+      in b: List<Int>
+      result = list-concat(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "a" -> CValue.CList(Vector.empty, CType.CInt),
+        "b" -> CValue.CList(Vector(1L, 2L).map(CValue.CInt.apply), CType.CInt)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector(1L, 2L).map(CValue.CInt.apply), CType.CInt)
+  }
+
+  it should "handle both lists empty" in {
+    val source = """
+      in a: List<Int>
+      in b: List<Int>
+      result = list-concat(a, b)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map(
+        "a" -> CValue.CList(Vector.empty, CType.CInt),
+        "b" -> CValue.CList(Vector.empty, CType.CInt)
+      ),
+      "result"
+    )
+    result shouldBe CValue.CList(Vector.empty, CType.CInt)
+  }
+
+  // ============================================================
+  // Type Conversion Functions Edge Cases
+  // ============================================================
+
+  "to-string" should "convert positive integer" in {
+    val source = """
+      in value: Int
+      result = to-string(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(42)),
+      "result"
+    )
+    result shouldBe CValue.CString("42")
+  }
+
+  it should "convert negative integer" in {
+    val source = """
+      in value: Int
+      result = to-string(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(-7)),
+      "result"
+    )
+    result shouldBe CValue.CString("-7")
+  }
+
+  it should "convert zero" in {
+    val source = """
+      in value: Int
+      result = to-string(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(0)),
+      "result"
+    )
+    result shouldBe CValue.CString("0")
+  }
+
+  "to-int" should "truncate positive float" in {
+    val source = """
+      in value: Float
+      result = to-int(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(3.7)),
+      "result"
+    )
+    result shouldBe CValue.CInt(3)
+  }
+
+  it should "truncate negative float" in {
+    val source = """
+      in value: Float
+      result = to-int(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(-3.7)),
+      "result"
+    )
+    result shouldBe CValue.CInt(-3)
+  }
+
+  it should "handle zero" in {
+    val source = """
+      in value: Float
+      result = to-int(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CFloat(0.0)),
+      "result"
+    )
+    result shouldBe CValue.CInt(0)
+  }
+
+  "to-float" should "convert positive integer" in {
+    val source = """
+      in value: Int
+      result = to-float(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(42)),
+      "result"
+    )
+    result shouldBe CValue.CFloat(42.0)
+  }
+
+  it should "convert negative integer" in {
+    val source = """
+      in value: Int
+      result = to-float(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(-7)),
+      "result"
+    )
+    result shouldBe CValue.CFloat(-7.0)
+  }
+
+  it should "convert zero" in {
+    val source = """
+      in value: Int
+      result = to-float(value)
+      out result
+    """
+    val result = runProgram(
+      source,
+      Map("value" -> CValue.CInt(0)),
+      "result"
+    )
+    result shouldBe CValue.CFloat(0.0)
+  }
 }

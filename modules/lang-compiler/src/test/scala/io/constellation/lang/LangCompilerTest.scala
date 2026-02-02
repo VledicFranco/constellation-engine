@@ -634,10 +634,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     )
     registry.register(
       FunctionSignature(
-        name = "upper",
+        name = "trim",
         params = List("value" -> SemanticType.SString),
         returns = SemanticType.SString,
-        moduleName = "stdlib.upper",
+        moduleName = "stdlib.trim",
         namespace = Some("stdlib.string")
       )
     )
@@ -651,7 +651,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       in b: Int
       in greeting: String
       sum = add(a, b)
-      upper_greeting = str.upper(greeting)
+      trimmed_greeting = str.trim(greeting)
       out sum
     """
 
@@ -659,7 +659,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have 2 modules: add and upper
+    // Should have 2 modules: add and trim
     compiled.program.image.dagSpec.modules should have size 2
   }
 
@@ -777,10 +777,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       )
       .withFunction(
         FunctionSignature(
-          name = "upper",
+          name = "trim",
           params = List("value" -> SemanticType.SString),
           returns = SemanticType.SString,
-          moduleName = "stdlib.upper",
+          moduleName = "stdlib.trim",
           namespace = Some("stdlib.string")
         )
       )
@@ -793,7 +793,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     // Should be able to lookup by qualified name
     registry.lookupQualified("stdlib.math.add").isDefined shouldBe true
-    registry.lookupQualified("stdlib.string.upper").isDefined shouldBe true
+    registry.lookupQualified("stdlib.string.trim").isDefined shouldBe true
   }
 
   // Candidates + Candidates merge compilation tests
@@ -2813,17 +2813,17 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
   it should "compile string interpolation with function call" in {
     val registry = FunctionRegistry.empty
     registry.register(FunctionSignature(
-      name = "upper",
+      name = "trim",
       params = List("s" -> SemanticType.SString),
       returns = SemanticType.SString,
-      moduleName = "stdlib.upper",
+      moduleName = "stdlib.trim",
       namespace = Some("stdlib.string")
     ))
     val compiler = LangCompiler(registry, Map.empty)
 
     val source = """
       in name: String
-      result = "HELLO ${upper(name)}"
+      result = "HELLO ${trim(name)}"
       out result
     """
 

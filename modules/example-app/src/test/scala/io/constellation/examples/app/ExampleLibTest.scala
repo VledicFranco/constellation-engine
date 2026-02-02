@@ -245,8 +245,8 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     registry.lookup("subtract").isDefined shouldBe true
 
     // StdLib string functions
-    registry.lookup("upper").isDefined shouldBe true
-    registry.lookup("lower").isDefined shouldBe true
+    registry.lookup("concat").isDefined shouldBe true
+    registry.lookup("trim").isDefined shouldBe true
 
     // StdLib boolean functions
     registry.lookup("and").isDefined shouldBe true

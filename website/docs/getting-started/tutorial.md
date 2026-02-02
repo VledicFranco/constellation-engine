@@ -192,9 +192,9 @@ Create a file named `hello.cst` in the `modules/example-app/examples/` directory
 in name: String
 
 greeting = concat("Hello, ", name)
-upper_greeting = upper(greeting)
+trimmed_greeting = trim(greeting)
 
-out upper_greeting
+out trimmed_greeting
 ```
 
 ### Understanding the Code
@@ -204,8 +204,8 @@ out upper_greeting
 | `# hello.cst...` | Comment (starts with `#`) |
 | `in name: String` | Declare an input named `name` of type `String` |
 | `greeting = concat(...)` | Call the `concat` function, assign result to `greeting` |
-| `upper_greeting = upper(...)` | Call `upper` function on the greeting |
-| `out upper_greeting` | Declare the output of the pipeline |
+| `trimmed_greeting = trim(...)` | Call `trim` function on the greeting |
+| `out trimmed_greeting` | Declare the output of the pipeline |
 
 **Tip:** You can add example values to inputs using the `@example` annotation:
 
@@ -221,7 +221,7 @@ The example value pre-populates the run widget in VSCode. See [Input Annotations
 1. Open `hello.cst` in VSCode (with the Constellation extension installed)
 2. Press `Ctrl+Shift+R` to run the script
 3. Enter `"World"` when prompted for the `name` input
-4. See the result: `"HELLO, WORLD"`
+4. See the result: `"Hello, World"`
 
 ### View the DAG
 
@@ -234,10 +234,10 @@ Press `Ctrl+Shift+D` to visualize the pipeline:
    [concat] <-- "Hello, "
        |
        v
-    [upper]
+    [trim]
        |
        v
-[upper_greeting]
+[trimmed_greeting]
 ```
 
 ### Run via HTTP API
@@ -248,7 +248,7 @@ You can also execute pipelines via the REST API:
 curl -X POST http://localhost:8080/run \
   -H "Content-Type: application/json" \
   -d '{
-    "source": "in name: String\ngreeting = concat(\"Hello, \", name)\nresult = upper(greeting)\nout result",
+    "source": "in name: String\ngreeting = concat(\"Hello, \", name)\nresult = trim(greeting)\nout result",
     "inputs": {"name": "World"}
   }'
 ```
@@ -259,7 +259,7 @@ Response:
 {
   "success": true,
   "outputs": {
-    "result": "HELLO, WORLD"
+    "result": "Hello, World"
   },
   "executionTimeMs": 12
 }
@@ -282,10 +282,10 @@ in title: String
 
 full_name = concat(title, name)
 greeting = concat("Hello, ", full_name)
-upper_greeting = upper(greeting)
-length = string-length(upper_greeting)
+trimmed_greeting = trim(greeting)
+length = string-length(trimmed_greeting)
 
-out upper_greeting
+out trimmed_greeting
 out length
 ```
 
@@ -314,7 +314,7 @@ type User = {
 in user: User
 
 # Extract and process fields
-user_name = upper(user.name)
+user_name = trim(user.name)
 is_high_score = gt(user.score, 100)
 
 # Create output with selected fields plus computed values
@@ -432,7 +432,7 @@ qualifies = gte(user.score, settings.threshold)
 
 # Create display name with prefix
 prefixed_name = concat(settings.prefix, user.name)
-display_name = upper(prefixed_name)
+display_name = trim(prefixed_name)
 
 # Select output fields
 user_summary = user[id, name, score]

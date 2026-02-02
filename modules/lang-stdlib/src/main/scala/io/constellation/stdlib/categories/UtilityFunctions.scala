@@ -4,7 +4,7 @@ import cats.effect.IO
 import io.constellation.*
 import io.constellation.lang.semantic.*
 
-/** Utility operations for the standard library (identity, constants, debug). */
+/** Utility operations for the standard library (identity, debug). */
 trait UtilityFunctions {
 
   // ===== Identity =====
@@ -23,72 +23,6 @@ trait UtilityFunctions {
     returns = SemanticType.SString,
     moduleName = "stdlib.identity",
     namespace = Some("stdlib")
-  )
-
-  // ===== Constants =====
-  case class ConstIntIn(value: Long)
-  case class ConstIntOut(out: Long)
-
-  case class ConstFloatIn(value: Double)
-  case class ConstFloatOut(out: Double)
-
-  case class ConstStringIn(value: String)
-  case class ConstStringOut(out: String)
-
-  case class ConstBoolIn(value: Boolean)
-  case class ConstBoolOut(out: Boolean)
-
-  val constIntModule: Module.Uninitialized = ModuleBuilder
-    .metadata("stdlib.const-int", "Return a constant integer", 1, 0)
-    .tags("stdlib", "constant")
-    .implementationPure[ConstIntIn, ConstIntOut](in => ConstIntOut(in.value))
-    .build
-
-  val constFloatModule: Module.Uninitialized = ModuleBuilder
-    .metadata("stdlib.const-float", "Return a constant float", 1, 0)
-    .tags("stdlib", "constant")
-    .implementationPure[ConstFloatIn, ConstFloatOut](in => ConstFloatOut(in.value))
-    .build
-
-  val constStringModule: Module.Uninitialized = ModuleBuilder
-    .metadata("stdlib.const-string", "Return a constant string", 1, 0)
-    .tags("stdlib", "constant")
-    .implementationPure[ConstStringIn, ConstStringOut](in => ConstStringOut(in.value))
-    .build
-
-  val constBoolModule: Module.Uninitialized = ModuleBuilder
-    .metadata("stdlib.const-bool", "Return a constant boolean", 1, 0)
-    .tags("stdlib", "constant")
-    .implementationPure[ConstBoolIn, ConstBoolOut](in => ConstBoolOut(in.value))
-    .build
-
-  val constIntSignature: FunctionSignature = FunctionSignature(
-    "const-int",
-    List("value" -> SemanticType.SInt),
-    SemanticType.SInt,
-    "stdlib.const-int",
-    Some("stdlib")
-  )
-  val constFloatSignature: FunctionSignature = FunctionSignature(
-    "const-float",
-    List("value" -> SemanticType.SFloat),
-    SemanticType.SFloat,
-    "stdlib.const-float",
-    Some("stdlib")
-  )
-  val constStringSignature: FunctionSignature = FunctionSignature(
-    "const-string",
-    List("value" -> SemanticType.SString),
-    SemanticType.SString,
-    "stdlib.const-string",
-    Some("stdlib")
-  )
-  val constBoolSignature: FunctionSignature = FunctionSignature(
-    "const-bool",
-    List("value" -> SemanticType.SBoolean),
-    SemanticType.SBoolean,
-    "stdlib.const-bool",
-    Some("stdlib")
   )
 
   // ===== Debug =====
@@ -114,19 +48,11 @@ trait UtilityFunctions {
   // Collections
   def utilitySignatures: List[FunctionSignature] = List(
     identitySignature,
-    constIntSignature,
-    constFloatSignature,
-    constStringSignature,
-    constBoolSignature,
     logSignature
   )
 
   def utilityModules: Map[String, Module.Uninitialized] = Map(
-    identityModule.spec.name    -> identityModule,
-    constIntModule.spec.name    -> constIntModule,
-    constFloatModule.spec.name  -> constFloatModule,
-    constStringModule.spec.name -> constStringModule,
-    constBoolModule.spec.name   -> constBoolModule,
-    logModule.spec.name         -> logModule
+    identityModule.spec.name -> identityModule,
+    logModule.spec.name      -> logModule
   )
 }

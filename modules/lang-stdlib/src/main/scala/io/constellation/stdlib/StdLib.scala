@@ -11,17 +11,18 @@ import java.util.UUID
 
 /** Standard library of modules for constellation-lang.
   *
-  * These modules provide common operations for ML pipeline orchestration. The implementation is
+  * These modules provide common operations for pipeline orchestration. The implementation is
   * split across category files in the `categories/` directory for maintainability.
   *
   * Categories:
-  *   - MathFunctions: add, subtract, multiply, divide, max, min
-  *   - StringFunctions: concat, upper, lower, string-length
-  *   - ListFunctions: list-length, list-first, list-last, list-is-empty
+  *   - MathFunctions: add, subtract, multiply, divide, max, min, abs, modulo, round, negate
+  *   - StringFunctions: concat, string-length, join, split, contains, trim, replace
+  *   - ListFunctions: list-length, list-first, list-last, list-is-empty, list-sum, list-concat, list-contains, list-reverse
   *   - BooleanFunctions: and, or, not
   *   - ComparisonFunctions: eq-int, eq-string, gt, lt, gte, lte
-  *   - UtilityFunctions: identity, const-*, log
+  *   - UtilityFunctions: identity, log
   *   - HigherOrderFunctions: filter, map, all, any (lambda-based)
+  *   - TypeConversionFunctions: to-string, to-int, to-float
   */
 object StdLib
     extends MathFunctions
@@ -31,7 +32,7 @@ object StdLib
     with ComparisonFunctions
     with UtilityFunctions
     with HigherOrderFunctions
-    with RecordFunctions {
+    with TypeConversionFunctions {
 
   /** Register all standard library functions with a LangCompiler builder */
   def registerAll(builder: LangCompilerBuilder): LangCompilerBuilder = {
@@ -42,7 +43,7 @@ object StdLib
       comparisonSignatures ++
       utilitySignatures ++
       hofSignatures ++
-      recordSignatures
+      conversionSignatures
 
     allSigs.foldLeft(builder)((b, sig) => b.withFunction(sig))
   }
@@ -55,7 +56,7 @@ object StdLib
       booleanModules ++
       comparisonModules ++
       utilityModules ++
-      recordModules
+      conversionModules
 
   /** Get all standard library function signatures */
   def allSignatures: List[FunctionSignature] =
@@ -66,7 +67,7 @@ object StdLib
       comparisonSignatures ++
       utilitySignatures ++
       hofSignatures ++
-      recordSignatures
+      conversionSignatures
 
   /** Create a LangCompiler with all standard library functions registered */
   def compiler: LangCompiler = {

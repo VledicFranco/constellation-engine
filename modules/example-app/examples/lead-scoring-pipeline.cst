@@ -16,8 +16,8 @@
 # 11. Conditional expressions         - if (cond) x else y with nesting
 # 12. Field access (.)                - company.name, engagement.description
 # 13. Use declarations                - use stdlib.math, use stdlib.string as str
-# 14. Aliased namespace imports       - str.lower(...) using alias
-# 15. Fully qualified calls           - stdlib.string.upper(...)
+# 14. Aliased namespace imports       - str.trim(...) using alias
+# 15. Fully qualified calls           - stdlib.string.trim(...)
 # 16. Literals                        - String ("..."), Int (100, 0), Boolean
 # 17. Type references                 - in company: CompanyInfo
 # 18. Nested conditionals             - if (...) 100 else if (...) 70 else 30
@@ -84,8 +84,8 @@ descWordCount = WordCount(normalizedDesc)
 descLength = TextLength(normalizedDesc)
 
 # Check if description contains target industry keywords
-keywordsLower = str.lower(industryKeywords)
-hasIndustryMatch = Contains(normalizedDesc, keywordsLower)
+keywordsTrimmed = str.trim(industryKeywords)
+hasIndustryMatch = Contains(normalizedDesc, keywordsTrimmed)
 
 # =============================================================================
 # Numeric Feature Scoring - Using arithmetic and comparison operators
@@ -192,7 +192,7 @@ displayName = Uppercase(company.name)
 formattedTotal = FormatNumber(finalScore)
 
 # Generate industry using fully qualified namespace call
-normalizedIndustry = stdlib.string.upper(company.industry)
+normalizedIndustry = stdlib.string.trim(company.industry)
 
 # Use stdlib.math functions for additional calculations (direct call after 'use stdlib.math')
 doubleScore = add(finalScore, finalScore)

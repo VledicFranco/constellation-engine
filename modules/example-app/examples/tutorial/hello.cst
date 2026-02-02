@@ -5,6 +5,6 @@
 in name: String
 
 greeting = concat("Hello, ", name)
-upper_greeting = upper(greeting)
+trimmed_greeting = trim(greeting)
 
-out upper_greeting
+out trimmed_greeting

@@ -29,8 +29,9 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val compiler = StdLib.compiler
 
     val source = """
-      in text: String
-      result = upper(text)
+      in a: String
+      in b: String
+      result = concat(a, b)
       out result
     """
 
@@ -130,10 +131,12 @@ class StdLibTest extends AnyFlatSpec with Matchers {
       "divide",
       "max",
       "min",
+      "abs",
+      "modulo",
+      "negate",
       "concat",
-      "upper",
-      "lower",
       "string-length",
+      "trim",
       "gt",
       "lt",
       "gte",
@@ -144,25 +147,32 @@ class StdLibTest extends AnyFlatSpec with Matchers {
       "list-first",
       "list-last",
       "list-is-empty",
+      "list-sum",
       "log",
-      "identity"
+      "identity",
+      "to-string",
+      "to-int"
     )
 
     // Verify each function can be used in a minimal program
     functions.foreach { funcName =>
       val testSource = funcName match {
-        case "add" | "subtract" | "multiply" | "divide" | "max" | "min" =>
+        case "add" | "subtract" | "multiply" | "divide" | "max" | "min" | "modulo" =>
           s"in a: Int\nin b: Int\nresult = $funcName(a, b)\nout result"
         case "concat" =>
           s"in a: String\nin b: String\nresult = $funcName(a, b)\nout result"
-        case "upper" | "lower" | "string-length" | "identity" | "log" =>
+        case "string-length" | "identity" | "log" | "trim" =>
           s"in s: String\nresult = $funcName(s)\nout result"
+        case "abs" | "negate" | "to-string" =>
+          s"in x: Int\nresult = $funcName(x)\nout result"
         case "gt" | "lt" | "gte" | "lte" | "eq-int" =>
           s"in a: Int\nin b: Int\nresult = $funcName(a, b)\nout result"
         case "eq-string" =>
           s"in a: String\nin b: String\nresult = $funcName(a, b)\nout result"
-        case "list-length" | "list-first" | "list-last" | "list-is-empty" =>
+        case "list-length" | "list-first" | "list-last" | "list-is-empty" | "list-sum" =>
           s"in nums: List<Int>\nresult = $funcName(nums)\nout result"
+        case "to-int" =>
+          s"in x: Float\nresult = $funcName(x)\nout result"
         case _ =>
           s"in x: Int\nout x"
       }
@@ -180,14 +190,48 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     StdLib.addSignature.returns shouldBe SemanticType.SInt
   }
 
+  it should "have correct types for new math functions" in {
+    StdLib.absSignature.params shouldBe List("value" -> SemanticType.SInt)
+    StdLib.absSignature.returns shouldBe SemanticType.SInt
+
+    StdLib.moduloSignature.params shouldBe List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt)
+    StdLib.moduloSignature.returns shouldBe SemanticType.SInt
+
+    StdLib.roundSignature.params shouldBe List("value" -> SemanticType.SFloat)
+    StdLib.roundSignature.returns shouldBe SemanticType.SInt
+
+    StdLib.negateSignature.params shouldBe List("value" -> SemanticType.SInt)
+    StdLib.negateSignature.returns shouldBe SemanticType.SInt
+  }
+
   "String signatures" should "have correct types" in {
     StdLib.concatSignature.params shouldBe List(
       "a" -> SemanticType.SString,
       "b" -> SemanticType.SString
     )
     StdLib.concatSignature.returns shouldBe SemanticType.SString
+  }
 
-    StdLib.upperSignature.returns shouldBe SemanticType.SString
+  it should "have correct types for new string functions" in {
+    StdLib.joinSignature.params shouldBe List(
+      "list" -> SemanticType.SList(SemanticType.SString),
+      "separator" -> SemanticType.SString
+    )
+    StdLib.joinSignature.returns shouldBe SemanticType.SString
+
+    StdLib.splitSignature.returns shouldBe SemanticType.SList(SemanticType.SString)
+
+    StdLib.containsSignature.returns shouldBe SemanticType.SBoolean
+
+    StdLib.trimSignature.params shouldBe List("value" -> SemanticType.SString)
+    StdLib.trimSignature.returns shouldBe SemanticType.SString
+
+    StdLib.replaceSignature.params shouldBe List(
+      "value" -> SemanticType.SString,
+      "target" -> SemanticType.SString,
+      "replacement" -> SemanticType.SString
+    )
+    StdLib.replaceSignature.returns shouldBe SemanticType.SString
   }
 
   "Boolean signatures" should "have correct types" in {
@@ -201,17 +245,85 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     StdLib.eqIntSignature.returns shouldBe SemanticType.SBoolean
   }
 
+  "List signatures" should "have correct types for new list functions" in {
+    StdLib.listSumSignature.params shouldBe List("list" -> SemanticType.SList(SemanticType.SInt))
+    StdLib.listSumSignature.returns shouldBe SemanticType.SInt
+
+    StdLib.listConcatSignature.params shouldBe List(
+      "a" -> SemanticType.SList(SemanticType.SInt),
+      "b" -> SemanticType.SList(SemanticType.SInt)
+    )
+    StdLib.listConcatSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+
+    StdLib.listContainsSignature.params shouldBe List(
+      "list" -> SemanticType.SList(SemanticType.SInt),
+      "value" -> SemanticType.SInt
+    )
+    StdLib.listContainsSignature.returns shouldBe SemanticType.SBoolean
+
+    StdLib.listReverseSignature.params shouldBe List("list" -> SemanticType.SList(SemanticType.SInt))
+    StdLib.listReverseSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+  }
+
+  "TypeConversion signatures" should "have correct types" in {
+    StdLib.toStringSignature.params shouldBe List("value" -> SemanticType.SInt)
+    StdLib.toStringSignature.returns shouldBe SemanticType.SString
+
+    StdLib.toIntSignature.params shouldBe List("value" -> SemanticType.SFloat)
+    StdLib.toIntSignature.returns shouldBe SemanticType.SInt
+
+    StdLib.toFloatSignature.params shouldBe List("value" -> SemanticType.SInt)
+    StdLib.toFloatSignature.returns shouldBe SemanticType.SFloat
+  }
+
   "StdLib.allModules" should "contain all modules" in {
     val modules = StdLib.allModules
 
+    // Math
     modules.keys should contain("stdlib.add")
     modules.keys should contain("stdlib.subtract")
+    modules.keys should contain("stdlib.abs")
+    modules.keys should contain("stdlib.modulo")
+    modules.keys should contain("stdlib.round")
+    modules.keys should contain("stdlib.negate")
+
+    // String
     modules.keys should contain("stdlib.concat")
-    modules.keys should contain("stdlib.upper")
+    modules.keys should contain("stdlib.join")
+    modules.keys should contain("stdlib.split")
+    modules.keys should contain("stdlib.contains")
+    modules.keys should contain("stdlib.trim")
+    modules.keys should contain("stdlib.replace")
+
+    // Boolean
     modules.keys should contain("stdlib.and")
+
+    // Comparison
     modules.keys should contain("stdlib.gt")
+
+    // List
     modules.keys should contain("stdlib.list-length")
+    modules.keys should contain("stdlib.list-sum")
+    modules.keys should contain("stdlib.list-concat")
+    modules.keys should contain("stdlib.list-contains")
+    modules.keys should contain("stdlib.list-reverse")
+
+    // Utility
     modules.keys should contain("stdlib.log")
+
+    // Conversion
+    modules.keys should contain("stdlib.to-string")
+    modules.keys should contain("stdlib.to-int")
+    modules.keys should contain("stdlib.to-float")
+
+    // Removed functions should not be present
+    modules.keys should not contain "stdlib.upper"
+    modules.keys should not contain "stdlib.lower"
+    modules.keys should not contain "stdlib.const-int"
+    modules.keys should not contain "stdlib.const-float"
+    modules.keys should not contain "stdlib.const-string"
+    modules.keys should not contain "stdlib.const-bool"
+    modules.keys should not contain "stdlib.record.get-name"
   }
 
   // Namespace tests
@@ -273,7 +385,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
       in b: Int
       in greeting: String
       sum = add(a, b)
-      upper_greeting = str.upper(greeting)
+      trimmed_greeting = str.trim(greeting)
       out sum
     """
 
@@ -281,7 +393,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // Should have 2 modules: add and upper
+    // Should have 2 modules: add and trim
     compiled.program.image.dagSpec.modules should have size 2
   }
 
@@ -314,26 +426,32 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     registry.namespaces should contain("stdlib.bool")
     registry.namespaces should contain("stdlib.compare")
     registry.namespaces should contain("stdlib.list")
+    registry.namespaces should contain("stdlib.convert")
 
     // Should be able to lookup by qualified name
     registry.lookupQualified("stdlib.math.add").isDefined shouldBe true
-    registry.lookupQualified("stdlib.string.upper").isDefined shouldBe true
+    registry.lookupQualified("stdlib.string.concat").isDefined shouldBe true
+    registry.lookupQualified("stdlib.convert.to-string").isDefined shouldBe true
   }
 
   it should "have signatures with correct namespace attributes" in {
     // Math namespace
     StdLib.addSignature.namespace shouldBe Some("stdlib.math")
     StdLib.multiplySignature.namespace shouldBe Some("stdlib.math")
+    StdLib.absSignature.namespace shouldBe Some("stdlib.math")
 
     // String namespace
-    StdLib.upperSignature.namespace shouldBe Some("stdlib.string")
     StdLib.concatSignature.namespace shouldBe Some("stdlib.string")
+    StdLib.trimSignature.namespace shouldBe Some("stdlib.string")
 
     // Bool namespace
     StdLib.andSignature.namespace shouldBe Some("stdlib.bool")
 
     // Compare namespace
     StdLib.gtSignature.namespace shouldBe Some("stdlib.compare")
+
+    // Convert namespace
+    StdLib.toStringSignature.namespace shouldBe Some("stdlib.convert")
   }
 
   // Higher-order function tests
@@ -457,5 +575,119 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     registry.lookupQualified("stdlib.collection.map").isDefined shouldBe true
     registry.lookupQualified("stdlib.collection.all").isDefined shouldBe true
     registry.lookupQualified("stdlib.collection.any").isDefined shouldBe true
+  }
+
+  // New function compilation tests
+
+  "StdLib.compiler" should "compile programs with new math functions" in {
+    val compiler = StdLib.compiler
+
+    val absSource = """
+      in x: Int
+      result = abs(x)
+      out result
+    """
+    compiler.compile(absSource, "abs-dag").isRight shouldBe true
+
+    val moduloSource = """
+      in a: Int
+      in b: Int
+      result = modulo(a, b)
+      out result
+    """
+    compiler.compile(moduloSource, "modulo-dag").isRight shouldBe true
+
+    val negateSource = """
+      in x: Int
+      result = negate(x)
+      out result
+    """
+    compiler.compile(negateSource, "negate-dag").isRight shouldBe true
+
+    val roundSource = """
+      in x: Float
+      result = round(x)
+      out result
+    """
+    compiler.compile(roundSource, "round-dag").isRight shouldBe true
+  }
+
+  it should "compile programs with new string functions" in {
+    val compiler = StdLib.compiler
+
+    val trimSource = """
+      in text: String
+      result = trim(text)
+      out result
+    """
+    compiler.compile(trimSource, "trim-dag").isRight shouldBe true
+
+    val containsSource = """
+      in text: String
+      in sub: String
+      result = contains(text, sub)
+      out result
+    """
+    compiler.compile(containsSource, "contains-dag").isRight shouldBe true
+
+    val replaceSource = """
+      in text: String
+      in target: String
+      in replacement: String
+      result = replace(text, target, replacement)
+      out result
+    """
+    compiler.compile(replaceSource, "replace-dag").isRight shouldBe true
+  }
+
+  it should "compile programs with new list functions" in {
+    val compiler = StdLib.compiler
+
+    val sumSource = """
+      in nums: List<Int>
+      result = list-sum(nums)
+      out result
+    """
+    compiler.compile(sumSource, "list-sum-dag").isRight shouldBe true
+
+    val containsSource = """
+      in nums: List<Int>
+      in val: Int
+      result = list-contains(nums, val)
+      out result
+    """
+    compiler.compile(containsSource, "list-contains-dag").isRight shouldBe true
+
+    val reverseSource = """
+      in nums: List<Int>
+      result = list-reverse(nums)
+      out result
+    """
+    compiler.compile(reverseSource, "list-reverse-dag").isRight shouldBe true
+  }
+
+  it should "compile programs with type conversion functions" in {
+    val compiler = StdLib.compiler
+
+    val toStringSource = """
+      in x: Int
+      result = to-string(x)
+      out result
+    """
+    compiler.compile(toStringSource, "to-string-dag").isRight shouldBe true
+
+    val toIntSource = """
+      in x: Float
+      result = to-int(x)
+      out result
+    """
+    compiler.compile(toIntSource, "to-int-dag").isRight shouldBe true
+
+    val toFloatSource = """
+      in x: Int
+      result = to-float(x)
+      out result
+    """
+    compiler.compile(toFloatSource, "to-float-dag").isRight shouldBe true
   }
 }

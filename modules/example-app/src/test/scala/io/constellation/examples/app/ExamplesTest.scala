@@ -1102,7 +1102,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val source = """
       use stdlib.string
       in name: String
-      result = "HELLO ${upper(name)}"
+      result = "HELLO ${trim(name)}"
       out result
     """
 
@@ -1117,7 +1117,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       use stdlib.string
       in name: String
       greeting = "Hello, ${name}!"
-      result = upper(greeting)
+      result = trim(greeting)
       out result
     """
 

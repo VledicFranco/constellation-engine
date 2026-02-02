@@ -13,7 +13,7 @@ type User = {
 in user: User
 
 # Extract and process fields
-user_name = upper(user.name)
+user_name = trim(user.name)
 is_high_score = gt(user.score, 100)
 
 # Output the results

@@ -132,7 +132,7 @@ use stdlib.string as str
 
 # Usage
 result = add(a, b)           # From wildcard
-upper = str.upper(text)      # Using alias
+trimmed = str.trim(text)     # Using alias
 fqn = stdlib.math.max(x, y)  # Fully qualified
 ```
 
@@ -190,7 +190,7 @@ The stdlib provides common functions across these namespaces:
 | Namespace | Functions |
 |-----------|-----------|
 | `stdlib.math` | add, subtract, multiply, divide, max, min |
-| `stdlib.string` | concat, upper, lower, string-length |
+| `stdlib.string` | concat, trim, string-length |
 | `stdlib.compare` | gt, lt, gte, lte, eq-int, eq-string |
 | `stdlib.bool` | and, or, not |
 | `stdlib.list` | list-length, list-first, list-last, list-is-empty |

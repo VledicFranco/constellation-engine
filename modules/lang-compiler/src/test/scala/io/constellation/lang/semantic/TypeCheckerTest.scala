@@ -609,10 +609,10 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     )
     registry.register(
       FunctionSignature(
-        name = "upper",
+        name = "trim",
         params = List("value" -> SemanticType.SString),
         returns = SemanticType.SString,
-        moduleName = "stdlib.upper",
+        moduleName = "stdlib.trim",
         namespace = Some("stdlib.string")
       )
     )
@@ -624,7 +624,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       in b: Int
       in greeting: String
       sum = add(a, b)
-      upper_greeting = str.upper(greeting)
+      trimmed_greeting = str.trim(greeting)
       out sum
     """
     val result = check(source, registry)

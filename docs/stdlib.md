@@ -1,6 +1,6 @@
 # Standard Library Reference
 
-The constellation-lang standard library provides commonly-used functions for ML pipeline orchestration.
+The constellation-lang standard library provides commonly-used functions for pipeline orchestration.
 
 ## Using the Standard Library
 
@@ -28,7 +28,7 @@ compiler.compile(source, "my-dag")
 Register only specific functions:
 
 ```scala
-import io.constellation.lang.runtime.LangCompilerBuilder
+import io.constellation.lang.LangCompiler
 import io.constellation.lang.stdlib._
 
 val compiler = LangCompilerBuilder()
@@ -50,6 +50,10 @@ val compiler = LangCompilerBuilder()
 | `divide` | `(a: Int, b: Int) -> Int` | Integer division (returns 0 if b is 0) |
 | `max` | `(a: Int, b: Int) -> Int` | Maximum of two integers |
 | `min` | `(a: Int, b: Int) -> Int` | Minimum of two integers |
+| `abs` | `(value: Int) -> Int` | Absolute value |
+| `modulo` | `(a: Int, b: Int) -> Int` | Remainder after division (returns 0 if b is 0) |
+| `round` | `(value: Float) -> Int` | Round float to nearest integer |
+| `negate` | `(value: Int) -> Int` | Negate a number |
 
 **Examples:**
 
@@ -63,6 +67,9 @@ product = multiply(x, y)
 quotient = divide(x, y)
 maximum = max(x, y)
 minimum = min(x, y)
+absolute = abs(x)
+remainder = modulo(x, y)
+negated = negate(x)
 
 out sum
 ```
@@ -72,9 +79,12 @@ out sum
 | Function | Signature | Description |
 |----------|-----------|-------------|
 | `concat` | `(a: String, b: String) -> String` | Concatenate two strings |
-| `upper` | `(value: String) -> String` | Convert to uppercase |
-| `lower` | `(value: String) -> String` | Convert to lowercase |
 | `string-length` | `(value: String) -> Int` | Get string length |
+| `join` | `(list: List<String>, separator: String) -> String` | Join strings with delimiter |
+| `split` | `(value: String, substring: String) -> List<String>` | Split string by delimiter |
+| `contains` | `(value: String, substring: String) -> Boolean` | Check if string contains substring |
+| `trim` | `(value: String) -> String` | Trim whitespace |
+| `replace` | `(value: String, target: String, replacement: String) -> String` | Replace occurrences |
 
 **Examples:**
 
@@ -83,11 +93,12 @@ in firstName: String
 in lastName: String
 
 fullName = concat(firstName, lastName)
-upperName = upper(fullName)
-lowerName = lower(fullName)
 nameLength = string-length(fullName)
+trimmed = trim(fullName)
+hasSpace = contains(fullName, " ")
+cleaned = replace(fullName, " ", "-")
 
-out upperName
+out fullName
 ```
 
 ### Boolean Operations
@@ -149,6 +160,10 @@ out result
 | `list-first` | `(list: List<Int>) -> Int` | Get first element (0 if empty) |
 | `list-last` | `(list: List<Int>) -> Int` | Get last element (0 if empty) |
 | `list-is-empty` | `(list: List<Int>) -> Boolean` | Check if list is empty |
+| `list-sum` | `(list: List<Int>) -> Int` | Sum all elements |
+| `list-concat` | `(a: List<Int>, b: List<Int>) -> List<Int>` | Concatenate two lists |
+| `list-contains` | `(list: List<Int>, value: Int) -> Boolean` | Check if element exists |
+| `list-reverse` | `(list: List<Int>) -> List<Int>` | Reverse list order |
 
 **Examples:**
 
@@ -159,8 +174,57 @@ count = list-length(numbers)
 first = list-first(numbers)
 last = list-last(numbers)
 isEmpty = list-is-empty(numbers)
+total = list-sum(numbers)
+reversed = list-reverse(numbers)
 
 out count
+```
+
+### Type Conversion Operations
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `to-string` | `(value: Int) -> String` | Convert integer to string |
+| `to-int` | `(value: Float) -> Int` | Truncate float to integer |
+| `to-float` | `(value: Int) -> Float` | Convert integer to float |
+
+**Examples:**
+
+```
+in count: Int
+in measurement: Float
+
+label = to-string(count)
+truncated = to-int(measurement)
+precise = to-float(count)
+
+out label
+```
+
+### Higher-Order Functions
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `filter` | `(List<Int>, (Int) => Boolean) -> List<Int>` | Keep elements matching predicate |
+| `map` | `(List<Int>, (Int) => Int) -> List<Int>` | Transform each element |
+| `all` | `(List<Int>, (Int) => Boolean) -> Boolean` | Check all elements match |
+| `any` | `(List<Int>, (Int) => Boolean) -> Boolean` | Check any element matches |
+
+**Examples:**
+
+```
+use stdlib.collection
+use stdlib.compare
+use stdlib.math
+
+in numbers: List<Int>
+
+positives = filter(numbers, (x) => gt(x, 0))
+doubled = map(numbers, (x) => multiply(x, 2))
+allPositive = all(numbers, (x) => gt(x, 0))
+anyNegative = any(numbers, (x) => lt(x, 0))
+
+out positives
 ```
 
 ### Utility Operations
@@ -183,15 +247,6 @@ same = identity(message)
 
 out logged
 ```
-
-### Constant Functions
-
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `const-int` | `(value: Int) -> Int` | Return constant integer |
-| `const-float` | `(value: Float) -> Float` | Return constant float |
-| `const-string` | `(value: String) -> String` | Return constant string |
-| `const-bool` | `(value: Boolean) -> Boolean` | Return constant boolean |
 
 ## Common Patterns
 
@@ -227,13 +282,13 @@ out product
 in firstName: String
 in lastName: String
 
-# Create "LASTNAME, Firstname"
-upper_last = upper(lastName)
+# Create "lastName, firstName"
 separator = ", "
-temp = concat(upper_last, separator)
+temp = concat(lastName, separator)
 fullName = concat(temp, firstName)
+trimmed = trim(fullName)
 
-out fullName
+out trimmed
 ```
 
 ### Boolean Gates
@@ -250,6 +305,22 @@ canProceed = or(hasAccess, isAdmin)
 out canProceed
 ```
 
+## Namespaces
+
+All stdlib functions are organized into namespaces:
+
+| Namespace | Functions |
+|-----------|-----------|
+| `stdlib.math` | add, subtract, multiply, divide, max, min, abs, modulo, round, negate |
+| `stdlib.string` | concat, string-length, join, split, contains, trim, replace |
+| `stdlib.compare` | eq-int, eq-string, gt, lt, gte, lte |
+| `stdlib.bool` | and, or, not |
+| `stdlib.list` | list-length, list-first, list-last, list-is-empty, list-sum, list-concat, list-contains, list-reverse |
+| `stdlib.collection` | filter, map, all, any |
+| `stdlib.convert` | to-string, to-int, to-float |
+| `stdlib` | identity |
+| `stdlib.debug` | log |
+
 ## Module Details
 
 Each stdlib function is implemented as a Constellation module. The modules are registered with these names:
@@ -262,10 +333,17 @@ Each stdlib function is implemented as a Constellation module. The modules are r
 | `divide` | `stdlib.divide` |
 | `max` | `stdlib.max` |
 | `min` | `stdlib.min` |
+| `abs` | `stdlib.abs` |
+| `modulo` | `stdlib.modulo` |
+| `round` | `stdlib.round` |
+| `negate` | `stdlib.negate` |
 | `concat` | `stdlib.concat` |
-| `upper` | `stdlib.upper` |
-| `lower` | `stdlib.lower` |
 | `string-length` | `stdlib.string-length` |
+| `join` | `stdlib.join` |
+| `split` | `stdlib.split` |
+| `contains` | `stdlib.contains` |
+| `trim` | `stdlib.trim` |
+| `replace` | `stdlib.replace` |
 | `and` | `stdlib.and` |
 | `or` | `stdlib.or` |
 | `not` | `stdlib.not` |
@@ -279,19 +357,22 @@ Each stdlib function is implemented as a Constellation module. The modules are r
 | `list-first` | `stdlib.list-first` |
 | `list-last` | `stdlib.list-last` |
 | `list-is-empty` | `stdlib.list-is-empty` |
+| `list-sum` | `stdlib.list-sum` |
+| `list-concat` | `stdlib.list-concat` |
+| `list-contains` | `stdlib.list-contains` |
+| `list-reverse` | `stdlib.list-reverse` |
+| `to-string` | `stdlib.to-string` |
+| `to-int` | `stdlib.to-int` |
+| `to-float` | `stdlib.to-float` |
 | `identity` | `stdlib.identity` |
 | `log` | `stdlib.log` |
-| `const-int` | `stdlib.const-int` |
-| `const-float` | `stdlib.const-float` |
-| `const-string` | `stdlib.const-string` |
-| `const-bool` | `stdlib.const-bool` |
 
 ## Extending the Standard Library
 
 Add custom functions following the same pattern:
 
 ```scala
-import io.constellation.api.ModuleBuilder
+import io.constellation.ModuleBuilder
 import io.constellation.lang.semantic._
 
 object MyModule {
