@@ -2,6 +2,7 @@ package io.constellation.lang
 
 import cats.effect.IO
 import io.constellation.*
+import io.constellation.cache.CacheBackend
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.*
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
@@ -64,6 +65,7 @@ final case class LangCompilerBuilder(
     private val registry: FunctionRegistry = FunctionRegistry.empty,
     private val modules: Map[String, Module.Uninitialized] = Map.empty,
     private val cacheConfig: Option[CompilationCache.Config] = None,
+    private val cacheBackend: Option[CacheBackend] = None,
     private val optimizationConfig: OptimizationConfig = OptimizationConfig.none
 ) {
 
@@ -107,6 +109,20 @@ final case class LangCompilerBuilder(
   def withoutCaching: LangCompilerBuilder =
     copy(cacheConfig = None)
 
+  /** Set a custom cache backend for the compilation cache.
+    *
+    * Implicitly enables caching with default config if `withCaching()` has not been called.
+    *
+    * '''Note:''' The backend must be in-memory since `CompilationOutput` contains non-serializable
+    * closures. This is useful for providing a pre-configured `InMemoryCacheBackend` with custom
+    * settings.
+    */
+  def withCacheBackend(backend: CacheBackend): LangCompilerBuilder =
+    copy(
+      cacheBackend = Some(backend),
+      cacheConfig = cacheConfig.orElse(Some(CompilationCache.Config()))
+    )
+
   /** Enable IR optimization with the given configuration */
   def withOptimization(
       config: OptimizationConfig = OptimizationConfig.default
@@ -121,8 +137,15 @@ final case class LangCompilerBuilder(
   def build: LangCompiler = {
     val base = new LangCompilerImpl(registry, modules, optimizationConfig)
     cacheConfig match {
-      case Some(config) => CachingLangCompiler.withConfig(base, config)
-      case None         => base
+      case Some(config) =>
+        cacheBackend match {
+          case Some(backend) =>
+            val cache = CompilationCache.createUnsafeWithBackend(backend, config)
+            CachingLangCompiler(base, cache)
+          case None =>
+            CachingLangCompiler.withConfig(base, config)
+        }
+      case None => base
     }
   }
 }

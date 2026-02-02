@@ -21,6 +21,8 @@ The `cache` option enables result caching for a module call. When enabled, the f
 
 The cache key is computed from the module name and all input values, ensuring that different inputs produce different cache entries.
 
+By default, results are cached in-memory. Use [`cache_backend`](./cache-backend.md) to select a distributed backend (Memcached, Redis, etc.) or set a global default via `ConstellationBuilder.withCache()`.
+
 ## Examples
 
 ### Basic Caching
@@ -55,13 +57,13 @@ data = FetchData(id) with retry: 3, cache: 10min
 
 Retries happen before caching. Only successful results are cached.
 
-### Cache with Custom Backend
+### Cache with Distributed Backend
 
 ```constellation
-session = LoadSession(token) with cache: 1h, cache_backend: "redis"
+session = LoadSession(token) with cache: 1h, cache_backend: "memcached"
 ```
 
-Use a named Redis backend instead of the default in-memory cache.
+Use a named Memcached backend instead of the default in-memory cache. See [`cache_backend`](./cache-backend.md).
 
 ## Behavior
 
@@ -97,12 +99,15 @@ This ensures:
 
 ## Cache Statistics
 
-The runtime tracks cache statistics:
-- **hits** - Number of cache hits
-- **misses** - Number of cache misses
-- **evictions** - Number of expired/evicted entries
-- **entries** - Current number of cached entries
-- **hitRate** - Ratio of hits to total accesses
+The runtime tracks cache statistics using the unified `CacheStats` type:
+
+| Field | Description |
+|-------|-------------|
+| `hits` | Number of cache hits |
+| `misses` | Number of cache misses |
+| `evictions` | Number of expired/evicted entries |
+| `size` / `entries` | Current number of cached entries |
+| `hitRatio` / `hitRate` | Ratio of hits to total accesses (0.0–1.0) |
 
 Access via the `/metrics` endpoint:
 ```bash
@@ -111,9 +116,14 @@ curl http://localhost:8080/metrics | jq .cache
 
 ## Related Options
 
-- **[cache_backend](./cache-backend.md)** - Specify named cache storage
-- **[retry](./retry.md)** - Retry before caching result
-- **[timeout](./timeout.md)** - Timeout before caching result
+- **[cache_backend](./cache-backend.md)** — Specify a named cache storage backend
+- **[retry](./retry.md)** — Retry before caching result
+- **[timeout](./timeout.md)** — Timeout before caching result
+
+## Related Pages
+
+- **[CacheBackend SPI](/docs/integrations/cache-backend)** — Implement a custom cache backend
+- **[Memcached Module](/docs/modules/cache-memcached)** — First-party distributed cache via Memcached
 
 ## Best Practices
 

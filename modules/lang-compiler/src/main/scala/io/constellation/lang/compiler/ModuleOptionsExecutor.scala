@@ -311,6 +311,31 @@ object ModuleOptionsExecutor {
       limiterRegistry <- LimiterRegistry.create
     } yield new ModuleOptionsExecutor(cacheRegistry, limiterRegistry, scheduler)
 
+  /** Create a module options executor with a pre-configured cache backend.
+    *
+    * When a `CacheBackend` is provided (e.g., from `ConstellationBackends.cache`), it is registered
+    * as the `"default"` backend in the `CacheRegistry`. This ensures that module-level caching
+    * options use the user-configured backend rather than an ad-hoc in-memory cache.
+    *
+    * @param cacheBackend
+    *   Optional cache backend to use as default (e.g., Memcached, Redis)
+    * @param scheduler
+    *   The global scheduler for priority ordering
+    * @return
+    *   IO that creates the executor
+    */
+  def createWithCacheBackend(
+      cacheBackend: Option[CacheBackend],
+      scheduler: GlobalScheduler = GlobalScheduler.unbounded
+  ): IO[ModuleOptionsExecutor] =
+    for {
+      cacheRegistry <- cacheBackend match {
+        case Some(backend) => CacheRegistry.withBackends("default" -> backend)
+        case None          => CacheRegistry.create
+      }
+      limiterRegistry <- LimiterRegistry.create
+    } yield new ModuleOptionsExecutor(cacheRegistry, limiterRegistry, scheduler)
+
   /** Create a module options executor with custom registries and scheduler.
     *
     * @param cacheRegistry

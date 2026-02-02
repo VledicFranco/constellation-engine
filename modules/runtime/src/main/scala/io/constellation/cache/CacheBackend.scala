@@ -118,7 +118,11 @@ object CacheEntry {
   }
 }
 
-/** Cache statistics for monitoring and debugging. */
+/** Cache statistics for monitoring and debugging.
+  *
+  * This is the canonical cache statistics type used across the entire codebase, including both
+  * runtime module caching and compilation caching.
+  */
 final case class CacheStats(
     hits: Long,
     misses: Long,
@@ -132,6 +136,12 @@ final case class CacheStats(
     val total = hits + misses
     if total == 0 then 0.0 else hits.toDouble / total
   }
+
+  /** Alias for [[hitRatio]], used by compilation cache consumers. */
+  def hitRate: Double = hitRatio
+
+  /** Alias for [[size]], used by compilation cache consumers. */
+  def entries: Int = size
 
   override def toString: String =
     f"CacheStats(hits=$hits, misses=$misses, hitRatio=${hitRatio * 100}%.1f%%, size=$size, evictions=$evictions)"

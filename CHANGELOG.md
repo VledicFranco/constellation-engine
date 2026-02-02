@@ -5,6 +5,24 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Pluggable Memcached Cache Backend**: New `cache-memcached` module providing `MemcachedCacheBackend` for distributed caching of module execution results via spymemcached
+- **CacheSerde type class**: Serialization abstraction for distributed cache backends with built-in JSON (CValue) and Java serialization support
+- **DistributedCacheBackend abstract base**: Simplifies implementing network-backed cache backends (Memcached, Redis, etc.) by bridging type-erased `CacheBackend` with byte-level operations
+- **ModuleOptionsExecutor.createWithCacheBackend**: Factory method to wire `ConstellationBackends.cache` into the module execution cache registry
+- **LangCompilerBuilder.withCacheBackend**: Allows providing a custom `CacheBackend` for the compilation cache
+- **Cache backends documentation**: Architecture guide at `docs/dev/cache-backends.md`
+
+### Changed
+- **Unified CacheStats type**: Single `io.constellation.cache.CacheStats` used across compilation and runtime caching. Added `hitRate` and `entries` aliases for backward compatibility with the former `io.constellation.lang.CacheStats`.
+- **CompilationCache refactored to use CacheBackend**: Internal storage now delegates to a `CacheBackend` (defaults to `InMemoryCacheBackend`), aligning with the runtime cache SPI pattern
+- **CompilationCache entry type removed**: Deleted the local `CacheEntry` case class from `CompilationCache`; storage now uses the runtime `CacheEntry[A]` through the `CacheBackend` interface
+
+### Removed
+- **`io.constellation.lang.CacheStats`**: Removed in favor of `io.constellation.cache.CacheStats`. The `.hitRate` and `.entries` aliases ensure full backward compatibility — no code changes needed for consumers.
+
 ## [0.3.0] - 2026-02-02
 
 ### Fixed

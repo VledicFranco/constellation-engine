@@ -103,6 +103,14 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Optional Modules',
+      items: [
+        'modules/index',
+        'modules/cache-memcached',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Tooling',
       items: [
         'tooling/dashboard',

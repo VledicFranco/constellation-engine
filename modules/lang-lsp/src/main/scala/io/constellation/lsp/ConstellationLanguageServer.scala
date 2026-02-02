@@ -15,7 +15,8 @@ import io.constellation.{
   NodeStatus,
   SteppedExecution
 }
-import io.constellation.lang.{ast, CacheStats, CachingLangCompiler, LangCompiler}
+import io.constellation.cache.CacheStats
+import io.constellation.lang.{ast, CachingLangCompiler, LangCompiler}
 import io.constellation.lang.viz.{DagVizCompiler, LayoutConfig, SugiyamaLayout}
 import io.constellation.lang.ast.{
   Annotation,

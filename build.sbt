@@ -32,9 +32,11 @@ ThisBuild / coverageFailOnMinimum := false // Set to true in CI to enforce thres
 ThisBuild / coverageMinimumStmtTotal := 60
 ThisBuild / coverageMinimumBranchTotal := 50
 
-// Exclude benchmark and load tests from default test execution (run manually via `make benchmark`)
+// Exclude benchmark, load, and Docker-dependent tests from default test execution
+// Run benchmarks:    sbt "runtime/testOnly *Benchmark"
+// Run memcached:     sbt "cacheMemcached/testOnly *MemcachedIntegrationTest"
 ThisBuild / Test / testOptions += Tests.Filter(name =>
-  !name.contains("Benchmark") && !name.contains("SustainedLoad")
+  !name.contains("Benchmark") && !name.contains("SustainedLoad") && !name.contains("MemcachedIntegrationTest")
 )
 
 // Logging dependencies (shared across modules)
@@ -168,6 +170,19 @@ lazy val httpApi = (project in file("modules/http-api"))
     ) ++ loggingDeps
   )
 
+// Cache Memcached - optional Memcached-backed distributed cache backend
+lazy val cacheMemcached = (project in file("modules/cache-memcached"))
+  .dependsOn(runtime)
+  .settings(
+    name := "constellation-cache-memcached",
+    libraryDependencies ++= Seq(
+      "net.spy" % "spymemcached" % "2.12.3",
+      "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+      "org.mockito" % "mockito-core" % "5.14.2" % Test,
+      "org.testcontainers" % "testcontainers" % "1.20.4" % Test,
+    )
+  )
+
 // Example Application - demonstrates library usage (not published to Maven Central)
 lazy val exampleApp = (project in file("modules/example-app"))
   .dependsOn(runtime, langCompiler, langStdlib, httpApi)
@@ -202,6 +217,7 @@ lazy val root = (project in file("."))
     langStdlib,
     langLsp,
     httpApi,
+    cacheMemcached,
     exampleApp
   )
   .settings(
