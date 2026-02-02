@@ -15,3 +15,6 @@ addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.9")
 
 // Fat JAR packaging for deployment
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.1.5")
+
+// Automated Maven Central publishing (GPG signing + Sonatype release)
+addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")

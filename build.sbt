@@ -1,6 +1,19 @@
 ThisBuild / version := "0.3.0"
 ThisBuild / scalaVersion := "3.3.1"
-ThisBuild / organization := "io.constellation"
+ThisBuild / organization := "io.github.vledicfranco"
+
+// Maven Central POM metadata
+ThisBuild / homepage := Some(url("https://github.com/VledicFranco/constellation-engine"))
+ThisBuild / licenses := List("MIT" -> url("https://opensource.org/licenses/MIT"))
+ThisBuild / developers := List(
+  Developer("VledicFranco", "Franco Vledicka", "", url("https://github.com/VledicFranco"))
+)
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/VledicFranco/constellation-engine"),
+    "scm:git@github.com:VledicFranco/constellation-engine.git"
+  )
+)
 
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
@@ -155,11 +168,12 @@ lazy val httpApi = (project in file("modules/http-api"))
     ) ++ loggingDeps
   )
 
-// Example Application - demonstrates library usage
+// Example Application - demonstrates library usage (not published to Maven Central)
 lazy val exampleApp = (project in file("modules/example-app"))
   .dependsOn(runtime, langCompiler, langStdlib, httpApi)
   .settings(
     name := "constellation-example-app",
+    publish / skip := true,
     coverageMinimumStmtTotal := 70,
     coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
