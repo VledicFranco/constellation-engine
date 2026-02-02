@@ -113,7 +113,7 @@ After this RFC:
 | Term | Definition |
 |------|-----------|
 | **Pipeline** | A compiled constellation `.cst` source. A DAG of typed module calls with declared inputs and outputs. Replaces "program" everywhere in the codebase. |
-| **Hot pipeline** | A pipeline compiled and executed in a single request (`POST /run`). The image is stored in `PipelineStore` as a side effect (for deduplication), but the caller treats the pipeline as ephemeral — fire and forget. Relies on `CompilationCache` for repeated compilations of the same source. |
+| **Hot pipeline** | A pipeline compiled and executed in a single request (`POST /run`). The image is stored in `PipelineStore` by structural hash, enabling deduplication and later promotion to cold. The caller doesn't manage the stored image directly but benefits from it: identical source produces the same hash, so millions of requests with the same source compile once and store one image. The structural hash returned in the response lets callers switch to `POST /execute` (cold path) for subsequent requests if desired. |
 | **Cold pipeline** | A pipeline compiled once, stored in `PipelineStore`, and executed repeatedly by reference (`POST /execute`). Loaded at startup from disk or compiled via `POST /compile`. |
 | **Warm pipeline** | A pipeline explicitly compiled via `POST /compile` and stored with a name for later execution via `POST /execute`. The caller separates compilation from execution. Once stored, it behaves identically to a cold pipeline. |
 | **Pipeline image** | The serializable, content-addressed artifact produced by compilation. Contains `DagSpec`, structural hash, metadata. Can be persisted and transferred. Replaces `ProgramImage`. |
@@ -124,12 +124,13 @@ After this RFC:
 The hot/cold distinction has direct implications for the two caching layers:
 
 ```
-                    ┌─────────────────────┐
-  Hot pipeline ───> │ CompilationCache    │ ───> compile ───> store* ───> execute
-  (POST /run)       │ (LRU, in-memory)    │      (if miss)
-                    │ Key: source hash    │
-                    └─────────────────────┘
-                    * image also stored in PipelineStore as side effect
+                    ┌─────────────────────┐     ┌─────────────────────┐
+  Hot pipeline ───> │ CompilationCache    │ ──> │ PipelineStore       │ ──> execute
+  (POST /run)       │ (LRU, in-memory)    │     │ (content-addressed) │
+                    │ Key: source hash    │     │ store by struct hash│
+                    └─────────────────────┘     └─────────────────────┘
+                    Avoids recompilation         Deduplicates + enables
+                    on identical source          promotion to cold path
 
                     ┌─────────────────────┐
   Cold pipeline ──> │ PipelineStore       │ ───> rehydrate ───> execute
@@ -141,21 +142,28 @@ The hot/cold distinction has direct implications for the two caching layers:
 | Aspect | Hot Pipeline | Cold Pipeline |
 |--------|-------------|---------------|
 | **Compilation** | On-demand per request (cached by `CompilationCache`) | Once at load time |
-| **Storage** | `CompilationCache` (LRU) + `PipelineStore` (side effect) | `PipelineStore` only |
+| **Storage** | `CompilationCache` (LRU) + `PipelineStore` (content-addressed) | `PipelineStore` only |
 | **Cache key** | Source hash + registry hash (syntactic) | Structural hash (semantic) |
 | **Cache eviction** | LRU when cache is full | Explicit `DELETE /pipelines/:ref` |
 | **Startup cost** | None (compiled on demand) | All pipelines compiled at boot |
 | **Latency (first request)** | Compilation + execution | Execution only (pre-compiled) |
 | **Latency (repeat request)** | Cache hit check + execution | Rehydrate + execution |
-| **Memory footprint** | `CompilationCache` bounded (LRU); `PipelineStore` grows as side effect | Grows with number of stored pipelines |
+| **Memory footprint** | `CompilationCache` bounded (LRU); `PipelineStore` grows with unique sources (deduplicated) | Grows with number of stored pipelines |
 
-**Key insight:** `CompilationCache` (the LRU cache in `CachingLangCompiler`) optimizes **hot** pipelines by caching `CompilationOutput` for repeated compilations of the same source. `PipelineStore` stores **cold** pipelines as `PipelineImage` for execution-by-reference. These are complementary, not competing: a cold pipeline bypasses `CompilationCache` entirely since it's compiled once and stored directly.
+**Key insight:** Both hot and cold pipelines flow through `PipelineStore`. The difference is in how they get there and what sits in front:
+
+- **Hot path:** `CompilationCache` sits in front of compilation. It caches `CompilationOutput` by source hash, so identical source never recompiles. The compiled `PipelineImage` is then stored in `PipelineStore` by structural hash. This is why hashes were introduced as pipeline identifiers — content-addressed storage means millions of hot requests with the same source produce exactly one stored image, and the structural hash returned in the `/run` response gives callers a stable reference they can use to switch to the cold path (`POST /execute`) at any time.
+
+- **Cold path:** Pipelines are already in `PipelineStore` (loaded at startup or compiled earlier). Execution reads directly from the store. `CompilationCache` is never consulted.
+
+The two caching layers serve different purposes: `CompilationCache` avoids redundant compilation (source → compiled output), `PipelineStore` enables execution-by-reference (hash → pipeline image). They compose naturally: every compilation populates both.
 
 When a hot pipeline is executed via `POST /run`:
 1. `CachingLangCompiler` checks `CompilationCache` (source hash + registry hash)
 2. On miss: full compilation pipeline runs, result stored in `CompilationCache`
-3. The resulting `PipelineImage` is also stored in `PipelineStore` (for deduplication and reference)
-4. On subsequent identical requests: `CompilationCache` hit, no recompilation
+3. The resulting `PipelineImage` is stored in `PipelineStore` (deduplicated by structural hash)
+4. Execution runs, response includes `structuralHash` — the caller can use this with `POST /execute` to skip compilation on future requests
+5. On subsequent identical `/run` requests: `CompilationCache` hit, no recompilation, same image already in `PipelineStore`
 
 When a cold pipeline is executed via `POST /execute`:
 1. `PipelineStore.get(ref)` retrieves the `PipelineImage` by name or hash
@@ -330,7 +338,7 @@ Client                          Server
 
 **Use cases:** Prototyping, dashboard "Run" button, one-off scripts, development iteration.
 
-**Caching behavior:** `CompilationCache` caches the `CompilationOutput` by source hash. If the same source is sent again, compilation is skipped. The `PipelineImage` is also stored in `PipelineStore` for deduplication.
+**Caching behavior:** `CompilationCache` caches `CompilationOutput` by source hash — identical source never recompiles. The `PipelineImage` is stored in `PipelineStore` by structural hash, deduplicated automatically. The `structuralHash` in the response lets callers promote to cold execution (`POST /execute`) at any time without recompilation.
 
 ### Warm Execution (Compile Once, Execute Many)
 
