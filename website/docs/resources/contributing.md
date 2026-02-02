@@ -423,7 +423,7 @@ ErrorHandling.fromOption(opt, ApiError.NotFoundError("DAG", name))
 
 - Check existing issues on GitHub
 - Review documentation in `/docs`
-- See `llm.md` for comprehensive codebase guide
+- See `docs/architecture.md` for comprehensive architecture guide
 
 ---
 

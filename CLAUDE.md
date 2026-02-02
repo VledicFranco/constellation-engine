@@ -229,7 +229,7 @@ When adding a module to example-app:
 
 ## Documentation
 
-- Full architecture: See `llm.md`
+- Full architecture: See `docs/architecture.md`
 - Contributing guide: See `CONTRIBUTING.md`
 - **Issue tracking: Use GitHub Issues** (agents track work via issues)
 - Language documentation: See `docs/constellation-lang/`
@@ -1166,6 +1166,6 @@ modules.traverse(constellation.setModule)  // requires cats.implicits._
 ```
 
 **References:**
-- Full architecture details: `llm.md`
+- Full architecture details: `docs/architecture.md`
 - Language documentation: `docs/constellation-lang/`
 - Issue tracking: GitHub Issues
