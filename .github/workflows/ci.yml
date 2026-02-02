@@ -21,6 +21,9 @@ jobs:
           distribution: 'temurin'
           cache: 'sbt'
 
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
+
       - name: Compile
         run: sbt compile
 
@@ -31,13 +34,12 @@ jobs:
         run: sbt coverage test coverageReport coverageAggregate
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: target/scala-3.3.1/scoverage-report/scoverage.xml
           fail_ci_if_error: false
           verbose: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4

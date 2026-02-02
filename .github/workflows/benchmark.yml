@@ -1,10 +1,17 @@
 name: Performance Benchmarks
 
 on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Benchmark suite to run (all, compiler, lsp)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - compiler
+          - lsp
 
 env:
   JAVA_VERSION: '17'
@@ -26,6 +33,9 @@ jobs:
           distribution: 'temurin'
           cache: 'sbt'
 
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
+
       - name: Cache SBT
         uses: actions/cache@v4
         with:
@@ -41,9 +51,11 @@ jobs:
         run: sbt compile
 
       - name: Run compiler benchmarks
+        if: ${{ inputs.suite == 'all' || inputs.suite == 'compiler' }}
         run: sbt "langCompiler/testOnly *Benchmark"
 
       - name: Run LSP benchmarks
+        if: ${{ inputs.suite == 'all' || inputs.suite == 'lsp' }}
         run: sbt "langLsp/testOnly *Benchmark"
 
       - name: Collect benchmark results
