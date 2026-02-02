@@ -19,8 +19,10 @@ ThisBuild / coverageFailOnMinimum := false // Set to true in CI to enforce thres
 ThisBuild / coverageMinimumStmtTotal := 60
 ThisBuild / coverageMinimumBranchTotal := 50
 
-// Exclude benchmark tests from default test execution (run manually via `make benchmark`)
-ThisBuild / Test / testOptions += Tests.Filter(name => !name.contains("Benchmark"))
+// Exclude benchmark and load tests from default test execution (run manually via `make benchmark`)
+ThisBuild / Test / testOptions += Tests.Filter(name =>
+  !name.contains("Benchmark") && !name.contains("SustainedLoad")
+)
 
 // Logging dependencies (shared across modules)
 val log4catsVersion = "2.6.0"
