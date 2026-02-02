@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [master, main]
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,12 +34,13 @@ jobs:
         run: sbt coverage test coverageReport coverageAggregate
 
       - name: Upload coverage to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v5
         with:
           files: target/scala-3.3.1/scoverage-report/scoverage.xml
           fail_ci_if_error: false
           verbose: true
-          use_oidc: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4
