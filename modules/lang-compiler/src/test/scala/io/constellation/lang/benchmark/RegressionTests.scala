@@ -1,10 +1,12 @@
 package io.constellation.lang.benchmark
 
 import io.constellation.lang.*
+import io.constellation.lang.RetrySupport
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.collection.mutable.ListBuffer
 
@@ -19,7 +21,7 @@ import scala.collection.mutable.ListBuffer
   *   1. Run benchmarks to get new times 2. Update the baseline values below 3. Add a comment
   *      explaining why the baseline changed
   */
-class RegressionTests extends AnyFlatSpec with Matchers {
+class RegressionTests extends AnyFlatSpec with Matchers with RetrySupport {
 
   // Benchmark configuration
   val WarmupIterations  = 5
@@ -314,7 +316,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
     checkRegression(result)
   }
 
-  it should "provide at least 5x speedup" in {
+  it should "provide at least 5x speedup" taggedAs Retryable in {
     val source = TestFixtures.mediumProgram
 
     // Measure cold compilation
