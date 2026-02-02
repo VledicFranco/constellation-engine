@@ -5,8 +5,8 @@ import io.constellation.{ProgramImage, ProgramStore}
 
 /** In-memory implementation of [[ProgramStore]].
   *
-  * Uses three concurrent Ref maps: one for images, one for aliases,
-  * and one for the syntactic index.
+  * Uses three concurrent Ref maps: one for images, one for aliases, and one for the syntactic
+  * index.
   */
 class ProgramStoreImpl private (
     images: Ref[IO, Map[String, ProgramImage]],
@@ -33,14 +33,18 @@ class ProgramStoreImpl private (
 
   def getByName(name: String): IO[Option[ProgramImage]] =
     for {
-      optHash  <- resolve(name)
+      optHash <- resolve(name)
       optImage <- optHash match {
         case Some(hash) => get(hash)
         case None       => IO.pure(None)
       }
     } yield optImage
 
-  def indexSyntactic(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit] =
+  def indexSyntactic(
+      syntacticHash: String,
+      registryHash: String,
+      structuralHash: String
+  ): IO[Unit] =
     syntacticIndex.update(_.updated((syntacticHash, registryHash), structuralHash))
 
   def lookupSyntactic(syntacticHash: String, registryHash: String): IO[Option[String]] =
@@ -51,10 +55,8 @@ class ProgramStoreImpl private (
 
   def remove(structuralHash: String): IO[Boolean] =
     images.modify { map =>
-      if (map.contains(structuralHash))
-        (map - structuralHash, true)
-      else
-        (map, false)
+      if map.contains(structuralHash) then (map - structuralHash, true)
+      else (map, false)
     }
 }
 

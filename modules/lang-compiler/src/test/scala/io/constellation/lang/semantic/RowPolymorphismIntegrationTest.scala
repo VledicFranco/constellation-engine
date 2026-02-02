@@ -4,12 +4,12 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lang.semantic.SemanticType._
+import io.constellation.lang.semantic.SemanticType.*
 
 /** Integration tests for row polymorphism with full type checking.
   *
-  * These tests verify that row-polymorphic functions work correctly
-  * through the entire compilation pipeline.
+  * These tests verify that row-polymorphic functions work correctly through the entire compilation
+  * pipeline.
   */
 class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
 
@@ -19,56 +19,66 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
 
     // GetName: ∀ρ. { name: String | ρ } -> String
     val nameRowVar = RowVar(1001)
-    registry.register(FunctionSignature(
-      name = "GetName",
-      params = List(("record", SOpenRecord(Map("name" -> SString), nameRowVar))),
-      returns = SString,
-      moduleName = "test.get-name",
-      namespace = Some("test.record"),
-      rowVars = List(nameRowVar)
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "GetName",
+        params = List(("record", SOpenRecord(Map("name" -> SString), nameRowVar))),
+        returns = SString,
+        moduleName = "test.get-name",
+        namespace = Some("test.record"),
+        rowVars = List(nameRowVar)
+      )
+    )
 
     // GetAge: ∀ρ. { age: Int | ρ } -> Int
     val ageRowVar = RowVar(1002)
-    registry.register(FunctionSignature(
-      name = "GetAge",
-      params = List(("record", SOpenRecord(Map("age" -> SInt), ageRowVar))),
-      returns = SInt,
-      moduleName = "test.get-age",
-      namespace = Some("test.record"),
-      rowVars = List(ageRowVar)
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "GetAge",
+        params = List(("record", SOpenRecord(Map("age" -> SInt), ageRowVar))),
+        returns = SInt,
+        moduleName = "test.get-age",
+        namespace = Some("test.record"),
+        rowVars = List(ageRowVar)
+      )
+    )
 
     // GetId: ∀ρ. { id: Int | ρ } -> Int
     val idRowVar = RowVar(1003)
-    registry.register(FunctionSignature(
-      name = "GetId",
-      params = List(("record", SOpenRecord(Map("id" -> SInt), idRowVar))),
-      returns = SInt,
-      moduleName = "test.get-id",
-      namespace = Some("test.record"),
-      rowVars = List(idRowVar)
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "GetId",
+        params = List(("record", SOpenRecord(Map("id" -> SInt), idRowVar))),
+        returns = SInt,
+        moduleName = "test.get-id",
+        namespace = Some("test.record"),
+        rowVars = List(idRowVar)
+      )
+    )
 
     // GetValue: ∀ρ. { value: String | ρ } -> String
     val valueRowVar = RowVar(1004)
-    registry.register(FunctionSignature(
-      name = "GetValue",
-      params = List(("record", SOpenRecord(Map("value" -> SString), valueRowVar))),
-      returns = SString,
-      moduleName = "test.get-value",
-      namespace = Some("test.record"),
-      rowVars = List(valueRowVar)
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "GetValue",
+        params = List(("record", SOpenRecord(Map("value" -> SString), valueRowVar))),
+        returns = SString,
+        moduleName = "test.get-value",
+        namespace = Some("test.record"),
+        rowVars = List(valueRowVar)
+      )
+    )
 
     // Also add a non-row-polymorphic function for comparison
-    registry.register(FunctionSignature(
-      name = "StringLength",
-      params = List(("str", SString)),
-      returns = SInt,
-      moduleName = "test.string-length",
-      namespace = Some("test.string")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "StringLength",
+        params = List(("str", SString)),
+        returns = SInt,
+        moduleName = "test.string-length",
+        namespace = Some("test.string")
+      )
+    )
 
     registry
   }
@@ -267,7 +277,7 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val typedProgram = result.toOption.get
-    val outputs = typedProgram.outputs
+    val outputs      = typedProgram.outputs
 
     // Find name output - should be String
     val nameOutput = outputs.find(_._1 == "name")
@@ -299,7 +309,7 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val typedProgram = result.toOption.get
-    val outputs = typedProgram.outputs
+    val outputs      = typedProgram.outputs
 
     // nameLen should be Int
     val nameLenOutput = outputs.find(_._1 == "nameLen")

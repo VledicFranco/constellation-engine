@@ -22,7 +22,8 @@ import java.nio.file.Paths
   * is 8080. For multi-agent setups, use: 8080 + agent_number
   *
   * The dashboard can be configured via environment variables:
-  *   - CONSTELLATION_CST_DIR: Directory containing .cst files to browse (default: current directory)
+  *   - CONSTELLATION_CST_DIR: Directory containing .cst files to browse (default: current
+  *     directory)
   *   - CONSTELLATION_SAMPLE_RATE: Execution sampling rate 0.0-1.0 (default: 1.0)
   *   - CONSTELLATION_MAX_EXECUTIONS: Max stored executions (default: 1000)
   *
@@ -47,14 +48,15 @@ object ExampleServer extends IOApp.Simple {
     ConstellationServer.schedulerResource.use { scheduler =>
       for {
         // Log scheduler configuration
-        _ <- if (ConstellationServer.SchedulerConfig.enabled) {
-          logger.info(
-            s"Bounded scheduler enabled: maxConcurrency=${ConstellationServer.SchedulerConfig.maxConcurrency}, " +
-            s"starvationTimeout=${ConstellationServer.SchedulerConfig.starvationTimeout}"
-          )
-        } else {
-          logger.info("Using unbounded scheduler (default)")
-        }
+        _ <-
+          if ConstellationServer.SchedulerConfig.enabled then {
+            logger.info(
+              s"Bounded scheduler enabled: maxConcurrency=${ConstellationServer.SchedulerConfig.maxConcurrency}, " +
+                s"starvationTimeout=${ConstellationServer.SchedulerConfig.starvationTimeout}"
+            )
+          } else {
+            logger.info("Using unbounded scheduler (default)")
+          }
 
         // Create constellation engine instance with scheduler
         constellation <- ConstellationImpl.initWithScheduler(scheduler)
@@ -67,12 +69,12 @@ object ExampleServer extends IOApp.Simple {
         // Create compiler with standard library + example app functions
         // Wrap in caching compiler to avoid redundant compilations on every keystroke
         baseCompiler = ExampleLib.compiler
-        compiler = CachingLangCompiler.withDefaults(baseCompiler)
+        compiler     = CachingLangCompiler.withDefaults(baseCompiler)
         _ <- logger.info("Compilation caching enabled")
 
         // Configure dashboard (reads from environment variables)
         dashboardConfig = DashboardConfig.fromEnv
-        cstDir = dashboardConfig.getCstDirectory.toAbsolutePath.toString
+        cstDir          = dashboardConfig.getCstDirectory.toAbsolutePath.toString
 
         // Start the HTTP server (port from CONSTELLATION_PORT env var, defaults to 8080)
         port = ConstellationServer.DefaultPort

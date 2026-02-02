@@ -1,6 +1,6 @@
 package io.constellation.lang.viz
 
-import io.constellation.lang.compiler.{IRNode, IRProgram, HigherOrderOp}
+import io.constellation.lang.compiler.{HigherOrderOp, IRNode, IRProgram}
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
@@ -10,9 +10,12 @@ object DagVizCompiler:
 
   /** Compile an IR program to visualization IR
     *
-    * @param ir The compiled IR program
-    * @param title Optional title for the visualization
-    * @return DagVizIR ready for layout
+    * @param ir
+    *   The compiled IR program
+    * @param title
+    *   Optional title for the visualization
+    * @return
+    *   DagVizIR ready for layout
     */
   def compile(ir: IRProgram, title: Option[String] = None): DagVizIR =
     val nodeMap = ir.nodes
@@ -25,9 +28,10 @@ object DagVizCompiler:
     // Step 2: Create explicit Output nodes for declared outputs
     val outputNodes = ir.declaredOutputs.flatMap { name =>
       ir.variableBindings.get(name).map { sourceId =>
-        val outputId = s"output_$name"
+        val outputId   = s"output_$name"
         val sourceNode = nodeMap.get(sourceId)
-        val typeSignature = sourceNode.map(n => formatType(getNodeOutputType(n))).getOrElse("Unknown")
+        val typeSignature =
+          sourceNode.map(n => formatType(getNodeOutputType(n))).getOrElse("Unknown")
         VizNode(
           id = outputId,
           kind = NodeKind.Output,
@@ -208,22 +212,22 @@ object DagVizCompiler:
   /** Extract the output type from an IR node */
   private def getNodeOutputType(node: IRNode): SemanticType =
     node match {
-      case IRNode.Input(_, _, outputType, _)                   => outputType
-      case IRNode.ModuleCall(_, _, _, _, outputType, _, _)      => outputType
-      case IRNode.MergeNode(_, _, _, outputType, _)            => outputType
-      case IRNode.ProjectNode(_, _, _, outputType, _)          => outputType
-      case IRNode.FieldAccessNode(_, _, _, outputType, _)      => outputType
-      case IRNode.ConditionalNode(_, _, _, _, outputType, _)   => outputType
-      case IRNode.LiteralNode(_, _, outputType, _)             => outputType
-      case IRNode.AndNode(_, _, _, _)                          => SemanticType.SBoolean
-      case IRNode.OrNode(_, _, _, _)                           => SemanticType.SBoolean
-      case IRNode.NotNode(_, _, _)                             => SemanticType.SBoolean
-      case IRNode.GuardNode(_, _, _, innerType, _)             => SemanticType.SOptional(innerType)
-      case IRNode.CoalesceNode(_, _, _, resultType, _)         => resultType
-      case IRNode.BranchNode(_, _, _, resultType, _)           => resultType
-      case IRNode.StringInterpolationNode(_, _, _, _)          => SemanticType.SString
-      case IRNode.HigherOrderNode(_, _, _, _, outputType, _)   => outputType
-      case IRNode.ListLiteralNode(_, _, elementType, _)        => SemanticType.SList(elementType)
+      case IRNode.Input(_, _, outputType, _)                 => outputType
+      case IRNode.ModuleCall(_, _, _, _, outputType, _, _)   => outputType
+      case IRNode.MergeNode(_, _, _, outputType, _)          => outputType
+      case IRNode.ProjectNode(_, _, _, outputType, _)        => outputType
+      case IRNode.FieldAccessNode(_, _, _, outputType, _)    => outputType
+      case IRNode.ConditionalNode(_, _, _, _, outputType, _) => outputType
+      case IRNode.LiteralNode(_, _, outputType, _)           => outputType
+      case IRNode.AndNode(_, _, _, _)                        => SemanticType.SBoolean
+      case IRNode.OrNode(_, _, _, _)                         => SemanticType.SBoolean
+      case IRNode.NotNode(_, _, _)                           => SemanticType.SBoolean
+      case IRNode.GuardNode(_, _, _, innerType, _)           => SemanticType.SOptional(innerType)
+      case IRNode.CoalesceNode(_, _, _, resultType, _)       => resultType
+      case IRNode.BranchNode(_, _, _, resultType, _)         => resultType
+      case IRNode.StringInterpolationNode(_, _, _, _)        => SemanticType.SString
+      case IRNode.HigherOrderNode(_, _, _, _, outputType, _) => outputType
+      case IRNode.ListLiteralNode(_, _, elementType, _)      => SemanticType.SList(elementType)
     }
 
   /** Build edges from IR dependencies */
@@ -274,13 +278,25 @@ object DagVizCompiler:
         case IRNode.AndNode(_, left, right, _) =>
           List(
             VizEdge(nextEdgeId(), left.toString, targetId.toString, Some("left"), EdgeKind.Control),
-            VizEdge(nextEdgeId(), right.toString, targetId.toString, Some("right"), EdgeKind.Control)
+            VizEdge(
+              nextEdgeId(),
+              right.toString,
+              targetId.toString,
+              Some("right"),
+              EdgeKind.Control
+            )
           )
 
         case IRNode.OrNode(_, left, right, _) =>
           List(
             VizEdge(nextEdgeId(), left.toString, targetId.toString, Some("left"), EdgeKind.Control),
-            VizEdge(nextEdgeId(), right.toString, targetId.toString, Some("right"), EdgeKind.Control)
+            VizEdge(
+              nextEdgeId(),
+              right.toString,
+              targetId.toString,
+              Some("right"),
+              EdgeKind.Control
+            )
           )
 
         case IRNode.NotNode(_, operand, _) =>
@@ -289,35 +305,79 @@ object DagVizCompiler:
         case IRNode.GuardNode(_, expr, condition, _, _) =>
           List(
             VizEdge(nextEdgeId(), expr.toString, targetId.toString, Some("expr"), EdgeKind.Data),
-            VizEdge(nextEdgeId(), condition.toString, targetId.toString, Some("cond"), EdgeKind.Control)
+            VizEdge(
+              nextEdgeId(),
+              condition.toString,
+              targetId.toString,
+              Some("cond"),
+              EdgeKind.Control
+            )
           )
 
         case IRNode.CoalesceNode(_, left, right, _, _) =>
           List(
-            VizEdge(nextEdgeId(), left.toString, targetId.toString, Some("value"), EdgeKind.Optional),
+            VizEdge(
+              nextEdgeId(),
+              left.toString,
+              targetId.toString,
+              Some("value"),
+              EdgeKind.Optional
+            ),
             VizEdge(nextEdgeId(), right.toString, targetId.toString, Some("default"), EdgeKind.Data)
           )
 
         case IRNode.BranchNode(_, cases, otherwise, _, _) =>
           val caseEdges = cases.zipWithIndex.flatMap { case ((condId, exprId), idx) =>
             List(
-              VizEdge(nextEdgeId(), condId.toString, targetId.toString, Some(s"cond$idx"), EdgeKind.Control),
-              VizEdge(nextEdgeId(), exprId.toString, targetId.toString, Some(s"case$idx"), EdgeKind.Data)
+              VizEdge(
+                nextEdgeId(),
+                condId.toString,
+                targetId.toString,
+                Some(s"cond$idx"),
+                EdgeKind.Control
+              ),
+              VizEdge(
+                nextEdgeId(),
+                exprId.toString,
+                targetId.toString,
+                Some(s"case$idx"),
+                EdgeKind.Data
+              )
             )
           }
-          caseEdges :+ VizEdge(nextEdgeId(), otherwise.toString, targetId.toString, Some("otherwise"), EdgeKind.Data)
+          caseEdges :+ VizEdge(
+            nextEdgeId(),
+            otherwise.toString,
+            targetId.toString,
+            Some("otherwise"),
+            EdgeKind.Data
+          )
 
         case IRNode.StringInterpolationNode(_, _, expressions, _) =>
           expressions.zipWithIndex.map { case (exprId, idx) =>
-            VizEdge(nextEdgeId(), exprId.toString, targetId.toString, Some(s"expr$idx"), EdgeKind.Data)
+            VizEdge(
+              nextEdgeId(),
+              exprId.toString,
+              targetId.toString,
+              Some(s"expr$idx"),
+              EdgeKind.Data
+            )
           }
 
         case IRNode.HigherOrderNode(_, _, source, _, _, _) =>
-          List(VizEdge(nextEdgeId(), source.toString, targetId.toString, Some("source"), EdgeKind.Data))
+          List(
+            VizEdge(nextEdgeId(), source.toString, targetId.toString, Some("source"), EdgeKind.Data)
+          )
 
         case IRNode.ListLiteralNode(_, elements, _, _) =>
           elements.zipWithIndex.map { case (elemId, idx) =>
-            VizEdge(nextEdgeId(), elemId.toString, targetId.toString, Some(s"[$idx]"), EdgeKind.Data)
+            VizEdge(
+              nextEdgeId(),
+              elemId.toString,
+              targetId.toString,
+              Some(s"[$idx]"),
+              EdgeKind.Data
+            )
           }
       }
     }.toList

@@ -2,27 +2,30 @@ package io.constellation.lang.viz
 
 /** Configuration for the Sugiyama layout algorithm */
 case class LayoutConfig(
-    direction: String = "TB",   // "TB" (top-bottom) or "LR" (left-right)
-    nodeWidth: Double = 180,    // Default node width
-    nodeHeight: Double = 60,    // Default node height
-    nodeSpacing: Double = 40,   // Horizontal spacing within a layer
-    layerSpacing: Double = 100  // Vertical spacing between layers
+    direction: String = "TB",  // "TB" (top-bottom) or "LR" (left-right)
+    nodeWidth: Double = 180,   // Default node width
+    nodeHeight: Double = 60,   // Default node height
+    nodeSpacing: Double = 40,  // Horizontal spacing within a layer
+    layerSpacing: Double = 100 // Vertical spacing between layers
 )
 
 /** Sugiyama layout algorithm for DAG visualization
   *
   * The algorithm works in three phases:
-  * 1. Layer Assignment - assign each node to a layer using longest path
-  * 2. Crossing Minimization - reorder nodes within layers to minimize edge crossings
-  * 3. Position Assignment - compute x,y coordinates
+  *   1. Layer Assignment - assign each node to a layer using longest path 2. Crossing Minimization
+  *      \- reorder nodes within layers to minimize edge crossings 3. Position Assignment - compute
+  *      x,y coordinates
   */
 object SugiyamaLayout:
 
   /** Apply Sugiyama layout to a DAG
     *
-    * @param dag The DAG to layout (nodes without positions)
-    * @param config Layout configuration
-    * @return DAG with positions assigned to all nodes
+    * @param dag
+    *   The DAG to layout (nodes without positions)
+    * @param config
+    *   Layout configuration
+    * @return
+    *   DAG with positions assigned to all nodes
     */
   def layout(dag: DagVizIR, config: LayoutConfig = LayoutConfig()): DagVizIR =
     if dag.nodes.isEmpty then return dag
@@ -59,7 +62,9 @@ object SugiyamaLayout:
     )
 
   /** Build successor and predecessor adjacency lists */
-  private def buildAdjacencyLists(dag: DagVizIR): (Map[String, List[String]], Map[String, List[String]]) =
+  private def buildAdjacencyLists(
+      dag: DagVizIR
+  ): (Map[String, List[String]], Map[String, List[String]]) =
     val successors = dag.edges
       .groupBy(_.source)
       .view
@@ -78,8 +83,8 @@ object SugiyamaLayout:
 
   /** Assign nodes to layers using longest path from sources
     *
-    * Sources (nodes with no predecessors) are at layer 0.
-    * Each other node is placed at max(predecessor layers) + 1.
+    * Sources (nodes with no predecessors) are at layer 0. Each other node is placed at
+    * max(predecessor layers) + 1.
     */
   private def assignLayers(
       nodes: List[VizNode],
@@ -93,7 +98,7 @@ object SugiyamaLayout:
 
     // BFS/topological order to assign layers
     var layerOf = Map.empty[String, Int]
-    var queue = sources.toList
+    var queue   = sources.toList
     var visited = Set.empty[String]
 
     // Initialize sources at layer 0
@@ -110,17 +115,16 @@ object SugiyamaLayout:
 
         // Update successors
         for succ <- successors(current) do
-          val newLayer = currentLayer + 1
+          val newLayer      = currentLayer + 1
           val existingLayer = layerOf.getOrElse(succ, 0)
           layerOf = layerOf + (succ -> math.max(existingLayer, newLayer))
 
           // Add to queue if all predecessors visited
-          if predecessors(succ).forall(visited.contains) then
-            queue = queue :+ succ
+          if predecessors(succ).forall(visited.contains) then queue = queue :+ succ
 
     // Handle any unvisited nodes (cycles or disconnected)
     val unvisited = nodes.filterNot(n => visited.contains(n.id))
-    val maxLayer = if layerOf.isEmpty then 0 else layerOf.values.max
+    val maxLayer  = if layerOf.isEmpty then 0 else layerOf.values.max
     unvisited.foreach(n => layerOf = layerOf + (n.id -> (maxLayer + 1)))
 
     // Group nodes by layer
@@ -132,8 +136,8 @@ object SugiyamaLayout:
 
   /** Minimize edge crossings using barycenter heuristic
     *
-    * Iteratively reorders nodes within each layer based on the
-    * average position of their neighbors in adjacent layers.
+    * Iteratively reorders nodes within each layer based on the average position of their neighbors
+    * in adjacent layers.
     */
   private def minimizeCrossings(
       layers: Map[Int, List[VizNode]],
@@ -142,7 +146,7 @@ object SugiyamaLayout:
   ): Map[Int, List[VizNode]] =
     if layers.isEmpty then return layers
 
-    val maxLayer = layers.keys.max
+    val maxLayer      = layers.keys.max
     var orderedLayers = layers
 
     // Multiple passes for better results
@@ -164,23 +168,25 @@ object SugiyamaLayout:
       adjacency: Map[String, List[String]], // predecessors or successors
       forward: Boolean
   ): Map[Int, List[VizNode]] =
-    val currentLayer = layers.getOrElse(layerIndex, List.empty)
+    val currentLayer       = layers.getOrElse(layerIndex, List.empty)
     val adjacentLayerIndex = if forward then layerIndex - 1 else layerIndex + 1
-    val adjacentLayer = layers.getOrElse(adjacentLayerIndex, List.empty)
+    val adjacentLayer      = layers.getOrElse(adjacentLayerIndex, List.empty)
 
     if adjacentLayer.isEmpty then return layers
 
     // Create position map for adjacent layer
-    val adjacentPositions = adjacentLayer.zipWithIndex.map { case (n, i) => n.id -> i.toDouble }.toMap
+    val adjacentPositions = adjacentLayer.zipWithIndex.map { case (n, i) =>
+      n.id -> i.toDouble
+    }.toMap
 
     // Calculate barycenter for each node in current layer
     val barycenters = currentLayer.map { node =>
       val neighbors = adjacency(node.id).filter(adjacentPositions.contains)
-      val barycenter = if neighbors.isEmpty then
-        // Keep relative position if no neighbors
-        currentLayer.indexOf(node).toDouble
-      else
-        neighbors.map(adjacentPositions).sum / neighbors.length
+      val barycenter =
+        if neighbors.isEmpty then
+          // Keep relative position if no neighbors
+          currentLayer.indexOf(node).toDouble
+        else neighbors.map(adjacentPositions).sum / neighbors.length
       (node, barycenter)
     }
 
@@ -196,24 +202,25 @@ object SugiyamaLayout:
     val isHorizontal = config.direction == "LR"
 
     layers.flatMap { case (layerIndex, nodes) =>
-      val layerSize = nodes.length
+      val layerSize  = nodes.length
       val totalWidth = layerSize * config.nodeWidth + (layerSize - 1) * config.nodeSpacing
 
       nodes.zipWithIndex.map { case (node, indexInLayer) =>
         // Center nodes in their layer
-        val offset = indexInLayer * (config.nodeWidth + config.nodeSpacing)
+        val offset   = indexInLayer * (config.nodeWidth + config.nodeSpacing)
         val centered = offset - totalWidth / 2 + config.nodeWidth / 2
 
-        val pos = if isHorizontal then
-          Position(
-            x = layerIndex * (config.nodeWidth + config.layerSpacing),
-            y = centered
-          )
-        else
-          Position(
-            x = centered,
-            y = layerIndex * (config.nodeHeight + config.layerSpacing)
-          )
+        val pos =
+          if isHorizontal then
+            Position(
+              x = layerIndex * (config.nodeWidth + config.layerSpacing),
+              y = centered
+            )
+          else
+            Position(
+              x = centered,
+              y = layerIndex * (config.nodeHeight + config.layerSpacing)
+            )
 
         node.id -> pos
       }
@@ -221,11 +228,10 @@ object SugiyamaLayout:
 
   /** Calculate bounding box for the visualization */
   private def calculateBounds(positions: List[Position], config: LayoutConfig): Bounds =
-    if positions.isEmpty then
-      Bounds(0, 0, config.nodeWidth, config.nodeHeight)
+    if positions.isEmpty then Bounds(0, 0, config.nodeWidth, config.nodeHeight)
     else
-      val xs = positions.map(_.x)
-      val ys = positions.map(_.y)
+      val xs      = positions.map(_.x)
+      val ys      = positions.map(_.y)
       val padding = 20
 
       Bounds(

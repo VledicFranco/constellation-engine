@@ -8,8 +8,8 @@ import scala.collection.mutable
 
 /** Constant Folding optimization pass.
   *
-  * Evaluates constant expressions at compile time.
-  * Supports arithmetic operations, string concatenation, and boolean operations.
+  * Evaluates constant expressions at compile time. Supports arithmetic operations, string
+  * concatenation, and boolean operations.
   */
 object ConstantFolding extends OptimizationPass {
 
@@ -23,13 +23,12 @@ object ConstantFolding extends OptimizationPass {
     val sortedNodes = ir.topologicalOrder
 
     // First pass: identify nodes that can be folded
-    for (nodeId <- sortedNodes) {
+    for nodeId <- sortedNodes do
       ir.nodes.get(nodeId).foreach { node =>
         tryFold(node, folded.toMap, ir).foreach { value =>
           folded(nodeId) = value
         }
       }
-    }
 
     // Second pass: replace foldable nodes with literals
     val newNodes = ir.nodes.map { case (id, node) =>
@@ -49,7 +48,8 @@ object ConstantFolding extends OptimizationPass {
 
   /** Try to fold a node to a constant value.
     *
-    * @return Some(FoldedValue) if the node can be folded, None otherwise
+    * @return
+    *   Some(FoldedValue) if the node can be folded, None otherwise
     */
   private def tryFold(
       node: IRNode,
@@ -68,7 +68,7 @@ object ConstantFolding extends OptimizationPass {
     // AND with constant operands
     case IRNode.AndNode(_, left, right, _) =>
       for {
-        leftVal <- folded.get(left)
+        leftVal  <- folded.get(left)
         rightVal <- folded.get(right)
         if leftVal.value.isInstanceOf[Boolean] && rightVal.value.isInstanceOf[Boolean]
       } yield {
@@ -79,7 +79,7 @@ object ConstantFolding extends OptimizationPass {
     // OR with constant operands
     case IRNode.OrNode(_, left, right, _) =>
       for {
-        leftVal <- folded.get(left)
+        leftVal  <- folded.get(left)
         rightVal <- folded.get(right)
         if leftVal.value.isInstanceOf[Boolean] && rightVal.value.isInstanceOf[Boolean]
       } yield {
@@ -100,17 +100,17 @@ object ConstantFolding extends OptimizationPass {
     // Conditional with constant condition
     case IRNode.ConditionalNode(_, condition, thenBranch, elseBranch, outputType, _) =>
       folded.get(condition).flatMap { condVal =>
-        if (condVal.value.isInstanceOf[Boolean]) {
-          val result = if (condVal.value.asInstanceOf[Boolean]) thenBranch else elseBranch
+        if condVal.value.isInstanceOf[Boolean] then {
+          val result = if condVal.value.asInstanceOf[Boolean] then thenBranch else elseBranch
           folded.get(result).map(v => FoldedValue(v.value, outputType))
         } else None
       }
 
     // String interpolation with all constant expressions
     case IRNode.StringInterpolationNode(_, parts, expressions, _) =>
-      if (expressions.forall(folded.contains)) {
+      if expressions.forall(folded.contains) then {
         val exprValues = expressions.map(id => folded(id).value.toString)
-        val result = parts.zipAll(exprValues, "", "").map { case (p, e) => p + e }.mkString
+        val result     = parts.zipAll(exprValues, "", "").map { case (p, e) => p + e }.mkString
         Some(FoldedValue(result, SemanticType.SString))
       } else None
 
@@ -127,7 +127,7 @@ object ConstantFolding extends OptimizationPass {
   ): Option[FoldedValue] = {
     // Check if all inputs are constants
     val allConstant = inputs.values.forall(folded.contains)
-    if (!allConstant) return None
+    if !allConstant then return None
 
     // Get input values
     def getInt(name: String): Option[Int] =

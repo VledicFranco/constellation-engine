@@ -13,9 +13,9 @@ import java.util.UUID
 /** Integration tests for metadata instrumentation (Phase 3).
   *
   * Exercises MetadataBuilder through actual execution paths:
-  * - ConstellationImpl.run (for complete pipelines with timings/provenance)
-  * - SuspendableExecution.resume (for resolution source tracking)
-  * - MetadataBuilder directly (for blocked graph on synthetic suspended state)
+  *   - ConstellationImpl.run (for complete pipelines with timings/provenance)
+  *   - SuspendableExecution.resume (for resolution source tracking)
+  *   - MetadataBuilder directly (for blocked graph on synthetic suspended state)
   */
 class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
 
@@ -32,8 +32,8 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
     .implementationPure[TextIn, TextOut](in => TextOut(in.text.toUpperCase))
     .build
 
-  private val moduleId = UUID.randomUUID()
-  private val inputDataId = UUID.randomUUID()
+  private val moduleId     = UUID.randomUUID()
+  private val inputDataId  = UUID.randomUUID()
   private val outputDataId = UUID.randomUUID()
 
   private val simpleDag = DagSpec(
@@ -46,7 +46,11 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputDataId -> DataNodeSpec("text", Map(inputDataId -> "text", moduleId -> "text"), CType.CString),
+      inputDataId -> DataNodeSpec(
+        "text",
+        Map(inputDataId -> "text", moduleId -> "text"),
+        CType.CString
+      ),
       outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
     ),
     inEdges = Set((inputDataId, moduleId)),
@@ -56,7 +60,7 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
   )
 
   private val modules: Map[UUID, Module.Uninitialized] = Map(moduleId -> uppercaseModule)
-  private val fullInputs = Map("text" -> CValue.CString("hello"))
+  private val fullInputs                               = Map("text" -> CValue.CString("hello"))
 
   // ---------------------------------------------------------------------------
   // Two-module DAG: text -> Uppercase -> mid -> Exclaim -> result
@@ -67,10 +71,10 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
     .implementationPure[TextIn, TextOut](in => TextOut(in.text + "!"))
     .build
 
-  private val moduleIdA = UUID.randomUUID()
-  private val moduleIdB = UUID.randomUUID()
-  private val inputDataId2 = UUID.randomUUID()
-  private val midDataId = UUID.randomUUID()
+  private val moduleIdA     = UUID.randomUUID()
+  private val moduleIdB     = UUID.randomUUID()
+  private val inputDataId2  = UUID.randomUUID()
+  private val midDataId     = UUID.randomUUID()
   private val outputDataId2 = UUID.randomUUID()
 
   private val chainDag = DagSpec(
@@ -88,8 +92,16 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputDataId2 -> DataNodeSpec("text", Map(inputDataId2 -> "text", moduleIdA -> "text"), CType.CString),
-      midDataId -> DataNodeSpec("mid", Map(moduleIdA -> "result", moduleIdB -> "text"), CType.CString),
+      inputDataId2 -> DataNodeSpec(
+        "text",
+        Map(inputDataId2 -> "text", moduleIdA -> "text"),
+        CType.CString
+      ),
+      midDataId -> DataNodeSpec(
+        "mid",
+        Map(moduleIdA -> "result", moduleIdB -> "text"),
+        CType.CString
+      ),
       outputDataId2 -> DataNodeSpec("result", Map(moduleIdB -> "result"), CType.CString)
     ),
     inEdges = Set((inputDataId2, moduleIdA), (midDataId, moduleIdB)),
@@ -116,8 +128,8 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
 
     (for {
       constellation <- impl.ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
-      result <- constellation.run(loaded, fullInputs, options)
+      _             <- constellation.setModule(uppercaseModule)
+      result        <- constellation.run(loaded, fullInputs, options)
     } yield result).unsafeRunSync()
   }
 
@@ -162,9 +174,11 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
     )
 
     val metadata = MetadataBuilder.build(
-      suspendedState, simpleDag,
+      suspendedState,
+      simpleDag,
       ExecutionOptions(includeBlockedGraph = true),
-      java.time.Instant.now(), java.time.Instant.now(),
+      java.time.Instant.now(),
+      java.time.Instant.now(),
       inputNodeNames = Set.empty
     )
 
@@ -190,12 +204,14 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
       moduleStatuses = Map.empty
     )
 
-    val sig = SuspendableExecution.resume(
-      suspended = suspended,
-      resolvedNodes = Map("mid" -> CValue.CString("MANUAL")),
-      modules = chainModules,
-      options = ExecutionOptions(includeResolutionSources = true)
-    ).unsafeRunSync()
+    val sig = SuspendableExecution
+      .resume(
+        suspended = suspended,
+        resolvedNodes = Map("mid" -> CValue.CString("MANUAL")),
+        modules = chainModules,
+        options = ExecutionOptions(includeResolutionSources = true)
+      )
+      .unsafeRunSync()
 
     sig.metadata.resolutionSources shouldBe defined
     val sources = sig.metadata.resolutionSources.get

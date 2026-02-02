@@ -36,7 +36,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
     // The add node should be replaced with a literal
     optimized.nodes(uuid("add")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 8
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -64,7 +64,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("sub")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 6
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -92,7 +92,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("mul")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 42
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -120,7 +120,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("div")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 5
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -153,8 +153,8 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   it should "fold boolean AND" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("a") -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
-        uuid("b") -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),
+        uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
+        uuid("b")   -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),
         uuid("and") -> IRNode.AndNode(uuid("and"), uuid("a"), uuid("b"), None)
       ),
       inputs = List.empty,
@@ -166,15 +166,15 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("and")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe false
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
   it should "fold boolean OR" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("a") -> IRNode.LiteralNode(uuid("a"), false, SemanticType.SBoolean, None),
-        uuid("b") -> IRNode.LiteralNode(uuid("b"), true, SemanticType.SBoolean, None),
+        uuid("a")  -> IRNode.LiteralNode(uuid("a"), false, SemanticType.SBoolean, None),
+        uuid("b")  -> IRNode.LiteralNode(uuid("b"), true, SemanticType.SBoolean, None),
         uuid("or") -> IRNode.OrNode(uuid("or"), uuid("a"), uuid("b"), None)
       ),
       inputs = List.empty,
@@ -186,14 +186,14 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("or")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe true
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
   it should "fold boolean NOT" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("a") -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
+        uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
         uuid("not") -> IRNode.NotNode(uuid("not"), uuid("a"), None)
       ),
       inputs = List.empty,
@@ -205,7 +205,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("not")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe false
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -233,7 +233,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("concat")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe "Hello, World!"
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -257,7 +257,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("interp")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe "Hello, Alice!"
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -285,7 +285,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("if")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 1
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
@@ -313,14 +313,14 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
     optimized.nodes(uuid("if")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 2
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 
   it should "not fold when inputs are non-constant" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
+        uuid("input")   -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal") -> IRNode.LiteralNode(uuid("literal"), 5, SemanticType.SInt, None),
         uuid("add") -> IRNode.ModuleCall(
           uuid("add"),
@@ -379,13 +379,13 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
     // add should be folded to 5
     optimized.nodes(uuid("add")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 5
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
 
     // mul should be folded to 20
     optimized.nodes(uuid("mul")) match {
       case IRNode.LiteralNode(_, value, _, _) => value shouldBe 20
-      case other                               => fail(s"Expected LiteralNode but got $other")
+      case other                              => fail(s"Expected LiteralNode but got $other")
     }
   }
 

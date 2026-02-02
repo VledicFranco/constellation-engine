@@ -5,8 +5,12 @@ import org.scalatest.matchers.should.Matchers
 
 class DOTRendererTest extends AnyFunSuite with Matchers {
 
-  private def makeNode(id: String, kind: NodeKind = NodeKind.Operation, label: String = ""): VizNode =
-    VizNode(id, kind, if (label.isEmpty) s"Node$id" else label, "String", None, None)
+  private def makeNode(
+      id: String,
+      kind: NodeKind = NodeKind.Operation,
+      label: String = ""
+  ): VizNode =
+    VizNode(id, kind, if label.isEmpty then s"Node$id" else label, "String", None, None)
 
   private def makeEdge(source: String, target: String, kind: EdgeKind = EdgeKind.Data): VizEdge =
     VizEdge(s"e-$source-$target", source, target, None, kind)
@@ -25,7 +29,7 @@ class DOTRendererTest extends AnyFunSuite with Matchers {
   }
 
   test("render empty dag") {
-    val dag = DagVizIR(nodes = List.empty, edges = List.empty)
+    val dag    = DagVizIR(nodes = List.empty, edges = List.empty)
     val result = DOTRenderer.render(dag)
 
     result should startWith("digraph DAG {")
@@ -41,7 +45,7 @@ class DOTRendererTest extends AnyFunSuite with Matchers {
       makeNode("cond", NodeKind.Conditional, "check")
     )
 
-    val dag = DagVizIR(nodes = nodes, edges = List.empty)
+    val dag    = DagVizIR(nodes = nodes, edges = List.empty)
     val result = DOTRenderer.render(dag)
 
     result should include("shape=ellipse")       // Input

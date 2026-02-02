@@ -4,9 +4,8 @@ import cats.effect.IO
 
 /** Core API for the Constellation pipeline orchestration engine.
   *
-  * Provides methods for registering modules and executing pipelines.
-  * This is the primary interface that embedders interact with to compile
-  * and run constellation-lang pipelines.
+  * Provides methods for registering modules and executing pipelines. This is the primary interface
+  * that embedders interact with to compile and run constellation-lang pipelines.
   *
   * {{{
   * for {
@@ -21,9 +20,12 @@ import cats.effect.IO
   * } yield result
   * }}}
   *
-  * @see [[io.constellation.impl.ConstellationImpl]] for the default implementation
-  * @see [[io.constellation.Module]] for module definitions
-  * @see [[io.constellation.DagSpec]] for DAG specifications
+  * @see
+  *   [[io.constellation.impl.ConstellationImpl]] for the default implementation
+  * @see
+  *   [[io.constellation.Module]] for module definitions
+  * @see
+  *   [[io.constellation.DagSpec]] for DAG specifications
   */
 trait Constellation {
 
@@ -32,14 +34,17 @@ trait Constellation {
 
   /** Look up a registered module by name.
     *
-    * @param name The module name (case-sensitive, must match `ModuleBuilder.metadata` name)
-    * @return `Some(module)` if found, `None` otherwise
+    * @param name
+    *   The module name (case-sensitive, must match `ModuleBuilder.metadata` name)
+    * @return
+    *   `Some(module)` if found, `None` otherwise
     */
   def getModuleByName(name: String): IO[Option[Module.Uninitialized]]
 
   /** Register a module for use in DAG execution.
     *
-    * @param module The uninitialized module to register (name taken from its metadata)
+    * @param module
+    *   The uninitialized module to register (name taken from its metadata)
     */
   def setModule(module: Module.Uninitialized): IO[Unit]
 
@@ -52,10 +57,14 @@ trait Constellation {
 
   /** Execute a loaded program with the given inputs.
     *
-    * @param loaded  A LoadedProgram (from compilation or rehydration)
-    * @param inputs  Input values keyed by variable name
-    * @param options Execution options controlling metadata collection
-    * @return A DataSignature describing the execution outcome
+    * @param loaded
+    *   A LoadedProgram (from compilation or rehydration)
+    * @param inputs
+    *   Input values keyed by variable name
+    * @param options
+    *   Execution options controlling metadata collection
+    * @return
+    *   A DataSignature describing the execution outcome
     */
   def run(
       loaded: LoadedProgram,
@@ -65,13 +74,17 @@ trait Constellation {
 
   /** Execute a program by reference (alias name or "sha256:<hash>").
     *
-    * Resolves the reference via the ProgramStore, rehydrates the LoadedProgram,
-    * and delegates to `run(loaded, inputs, options)`.
+    * Resolves the reference via the ProgramStore, rehydrates the LoadedProgram, and delegates to
+    * `run(loaded, inputs, options)`.
     *
-    * @param ref     A program alias name or "sha256:<hash>" structural hash
-    * @param inputs  Input values keyed by variable name
-    * @param options Execution options controlling metadata collection
-    * @return A DataSignature describing the execution outcome
+    * @param ref
+    *   A program alias name or "sha256:<hash>" structural hash
+    * @param inputs
+    *   Input values keyed by variable name
+    * @param options
+    *   Execution options controlling metadata collection
+    * @return
+    *   A DataSignature describing the execution outcome
     */
   def run(
       ref: String,
@@ -91,16 +104,23 @@ trait Constellation {
 
   /** Resume a suspended execution from the SuspensionStore.
     *
-    * Loads the suspended execution by handle, merges additional inputs and
-    * resolved nodes, and re-executes the pipeline.
+    * Loads the suspended execution by handle, merges additional inputs and resolved nodes, and
+    * re-executes the pipeline.
     *
-    * @param handle           Handle returned by `SuspensionStore.save`
-    * @param additionalInputs New input values to provide
-    * @param resolvedNodes    Manually-resolved data node values
-    * @param options          Execution options controlling metadata collection
-    * @return A DataSignature describing the resumed execution outcome
-    * @throws IllegalStateException if no SuspensionStore is configured
-    * @throws NoSuchElementException if the handle is not found
+    * @param handle
+    *   Handle returned by `SuspensionStore.save`
+    * @param additionalInputs
+    *   New input values to provide
+    * @param resolvedNodes
+    *   Manually-resolved data node values
+    * @param options
+    *   Execution options controlling metadata collection
+    * @return
+    *   A DataSignature describing the resumed execution outcome
+    * @throws IllegalStateException
+    *   if no SuspensionStore is configured
+    * @throws NoSuchElementException
+    *   if the handle is not found
     */
   def resumeFromStore(
       handle: SuspensionHandle,

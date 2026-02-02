@@ -18,12 +18,20 @@ import io.circe.Json
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import org.http4s.{DecodeFailure, DecodeResult, EntityDecoder, MalformedMessageBodyFailure, MediaType, Response, Status}
+import org.http4s.{
+  DecodeFailure,
+  DecodeResult,
+  EntityDecoder,
+  MalformedMessageBodyFailure,
+  MediaType,
+  Response,
+  Status
+}
 import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.typelevel.ci.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -41,7 +49,9 @@ class ConstellationRoutes(
 
   /** Extract or generate a request ID for tracing. */
   private def requestId(req: org.http4s.Request[IO]): String =
-    req.headers.get(ci"X-Request-ID").map(_.head.value)
+    req.headers
+      .get(ci"X-Request-ID")
+      .map(_.head.value)
       .getOrElse(UUID.randomUUID().toString)
 
   /** Null-safe error message extraction. */
@@ -51,43 +61,48 @@ class ConstellationRoutes(
   /** Compilation timeout (30 seconds). */
   private val compilationTimeout: FiniteDuration = 30.seconds
 
-  /** Check if request body exceeds maximum allowed size.
-    * Returns Some(413 response) if too large, None if OK.
+  /** Check if request body exceeds maximum allowed size. Returns Some(413 response) if too large,
+    * None if OK.
     */
   private def checkBodySize(req: org.http4s.Request[IO]): Option[IO[org.http4s.Response[IO]]] =
     req.headers.get[`Content-Length`].flatMap { cl =>
-      if (cl.length > maxBodySize) {
-        Some(IO.pure(Response[IO](Status.PayloadTooLarge)
-          .withEntity(ErrorResponse(
-            error = "PayloadTooLarge",
-            message = s"Request body too large: ${cl.length} bytes (max ${maxBodySize})"
-          ))))
+      if cl.length > maxBodySize then {
+        Some(
+          IO.pure(
+            Response[IO](Status.PayloadTooLarge)
+              .withEntity(
+                ErrorResponse(
+                  error = "PayloadTooLarge",
+                  message = s"Request body too large: ${cl.length} bytes (max ${maxBodySize})"
+                )
+              )
+          )
+        )
       } else None
     }
 
   /** Validate a program reference (name or hash).
     *
     * Refs can be:
-    * - Program name (any non-empty string, max 256 chars)
-    * - SHA-256 structural hash (exactly 64 hex characters)
+    *   - Program name (any non-empty string, max 256 chars)
+    *   - SHA-256 structural hash (exactly 64 hex characters)
     *
     * If a ref is exactly 64 chars, it MUST be valid hex (treated as hash).
     */
-  private def validateRef(ref: String): Either[String, String] = {
-    if (ref.isBlank) {
+  private def validateRef(ref: String): Either[String, String] =
+    if ref.isBlank then {
       Left("Program reference cannot be blank")
-    } else if (ref.length == 64) {
+    } else if ref.length == 64 then {
       // Must be a SHA-256 hash - validate it's valid hex
-      if (ref.matches("[a-fA-F0-9]{64}")) Right(ref)
+      if ref.matches("[a-fA-F0-9]{64}") then Right(ref)
       else Left(s"Invalid hash format: '$ref' (expected 64 hex characters)")
-    } else if (ref.length > 256) {
+    } else if ref.length > 256 then {
       // Prevent excessively long names
       Left(s"Program reference too long: ${ref.length} characters (max 256)")
     } else {
       // Treat as program name
       Right(ref)
     }
-  }
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
@@ -97,42 +112,49 @@ class ConstellationRoutes(
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
         case None =>
-      for {
-        compileReq <- req.as[CompileRequest]
-        effectiveName = compileReq.effectiveName
-        result <- (effectiveName match {
-          case Some(n) => compiler.compileIO(compileReq.source, n)
-          case None    => compiler.compileIO(compileReq.source, "unnamed")
-        }).timeoutTo(compilationTimeout, IO.raiseError(
-          new java.util.concurrent.TimeoutException(s"Compilation timed out after $compilationTimeout")
-        ))
-        response <- result match {
-          case Right(compiled) =>
-            val image = compiled.program.image
-            for {
-              // Store the image in ProgramStore (content-addressed)
-              _ <- constellation.programStore.store(image)
-              // Create alias if name was provided
-              _ <- effectiveName.traverse_(n => constellation.programStore.alias(n, image.structuralHash))
-              resp <- Ok(
-                CompileResponse(
-                  success = true,
-                  structuralHash = Some(image.structuralHash),
-                  syntacticHash = Some(image.syntacticHash),
-                  dagName = effectiveName,
-                  name = effectiveName
+          for {
+            compileReq <- req.as[CompileRequest]
+            effectiveName = compileReq.effectiveName
+            result <- (effectiveName match {
+              case Some(n) => compiler.compileIO(compileReq.source, n)
+              case None    => compiler.compileIO(compileReq.source, "unnamed")
+            }).timeoutTo(
+              compilationTimeout,
+              IO.raiseError(
+                new java.util.concurrent.TimeoutException(
+                  s"Compilation timed out after $compilationTimeout"
                 )
               )
-            } yield resp
-          case Left(errors) =>
-            BadRequest(
-              CompileResponse(
-                success = false,
-                errors = errors.map(_.message)
-              )
             )
-        }
-      } yield response
+            response <- result match {
+              case Right(compiled) =>
+                val image = compiled.program.image
+                for {
+                  // Store the image in ProgramStore (content-addressed)
+                  _ <- constellation.programStore.store(image)
+                  // Create alias if name was provided
+                  _ <- effectiveName.traverse_(n =>
+                    constellation.programStore.alias(n, image.structuralHash)
+                  )
+                  resp <- Ok(
+                    CompileResponse(
+                      success = true,
+                      structuralHash = Some(image.structuralHash),
+                      syntacticHash = Some(image.syntacticHash),
+                      dagName = effectiveName,
+                      name = effectiveName
+                    )
+                  )
+                } yield resp
+              case Left(errors) =>
+                BadRequest(
+                  CompileResponse(
+                    success = false,
+                    errors = errors.map(_.message)
+                  )
+                )
+            }
+          } yield response
       }
 
     // Execute a program by reference (name, structural hash, or legacy dagName)
@@ -140,42 +162,74 @@ class ConstellationRoutes(
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
         case None =>
-      val reqId = requestId(req)
-      (for {
-        execReq <- req.as[ExecuteRequest]
-        effectiveRef = execReq.effectiveRef
-        result <- effectiveRef match {
-          case None =>
-            BadRequest(ExecuteResponse(success = false, error = Some("Missing 'ref' or 'dagName' field")))
-          case Some(ref) =>
-            validateRef(ref) match {
-              case Left(validationError) =>
-                BadRequest(ExecuteResponse(success = false, error = Some(s"Invalid ref: $validationError")))
-              case Right(validatedRef) =>
-                executeByRef(validatedRef, execReq.inputs).value.flatMap {
-                  case Right(outputs) =>
-                    Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
-                  case Left(ApiError.NotFoundError(_, name)) =>
-                    NotFound(ErrorResponse(error = "NotFound", message = s"Program '$name' not found", requestId = Some(reqId)))
-                  case Left(ApiError.InputError(msg)) =>
-                    BadRequest(ExecuteResponse(success = false, error = Some(s"Input error: $msg")))
-                  case Left(apiErr) =>
-                    logger.error(s"[$reqId] Execute error: ${apiErr.message}") *>
-                    InternalServerError(ExecuteResponse(success = false, error = Some(apiErr.message)))
+          val reqId = requestId(req)
+          (for {
+            execReq <- req.as[ExecuteRequest]
+            effectiveRef = execReq.effectiveRef
+            result <- effectiveRef match {
+              case None =>
+                BadRequest(
+                  ExecuteResponse(success = false, error = Some("Missing 'ref' or 'dagName' field"))
+                )
+              case Some(ref) =>
+                validateRef(ref) match {
+                  case Left(validationError) =>
+                    BadRequest(
+                      ExecuteResponse(
+                        success = false,
+                        error = Some(s"Invalid ref: $validationError")
+                      )
+                    )
+                  case Right(validatedRef) =>
+                    executeByRef(validatedRef, execReq.inputs).value.flatMap {
+                      case Right(outputs) =>
+                        Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
+                      case Left(ApiError.NotFoundError(_, name)) =>
+                        NotFound(
+                          ErrorResponse(
+                            error = "NotFound",
+                            message = s"Program '$name' not found",
+                            requestId = Some(reqId)
+                          )
+                        )
+                      case Left(ApiError.InputError(msg)) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: $msg"))
+                        )
+                      case Left(apiErr) =>
+                        logger.error(s"[$reqId] Execute error: ${apiErr.message}") *>
+                          InternalServerError(
+                            ExecuteResponse(success = false, error = Some(apiErr.message))
+                          )
+                    }
                 }
             }
-        }
-      } yield result).handleErrorWith {
-        case _: QueueFullException =>
-          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later", requestId = Some(reqId)))
-        case _: ConstellationLifecycle.ShutdownRejectedException =>
-          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down", requestId = Some(reqId)))
-        case error =>
-          logger.error(error)(s"[$reqId] Unexpected error in /execute") *>
-          InternalServerError(
-            ExecuteResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
-          )
-      }
+          } yield result).handleErrorWith {
+            case _: QueueFullException =>
+              TooManyRequests(
+                ErrorResponse(
+                  error = "QueueFull",
+                  message = "Server is overloaded, try again later",
+                  requestId = Some(reqId)
+                )
+              )
+            case _: ConstellationLifecycle.ShutdownRejectedException =>
+              ServiceUnavailable(
+                ErrorResponse(
+                  error = "ShuttingDown",
+                  message = "Server is shutting down",
+                  requestId = Some(reqId)
+                )
+              )
+            case error =>
+              logger.error(error)(s"[$reqId] Unexpected error in /execute") *>
+                InternalServerError(
+                  ExecuteResponse(
+                    success = false,
+                    error = Some(s"Unexpected error: ${safeMessage(error)}")
+                  )
+                )
+          }
       }
 
     // Compile and run a script in one step
@@ -184,32 +238,53 @@ class ConstellationRoutes(
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
         case None =>
-      val reqId = requestId(req)
-      (for {
-        runReq <- req.as[RunRequest]
-        result <- compileStoreAndRun(runReq).value
-        response <- result match {
-          case Right((outputs, structuralHash)) =>
-            Ok(RunResponse(success = true, outputs = outputs, structuralHash = Some(structuralHash)))
-          case Left(ApiError.CompilationError(errors)) =>
-            BadRequest(RunResponse(success = false, compilationErrors = errors))
-          case Left(ApiError.InputError(msg)) =>
-            BadRequest(RunResponse(success = false, error = Some(s"Input error: $msg")))
-          case Left(apiErr) =>
-            logger.error(s"[$reqId] Run error: ${apiErr.message}") *>
-            InternalServerError(RunResponse(success = false, error = Some(apiErr.message)))
-        }
-      } yield response).handleErrorWith {
-        case _: QueueFullException =>
-          TooManyRequests(ErrorResponse(error = "QueueFull", message = "Server is overloaded, try again later", requestId = Some(reqId)))
-        case _: ConstellationLifecycle.ShutdownRejectedException =>
-          ServiceUnavailable(ErrorResponse(error = "ShuttingDown", message = "Server is shutting down", requestId = Some(reqId)))
-        case error =>
-          logger.error(error)(s"[$reqId] Unexpected error in /run") *>
-          InternalServerError(
-            RunResponse(success = false, error = Some(s"Unexpected error: ${safeMessage(error)}"))
-          )
-      }
+          val reqId = requestId(req)
+          (for {
+            runReq <- req.as[RunRequest]
+            result <- compileStoreAndRun(runReq).value
+            response <- result match {
+              case Right((outputs, structuralHash)) =>
+                Ok(
+                  RunResponse(
+                    success = true,
+                    outputs = outputs,
+                    structuralHash = Some(structuralHash)
+                  )
+                )
+              case Left(ApiError.CompilationError(errors)) =>
+                BadRequest(RunResponse(success = false, compilationErrors = errors))
+              case Left(ApiError.InputError(msg)) =>
+                BadRequest(RunResponse(success = false, error = Some(s"Input error: $msg")))
+              case Left(apiErr) =>
+                logger.error(s"[$reqId] Run error: ${apiErr.message}") *>
+                  InternalServerError(RunResponse(success = false, error = Some(apiErr.message)))
+            }
+          } yield response).handleErrorWith {
+            case _: QueueFullException =>
+              TooManyRequests(
+                ErrorResponse(
+                  error = "QueueFull",
+                  message = "Server is overloaded, try again later",
+                  requestId = Some(reqId)
+                )
+              )
+            case _: ConstellationLifecycle.ShutdownRejectedException =>
+              ServiceUnavailable(
+                ErrorResponse(
+                  error = "ShuttingDown",
+                  message = "Server is shutting down",
+                  requestId = Some(reqId)
+                )
+              )
+            case error =>
+              logger.error(error)(s"[$reqId] Unexpected error in /run") *>
+                InternalServerError(
+                  RunResponse(
+                    success = false,
+                    error = Some(s"Unexpected error: ${safeMessage(error)}")
+                  )
+                )
+          }
       }
 
     // ---------------------------------------------------------------------------
@@ -263,16 +338,18 @@ class ConstellationRoutes(
                 img.dagSpec.data.get(uuid).map(ds => outName -> ds.cType.toString)
               }
             }.toMap
-            Ok(ProgramDetailResponse(
-              structuralHash = img.structuralHash,
-              syntacticHash = img.syntacticHash,
-              aliases = imageAliases,
-              compiledAt = img.compiledAt.toString,
-              modules = modules,
-              declaredOutputs = img.dagSpec.declaredOutputs,
-              inputSchema = inputSchema,
-              outputSchema = outputSchema
-            ))
+            Ok(
+              ProgramDetailResponse(
+                structuralHash = img.structuralHash,
+                syntacticHash = img.syntacticHash,
+                aliases = imageAliases,
+                compiledAt = img.compiledAt.toString,
+                modules = modules,
+                declaredOutputs = img.dagSpec.declaredOutputs,
+                inputSchema = inputSchema,
+                outputSchema = outputSchema
+              )
+            )
           case None =>
             NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
         }
@@ -291,17 +368,24 @@ class ConstellationRoutes(
               pointingAliases = aliases.toList.collect {
                 case (name, hash) if hash == img.structuralHash => name
               }
-              resp <- if (pointingAliases.nonEmpty) then {
-                Conflict(ErrorResponse(
-                  error = "AliasConflict",
-                  message = s"Cannot delete program: aliases [${pointingAliases.mkString(", ")}] point to it"
-                ))
-              } else {
-                constellation.programStore.remove(img.structuralHash).flatMap { removed =>
-                  if (removed) Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
-                  else NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+              resp <-
+                if pointingAliases.nonEmpty then {
+                  Conflict(
+                    ErrorResponse(
+                      error = "AliasConflict",
+                      message =
+                        s"Cannot delete program: aliases [${pointingAliases.mkString(", ")}] point to it"
+                    )
+                  )
+                } else {
+                  constellation.programStore.remove(img.structuralHash).flatMap { removed =>
+                    if removed then Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
+                    else
+                      NotFound(
+                        ErrorResponse(error = "NotFound", message = s"Program '$ref' not found")
+                      )
+                  }
                 }
-              }
             } yield resp
         }
       } yield response
@@ -313,16 +397,20 @@ class ConstellationRoutes(
         imageOpt <- constellation.programStore.get(aliasReq.structuralHash)
         response <- imageOpt match {
           case None =>
-            NotFound(ErrorResponse(
-              error = "NotFound",
-              message = s"Program with hash '${aliasReq.structuralHash}' not found"
-            ))
+            NotFound(
+              ErrorResponse(
+                error = "NotFound",
+                message = s"Program with hash '${aliasReq.structuralHash}' not found"
+              )
+            )
           case Some(_) =>
             constellation.programStore.alias(name, aliasReq.structuralHash).flatMap { _ =>
-              Ok(Json.obj(
-                "name" -> Json.fromString(name),
-                "structuralHash" -> Json.fromString(aliasReq.structuralHash)
-              ))
+              Ok(
+                Json.obj(
+                  "name"           -> Json.fromString(name),
+                  "structuralHash" -> Json.fromString(aliasReq.structuralHash)
+                )
+              )
             }
         }
       } yield response
@@ -392,19 +480,23 @@ class ConstellationRoutes(
     // Metrics endpoint for performance monitoring
     case GET -> Root / "metrics" =>
       for {
-        uptimeSeconds <- IO.pure(java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds)
+        uptimeSeconds <- IO.pure(
+          java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds
+        )
         requestCount <- IO.pure(ConstellationRoutes.requestCount.incrementAndGet())
 
         cacheStats = compiler match {
           case c: CachingLangCompiler =>
             val s = c.cacheStats
-            Some(Json.obj(
-              "hits" -> Json.fromLong(s.hits),
-              "misses" -> Json.fromLong(s.misses),
-              "hitRate" -> Json.fromDoubleOrNull(s.hitRate),
-              "evictions" -> Json.fromLong(s.evictions),
-              "entries" -> Json.fromInt(s.entries)
-            ))
+            Some(
+              Json.obj(
+                "hits"      -> Json.fromLong(s.hits),
+                "misses"    -> Json.fromLong(s.misses),
+                "hitRate"   -> Json.fromDoubleOrNull(s.hitRate),
+                "evictions" -> Json.fromLong(s.evictions),
+                "entries"   -> Json.fromInt(s.entries)
+              )
+            )
           case _ => None
         }
 
@@ -412,30 +504,34 @@ class ConstellationRoutes(
         schedulerStats <- scheduler match {
           case Some(s) =>
             s.stats.map { stats =>
-              Some(Json.obj(
-                "enabled" -> Json.fromBoolean(true),
-                "activeCount" -> Json.fromInt(stats.activeCount),
-                "queuedCount" -> Json.fromInt(stats.queuedCount),
-                "totalSubmitted" -> Json.fromLong(stats.totalSubmitted),
-                "totalCompleted" -> Json.fromLong(stats.totalCompleted),
-                "highPriorityCompleted" -> Json.fromLong(stats.highPriorityCompleted),
-                "lowPriorityCompleted" -> Json.fromLong(stats.lowPriorityCompleted),
-                "starvationPromotions" -> Json.fromLong(stats.starvationPromotions)
-              ))
+              Some(
+                Json.obj(
+                  "enabled"               -> Json.fromBoolean(true),
+                  "activeCount"           -> Json.fromInt(stats.activeCount),
+                  "queuedCount"           -> Json.fromInt(stats.queuedCount),
+                  "totalSubmitted"        -> Json.fromLong(stats.totalSubmitted),
+                  "totalCompleted"        -> Json.fromLong(stats.totalCompleted),
+                  "highPriorityCompleted" -> Json.fromLong(stats.highPriorityCompleted),
+                  "lowPriorityCompleted"  -> Json.fromLong(stats.lowPriorityCompleted),
+                  "starvationPromotions"  -> Json.fromLong(stats.starvationPromotions)
+                )
+              )
             }
           case None =>
             IO.pure(Some(Json.obj("enabled" -> Json.fromBoolean(false))))
         }
 
-        response <- Ok(Json.obj(
-          "timestamp" -> Json.fromString(Instant.now().toString),
-          "cache" -> cacheStats.getOrElse(Json.Null),
-          "scheduler" -> schedulerStats.getOrElse(Json.Null),
-          "server" -> Json.obj(
-            "uptime_seconds" -> Json.fromLong(uptimeSeconds),
-            "requests_total" -> Json.fromLong(requestCount)
+        response <- Ok(
+          Json.obj(
+            "timestamp" -> Json.fromString(Instant.now().toString),
+            "cache"     -> cacheStats.getOrElse(Json.Null),
+            "scheduler" -> schedulerStats.getOrElse(Json.Null),
+            "server" -> Json.obj(
+              "uptime_seconds" -> Json.fromLong(uptimeSeconds),
+              "requests_total" -> Json.fromLong(requestCount)
+            )
           )
-        ))
+        )
       } yield response
   }
 
@@ -443,10 +539,8 @@ class ConstellationRoutes(
 
   /** Resolve a program image from a reference (name or "sha256:<hash>"). */
   private def resolveImage(ref: String): IO[Option[ProgramImage]] =
-    if (ref.startsWith("sha256:"))
-      constellation.programStore.get(ref.stripPrefix("sha256:"))
-    else
-      constellation.programStore.getByName(ref)
+    if ref.startsWith("sha256:") then constellation.programStore.get(ref.stripPrefix("sha256:"))
+    else constellation.programStore.getByName(ref)
 
   /** Execute a program by reference using the ProgramStore. */
   private def executeByRef(
@@ -477,17 +571,21 @@ class ConstellationRoutes(
     )
 
   /** Compile, store, and run a script in one step. Returns (outputs, structuralHash). */
-  private def compileStoreAndRun(req: RunRequest): EitherT[IO, ApiError, (Map[String, Json], String)] =
+  private def compileStoreAndRun(
+      req: RunRequest
+  ): EitherT[IO, ApiError, (Map[String, Json], String)] =
     for {
       compiled <- EitherT(
-        compiler.compileIO(req.source, "ephemeral").map(_.leftMap { errors =>
-          ApiError.CompilationError(errors.map(_.message))
-        })
+        compiler
+          .compileIO(req.source, "ephemeral")
+          .map(_.leftMap { errors =>
+            ApiError.CompilationError(errors.map(_.message))
+          })
       )
       image = compiled.program.image
       // Store image in ProgramStore for dedup and future reference
-      _ <- EitherT.liftF(constellation.programStore.store(image))
-      inputs  <- convertInputs(req.inputs, compiled.program.image.dagSpec)
+      _      <- EitherT.liftF(constellation.programStore.store(image))
+      inputs <- convertInputs(req.inputs, compiled.program.image.dagSpec)
       // Use new API: constellation.run with LoadedProgram
       sig <- ErrorHandling.liftIO(constellation.run(compiled.program, inputs)) { t =>
         ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
@@ -511,6 +609,7 @@ class ConstellationRoutes(
 }
 
 object ConstellationRoutes {
+
   /** Server start time for uptime calculation */
   private val startTime: Instant = Instant.now()
 
@@ -539,5 +638,11 @@ object ConstellationRoutes {
       scheduler: GlobalScheduler,
       lifecycle: ConstellationLifecycle
   ): ConstellationRoutes =
-    new ConstellationRoutes(constellation, compiler, functionRegistry, Some(scheduler), Some(lifecycle))
+    new ConstellationRoutes(
+      constellation,
+      compiler,
+      functionRegistry,
+      Some(scheduler),
+      Some(lifecycle)
+    )
 }

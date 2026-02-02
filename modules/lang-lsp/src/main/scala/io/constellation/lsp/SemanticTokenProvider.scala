@@ -1,19 +1,19 @@
 package io.constellation.lsp
 
-import io.constellation.lang.ast._
+import io.constellation.lang.ast.*
 import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lsp.SemanticTokenTypes._
+import io.constellation.lsp.SemanticTokenTypes.*
 
 import scala.collection.mutable
 
 /** Provides semantic tokens for LSP semantic highlighting.
   *
-  * This provider parses constellation-lang source code and extracts
-  * semantic token information for syntax highlighting that understands
-  * the semantic meaning of code elements (e.g., distinguishing functions
-  * from variables, parameters from local variables, etc.)
+  * This provider parses constellation-lang source code and extracts semantic token information for
+  * syntax highlighting that understands the semantic meaning of code elements (e.g., distinguishing
+  * functions from variables, parameters from local variables, etc.)
   *
-  * @see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
+  * @see
+  *   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_semanticTokens
   */
 class SemanticTokenProvider {
 
@@ -27,11 +27,13 @@ class SemanticTokenProvider {
 
   /** Compute semantic tokens for the given source code.
     *
-    * @param source The constellation-lang source code
-    * @return List of integers representing delta-encoded tokens per LSP spec,
-    *         or empty list on parse error (graceful degradation)
+    * @param source
+    *   The constellation-lang source code
+    * @return
+    *   List of integers representing delta-encoded tokens per LSP spec, or empty list on parse
+    *   error (graceful degradation)
     */
-  def computeTokens(source: String): List[Int] = {
+  def computeTokens(source: String): List[Int] =
     ConstellationParser.parse(source) match {
       case Right(program) =>
         val rawTokens = extractTokens(program)
@@ -41,7 +43,6 @@ class SemanticTokenProvider {
         // TextMate grammar still provides basic highlighting
         List.empty
     }
-  }
 
   /** Extract raw tokens from the AST */
   private def extractTokens(program: Program): List[RawToken] = {
@@ -90,9 +91,8 @@ class SemanticTokenProvider {
         )
         tokens ++= extractTypeExprTokens(typeExpr.value)
         // Process annotations
-        annotations.foreach {
-          case Annotation.Example(expr) =>
-            tokens ++= extractExpressionTokens(expr)
+        annotations.foreach { case Annotation.Example(expr) =>
+          tokens ++= extractExpressionTokens(expr)
         }
 
       case Declaration.Assignment(target, value) =>
@@ -176,8 +176,8 @@ class SemanticTokenProvider {
   /** Extract tokens from an expression */
   private def extractExpressionTokens(located: Located[Expression]): List[RawToken] = {
     val tokens = mutable.ListBuffer[RawToken]()
-    val expr = located.value
-    val span = located.span
+    val expr   = located.value
+    val span   = located.span
 
     expr match {
       case Expression.VarRef(_) =>
@@ -204,7 +204,7 @@ class SemanticTokenProvider {
 
       case Expression.Projection(source, _) =>
         tokens ++= extractExpressionTokens(source)
-        // Field names in projection don't have individual spans
+      // Field names in projection don't have individual spans
 
       case Expression.FieldAccess(source, field) =>
         tokens ++= extractExpressionTokens(source)
@@ -299,14 +299,14 @@ class SemanticTokenProvider {
   /** Encode raw tokens as delta-encoded integers per LSP spec.
     *
     * Each token is encoded as 5 integers:
-    * - deltaLine: line delta from previous token
-    * - deltaStart: character delta (or absolute if new line)
-    * - length: token length
-    * - tokenType: token type index
-    * - tokenModifiers: modifier bitmask
+    *   - deltaLine: line delta from previous token
+    *   - deltaStart: character delta (or absolute if new line)
+    *   - length: token length
+    *   - tokenType: token type index
+    *   - tokenModifiers: modifier bitmask
     */
   private def encodeTokens(rawTokens: List[RawToken], source: String): List[Int] = {
-    if (rawTokens.isEmpty) return List.empty
+    if rawTokens.isEmpty then return List.empty
 
     // Build line map for offset -> line/col conversion
     val lineMap = LineMap.fromSource(source)
@@ -315,17 +315,17 @@ class SemanticTokenProvider {
     val sorted = rawTokens.sortBy(_.start)
 
     var prevLine = 0
-    var prevCol = 0
-    val encoded = mutable.ListBuffer[Int]()
+    var prevCol  = 0
+    val encoded  = mutable.ListBuffer[Int]()
 
     sorted.foreach { token =>
       val lineCol = lineMap.offsetToLineCol(token.start)
       // LineCol is 1-based, convert to 0-based for LSP
       val line = lineCol.line - 1
-      val col = lineCol.col - 1
+      val col  = lineCol.col - 1
 
       val deltaLine = line - prevLine
-      val deltaCol = if (deltaLine == 0) col - prevCol else col
+      val deltaCol  = if deltaLine == 0 then col - prevCol else col
 
       encoded += deltaLine
       encoded += deltaCol
@@ -342,6 +342,7 @@ class SemanticTokenProvider {
 }
 
 object SemanticTokenProvider {
+
   /** Create a new SemanticTokenProvider instance */
   def apply(): SemanticTokenProvider = new SemanticTokenProvider()
 }

@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
   * Presence as `Some(...)` in `Config` means enabled (opt-in via `.withRateLimit()`).
   *
   * Environment variables:
-  *   - `CONSTELLATION_RATE_LIMIT_RPM`   — requests per minute (default 100)
+  *   - `CONSTELLATION_RATE_LIMIT_RPM` — requests per minute (default 100)
   *   - `CONSTELLATION_RATE_LIMIT_BURST` — burst size (default 20)
   *
   * @param requestsPerMinute
@@ -38,9 +38,11 @@ case class RateLimitConfig(
 
   /** Validate the configuration. */
   def validate: Either[String, RateLimitConfig] =
-    if requestsPerMinute <= 0 then Left(s"requestsPerMinute must be positive, got: $requestsPerMinute")
+    if requestsPerMinute <= 0 then
+      Left(s"requestsPerMinute must be positive, got: $requestsPerMinute")
     else if burst <= 0 then Left(s"burst must be positive, got: $burst")
-    else if keyRequestsPerMinute <= 0 then Left(s"keyRequestsPerMinute must be positive, got: $keyRequestsPerMinute")
+    else if keyRequestsPerMinute <= 0 then
+      Left(s"keyRequestsPerMinute must be positive, got: $keyRequestsPerMinute")
     else if keyBurst <= 0 then Left(s"keyBurst must be positive, got: $keyBurst")
     else Right(this)
 }
@@ -49,11 +51,13 @@ object RateLimitConfig {
 
   /** Create configuration from environment variables. */
   def fromEnv: RateLimitConfig = {
-    val rpm = sys.env.get("CONSTELLATION_RATE_LIMIT_RPM")
+    val rpm = sys.env
+      .get("CONSTELLATION_RATE_LIMIT_RPM")
       .flatMap(_.toIntOption)
       .getOrElse(100)
 
-    val burst = sys.env.get("CONSTELLATION_RATE_LIMIT_BURST")
+    val burst = sys.env
+      .get("CONSTELLATION_RATE_LIMIT_BURST")
       .flatMap(_.toIntOption)
       .getOrElse(20)
 
@@ -66,15 +70,15 @@ object RateLimitConfig {
 
 /** Per-IP and per-API-key token-bucket rate limiter for HTTP routes.
   *
-  * Uses `tryAcquire` (non-blocking). When a client exceeds the limit a 429
-  * response is returned immediately with a `Retry-After` header.
+  * Uses `tryAcquire` (non-blocking). When a client exceeds the limit a 429 response is returned
+  * immediately with a `Retry-After` header.
   *
   * Rate limiting is applied in two layers:
-  *   1. Per-IP: every client is rate-limited by source IP
-  *   2. Per-API-key: authenticated clients are also rate-limited by their key
+  *   1. Per-IP: every client is rate-limited by source IP 2. Per-API-key: authenticated clients are
+  *      also rate-limited by their key
   *
-  * A request must pass both checks. This prevents a single API key from
-  * monopolizing the IP's budget and vice versa.
+  * A request must pass both checks. This prevents a single API key from monopolizing the IP's
+  * budget and vice versa.
   */
 object RateLimitMiddleware {
 
@@ -96,14 +100,14 @@ object RateLimitMiddleware {
 
   /** Wrap routes using a pre-created bucket Ref.
     *
-    * This is a pure function — no IO allocation. Useful when the Ref is created
-    * during server setup (e.g. inside `Resource.eval`) and reused in a pure callback.
+    * This is a pure function — no IO allocation. Useful when the Ref is created during server setup
+    * (e.g. inside `Resource.eval`) and reused in a pure callback.
     */
   def withBuckets(
       config: RateLimitConfig,
       buckets: Ref[IO, Map[String, TokenBucketRateLimiter]]
   )(routes: HttpRoutes[IO]): HttpRoutes[IO] = {
-    val ipRate = RateLimit.perMinute(config.requestsPerMinute)
+    val ipRate  = RateLimit.perMinute(config.requestsPerMinute)
     val keyRate = RateLimit.perMinute(config.keyRequestsPerMinute)
 
     Kleisli { (req: Request[IO]) =>
@@ -114,7 +118,7 @@ object RateLimitMiddleware {
 
       if exempt then routes(req)
       else {
-        val ip = extractClientIp(req)
+        val ip     = extractClientIp(req)
         val apiKey = extractBearerToken(req)
 
         // Check IP-based rate limit
@@ -130,29 +134,34 @@ object RateLimitMiddleware {
           case None => IO.pure(true)
         }
 
-        OptionT.liftF(ipCheck.flatMap { ipOk =>
-          if (!ipOk) IO.pure(false)
-          else keyCheck
-        }).flatMap { acquired =>
-          if acquired then routes(req)
-          else {
-            val retryAfterSeconds = 60L / config.requestsPerMinute.toLong
-            val response = Response[IO](Status.TooManyRequests)
-              .putHeaders(`Retry-After`.unsafeFromLong(retryAfterSeconds.max(1L)))
-              .withEntity(ErrorResponse(
-                error = "RateLimitExceeded",
-                message = "Too many requests, please try again later"
-              ))
-            OptionT.some[IO](response)
+        OptionT
+          .liftF(ipCheck.flatMap { ipOk =>
+            if !ipOk then IO.pure(false)
+            else keyCheck
+          })
+          .flatMap { acquired =>
+            if acquired then routes(req)
+            else {
+              val retryAfterSeconds = 60L / config.requestsPerMinute.toLong
+              val response = Response[IO](Status.TooManyRequests)
+                .putHeaders(`Retry-After`.unsafeFromLong(retryAfterSeconds.max(1L)))
+                .withEntity(
+                  ErrorResponse(
+                    error = "RateLimitExceeded",
+                    message = "Too many requests, please try again later"
+                  )
+                )
+              OptionT.some[IO](response)
+            }
           }
-        }
       }
     }
   }
 
   /** Extract client IP from X-Forwarded-For header or remote address. */
   private[http] def extractClientIp(req: Request[IO]): String =
-    req.headers.get[org.http4s.headers.`X-Forwarded-For`]
+    req.headers
+      .get[org.http4s.headers.`X-Forwarded-For`]
       .flatMap(_.values.head)
       .map(_.toInetAddress.getHostAddress)
       .orElse(req.remoteAddr.map(_.toInetAddress.getHostAddress))
@@ -174,7 +183,7 @@ object RateLimitMiddleware {
       ip: String,
       rate: RateLimit,
       burst: Int
-  ): IO[TokenBucketRateLimiter] = {
+  ): IO[TokenBucketRateLimiter] =
     ref.get.flatMap { buckets =>
       buckets.get(ip) match {
         case Some(limiter) => IO.pure(limiter)
@@ -190,5 +199,4 @@ object RateLimitMiddleware {
           }
       }
     }
-  }
 }

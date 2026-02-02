@@ -1,7 +1,7 @@
 package io.constellation.lang.benchmark
 
 import cats.effect.unsafe.implicits.global
-import io.constellation.lang._
+import io.constellation.lang.*
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.FunctionRegistry
 import org.scalatest.flatspec.AnyFlatSpec
@@ -14,9 +14,9 @@ import scala.collection.mutable.ListBuffer
   * Run with: sbt "langCompiler/testOnly *CacheBenchmark"
   *
   * Tests:
-  * - Cold cache (first compile, no cache hit)
-  * - Warm cache (subsequent compiles, cache hits)
-  * - Cache speedup factor (warm / cold ratio)
+  *   - Cold cache (first compile, no cache hit)
+  *   - Warm cache (subsequent compiles, cache hits)
+  *   - Cache speedup factor (warm / cold ratio)
   */
 class CacheBenchmark extends AnyFlatSpec with Matchers {
 
@@ -117,7 +117,7 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
   }
 
   it should "measure compilation time with cache hits (medium)" in {
-    val source = TestFixtures.mediumProgram
+    val source   = TestFixtures.mediumProgram
     val compiler = LangCompiler.builder.withCaching().build
 
     // Populate cache
@@ -140,7 +140,7 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
   }
 
   it should "measure compilation time with cache hits (large)" in {
-    val source = TestFixtures.largeProgram
+    val source   = TestFixtures.largeProgram
     val compiler = LangCompiler.builder.withCaching().build
 
     // Populate cache
@@ -167,7 +167,7 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "IR cache benchmark" should "measure IR compilation with cache (large)" in {
-    val source = TestFixtures.largeProgram
+    val source   = TestFixtures.largeProgram
     val compiler = LangCompiler.builder.withCaching().build.asInstanceOf[CachingLangCompiler]
 
     // Cold compile first
@@ -195,7 +195,7 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "Cache invalidation benchmark" should "measure recompilation after invalidation" in {
-    val source = TestFixtures.mediumProgram
+    val source   = TestFixtures.mediumProgram
     val compiler = LangCompiler.builder.withCaching().build.asInstanceOf[CachingLangCompiler]
 
     // Populate cache
@@ -263,7 +263,9 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
       (coldResult, warmResult) match {
         case (Some(cold), Some(warm)) =>
           val speedup = cold.avgMs / warm.avgMs
-          println(f"$size%-10s: cold=${cold.avgMs}%7.2fms  warm=${warm.avgMs}%7.2fms  speedup=${speedup}%6.1fx")
+          println(
+            f"$size%-10s: cold=${cold.avgMs}%7.2fms  warm=${warm.avgMs}%7.2fms  speedup=${speedup}%6.1fx"
+          )
         case _ =>
           println(s"$size: incomplete data")
       }
@@ -275,7 +277,7 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
     val coldResults = allResults.filter(_.phase == "cold_cache").toList
     val warmResults = allResults.filter(_.phase == "warm_cache").toList
 
-    if (coldResults.nonEmpty && warmResults.nonEmpty) {
+    if coldResults.nonEmpty && warmResults.nonEmpty then {
       val avgCold    = coldResults.map(_.avgMs).sum / coldResults.size
       val avgWarm    = warmResults.map(_.avgMs).sum / warmResults.size
       val avgSpeedup = avgCold / avgWarm
@@ -303,8 +305,10 @@ class CacheBenchmark extends AnyFlatSpec with Matchers {
     val warmResults = allResults.filter(_.phase == "warm_cache").toList
 
     BenchmarkReporter.printComparison(
-      "warm_cache", warmResults,
-      "cold_cache", coldResults
+      "warm_cache",
+      warmResults,
+      "cold_cache",
+      coldResults
     )
 
     // Write JSON report

@@ -2,10 +2,14 @@ package io.constellation.lang.optimizer
 
 /** Configuration for IR optimization passes.
   *
-  * @param enableDCE Enable dead code elimination
-  * @param enableConstantFolding Enable constant folding
-  * @param enableCSE Enable common subexpression elimination
-  * @param maxIterations Maximum number of optimization iterations (for iterative optimization)
+  * @param enableDCE
+  *   Enable dead code elimination
+  * @param enableConstantFolding
+  *   Enable constant folding
+  * @param enableCSE
+  *   Enable common subexpression elimination
+  * @param maxIterations
+  *   Maximum number of optimization iterations (for iterative optimization)
   */
 final case class OptimizationConfig(
     enableDCE: Boolean = true,
@@ -16,9 +20,9 @@ final case class OptimizationConfig(
 
   /** Returns the list of enabled pass names */
   def enabledPassNames: List[String] = List(
-    if (enableDCE) Some("dead-code-elimination") else None,
-    if (enableConstantFolding) Some("constant-folding") else None,
-    if (enableCSE) Some("common-subexpression-elimination") else None
+    if enableDCE then Some("dead-code-elimination") else None,
+    if enableConstantFolding then Some("constant-folding") else None,
+    if enableCSE then Some("common-subexpression-elimination") else None
   ).flatten
 
   /** Check if any optimization is enabled */

@@ -2,14 +2,14 @@ package io.constellation.execution
 
 import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.UUID
 
-import io.constellation._
+import io.constellation.*
 import io.constellation.spi.ConstellationBackends
 
 class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
@@ -24,24 +24,26 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
       completionDelay: Option[FiniteDuration] = None
   ): IO[(CancellableExecution, Deferred[IO, Unit])] =
     for {
-      cancelledSignal <- Deferred[IO, Unit]
+      cancelledSignal  <- Deferred[IO, Unit]
       completionSignal <- Deferred[IO, Unit]
-      statusRef <- cats.effect.Ref.of[IO, ExecutionStatus](ExecutionStatus.Running)
+      statusRef        <- cats.effect.Ref.of[IO, ExecutionStatus](ExecutionStatus.Running)
     } yield {
       val exec = new CancellableExecution {
         val executionId: UUID = id
         def cancel: IO[Unit] =
           IO.sleep(cancelDelay) *>
-          statusRef.set(ExecutionStatus.Cancelled) *>
-          cancelledSignal.complete(()).void
+            statusRef.set(ExecutionStatus.Cancelled) *>
+            cancelledSignal.complete(()).void
         def result: IO[Runtime.State] =
-          completionSignal.get.as(Runtime.State(
-            processUuid = id,
-            dag = DagSpec.empty("mock"),
-            moduleStatus = Map.empty,
-            data = Map.empty,
-            latency = None
-          ))
+          completionSignal.get.as(
+            Runtime.State(
+              processUuid = id,
+              dag = DagSpec.empty("mock"),
+              moduleStatus = Map.empty,
+              data = Map.empty,
+              latency = None
+            )
+          )
         def status: IO[ExecutionStatus] = statusRef.get
       }
 
@@ -68,7 +70,7 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   it should "allow registration when Running" in {
-    val lc = ConstellationLifecycle.create.unsafeRunSync()
+    val lc        = ConstellationLifecycle.create.unsafeRunSync()
     val (exec, _) = mockExecution().unsafeRunSync()
 
     val registered = lc.registerExecution(exec.executionId, exec).unsafeRunSync()
@@ -105,7 +107,7 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   it should "track deregistration" in {
-    val lc = ConstellationLifecycle.create.unsafeRunSync()
+    val lc        = ConstellationLifecycle.create.unsafeRunSync()
     val (exec, _) = mockExecution().unsafeRunSync()
 
     lc.registerExecution(exec.executionId, exec).unsafeRunSync()
@@ -182,85 +184,92 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "GlobalScheduler with maxQueueSize" should "reject when queue is full" in {
-    GlobalScheduler.bounded(maxConcurrency = 1, maxQueueSize = 2).use { scheduler =>
-      for {
-        // Fill up: 1 active + 2 queued = at capacity
-        gate <- Deferred[IO, Unit]
+    GlobalScheduler
+      .bounded(maxConcurrency = 1, maxQueueSize = 2)
+      .use { scheduler =>
+        for {
+          // Fill up: 1 active + 2 queued = at capacity
+          gate <- Deferred[IO, Unit]
 
-        // Submit a blocking task (takes the active slot)
-        f1 <- scheduler.submit(50, gate.get).start
+          // Submit a blocking task (takes the active slot)
+          f1 <- scheduler.submit(50, gate.get).start
 
-        // Give time for f1 to be dispatched
-        _ <- IO.sleep(100.millis)
+          // Give time for f1 to be dispatched
+          _ <- IO.sleep(100.millis)
 
-        // Fill the queue with 2 tasks
-        f2 <- scheduler.submit(50, IO.pure(2)).start
-        f3 <- scheduler.submit(50, IO.pure(3)).start
+          // Fill the queue with 2 tasks
+          f2 <- scheduler.submit(50, IO.pure(2)).start
+          f3 <- scheduler.submit(50, IO.pure(3)).start
 
-        // Give time for tasks to be enqueued
-        _ <- IO.sleep(100.millis)
+          // Give time for tasks to be enqueued
+          _ <- IO.sleep(100.millis)
 
-        // Next submission should fail (queue full)
-        result <- scheduler.submit(50, IO.pure(4)).attempt
+          // Next submission should fail (queue full)
+          result <- scheduler.submit(50, IO.pure(4)).attempt
 
-        // Clean up
-        _ <- gate.complete(())
-        _ <- f1.join
-        _ <- f2.join
-        _ <- f3.join
-      } yield {
-        result.isLeft shouldBe true
-        result.left.toOption.get shouldBe a[QueueFullException]
-        val ex = result.left.toOption.get.asInstanceOf[QueueFullException]
-        ex.maxSize shouldBe 2
+          // Clean up
+          _ <- gate.complete(())
+          _ <- f1.join
+          _ <- f2.join
+          _ <- f3.join
+        } yield {
+          result.isLeft shouldBe true
+          result.left.toOption.get shouldBe a[QueueFullException]
+          val ex = result.left.toOption.get.asInstanceOf[QueueFullException]
+          ex.maxSize shouldBe 2
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
   }
 
   it should "not reject when maxQueueSize is 0 (unlimited)" in {
-    GlobalScheduler.bounded(maxConcurrency = 1, maxQueueSize = 0).use { scheduler =>
-      for {
-        gate <- Deferred[IO, Unit]
-        f1 <- scheduler.submit(50, gate.get).start
-        _ <- IO.sleep(100.millis)
+    GlobalScheduler
+      .bounded(maxConcurrency = 1, maxQueueSize = 0)
+      .use { scheduler =>
+        for {
+          gate <- Deferred[IO, Unit]
+          f1   <- scheduler.submit(50, gate.get).start
+          _    <- IO.sleep(100.millis)
 
-        // Should succeed even with many queued tasks
-        f2 <- scheduler.submit(50, IO.pure(2)).start
-        f3 <- scheduler.submit(50, IO.pure(3)).start
-        f4 <- scheduler.submit(50, IO.pure(4)).start
-        f5 <- scheduler.submit(50, IO.pure(5)).start
+          // Should succeed even with many queued tasks
+          f2 <- scheduler.submit(50, IO.pure(2)).start
+          f3 <- scheduler.submit(50, IO.pure(3)).start
+          f4 <- scheduler.submit(50, IO.pure(4)).start
+          f5 <- scheduler.submit(50, IO.pure(5)).start
 
-        _ <- gate.complete(())
-        _ <- f1.join
-        _ <- f2.join
-        _ <- f3.join
-        _ <- f4.join
-        _ <- f5.join
-      } yield succeed
-    }.unsafeRunSync()
+          _ <- gate.complete(())
+          _ <- f1.join
+          _ <- f2.join
+          _ <- f3.join
+          _ <- f4.join
+          _ <- f5.join
+        } yield succeed
+      }
+      .unsafeRunSync()
   }
 
   it should "allow submissions after queue drains" in {
-    GlobalScheduler.bounded(maxConcurrency = 1, maxQueueSize = 1).use { scheduler =>
-      for {
-        gate <- Deferred[IO, Unit]
-        f1 <- scheduler.submit(50, gate.get).start
-        _ <- IO.sleep(100.millis)
+    GlobalScheduler
+      .bounded(maxConcurrency = 1, maxQueueSize = 1)
+      .use { scheduler =>
+        for {
+          gate <- Deferred[IO, Unit]
+          f1   <- scheduler.submit(50, gate.get).start
+          _    <- IO.sleep(100.millis)
 
-        // Queue 1 task (at capacity)
-        f2 <- scheduler.submit(50, IO.pure(2)).start
-        _ <- IO.sleep(50.millis)
+          // Queue 1 task (at capacity)
+          f2 <- scheduler.submit(50, IO.pure(2)).start
+          _  <- IO.sleep(50.millis)
 
-        // Release — queue drains
-        _ <- gate.complete(())
-        _ <- f1.join
-        _ <- f2.join
+          // Release — queue drains
+          _ <- gate.complete(())
+          _ <- f1.join
+          _ <- f2.join
 
-        // Should work again
-        result <- scheduler.submit(50, IO.pure(42))
-      } yield {
-        result shouldBe 42
+          // Should work again
+          result <- scheduler.submit(50, IO.pure(42))
+        } yield result shouldBe 42
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
   }
 }

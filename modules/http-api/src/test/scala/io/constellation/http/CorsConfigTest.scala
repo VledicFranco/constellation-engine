@@ -8,7 +8,9 @@ class CorsConfigTest extends AnyFlatSpec with Matchers {
 
   "CorsConfig.validateOrigin" should "accept valid HTTPS origins" in {
     CorsConfig.validateOrigin("https://app.example.com") shouldBe Right("https://app.example.com")
-    CorsConfig.validateOrigin("https://admin.example.com") shouldBe Right("https://admin.example.com")
+    CorsConfig.validateOrigin("https://admin.example.com") shouldBe Right(
+      "https://admin.example.com"
+    )
   }
 
   it should "accept wildcard origin" in {

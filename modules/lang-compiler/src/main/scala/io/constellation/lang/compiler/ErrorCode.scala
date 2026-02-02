@@ -35,106 +35,106 @@ object ErrorCodes {
   // ========== Reference Errors (E001-E009) ==========
 
   case object UndefinedVariable extends ErrorCode {
-    val code        = "E001"
-    val title       = "Undefined variable"
-    val category    = ErrorCategory.Reference
+    val code     = "E001"
+    val title    = "Undefined variable"
+    val category = ErrorCategory.Reference
     val explanation = """The variable you're trying to use has not been declared.
                         |
                         |Variables must be declared before use:
                         |  - As an input: in variableName: Type
                         |  - As an assignment: variableName = SomeModule(...)""".stripMargin.trim
-    val docPath     = Some("constellation-lang/declarations")
+    val docPath = Some("constellation-lang/declarations")
   }
 
   case object UndefinedFunction extends ErrorCode {
-    val code        = "E002"
-    val title       = "Undefined function"
-    val category    = ErrorCategory.Reference
+    val code     = "E002"
+    val title    = "Undefined function"
+    val category = ErrorCategory.Reference
     val explanation = """The function you're trying to call is not registered.
                         |
                         |Make sure the function is:
                         |  - Spelled correctly (function names are case-sensitive)
                         |  - Registered with the compiler via StdLib or custom modules
                         |  - Imported if it's from a namespace: use stdlib.math""".stripMargin.trim
-    val docPath     = Some("constellation-lang/functions")
+    val docPath = Some("constellation-lang/functions")
   }
 
   case object UndefinedType extends ErrorCode {
-    val code        = "E003"
-    val title       = "Undefined type"
-    val category    = ErrorCategory.Reference
+    val code     = "E003"
+    val title    = "Undefined type"
+    val category = ErrorCategory.Reference
     val explanation = """The type you specified is not defined.
                         |
                         |Built-in types: String, Int, Float, Boolean
                         |Collections: List<T>, Map<K, V>, Optional<T>
                         |Custom types must be declared: type MyType = { field: Type }""".stripMargin.trim
-    val docPath     = Some("constellation-lang/types")
+    val docPath = Some("constellation-lang/types")
   }
 
   case object UndefinedNamespace extends ErrorCode {
-    val code        = "E004"
-    val title       = "Undefined namespace"
-    val category    = ErrorCategory.Reference
+    val code     = "E004"
+    val title    = "Undefined namespace"
+    val category = ErrorCategory.Reference
     val explanation = """The namespace you're trying to use is not registered.
                         |
                         |Available namespaces depend on what modules are loaded.
                         |Common namespaces: stdlib, stdlib.math, stdlib.string""".stripMargin.trim
-    val docPath     = Some("constellation-lang/namespaces")
+    val docPath = Some("constellation-lang/namespaces")
   }
 
   case object AmbiguousFunction extends ErrorCode {
-    val code        = "E005"
-    val title       = "Ambiguous function reference"
-    val category    = ErrorCategory.Reference
+    val code     = "E005"
+    val title    = "Ambiguous function reference"
+    val category = ErrorCategory.Reference
     val explanation = """Multiple functions match this name.
                         |
                         |Use the fully qualified name to disambiguate:
                         |  - stdlib.math.add instead of just add
                         |  - Or use an alias: use stdlib.math as m, then m.add""".stripMargin.trim
-    val docPath     = Some("constellation-lang/namespaces")
+    val docPath = Some("constellation-lang/namespaces")
   }
 
   case object InvalidProjection extends ErrorCode {
-    val code        = "E006"
-    val title       = "Invalid projection"
-    val category    = ErrorCategory.Reference
+    val code     = "E006"
+    val title    = "Invalid projection"
+    val category = ErrorCategory.Reference
     val explanation = """The field you're trying to project doesn't exist on this type.
                         |
                         |Projection syntax: record[field1, field2]
                         |This creates a new record with only the specified fields.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/expressions")
+    val docPath = Some("constellation-lang/expressions")
   }
 
   case object InvalidFieldAccess extends ErrorCode {
-    val code        = "E007"
-    val title       = "Invalid field access"
-    val category    = ErrorCategory.Reference
+    val code     = "E007"
+    val title    = "Invalid field access"
+    val category = ErrorCategory.Reference
     val explanation = """The field you're trying to access doesn't exist on this type.
                         |
                         |Field access syntax: record.fieldName
                         |The source expression must be a record type with that field.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/expressions")
+    val docPath = Some("constellation-lang/expressions")
   }
 
   // ========== Type Errors (E010-E019) ==========
 
   case object TypeMismatch extends ErrorCode {
-    val code        = "E010"
-    val title       = "Type mismatch"
-    val category    = ErrorCategory.Type
+    val code     = "E010"
+    val title    = "Type mismatch"
+    val category = ErrorCategory.Type
     val explanation = """The actual type does not match the expected type.
                         |
                         |This often happens when:
                         |  - Passing wrong argument type to a function
                         |  - Assigning incompatible value to a variable
                         |  - Returning wrong type from a conditional""".stripMargin.trim
-    val docPath     = Some("constellation-lang/type-system")
+    val docPath = Some("constellation-lang/type-system")
   }
 
   case object IncompatibleOperator extends ErrorCode {
-    val code        = "E011"
-    val title       = "Incompatible types for operator"
-    val category    = ErrorCategory.Type
+    val code     = "E011"
+    val title    = "Incompatible types for operator"
+    val category = ErrorCategory.Type
     val explanation = """The operator cannot be applied to these types.
                         |
                         |Operators and supported types:
@@ -142,13 +142,13 @@ object ErrorCodes {
                         |  - Comparison (==, !=, <, >): Int, Float, String, Boolean
                         |  - Boolean (and, or, not): Boolean
                         |  - Merge (+): Records, Candidates""".stripMargin.trim
-    val docPath     = Some("constellation-lang/operators")
+    val docPath = Some("constellation-lang/operators")
   }
 
   case object IncompatibleMerge extends ErrorCode {
-    val code        = "E012"
-    val title       = "Incompatible types for merge"
-    val category    = ErrorCategory.Type
+    val code     = "E012"
+    val title    = "Incompatible types for merge"
+    val category = ErrorCategory.Type
     val explanation = """Cannot merge these types with the + operator.
                         |
                         |The merge operator requires compatible types:
@@ -156,13 +156,13 @@ object ErrorCodes {
                         |  - Two Candidates (element-wise merge)
                         |  - Candidates + Record (broadcast)
                         |  - Record + Candidates (broadcast)""".stripMargin.trim
-    val docPath     = Some("constellation-lang/operators")
+    val docPath = Some("constellation-lang/operators")
   }
 
   case object UnsupportedComparison extends ErrorCode {
-    val code        = "E013"
-    val title       = "Unsupported comparison"
-    val category    = ErrorCategory.Type
+    val code     = "E013"
+    val title    = "Unsupported comparison"
+    val category = ErrorCategory.Type
     val explanation = """This comparison operator is not supported for these types.
                         |
                         |Comparison operators (==, !=, <, >, <=, >=) work with:
@@ -170,36 +170,36 @@ object ErrorCodes {
                         |  - Float and Float
                         |  - String and String (lexicographic)
                         |  - Boolean and Boolean (== and != only)""".stripMargin.trim
-    val docPath     = Some("constellation-lang/operators")
+    val docPath = Some("constellation-lang/operators")
   }
 
   case object UnsupportedArithmetic extends ErrorCode {
-    val code        = "E014"
-    val title       = "Unsupported arithmetic"
-    val category    = ErrorCategory.Type
+    val code     = "E014"
+    val title    = "Unsupported arithmetic"
+    val category = ErrorCategory.Type
     val explanation = """Arithmetic operators are not supported for these types.
                         |
                         |Arithmetic operators (+, -, *, /) work with:
                         |  - Int and Int -> Int
                         |  - Float and Float -> Float
                         |  - Int and Float (or vice versa) -> Float""".stripMargin.trim
-    val docPath     = Some("constellation-lang/operators")
+    val docPath = Some("constellation-lang/operators")
   }
 
   case object GeneralTypeError extends ErrorCode {
-    val code        = "E015"
-    val title       = "Type error"
-    val category    = ErrorCategory.Type
+    val code     = "E015"
+    val title    = "Type error"
+    val category = ErrorCategory.Type
     val explanation = """A type-related error occurred during compilation.
                         |
                         |Check that all expressions have compatible types.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/type-system")
+    val docPath = Some("constellation-lang/type-system")
   }
 
   case object InvalidOptionValue extends ErrorCode {
-    val code        = "E016"
-    val title       = "Invalid option value"
-    val category    = ErrorCategory.Type
+    val code     = "E016"
+    val title    = "Invalid option value"
+    val category = ErrorCategory.Type
     val explanation = """The value provided for a module call option is invalid.
                         |
                         |Option value constraints:
@@ -207,13 +207,13 @@ object ErrorCodes {
                         |  - timeout, delay, cache: must be > 0
                         |  - concurrency: must be > 0
                         |  - throttle count: must be > 0""".stripMargin.trim
-    val docPath     = Some("constellation-lang/module-options")
+    val docPath = Some("constellation-lang/module-options")
   }
 
   case object FallbackTypeMismatch extends ErrorCode {
-    val code        = "E017"
-    val title       = "Fallback type mismatch"
-    val category    = ErrorCategory.Type
+    val code     = "E017"
+    val title    = "Fallback type mismatch"
+    val category = ErrorCategory.Type
     val explanation = """The fallback expression type doesn't match the module return type.
                         |
                         |The fallback option provides a default value when the module fails.
@@ -223,15 +223,15 @@ object ErrorCodes {
                         |  result = GetName(id) with fallback: "Unknown"
                         |  If GetName returns String, "Unknown" is valid.
                         |  If GetName returns Int, "Unknown" would be invalid.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/module-options")
+    val docPath = Some("constellation-lang/module-options")
   }
 
   // ========== Syntax Errors (E020-E029) ==========
 
   case object ParseError extends ErrorCode {
-    val code        = "E020"
-    val title       = "Syntax error"
-    val category    = ErrorCategory.Syntax
+    val code     = "E020"
+    val title    = "Syntax error"
+    val category = ErrorCategory.Syntax
     val explanation = """The parser encountered invalid syntax.
                         |
                         |Check for:
@@ -239,52 +239,52 @@ object ErrorCodes {
                         |  - Missing commas between arguments
                         |  - Typos in keywords
                         |  - Unclosed strings or brackets""".stripMargin.trim
-    val docPath     = Some("constellation-lang/syntax")
+    val docPath = Some("constellation-lang/syntax")
   }
 
   case object UnexpectedToken extends ErrorCode {
-    val code        = "E021"
-    val title       = "Unexpected token"
-    val category    = ErrorCategory.Syntax
+    val code     = "E021"
+    val title    = "Unexpected token"
+    val category = ErrorCategory.Syntax
     val explanation = """The parser found a token it didn't expect at this position.
                         |
                         |This usually indicates a syntax error nearby.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/syntax")
+    val docPath = Some("constellation-lang/syntax")
   }
 
   // ========== Semantic Errors (E030-E039) ==========
 
   case object DuplicateDefinition extends ErrorCode {
-    val code        = "E030"
-    val title       = "Duplicate definition"
-    val category    = ErrorCategory.Semantic
+    val code     = "E030"
+    val title    = "Duplicate definition"
+    val category = ErrorCategory.Semantic
     val explanation = """This name is already defined in the current scope.
                         |
                         |Each variable, type, and input must have a unique name.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/declarations")
+    val docPath = Some("constellation-lang/declarations")
   }
 
   case object CircularDependency extends ErrorCode {
-    val code        = "E031"
-    val title       = "Circular dependency"
-    val category    = ErrorCategory.Semantic
+    val code     = "E031"
+    val title    = "Circular dependency"
+    val category = ErrorCategory.Semantic
     val explanation = """A circular dependency was detected in the DAG.
                         |
                         |Variables cannot depend on themselves, directly or indirectly.""".stripMargin.trim
-    val docPath     = Some("constellation-lang/dag")
+    val docPath = Some("constellation-lang/dag")
   }
 
   // ========== Internal Errors (E900+) ==========
 
   case object InternalError extends ErrorCode {
-    val code        = "E900"
-    val title       = "Internal compiler error"
-    val category    = ErrorCategory.Internal
+    val code     = "E900"
+    val title    = "Internal compiler error"
+    val category = ErrorCategory.Internal
     val explanation = """An unexpected error occurred in the compiler.
                         |
                         |This is a bug in the compiler. Please report it at:
                         |https://github.com/VledicFranco/constellation-engine/issues""".stripMargin.trim
-    val docPath     = None
+    val docPath = None
   }
 
   /** All defined error codes for lookup and iteration */

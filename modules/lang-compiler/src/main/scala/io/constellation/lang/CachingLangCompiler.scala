@@ -11,17 +11,18 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** A LangCompiler wrapper that caches compilation results.
   *
-  * Provides transparent caching of compilation results to avoid redundant
-  * parsing, type checking, and IR generation when the same source is
-  * compiled multiple times.
+  * Provides transparent caching of compilation results to avoid redundant parsing, type checking,
+  * and IR generation when the same source is compiled multiple times.
   *
   * Cache invalidation occurs when:
-  * - Source code changes (different sourceHash)
-  * - Function registry changes (different registryHash)
-  * - TTL expires (configurable)
+  *   - Source code changes (different sourceHash)
+  *   - Function registry changes (different registryHash)
+  *   - TTL expires (configurable)
   *
-  * @param underlying the underlying compiler to delegate to on cache miss
-  * @param cache the compilation cache
+  * @param underlying
+  *   the underlying compiler to delegate to on cache miss
+  * @param cache
+  *   the compilation cache
   */
 class CachingLangCompiler(
     underlying: LangCompiler,
@@ -37,8 +38,11 @@ class CachingLangCompiler(
   def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] =
     compileIO(source, dagName).unsafeRunSync()
 
-  override def compileIO(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]] = {
-    val sourceHash   = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+  override def compileIO(
+      source: String,
+      dagName: String
+  ): IO[Either[List[CompileError], CompilationOutput]] = {
+    val sourceHash = ContentHash.computeSHA256(source.getBytes("UTF-8"))
     val registryHash = ContentHash.computeSHA256(
       functionRegistry.all.map(_.toString).sorted.mkString(",").getBytes("UTF-8")
     )
@@ -63,11 +67,11 @@ class CachingLangCompiler(
   }
 
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] = {
-    val sourceHash   = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+    val sourceHash = ContentHash.computeSHA256(source.getBytes("UTF-8"))
     val registryHash = ContentHash.computeSHA256(
       functionRegistry.all.map(_.toString).sorted.mkString(",").getBytes("UTF-8")
     )
-    val cacheKey     = (sourceHash, registryHash)
+    val cacheKey = (sourceHash, registryHash)
 
     // Check IR cache first
     Option(irCache.get(cacheKey)) match {
@@ -79,7 +83,7 @@ class CachingLangCompiler(
         val result = underlying.compileToIR(source, dagName)
         result.foreach { ir =>
           // Limit IR cache size to prevent unbounded growth
-          if (irCache.size() > 100) {
+          if irCache.size() > 100 then {
             irCache.clear() // Simple eviction: clear all when full
           }
           irCache.put(cacheKey, ir)

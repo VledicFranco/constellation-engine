@@ -2,12 +2,12 @@ package io.constellation.execution
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class RateLimitTest extends AnyFlatSpec with Matchers {
 
@@ -46,9 +46,9 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
   "TokenBucketRateLimiter" should "allow immediate execution when tokens available" in {
     val result = (for {
       limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
-      _ <- limiter.acquire
-      _ <- limiter.acquire
-      _ <- limiter.acquire
+      _       <- limiter.acquire
+      _       <- limiter.acquire
+      _       <- limiter.acquire
     } yield true).unsafeRunSync()
 
     result shouldBe true
@@ -56,10 +56,10 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "report available tokens" in {
     val tokens = (for {
-      limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
-      initial <- limiter.availableTokens
-      _ <- limiter.acquire
-      _ <- limiter.acquire
+      limiter   <- TokenBucketRateLimiter(RateLimit.perSecond(10))
+      initial   <- limiter.availableTokens
+      _         <- limiter.acquire
+      _         <- limiter.acquire
       remaining <- limiter.availableTokens
     } yield (initial, remaining)).unsafeRunSync()
 
@@ -69,7 +69,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "tryAcquire returns false when no tokens" in {
     val result = (for {
-      limiter <- TokenBucketRateLimiter.withInitialTokens(RateLimit.perSecond(2), 0)
+      limiter  <- TokenBucketRateLimiter.withInitialTokens(RateLimit.perSecond(2), 0)
       acquired <- limiter.tryAcquire
     } yield acquired).unsafeRunSync()
 
@@ -78,7 +78,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "tryAcquire returns true when tokens available" in {
     val result = (for {
-      limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
+      limiter  <- TokenBucketRateLimiter(RateLimit.perSecond(10))
       acquired <- limiter.tryAcquire
     } yield acquired).unsafeRunSync()
 
@@ -88,12 +88,12 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
   it should "replenish tokens over time" in {
     val result = (for {
       limiter <- TokenBucketRateLimiter(RateLimit(10, 100.millis)) // 10 tokens per 100ms
-      _ <- limiter.acquire
-      _ <- limiter.acquire
-      _ <- limiter.acquire
-      before <- limiter.availableTokens
-      _ <- IO.sleep(50.millis) // Should replenish ~5 tokens
-      after <- limiter.availableTokens
+      _       <- limiter.acquire
+      _       <- limiter.acquire
+      _       <- limiter.acquire
+      before  <- limiter.availableTokens
+      _       <- IO.sleep(50.millis)                               // Should replenish ~5 tokens
+      after   <- limiter.availableTokens
     } yield (before, after)).unsafeRunSync()
 
     result._1 shouldBe 7.0 +- 0.5
@@ -103,8 +103,8 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
   it should "not exceed max tokens on replenish" in {
     val result = (for {
       limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
-      _ <- IO.sleep(200.millis) // Wait for potential over-replenishment
-      tokens <- limiter.availableTokens
+      _       <- IO.sleep(200.millis) // Wait for potential over-replenishment
+      tokens  <- limiter.availableTokens
     } yield tokens).unsafeRunSync()
 
     result shouldBe 10.0 +- 0.1 // Capped at max
@@ -127,8 +127,8 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
   it should "provide stats" in {
     val stats = (for {
       limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
-      _ <- limiter.acquire
-      stats <- limiter.stats
+      _       <- limiter.acquire
+      stats   <- limiter.stats
     } yield stats).unsafeRunSync()
 
     stats.maxTokens shouldBe 10.0
@@ -138,14 +138,14 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
   }
 
   "Rate limiting timing" should "enforce rate limits under load" in {
-    val rate = RateLimit(5, 100.millis) // 5 per 100ms = 50/sec
+    val rate      = RateLimit(5, 100.millis) // 5 per 100ms = 50/sec
     val callCount = 10
 
     val (elapsed, _) = (for {
       limiter <- TokenBucketRateLimiter(rate)
-      start <- IO.realTime
+      start   <- IO.realTime
       // Execute callCount operations
-      _ <- (1 to callCount).toList.traverse_(_ => limiter.acquire)
+      _   <- (1 to callCount).toList.traverse_(_ => limiter.acquire)
       end <- IO.realTime
     } yield (end - start, ())).unsafeRunSync()
 
@@ -157,7 +157,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
 class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
 
   "ConcurrencyLimiter" should "allow concurrent executions up to limit" in {
-    val maxActive = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
     val result = (for {
@@ -181,12 +181,12 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   it should "track active count" in {
     val result = (for {
       limiter <- ConcurrencyLimiter(5)
-      before <- limiter.active
-      _ <- limiter.acquire
-      _ <- limiter.acquire
-      during <- limiter.active
-      _ <- limiter.release
-      after <- limiter.active
+      before  <- limiter.active
+      _       <- limiter.acquire
+      _       <- limiter.acquire
+      during  <- limiter.active
+      _       <- limiter.release
+      after   <- limiter.active
     } yield (before, during, after)).unsafeRunSync()
 
     result shouldBe (0L, 2L, 1L)
@@ -194,10 +194,10 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "report available permits" in {
     val result = (for {
-      limiter <- ConcurrencyLimiter(5)
-      initial <- limiter.available
-      _ <- limiter.acquire
-      _ <- limiter.acquire
+      limiter   <- ConcurrencyLimiter(5)
+      initial   <- limiter.available
+      _         <- limiter.acquire
+      _         <- limiter.acquire
       remaining <- limiter.available
     } yield (initial, remaining)).unsafeRunSync()
 
@@ -206,9 +206,9 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "tryAcquire returns false when limit reached" in {
     val result = (for {
-      limiter <- ConcurrencyLimiter(2)
-      _ <- limiter.acquire
-      _ <- limiter.acquire
+      limiter  <- ConcurrencyLimiter(2)
+      _        <- limiter.acquire
+      _        <- limiter.acquire
       acquired <- limiter.tryAcquire
     } yield acquired).unsafeRunSync()
 
@@ -217,8 +217,8 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
 
   it should "tryAcquire returns true when permits available" in {
     val result = (for {
-      limiter <- ConcurrencyLimiter(5)
-      _ <- limiter.acquire
+      limiter  <- ConcurrencyLimiter(5)
+      _        <- limiter.acquire
       acquired <- limiter.tryAcquire
     } yield acquired).unsafeRunSync()
 
@@ -228,10 +228,10 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   it should "provide accurate statistics" in {
     val stats = (for {
       limiter <- ConcurrencyLimiter(5)
-      _ <- limiter.acquire
-      _ <- limiter.acquire
-      _ <- limiter.release
-      stats <- limiter.stats
+      _       <- limiter.acquire
+      _       <- limiter.acquire
+      _       <- limiter.release
+      stats   <- limiter.stats
     } yield stats).unsafeRunSync()
 
     stats.maxConcurrent shouldBe 5
@@ -246,11 +246,11 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   it should "reset statistics" in {
     val (before, after) = (for {
       limiter <- ConcurrencyLimiter(5)
-      _ <- limiter.acquire
-      _ <- limiter.release
-      before <- limiter.stats
-      _ <- limiter.resetStats
-      after <- limiter.stats
+      _       <- limiter.acquire
+      _       <- limiter.release
+      before  <- limiter.stats
+      _       <- limiter.resetStats
+      after   <- limiter.stats
     } yield (before, after)).unsafeRunSync()
 
     before.totalExecutions shouldBe 1
@@ -271,8 +271,8 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   it should "release permit on failure" in {
     val result = (for {
       limiter <- ConcurrencyLimiter(2)
-      _ <- limiter.withPermit(IO.raiseError[Int](new RuntimeException("boom"))).attempt
-      stats <- limiter.stats
+      _       <- limiter.withPermit(IO.raiseError[Int](new RuntimeException("boom"))).attempt
+      stats   <- limiter.stats
     } yield stats).unsafeRunSync()
 
     result.currentActive shouldBe 0
@@ -280,7 +280,7 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "create mutex with single permit" in {
-    val maxActive = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
     val result = (for {
@@ -309,7 +309,7 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
       limiter1 <- registry.getRateLimiter("module1", RateLimit.perSecond(10))
       limiter2 <- registry.getRateLimiter("module1", RateLimit.perSecond(100)) // Different rate
       sameLimiter <- IO.pure(limiter1 eq limiter2) // Should be same instance
-      has <- registry.hasRateLimiter("module1")
+      has         <- registry.hasRateLimiter("module1")
     } yield (sameLimiter, has)).unsafeRunSync()
 
     result shouldBe (true, true)
@@ -317,9 +317,9 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "create separate limiters for different names" in {
     val result = (for {
-      registry <- LimiterRegistry.create
-      limiter1 <- registry.getRateLimiter("module1", RateLimit.perSecond(10))
-      limiter2 <- registry.getRateLimiter("module2", RateLimit.perSecond(10))
+      registry  <- LimiterRegistry.create
+      limiter1  <- registry.getRateLimiter("module1", RateLimit.perSecond(10))
+      limiter2  <- registry.getRateLimiter("module2", RateLimit.perSecond(10))
       different <- IO.pure(!(limiter1 eq limiter2))
     } yield different).unsafeRunSync()
 
@@ -328,11 +328,11 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "create and reuse concurrency limiters" in {
     val result = (for {
-      registry <- LimiterRegistry.create
-      limiter1 <- registry.getConcurrencyLimiter("module1", 5)
-      limiter2 <- registry.getConcurrencyLimiter("module1", 10) // Different limit
+      registry    <- LimiterRegistry.create
+      limiter1    <- registry.getConcurrencyLimiter("module1", 5)
+      limiter2    <- registry.getConcurrencyLimiter("module1", 10) // Different limit
       sameLimiter <- IO.pure(limiter1 eq limiter2)
-      has <- registry.hasConcurrencyLimiter("module1")
+      has         <- registry.hasConcurrencyLimiter("module1")
     } yield (sameLimiter, has)).unsafeRunSync()
 
     result shouldBe (true, true)
@@ -340,11 +340,11 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "list registered limiters" in {
     val result = (for {
-      registry <- LimiterRegistry.create
-      _ <- registry.getRateLimiter("b", RateLimit.perSecond(10))
-      _ <- registry.getRateLimiter("a", RateLimit.perSecond(10))
-      _ <- registry.getConcurrencyLimiter("c", 5)
-      rateLimiters <- registry.listRateLimiters
+      registry            <- LimiterRegistry.create
+      _                   <- registry.getRateLimiter("b", RateLimit.perSecond(10))
+      _                   <- registry.getRateLimiter("a", RateLimit.perSecond(10))
+      _                   <- registry.getConcurrencyLimiter("c", 5)
+      rateLimiters        <- registry.listRateLimiters
       concurrencyLimiters <- registry.listConcurrencyLimiters
     } yield (rateLimiters, concurrencyLimiters)).unsafeRunSync()
 
@@ -354,12 +354,12 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "remove limiters" in {
     val result = (for {
-      registry <- LimiterRegistry.create
-      _ <- registry.getRateLimiter("test", RateLimit.perSecond(10))
-      _ <- registry.getConcurrencyLimiter("test", 5)
-      hasBefore <- registry.hasRateLimiter("test")
-      removed <- registry.removeRateLimiter("test")
-      hasAfter <- registry.hasRateLimiter("test")
+      registry   <- LimiterRegistry.create
+      _          <- registry.getRateLimiter("test", RateLimit.perSecond(10))
+      _          <- registry.getConcurrencyLimiter("test", 5)
+      hasBefore  <- registry.hasRateLimiter("test")
+      removed    <- registry.removeRateLimiter("test")
+      hasAfter   <- registry.hasRateLimiter("test")
       notRemoved <- registry.removeRateLimiter("nonexistent")
     } yield (hasBefore, removed, hasAfter, notRemoved)).unsafeRunSync()
 
@@ -369,12 +369,12 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
   it should "clear all limiters" in {
     val result = (for {
       registry <- LimiterRegistry.create
-      _ <- registry.getRateLimiter("m1", RateLimit.perSecond(10))
-      _ <- registry.getRateLimiter("m2", RateLimit.perSecond(10))
-      _ <- registry.getConcurrencyLimiter("m3", 5)
-      before <- registry.listRateLimiters
-      _ <- registry.clear
-      after <- registry.listRateLimiters
+      _        <- registry.getRateLimiter("m1", RateLimit.perSecond(10))
+      _        <- registry.getRateLimiter("m2", RateLimit.perSecond(10))
+      _        <- registry.getConcurrencyLimiter("m3", 5)
+      before   <- registry.listRateLimiters
+      _        <- registry.clear
+      after    <- registry.listRateLimiters
     } yield (before.length, after.length)).unsafeRunSync()
 
     result shouldBe (2, 0)
@@ -383,9 +383,9 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
   it should "get all rate limiter stats" in {
     val result = (for {
       registry <- LimiterRegistry.create
-      limiter <- registry.getRateLimiter("test", RateLimit.perSecond(10))
-      _ <- limiter.acquire
-      stats <- registry.allRateLimiterStats
+      limiter  <- registry.getRateLimiter("test", RateLimit.perSecond(10))
+      _        <- limiter.acquire
+      stats    <- registry.allRateLimiterStats
     } yield stats).unsafeRunSync()
 
     result should contain key "test"
@@ -395,11 +395,11 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "remove concurrency limiters" in {
     val result = (for {
-      registry <- LimiterRegistry.create
-      _ <- registry.getConcurrencyLimiter("test", 5)
-      hasBefore <- registry.hasConcurrencyLimiter("test")
-      removed <- registry.removeConcurrencyLimiter("test")
-      hasAfter <- registry.hasConcurrencyLimiter("test")
+      registry   <- LimiterRegistry.create
+      _          <- registry.getConcurrencyLimiter("test", 5)
+      hasBefore  <- registry.hasConcurrencyLimiter("test")
+      removed    <- registry.removeConcurrencyLimiter("test")
+      hasAfter   <- registry.hasConcurrencyLimiter("test")
       notRemoved <- registry.removeConcurrencyLimiter("nonexistent")
     } yield (hasBefore, removed, hasAfter, notRemoved)).unsafeRunSync()
 
@@ -409,9 +409,9 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
   it should "get all concurrency stats" in {
     val result = (for {
       registry <- LimiterRegistry.create
-      limiter <- registry.getConcurrencyLimiter("test", 5)
-      _ <- limiter.acquire
-      stats <- registry.allConcurrencyStats
+      limiter  <- registry.getConcurrencyLimiter("test", 5)
+      _        <- limiter.acquire
+      stats    <- registry.allConcurrencyStats
     } yield stats).unsafeRunSync()
 
     result should contain key "test"
@@ -439,7 +439,7 @@ class RateControlExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "apply concurrency only" in {
-    val maxActive = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
     val result = (for {
@@ -449,7 +449,7 @@ class RateControlExecutorTest extends AnyFlatSpec with Matchers {
           IO {
             val active = currentActive.incrementAndGet()
             maxActive.updateAndGet(m => math.max(m, active))
-          } >> IO.sleep(30.millis) >> IO { currentActive.decrementAndGet() },
+          } >> IO.sleep(30.millis) >> IO(currentActive.decrementAndGet()),
           "module",
           RateControlOptions.withConcurrency(2),
           registry
@@ -461,20 +461,20 @@ class RateControlExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "apply both throttle and concurrency" in {
-    val counter = new AtomicInteger(0)
-    val maxActive = new AtomicInteger(0)
+    val counter       = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
     val result = (for {
       registry <- LimiterRegistry.create
-      start <- IO.realTime
+      start    <- IO.realTime
       _ <- (1 to 6).toList.parTraverse_ { _ =>
         RateControlExecutor.executeWithRateControl(
           IO {
             val active = currentActive.incrementAndGet()
             maxActive.updateAndGet(m => math.max(m, active))
             counter.incrementAndGet()
-          } >> IO.sleep(20.millis) >> IO { currentActive.decrementAndGet() },
+          } >> IO.sleep(20.millis) >> IO(currentActive.decrementAndGet()),
           "module",
           RateControlOptions(RateLimit(3, 100.millis), 2),
           registry

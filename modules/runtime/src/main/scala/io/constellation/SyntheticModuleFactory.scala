@@ -7,10 +7,9 @@ import java.util.UUID
 
 /** Reconstructs synthetic module implementations from a [[DagSpec]].
   *
-  * Currently only branch modules can be reconstructed because their behaviour
-  * is fully determined by the DagSpec structure (number of condition/expression
-  * pairs and the output type). HOF transforms (filter, map, etc.) contain
-  * closures that cannot be serialized or reconstructed.
+  * Currently only branch modules can be reconstructed because their behaviour is fully determined
+  * by the DagSpec structure (number of condition/expression pairs and the output type). HOF
+  * transforms (filter, map, etc.) contain closures that cannot be serialized or reconstructed.
   */
 object SyntheticModuleFactory {
 
@@ -18,12 +17,13 @@ object SyntheticModuleFactory {
     *
     * A module is identified as a branch module when its name contains `"branch-"`.
     *
-    * @return Map of module UUID to reconstructed Module.Uninitialized
+    * @return
+    *   Map of module UUID to reconstructed Module.Uninitialized
     */
   def fromDagSpec(dagSpec: DagSpec): Map[UUID, Module.Uninitialized] =
     dagSpec.modules.collect {
       case (moduleId, spec) if isBranchModule(spec) =>
-        val numCases = countBranchCases(spec)
+        val numCases    = countBranchCases(spec)
         val outputCType = spec.produces.getOrElse("out", CType.CString)
         moduleId -> createBranchModule(spec, numCases, outputCType)
     }
@@ -51,16 +51,16 @@ object SyntheticModuleFactory {
       spec = spec,
       init = (moduleId, dagSpec) =>
         for {
-          consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
-          producesNs <- Module.Namespace.produces(moduleId, dagSpec)
-          condDeferreds    <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
-          exprDeferreds    <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
+          consumesNs    <- Module.Namespace.consumes(moduleId, dagSpec)
+          producesNs    <- Module.Namespace.produces(moduleId, dagSpec)
+          condDeferreds <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
+          exprDeferreds <- (0 until numCases).toList.traverse(_ => cats.effect.Deferred[IO, Any])
           otherwiseDeferred <- cats.effect.Deferred[IO, Any]
           outDeferred       <- cats.effect.Deferred[IO, Any]
-          condIds     <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"cond$i"))
-          exprIds     <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"expr$i"))
-          otherwiseId <- consumesNs.nameId("otherwise")
-          outId       <- producesNs.nameId("out")
+          condIds           <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"cond$i"))
+          exprIds           <- (0 until numCases).toList.traverse(i => consumesNs.nameId(s"expr$i"))
+          otherwiseId       <- consumesNs.nameId("otherwise")
+          outId             <- producesNs.nameId("out")
         } yield {
           val dataMap = (condIds.zip(condDeferreds) ++ exprIds.zip(exprDeferreds) ++
             List((otherwiseId, otherwiseDeferred), (outId, outDeferred))).toMap
@@ -86,7 +86,7 @@ object SyntheticModuleFactory {
                 result <- evaluateBranches(0)
                 _      <- runtime.setTableData(outId, result)
                 cValue = Runtime.anyToCValue(result, outputCType)
-                _      <- runtime.setStateData(outId, cValue)
+                _ <- runtime.setStateData(outId, cValue)
               } yield ()
             }
           )

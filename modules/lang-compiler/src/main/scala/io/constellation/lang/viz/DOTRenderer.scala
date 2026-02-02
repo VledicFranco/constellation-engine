@@ -4,9 +4,8 @@ import scala.collection.mutable.ListBuffer
 
 /** Renders a DagVizIR as Graphviz DOT format.
   *
-  * DOT is the graph description language used by Graphviz. It produces high-quality
-  * vector graphics suitable for academic papers, presentations, and professional
-  * documentation.
+  * DOT is the graph description language used by Graphviz. It produces high-quality vector graphics
+  * suitable for academic papers, presentations, and professional documentation.
   *
   * Usage:
   * {{{
@@ -17,7 +16,8 @@ import scala.collection.mutable.ListBuffer
   * // dot -Tpdf output.dot -o output.pdf
   * }}}
   *
-  * @see https://graphviz.org/doc/info/lang.html
+  * @see
+  *   https://graphviz.org/doc/info/lang.html
   */
 object DOTRenderer extends DagRenderer {
 
@@ -84,8 +84,8 @@ object DOTRenderer extends DagRenderer {
 
     // Render edges
     dag.edges.foreach { edge =>
-      val attrs = edgeAttributes(edge)
-      val attrStr = if (attrs.nonEmpty) s" [$attrs]" else ""
+      val attrs   = edgeAttributes(edge)
+      val attrStr = if attrs.nonEmpty then s" [$attrs]" else ""
       sb.append(s"    ${quote(edge.source)} -> ${quote(edge.target)}$attrStr;\n")
     }
 
@@ -99,7 +99,7 @@ object DOTRenderer extends DagRenderer {
 
     // Label with name and type
     val typeAbbrev = abbreviateType(node.typeSignature)
-    val label = if (typeAbbrev.isEmpty || typeAbbrev == "Unit") {
+    val label = if typeAbbrev.isEmpty || typeAbbrev == "Unit" then {
       node.label
     } else {
       s"${node.label}\\n${typeAbbrev}"
@@ -108,40 +108,40 @@ object DOTRenderer extends DagRenderer {
 
     // Shape based on node kind
     val shape = node.kind match {
-      case NodeKind.Input       => "ellipse"
-      case NodeKind.Output      => "doubleoctagon"
-      case NodeKind.Operation   => "box"
-      case NodeKind.Literal     => "note"
-      case NodeKind.Merge       => "circle"
-      case NodeKind.Project     => "parallelogram"
-      case NodeKind.FieldAccess => "box"
-      case NodeKind.Conditional => "diamond"
-      case NodeKind.Guard       => "hexagon"
-      case NodeKind.Branch      => "diamond"
-      case NodeKind.Coalesce    => "ellipse"
-      case NodeKind.HigherOrder => "component"
-      case NodeKind.ListLiteral => "folder"
-      case NodeKind.BooleanOp   => "diamond"
+      case NodeKind.Input        => "ellipse"
+      case NodeKind.Output       => "doubleoctagon"
+      case NodeKind.Operation    => "box"
+      case NodeKind.Literal      => "note"
+      case NodeKind.Merge        => "circle"
+      case NodeKind.Project      => "parallelogram"
+      case NodeKind.FieldAccess  => "box"
+      case NodeKind.Conditional  => "diamond"
+      case NodeKind.Guard        => "hexagon"
+      case NodeKind.Branch       => "diamond"
+      case NodeKind.Coalesce     => "ellipse"
+      case NodeKind.HigherOrder  => "component"
+      case NodeKind.ListLiteral  => "folder"
+      case NodeKind.BooleanOp    => "diamond"
       case NodeKind.StringInterp => "box"
     }
     attrs += s"shape=$shape"
 
     // Colors based on node kind
     val (fillColor, borderColor) = node.kind match {
-      case NodeKind.Input       => ("#dcfce7", "#22c55e") // Green
-      case NodeKind.Output      => ("#dbeafe", "#3b82f6") // Blue
-      case NodeKind.Operation   => ("#f3f4f6", "#6b7280") // Gray
-      case NodeKind.Literal     => ("#fef3c7", "#f59e0b") // Amber
-      case NodeKind.Merge       => ("#f3e8ff", "#a855f7") // Purple
-      case NodeKind.Project     => ("#e0e7ff", "#6366f1") // Indigo
-      case NodeKind.FieldAccess => ("#f3f4f6", "#6b7280") // Gray
-      case NodeKind.Conditional => ("#fee2e2", "#ef4444") // Red
-      case NodeKind.Guard       => ("#fce7f3", "#ec4899") // Pink
-      case NodeKind.Branch      => ("#fee2e2", "#ef4444") // Red
-      case NodeKind.Coalesce    => ("#ecfeff", "#06b6d4") // Cyan
-      case NodeKind.HigherOrder => ("#cffafe", "#06b6d4") // Cyan
-      case NodeKind.ListLiteral => ("#fef3c7", "#f59e0b") // Amber
-      case NodeKind.BooleanOp   => ("#fef3c7", "#f59e0b") // Amber
+      case NodeKind.Input        => ("#dcfce7", "#22c55e") // Green
+      case NodeKind.Output       => ("#dbeafe", "#3b82f6") // Blue
+      case NodeKind.Operation    => ("#f3f4f6", "#6b7280") // Gray
+      case NodeKind.Literal      => ("#fef3c7", "#f59e0b") // Amber
+      case NodeKind.Merge        => ("#f3e8ff", "#a855f7") // Purple
+      case NodeKind.Project      => ("#e0e7ff", "#6366f1") // Indigo
+      case NodeKind.FieldAccess  => ("#f3f4f6", "#6b7280") // Gray
+      case NodeKind.Conditional  => ("#fee2e2", "#ef4444") // Red
+      case NodeKind.Guard        => ("#fce7f3", "#ec4899") // Pink
+      case NodeKind.Branch       => ("#fee2e2", "#ef4444") // Red
+      case NodeKind.Coalesce     => ("#ecfeff", "#06b6d4") // Cyan
+      case NodeKind.HigherOrder  => ("#cffafe", "#06b6d4") // Cyan
+      case NodeKind.ListLiteral  => ("#fef3c7", "#f59e0b") // Amber
+      case NodeKind.BooleanOp    => ("#fef3c7", "#f59e0b") // Amber
       case NodeKind.StringInterp => ("#f3f4f6", "#6b7280") // Gray
     }
     attrs += s"fillcolor=${quote(fillColor)}"
@@ -193,10 +193,9 @@ object DOTRenderer extends DagRenderer {
   }
 
   /** Abbreviate long type signatures */
-  private def abbreviateType(typeSignature: String): String = {
-    if (typeSignature.length <= 25) typeSignature
+  private def abbreviateType(typeSignature: String): String =
+    if typeSignature.length <= 25 then typeSignature
     else typeSignature.take(22) + "..."
-  }
 
   /** Quote a string for DOT format */
   private def quote(s: String): String = {
@@ -208,9 +207,8 @@ object DOTRenderer extends DagRenderer {
   }
 
   /** Sanitize an ID for DOT */
-  private def sanitizeId(id: String): String = {
+  private def sanitizeId(id: String): String =
     id.replaceAll("[^a-zA-Z0-9_]", "_")
-  }
 
   def fileExtension: String = "dot"
   def mimeType: String      = "text/vnd.graphviz"

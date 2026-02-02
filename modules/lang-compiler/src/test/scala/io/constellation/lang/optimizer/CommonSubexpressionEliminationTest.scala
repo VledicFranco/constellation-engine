@@ -48,10 +48,10 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("x"), uuid("y")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("x"),
-        "y" -> uuid("y"),
-        "add1" -> uuid("add1"),
-        "add2" -> uuid("add2"),
+        "x"      -> uuid("x"),
+        "y"      -> uuid("y"),
+        "add1"   -> uuid("add1"),
+        "add2"   -> uuid("add2"),
         "result" -> uuid("result")
       )
     )
@@ -98,8 +98,8 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("x"), uuid("y")),
       declaredOutputs = List("add", "mul"),
       variableBindings = Map(
-        "x" -> uuid("x"),
-        "y" -> uuid("y"),
+        "x"   -> uuid("x"),
+        "y"   -> uuid("y"),
         "add" -> uuid("add"),
         "mul" -> uuid("mul")
       )
@@ -178,7 +178,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("record")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "r" -> uuid("record"),
+        "r"      -> uuid("record"),
         "field1" -> uuid("field1"),
         "field2" -> uuid("field2"),
         "result" -> uuid("add")
@@ -188,8 +188,8 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
     val optimized = CommonSubexpressionElimination.run(ir)
 
     // One of the field access nodes should be eliminated
-    val fieldNodes = optimized.nodes.values.collect {
-      case n: IRNode.FieldAccessNode => n
+    val fieldNodes = optimized.nodes.values.collect { case n: IRNode.FieldAccessNode =>
+      n
     }.toList
 
     fieldNodes.size shouldBe 1
@@ -211,16 +211,16 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   it should "deduplicate boolean operations" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("a") -> IRNode.Input(uuid("a"), "a", SemanticType.SBoolean, None),
-        uuid("b") -> IRNode.Input(uuid("b"), "b", SemanticType.SBoolean, None),
+        uuid("a")    -> IRNode.Input(uuid("a"), "a", SemanticType.SBoolean, None),
+        uuid("b")    -> IRNode.Input(uuid("b"), "b", SemanticType.SBoolean, None),
         uuid("and1") -> IRNode.AndNode(uuid("and1"), uuid("a"), uuid("b"), None),
         uuid("and2") -> IRNode.AndNode(uuid("and2"), uuid("a"), uuid("b"), None)
       ),
       inputs = List(uuid("a"), uuid("b")),
       declaredOutputs = List("and1", "and2"),
       variableBindings = Map(
-        "a" -> uuid("a"),
-        "b" -> uuid("b"),
+        "a"    -> uuid("a"),
+        "b"    -> uuid("b"),
         "and1" -> uuid("and1"),
         "and2" -> uuid("and2")
       )
@@ -229,8 +229,8 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
     val optimized = CommonSubexpressionElimination.run(ir)
 
     // One AND should be eliminated
-    val andNodes = optimized.nodes.values.collect {
-      case n: IRNode.AndNode => n
+    val andNodes = optimized.nodes.values.collect { case n: IRNode.AndNode =>
+      n
     }.toList
 
     andNodes.size shouldBe 1
@@ -272,10 +272,10 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("x"), uuid("y")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("x"),
-        "y" -> uuid("y"),
-        "add1" -> uuid("add1"),
-        "add2" -> uuid("add2"),
+        "x"      -> uuid("x"),
+        "y"      -> uuid("y"),
+        "add1"   -> uuid("add1"),
+        "add2"   -> uuid("add2"),
         "result" -> uuid("mul")
       )
     )

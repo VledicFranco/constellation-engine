@@ -4,34 +4,37 @@ import io.constellation.lang.compiler.{IRNode, IRProgram}
 
 /** IR Optimizer that orchestrates optimization passes.
   *
-  * Applies a sequence of optimization passes iteratively until a fixpoint
-  * is reached or the maximum number of iterations is exceeded.
+  * Applies a sequence of optimization passes iteratively until a fixpoint is reached or the maximum
+  * number of iterations is exceeded.
   */
 object IROptimizer {
 
   /** Optimize an IR program using the given configuration.
     *
-    * @param ir The IR program to optimize
-    * @param config The optimization configuration
-    * @return The optimized IR program and statistics
+    * @param ir
+    *   The IR program to optimize
+    * @param config
+    *   The optimization configuration
+    * @return
+    *   The optimized IR program and statistics
     */
   def optimize(
       ir: IRProgram,
       config: OptimizationConfig = OptimizationConfig.default
   ): OptimizationResult = {
-    if (!config.hasOptimizationsEnabled) {
+    if !config.hasOptimizationsEnabled then {
       return OptimizationResult(ir, OptimizationStats.empty, iterations = 0)
     }
 
-    val passes = buildPassList(config)
+    val passes      = buildPassList(config)
     val beforeStats = analyze(ir)
 
-    var current = ir
+    var current   = ir
     var iteration = 0
-    var changed = true
+    var changed   = true
 
     // Iterative optimization until fixpoint or max iterations
-    while (changed && iteration < config.maxIterations) {
+    while changed && iteration < config.maxIterations do {
       val before = current
       current = passes.foldLeft(current) { (prog, pass) =>
         pass.run(prog)
@@ -66,9 +69,9 @@ object IROptimizer {
   private def buildPassList(config: OptimizationConfig): List[OptimizationPass] =
     List(
       // Order matters: DCE should run after other optimizations to clean up
-      if (config.enableConstantFolding) Some(ConstantFolding) else None,
-      if (config.enableCSE) Some(CommonSubexpressionElimination) else None,
-      if (config.enableDCE) Some(DeadCodeElimination) else None
+      if config.enableConstantFolding then Some(ConstantFolding) else None,
+      if config.enableCSE then Some(CommonSubexpressionElimination) else None,
+      if config.enableDCE then Some(DeadCodeElimination) else None
     ).flatten
 
   /** Analyze an IR program and return statistics */
@@ -110,7 +113,7 @@ final case class OptimizationStats(
 
   /** Percentage of nodes eliminated */
   def eliminationPercentage: Double =
-    if (nodesBefore == 0) 0.0
+    if nodesBefore == 0 then 0.0
     else (nodesEliminated.toDouble / nodesBefore) * 100
 
   /** Summary string for logging */

@@ -16,7 +16,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   "ErrorFormatter.format" should "include error code in output" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
 
@@ -26,7 +26,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "include location information" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
 
@@ -36,7 +36,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "include code snippet with underline" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
 
@@ -46,7 +46,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "include explanation" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
 
@@ -56,8 +56,8 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "include suggestions when context is provided" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
-    val context = SuggestionContext(definedVariables = List("text", "count"))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val context   = SuggestionContext(definedVariables = List("text", "count"))
 
     val formatted = formatter.format(error, context)
 
@@ -67,7 +67,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "include documentation URL" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
 
@@ -77,7 +77,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   it should "handle errors without span" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.InternalError("Something went wrong", None)
+    val error     = CompileError.InternalError("Something went wrong", None)
 
     val formatted = formatter.format(error)
 
@@ -128,8 +128,8 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   "FormattedError.toPlainText" should "produce readable output" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
-    val context = SuggestionContext(definedVariables = List("text", "count"))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val context   = SuggestionContext(definedVariables = List("text", "count"))
 
     val formatted = formatter.format(error, context)
     val plainText = formatted.toPlainText
@@ -144,11 +144,11 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   "FormattedError.toMarkdown" should "produce markdown formatted output" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
-    val context = SuggestionContext(definedVariables = List("text", "count"))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val context   = SuggestionContext(definedVariables = List("text", "count"))
 
     val formatted = formatter.format(error, context)
-    val markdown = formatted.toMarkdown
+    val markdown  = formatted.toMarkdown
 
     markdown should include("**Error E001")
     markdown should include("```")
@@ -159,10 +159,10 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   "FormattedError.toOneLine" should "produce concise output" in {
     val formatter = new ErrorFormatter(sampleSource)
-    val error = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
+    val error     = CompileError.UndefinedVariable("textt", Some(Span(45, 50)))
 
     val formatted = formatter.format(error)
-    val oneLine = formatted.toOneLine
+    val oneLine   = formatted.toOneLine
 
     oneLine shouldBe "E001: Undefined variable: textt"
   }
@@ -187,7 +187,7 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
 
   "ErrorFormatter" should "handle empty source" in {
     val formatter = new ErrorFormatter("")
-    val error = CompileError.UndefinedVariable("x", Some(Span(0, 1)))
+    val error     = CompileError.UndefinedVariable("x", Some(Span(0, 1)))
 
     val formatted = formatter.format(error)
 
@@ -196,9 +196,9 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle span at end of file" in {
-    val source = "in x: String"
+    val source    = "in x: String"
     val formatter = new ErrorFormatter(source)
-    val error = CompileError.UndefinedVariable("String", Some(Span(6, 12)))
+    val error     = CompileError.UndefinedVariable("String", Some(Span(6, 12)))
 
     val formatted = formatter.format(error)
 
@@ -208,9 +208,9 @@ class ErrorFormatterTest extends AnyFlatSpec with Matchers {
   it should "handle multi-line source" in {
     // Source: "line1\nline2\nline3\nline4\nline5"
     // Offsets: line1=0-4, \n=5, line2=6-10, \n=11, line3=12-16, \n=17, line4=18-22, \n=23, line5=24-28
-    val source = "line1\nline2\nline3\nline4\nline5"
+    val source    = "line1\nline2\nline3\nline4\nline5"
     val formatter = new ErrorFormatter(source)
-    val error = CompileError.UndefinedVariable("x", Some(Span(12, 17))) // "line3" at offset 12
+    val error     = CompileError.UndefinedVariable("x", Some(Span(12, 17))) // "line3" at offset 12
 
     val formatted = formatter.format(error)
 

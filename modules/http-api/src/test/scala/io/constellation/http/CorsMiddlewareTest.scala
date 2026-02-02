@@ -14,7 +14,7 @@ import org.typelevel.ci.CIString
 class CorsMiddlewareTest extends AnyFlatSpec with Matchers {
 
   private val testRoutes = HttpRoutes.of[IO] {
-    case GET -> Root / "data" => Ok(Json.obj("value" -> Json.fromString("hello")))
+    case GET -> Root / "data"  => Ok(Json.obj("value" -> Json.fromString("hello")))
     case POST -> Root / "data" => Ok(Json.obj("created" -> Json.fromBoolean(true)))
   }
 

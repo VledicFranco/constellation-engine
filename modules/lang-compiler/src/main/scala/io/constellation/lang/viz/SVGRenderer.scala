@@ -5,12 +5,12 @@ import scala.collection.mutable.ListBuffer
 /** Renders a DagVizIR as SVG markup.
   *
   * This renderer produces standalone SVG that can be:
-  * - Embedded directly in HTML
-  * - Saved as .svg files
-  * - Used for server-side rendering
+  *   - Embedded directly in HTML
+  *   - Saved as .svg files
+  *   - Used for server-side rendering
   *
-  * For VSCode integration, client-side rendering is preferred for better theme integration.
-  * This renderer is useful for export, documentation, and headless rendering.
+  * For VSCode integration, client-side rendering is preferred for better theme integration. This
+  * renderer is useful for export, documentation, and headless rendering.
   */
 object SVGRenderer extends DagRenderer {
 
@@ -29,26 +29,26 @@ object SVGRenderer extends DagRenderer {
 
   /** Node colors by kind */
   private object Colors {
-    val inputFill    = "#dcfce7"
-    val inputStroke  = "#22c55e"
-    val outputFill   = "#dbeafe"
-    val outputStroke = "#3b82f6"
-    val opFill       = "#f3f4f6"
-    val opStroke     = "#6b7280"
-    val opHeader     = "#6b7280"
-    val literalFill  = "#fef3c7"
+    val inputFill     = "#dcfce7"
+    val inputStroke   = "#22c55e"
+    val outputFill    = "#dbeafe"
+    val outputStroke  = "#3b82f6"
+    val opFill        = "#f3f4f6"
+    val opStroke      = "#6b7280"
+    val opHeader      = "#6b7280"
+    val literalFill   = "#fef3c7"
     val literalStroke = "#f59e0b"
-    val mergeFill    = "#f3e8ff"
-    val mergeStroke  = "#a855f7"
-    val guardFill    = "#fef9c3"
-    val guardStroke  = "#eab308"
-    val condFill     = "#fee2e2"
-    val condStroke   = "#ef4444"
-    val hofFill      = "#cffafe"
-    val hofStroke    = "#06b6d4"
-    val edgeColor    = "#64748b"
-    val textColor    = "#1f2937"
-    val textLight    = "#6b7280"
+    val mergeFill     = "#f3e8ff"
+    val mergeStroke   = "#a855f7"
+    val guardFill     = "#fef9c3"
+    val guardStroke   = "#eab308"
+    val condFill      = "#fee2e2"
+    val condStroke    = "#ef4444"
+    val hofFill       = "#cffafe"
+    val hofStroke     = "#06b6d4"
+    val edgeColor     = "#64748b"
+    val textColor     = "#1f2937"
+    val textLight     = "#6b7280"
 
     // Execution state colors
     val pendingStroke   = "#9ca3af"
@@ -62,7 +62,7 @@ object SVGRenderer extends DagRenderer {
     render(dag, SVGConfig())
 
   def render(dag: DagVizIR, config: SVGConfig): String = {
-    if (dag.nodes.isEmpty) {
+    if dag.nodes.isEmpty then {
       return s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
         <text x="100" y="50" text-anchor="middle" fill="${Colors.textLight}" font-family="${config.fontFamily}">(empty DAG)</text>
       </svg>"""
@@ -71,20 +71,24 @@ object SVGRenderer extends DagRenderer {
     val sb = new StringBuilder
 
     // Calculate bounds from node positions or use metadata
-    val bounds = dag.metadata.bounds.getOrElse(calculateBounds(dag, config))
-    val width  = bounds.maxX - bounds.minX + config.padding * 2
-    val height = bounds.maxY - bounds.minY + config.padding * 2
+    val bounds  = dag.metadata.bounds.getOrElse(calculateBounds(dag, config))
+    val width   = bounds.maxX - bounds.minX + config.padding * 2
+    val height  = bounds.maxY - bounds.minY + config.padding * 2
     val viewBox = s"${bounds.minX - config.padding} ${bounds.minY - config.padding} $width $height"
 
     // SVG header
-    sb.append(s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="$viewBox" width="$width" height="$height">\n""")
+    sb.append(
+      s"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="$viewBox" width="$width" height="$height">\n"""
+    )
 
     // Embedded styles
     sb.append(renderStyles(config))
 
     // Background if specified
     config.background.foreach { bg =>
-      sb.append(s"""  <rect x="${bounds.minX - config.padding}" y="${bounds.minY - config.padding}" """)
+      sb.append(
+        s"""  <rect x="${bounds.minX - config.padding}" y="${bounds.minY - config.padding}" """
+      )
       sb.append(s"""width="$width" height="$height" fill="$bg"/>\n""")
     }
 
@@ -116,7 +120,7 @@ object SVGRenderer extends DagRenderer {
 
   private def calculateBounds(dag: DagVizIR, config: SVGConfig): Bounds = {
     val positions = dag.nodes.flatMap(_.position)
-    if (positions.isEmpty) {
+    if positions.isEmpty then {
       Bounds(0, 0, 400, 300)
     } else {
       val xs = positions.map(_.x)
@@ -130,7 +134,7 @@ object SVGRenderer extends DagRenderer {
     }
   }
 
-  private def renderStyles(config: SVGConfig): String = {
+  private def renderStyles(config: SVGConfig): String =
     s"""  <style>
     .node rect, .node ellipse, .node polygon { stroke-width: 2; }
     .node text { font-family: ${config.fontFamily}; font-size: ${config.fontSize}px; fill: ${Colors.textColor}; }
@@ -146,9 +150,8 @@ object SVGRenderer extends DagRenderer {
     .node.state-pending { opacity: 0.7; }
   </style>
 """
-  }
 
-  private def renderDefs(): String = {
+  private def renderDefs(): String =
     s"""  <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="${Colors.edgeColor}"/>
@@ -158,27 +161,36 @@ object SVGRenderer extends DagRenderer {
     </marker>
   </defs>
 """
-  }
 
   private def renderNode(node: VizNode, config: SVGConfig): String = {
     val pos = node.position.getOrElse(Position(0, 0))
     val sb  = new StringBuilder
 
     // Execution state class
-    val stateClass = node.executionState.map(s => s" state-${s.status.toString.toLowerCase}").getOrElse("")
+    val stateClass =
+      node.executionState.map(s => s" state-${s.status.toString.toLowerCase}").getOrElse("")
 
     // Get dimensions and colors based on node kind
     val (width, height, fillColor, strokeColor) = node.kind match {
-      case NodeKind.Input       => (config.nodeWidth, config.inputHeight, Colors.inputFill, Colors.inputStroke)
-      case NodeKind.Output      => (config.nodeWidth, config.outputHeight, Colors.outputFill, Colors.outputStroke)
-      case NodeKind.Operation   => (config.nodeWidth, config.moduleHeight, Colors.opFill, Colors.opStroke)
-      case NodeKind.Literal     => (config.nodeWidth, config.nodeHeight, Colors.literalFill, Colors.literalStroke)
-      case NodeKind.Merge       => (config.nodeWidth, config.nodeHeight, Colors.mergeFill, Colors.mergeStroke)
-      case NodeKind.Guard       => (config.nodeWidth, config.nodeHeight, Colors.guardFill, Colors.guardStroke)
-      case NodeKind.Conditional => (config.nodeWidth, config.nodeHeight, Colors.condFill, Colors.condStroke)
-      case NodeKind.Branch      => (config.nodeWidth, config.nodeHeight, Colors.condFill, Colors.condStroke)
-      case NodeKind.HigherOrder => (config.nodeWidth, config.nodeHeight, Colors.hofFill, Colors.hofStroke)
-      case _                    => (config.nodeWidth, config.nodeHeight, Colors.opFill, Colors.opStroke)
+      case NodeKind.Input =>
+        (config.nodeWidth, config.inputHeight, Colors.inputFill, Colors.inputStroke)
+      case NodeKind.Output =>
+        (config.nodeWidth, config.outputHeight, Colors.outputFill, Colors.outputStroke)
+      case NodeKind.Operation =>
+        (config.nodeWidth, config.moduleHeight, Colors.opFill, Colors.opStroke)
+      case NodeKind.Literal =>
+        (config.nodeWidth, config.nodeHeight, Colors.literalFill, Colors.literalStroke)
+      case NodeKind.Merge =>
+        (config.nodeWidth, config.nodeHeight, Colors.mergeFill, Colors.mergeStroke)
+      case NodeKind.Guard =>
+        (config.nodeWidth, config.nodeHeight, Colors.guardFill, Colors.guardStroke)
+      case NodeKind.Conditional =>
+        (config.nodeWidth, config.nodeHeight, Colors.condFill, Colors.condStroke)
+      case NodeKind.Branch =>
+        (config.nodeWidth, config.nodeHeight, Colors.condFill, Colors.condStroke)
+      case NodeKind.HigherOrder =>
+        (config.nodeWidth, config.nodeHeight, Colors.hofFill, Colors.hofStroke)
+      case _ => (config.nodeWidth, config.nodeHeight, Colors.opFill, Colors.opStroke)
     }
 
     val x = pos.x - width / 2
@@ -190,13 +202,17 @@ object SVGRenderer extends DagRenderer {
     node.kind match {
       case NodeKind.Input =>
         // Ellipse for input
-        sb.append(s"""      <ellipse cx="${pos.x}" cy="${pos.y}" rx="${width / 2}" ry="${height / 2}" """)
+        sb.append(
+          s"""      <ellipse cx="${pos.x}" cy="${pos.y}" rx="${width / 2}" ry="${height / 2}" """
+        )
         sb.append(s"""fill="$fillColor" stroke="$strokeColor"/>\n""")
 
       case NodeKind.Output =>
         // Hexagon for output
         val points = hexagonPoints(x, y, width, height)
-        sb.append(s"""      <polygon points="$points" fill="$fillColor" stroke="$strokeColor"/>\n""")
+        sb.append(
+          s"""      <polygon points="$points" fill="$fillColor" stroke="$strokeColor"/>\n"""
+        )
 
       case NodeKind.Operation =>
         // Rectangle with header bar
@@ -214,7 +230,9 @@ object SVGRenderer extends DagRenderer {
       case NodeKind.Conditional | NodeKind.Branch =>
         // Diamond for conditional
         val points = diamondPoints(pos.x, pos.y, width * 0.7, height)
-        sb.append(s"""      <polygon points="$points" fill="$fillColor" stroke="$strokeColor"/>\n""")
+        sb.append(
+          s"""      <polygon points="$points" fill="$fillColor" stroke="$strokeColor"/>\n"""
+        )
 
       case _ =>
         // Default rounded rectangle
@@ -234,9 +252,11 @@ object SVGRenderer extends DagRenderer {
       case _                    => ""
     }
 
-    if (icon.nonEmpty) {
-      val iconX = if (node.kind == NodeKind.Output) pos.x + width / 2 - 16 else x + 12
-      sb.append(s"""      <text x="$iconX" y="${pos.y + 4}" class="icon">${escapeXml(icon)}</text>\n""")
+    if icon.nonEmpty then {
+      val iconX = if node.kind == NodeKind.Output then pos.x + width / 2 - 16 else x + 12
+      sb.append(s"""      <text x="$iconX" y="${pos.y + 4}" class="icon">${escapeXml(
+          icon
+        )}</text>\n""")
     }
 
     // Label
@@ -244,13 +264,21 @@ object SVGRenderer extends DagRenderer {
       case NodeKind.Operation => pos.y
       case _                  => pos.y + 4
     }
-    sb.append(s"""      <text x="${pos.x}" y="$labelY" text-anchor="middle" class="label">${escapeXml(truncate(node.label, 18))}</text>\n""")
+    sb.append(
+      s"""      <text x="${pos.x}" y="$labelY" text-anchor="middle" class="label">${escapeXml(
+          truncate(node.label, 18)
+        )}</text>\n"""
+    )
 
     // Type signature (abbreviated)
-    if (node.typeSignature.nonEmpty && node.typeSignature != "Unit") {
-      val typeY = labelY + 14
+    if node.typeSignature.nonEmpty && node.typeSignature != "Unit" then {
+      val typeY      = labelY + 14
       val abbrevType = abbreviateType(node.typeSignature)
-      sb.append(s"""      <text x="${pos.x}" y="$typeY" text-anchor="middle" class="type-sig">${escapeXml(abbrevType)}</text>\n""")
+      sb.append(
+        s"""      <text x="${pos.x}" y="$typeY" text-anchor="middle" class="type-sig">${escapeXml(
+            abbrevType
+          )}</text>\n"""
+      )
     }
 
     // Execution state indicator
@@ -261,8 +289,10 @@ object SVGRenderer extends DagRenderer {
         case ExecutionStatus.Running   => "⟳"
         case _                         => ""
       }
-      if (stateIcon.nonEmpty) {
-        sb.append(s"""      <text x="${x + 10}" y="${y + 14}" class="state-icon">$stateIcon</text>\n""")
+      if stateIcon.nonEmpty then {
+        sb.append(
+          s"""      <text x="${x + 10}" y="${y + 14}" class="state-icon">$stateIcon</text>\n"""
+        )
       }
     }
 
@@ -286,13 +316,16 @@ object SVGRenderer extends DagRenderer {
           case EdgeKind.Control  => " control"
           case _                 => ""
         }
-        val marker = if (edge.kind == EdgeKind.Control) "url(#arrowhead-control)" else "url(#arrowhead)"
+        val marker =
+          if edge.kind == EdgeKind.Control then "url(#arrowhead-control)" else "url(#arrowhead)"
 
-        sb.append(s"""    <g class="edge$edgeClass" data-source="${edge.source}" data-target="${edge.target}">\n""")
+        sb.append(
+          s"""    <g class="edge$edgeClass" data-source="${edge.source}" data-target="${edge.target}">\n"""
+        )
 
         // Calculate path based on layout direction
         val isVertical = dag.metadata.layoutDirection == "TB"
-        val (startX, startY, endX, endY) = if (isVertical) {
+        val (startX, startY, endX, endY) = if isVertical then {
           val sy = srcPos.y + getNodeHeight(src.kind, config) / 2
           val ey = tgtPos.y - getNodeHeight(tgt.kind, config) / 2
           (srcPos.x, sy, tgtPos.x, ey)
@@ -303,13 +336,13 @@ object SVGRenderer extends DagRenderer {
         }
 
         // Bezier curve
-        val (midX, midY) = if (isVertical) {
+        val (midX, midY) = if isVertical then {
           (startX, (startY + endY) / 2)
         } else {
           ((startX + endX) / 2, startY)
         }
 
-        val path = if (isVertical) {
+        val path = if isVertical then {
           s"M $startX $startY C $startX $midY, $endX $midY, $endX $endY"
         } else {
           s"M $startX $startY C $midX $startY, $midX $endY, $endX $endY"
@@ -321,7 +354,9 @@ object SVGRenderer extends DagRenderer {
         edge.label.foreach { label =>
           val labelX = (startX + endX) / 2
           val labelY = (startY + endY) / 2 - 5
-          sb.append(s"""      <text x="$labelX" y="$labelY" text-anchor="middle">${escapeXml(label)}</text>\n""")
+          sb.append(s"""      <text x="$labelX" y="$labelY" text-anchor="middle">${escapeXml(
+              label
+            )}</text>\n""")
         }
 
         sb.append("    </g>\n")
@@ -350,20 +385,19 @@ object SVGRenderer extends DagRenderer {
     ).map { case (px, py) => s"$px,$py" }.mkString(" ")
   }
 
-  private def diamondPoints(cx: Double, cy: Double, width: Double, height: Double): String = {
+  private def diamondPoints(cx: Double, cy: Double, width: Double, height: Double): String =
     List(
       (cx, cy - height / 2),
       (cx + width / 2, cy),
       (cx, cy + height / 2),
       (cx - width / 2, cy)
     ).map { case (px, py) => s"$px,$py" }.mkString(" ")
-  }
 
   private def truncate(s: String, maxLen: Int): String =
-    if (s.length <= maxLen) s else s.take(maxLen - 1) + "…"
+    if s.length <= maxLen then s else s.take(maxLen - 1) + "…"
 
   private def abbreviateType(typeSignature: String): String =
-    if (typeSignature.length <= 20) typeSignature
+    if typeSignature.length <= 20 then typeSignature
     else typeSignature.take(17) + "..."
 
   private def escapeXml(s: String): String =

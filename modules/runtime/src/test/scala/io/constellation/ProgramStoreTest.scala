@@ -29,7 +29,7 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
     val image = mkImage("test")
 
     val result = (for {
-      hash     <- store.store(image)
+      hash      <- store.store(image)
       retrieved <- store.get(hash)
     } yield (hash, retrieved)).unsafeRunSync()
 
@@ -42,8 +42,8 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
     val image = mkImage("test")
 
     val result = (for {
-      hash <- store.store(image)
-      _    <- store.alias("myPipeline", hash)
+      hash     <- store.store(image)
+      _        <- store.alias("myPipeline", hash)
       resolved <- store.resolve("myPipeline")
     } yield resolved).unsafeRunSync()
 
@@ -84,8 +84,8 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
 
   it should "repoint an alias to a different image" in {
     val store = mkStore
-    val img1 = mkImage("test1")
-    val img2 = mkImage("test2")
+    val img1  = mkImage("test1")
+    val img2  = mkImage("test2")
 
     val result = (for {
       hash1 <- store.store(img1)
@@ -124,8 +124,8 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
     val image = mkImage("test")
 
     val result = (for {
-      hash <- store.store(image)
-      _    <- store.indexSyntactic("src-hash", "reg-hash", hash)
+      hash   <- store.store(image)
+      _      <- store.indexSyntactic("src-hash", "reg-hash", hash)
       lookup <- store.lookupSyntactic("src-hash", "reg-hash")
     } yield lookup).unsafeRunSync()
 
@@ -139,14 +139,14 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
 
   it should "list aliases" in {
     val store = mkStore
-    val img1 = mkImage("test1")
-    val img2 = mkImage("test2")
+    val img1  = mkImage("test1")
+    val img2  = mkImage("test2")
 
     val result = (for {
-      h1 <- store.store(img1)
-      h2 <- store.store(img2)
-      _  <- store.alias("a", h1)
-      _  <- store.alias("b", h2)
+      h1  <- store.store(img1)
+      h2  <- store.store(img2)
+      _   <- store.alias("a", h1)
+      _   <- store.alias("b", h2)
       all <- store.listAliases
     } yield all).unsafeRunSync()
 

@@ -2,21 +2,21 @@ package io.constellation.benchmark
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.UUID
 
-import io.constellation._
+import io.constellation.*
 import io.constellation.execution.GlobalScheduler
 import io.constellation.spi.ConstellationBackends
 
 /** Large DAG stress tests (RFC-013 Phase 5.1)
   *
-  * Validates that the engine handles large DAGs within time and memory bounds,
-  * produces deterministic results, and handles high-concurrency scheduling.
+  * Validates that the engine handles large DAGs within time and memory bounds, produces
+  * deterministic results, and handles high-concurrency scheduling.
   *
   * Run with: sbt "runtime/testOnly *LargeDagStressTest"
   */
@@ -48,10 +48,10 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
   /** Create a sequential chain DAG with N modules: input -> M1 -> M2 -> ... -> Mn -> output */
   private def createChainDag(nodeCount: Int): (DagSpec, Map[UUID, Module.Uninitialized]) = {
     val moduleIds = (1 to nodeCount).map(_ => UUID.randomUUID()).toList
-    val dataIds = (1 to (nodeCount + 1)).map(_ => UUID.randomUUID()).toList
+    val dataIds   = (1 to (nodeCount + 1)).map(_ => UUID.randomUUID()).toList
 
     val moduleSpecs = moduleIds.zipWithIndex.map { case (id, idx) =>
-      val name = if (idx % 2 == 0) "Uppercase" else "Lowercase"
+      val name = if idx % 2 == 0 then "Uppercase" else "Lowercase"
       id -> ModuleNodeSpec(
         metadata = ComponentMetadata(name, s"M$idx", List.empty, 1, 0),
         consumes = Map("text" -> CType.CString),
@@ -60,9 +60,9 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
     }.toMap
 
     val dataSpecs = dataIds.zipWithIndex.map { case (id, idx) =>
-      val portMap = if (idx == 0) {
+      val portMap = if idx == 0 then {
         Map(id -> "input", moduleIds.head -> "text")
-      } else if (idx < moduleIds.length) {
+      } else if idx < moduleIds.length then {
         Map(moduleIds(idx - 1) -> "result", moduleIds(idx) -> "text")
       } else {
         Map(moduleIds.last -> "result")
@@ -89,46 +89,47 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = moduleIds.zipWithIndex.map { case (id, idx) =>
-      if (idx % 2 == 0) id -> createUppercaseModule()
+      if idx   % 2 == 0 then id -> createUppercaseModule()
       else id -> createLowercaseModule()
     }.toMap
 
     (dag, modules)
   }
 
-  /** Create a wide DAG with W parallel branches of depth D.
-    * Each branch: input -> M1 -> M2 -> ... -> Md -> output_i
+  /** Create a wide DAG with W parallel branches of depth D. Each branch: input -> M1 -> M2 -> ...
+    * -> Md -> output_i
     */
   private def createWideDag(width: Int, depth: Int): (DagSpec, Map[UUID, Module.Uninitialized]) = {
-    val inputDataId = UUID.randomUUID()
+    val inputDataId    = UUID.randomUUID()
     var allModuleSpecs = Map.empty[UUID, ModuleNodeSpec]
-    var allDataSpecs = Map.empty[UUID, DataNodeSpec]
-    var allInEdges = Set.empty[(UUID, UUID)]
-    var allOutEdges = Set.empty[(UUID, UUID)]
-    var allModules = Map.empty[UUID, Module.Uninitialized]
+    var allDataSpecs   = Map.empty[UUID, DataNodeSpec]
+    var allInEdges     = Set.empty[(UUID, UUID)]
+    var allOutEdges    = Set.empty[(UUID, UUID)]
+    var allModules     = Map.empty[UUID, Module.Uninitialized]
     var outputBindings = Map.empty[String, UUID]
 
     val firstModuleIds = scala.collection.mutable.ListBuffer[UUID]()
 
-    for (branch <- 0 until width) {
+    for branch <- 0 until width do {
       val branchModuleIds = (1 to depth).map(_ => UUID.randomUUID()).toList
-      val branchDataIds = (1 to depth).map(_ => UUID.randomUUID()).toList
-      val outputDataId = UUID.randomUUID()
+      val branchDataIds   = (1 to depth).map(_ => UUID.randomUUID()).toList
+      val outputDataId    = UUID.randomUUID()
 
       firstModuleIds += branchModuleIds.head
 
       branchModuleIds.zipWithIndex.foreach { case (id, idx) =>
-        val name = if ((branch + idx) % 2 == 0) "Uppercase" else "Lowercase"
+        val name = if (branch + idx) % 2 == 0 then "Uppercase" else "Lowercase"
         allModuleSpecs += id -> ModuleNodeSpec(
           metadata = ComponentMetadata(name, s"M_${branch}_$idx", List.empty, 1, 0),
           consumes = Map("text" -> CType.CString),
           produces = Map("result" -> CType.CString)
         )
-        allModules += id -> (if ((branch + idx) % 2 == 0) createUppercaseModule() else createLowercaseModule())
+        allModules += id -> (if (branch + idx) % 2 == 0 then createUppercaseModule()
+                             else createLowercaseModule())
       }
 
       branchDataIds.zipWithIndex.foreach { case (id, idx) =>
-        if (idx < depth - 1) {
+        if idx < depth - 1 then {
           allDataSpecs += id -> DataNodeSpec(
             s"mid_${branch}_$idx",
             Map(branchModuleIds(idx) -> "result", branchModuleIds(idx + 1) -> "text"),
@@ -150,7 +151,8 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
       allInEdges += ((inputDataId, branchModuleIds.head))
     }
 
-    val inputNicknames: Map[UUID, String] = Map(inputDataId -> "input") ++ firstModuleIds.map(id => id -> "text").toMap
+    val inputNicknames: Map[UUID, String] =
+      Map(inputDataId -> "input") ++ firstModuleIds.map(id => id -> "text").toMap
     allDataSpecs += inputDataId -> DataNodeSpec("input", inputNicknames, CType.CString)
 
     val dag = DagSpec(
@@ -183,10 +185,10 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
 
   "Runtime" should "execute a 100-node chain DAG within 5 seconds" in {
     val (dag, modules) = createChainDag(100)
-    val inputs = Map("input" -> CValue.CString("stress test"))
+    val inputs         = Map("input" -> CValue.CString("stress test"))
 
-    val start = System.nanoTime()
-    val state = runDag(dag, modules, inputs)
+    val start   = System.nanoTime()
+    val state   = runDag(dag, modules, inputs)
     val elapsed = (System.nanoTime() - start) / 1e6
 
     println(f"100-node chain DAG: $elapsed%.1f ms")
@@ -200,10 +202,10 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
 
   it should "execute a 500-node chain DAG within 30 seconds" in {
     val (dag, modules) = createChainDag(500)
-    val inputs = Map("input" -> CValue.CString("stress test"))
+    val inputs         = Map("input" -> CValue.CString("stress test"))
 
-    val start = System.nanoTime()
-    val state = runDag(dag, modules, inputs)
+    val start   = System.nanoTime()
+    val state   = runDag(dag, modules, inputs)
     val elapsed = (System.nanoTime() - start) / 1e6
 
     println(f"500-node chain DAG: $elapsed%.1f ms")
@@ -217,10 +219,10 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
 
   it should "execute a wide DAG (50 branches x 10 depth = 500 modules) within 30 seconds" in {
     val (dag, modules) = createWideDag(width = 50, depth = 10)
-    val inputs = Map("input" -> CValue.CString("parallel stress"))
+    val inputs         = Map("input" -> CValue.CString("parallel stress"))
 
-    val start = System.nanoTime()
-    val state = runDag(dag, modules, inputs)
+    val start   = System.nanoTime()
+    val state   = runDag(dag, modules, inputs)
     val elapsed = (System.nanoTime() - start) / 1e6
 
     println(f"Wide DAG 50x10: $elapsed%.1f ms")
@@ -235,13 +237,13 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
   it should "keep memory bounded during large DAG execution" in {
     System.gc()
     Thread.sleep(100)
-    val jrt = java.lang.Runtime.getRuntime
+    val jrt        = java.lang.Runtime.getRuntime
     val heapBefore = jrt.totalMemory() - jrt.freeMemory()
 
     // Execute a 200-node DAG 10 times
     (1 to 10).foreach { _ =>
       val (dag, modules) = createChainDag(200)
-      val inputs = Map("input" -> CValue.CString("memory test"))
+      val inputs         = Map("input" -> CValue.CString("memory test"))
       runDag(dag, modules, inputs)
     }
 
@@ -262,7 +264,7 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
 
   it should "produce deterministic results for the same DAG" in {
     val (dag, modules) = createChainDag(50)
-    val inputs = Map("input" -> CValue.CString("determinism test"))
+    val inputs         = Map("input" -> CValue.CString("determinism test"))
 
     val results = (1 to 5).map { _ =>
       val state = runDag(dag, modules, inputs)
@@ -280,29 +282,35 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "Scheduler" should "handle 1000 concurrent submissions" in {
-    GlobalScheduler.bounded(maxConcurrency = 16).use { scheduler =>
-      for {
-        results <- (1 to 1000).toList.map { i =>
-          scheduler.submit(50, IO.pure(i * 2))
-        }.parSequence
-      } yield {
-        results.size shouldBe 1000
-        results.toSet shouldBe (1 to 1000).map(_ * 2).toSet
+    GlobalScheduler
+      .bounded(maxConcurrency = 16)
+      .use { scheduler =>
+        for {
+          results <- (1 to 1000).toList.map { i =>
+            scheduler.submit(50, IO.pure(i * 2))
+          }.parSequence
+        } yield {
+          results.size shouldBe 1000
+          results.toSet shouldBe (1 to 1000).map(_ * 2).toSet
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
   }
 
   it should "handle 1000 concurrent submissions with bounded scheduler and queue" in {
-    GlobalScheduler.bounded(maxConcurrency = 8, maxQueueSize = 0).use { scheduler =>
-      for {
-        results <- (1 to 1000).toList.map { i =>
-          scheduler.submit(i % 100, IO.pure(i))
-        }.parSequence
-      } yield {
-        results.size shouldBe 1000
-        results.toSet shouldBe (1 to 1000).toSet
+    GlobalScheduler
+      .bounded(maxConcurrency = 8, maxQueueSize = 0)
+      .use { scheduler =>
+        for {
+          results <- (1 to 1000).toList.map { i =>
+            scheduler.submit(i % 100, IO.pure(i))
+          }.parSequence
+        } yield {
+          results.size shouldBe 1000
+          results.toSet shouldBe (1 to 1000).toSet
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
   }
 
   // -------------------------------------------------------------------------
@@ -310,9 +318,9 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "Compiler via DAG generation" should "handle 1000-node chain DAG construction in under 1 second" in {
-    val start = System.nanoTime()
+    val start          = System.nanoTime()
     val (dag, modules) = createChainDag(1000)
-    val elapsed = (System.nanoTime() - start) / 1e6
+    val elapsed        = (System.nanoTime() - start) / 1e6
 
     println(f"1000-node DAG construction: $elapsed%.1f ms")
 

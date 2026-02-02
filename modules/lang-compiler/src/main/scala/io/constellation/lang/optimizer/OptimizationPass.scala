@@ -6,8 +6,8 @@ import java.util.UUID
 
 /** Base trait for IR optimization passes.
   *
-  * Each pass transforms an IRProgram to a potentially optimized version.
-  * Passes should be pure functions - they should not modify their input.
+  * Each pass transforms an IRProgram to a potentially optimized version. Passes should be pure
+  * functions - they should not modify their input.
   */
 trait OptimizationPass {
 
@@ -16,40 +16,51 @@ trait OptimizationPass {
 
   /** Apply this optimization pass to the IR program.
     *
-    * @param ir The IR program to optimize
-    * @return The optimized IR program (may be unchanged if no optimizations apply)
+    * @param ir
+    *   The IR program to optimize
+    * @return
+    *   The optimized IR program (may be unchanged if no optimizations apply)
     */
   def run(ir: IRProgram): IRProgram
 
   /** Helper to transform all nodes in the IR program.
     *
-    * @param ir The IR program
-    * @param f The transformation function to apply to each node
-    * @return A new IR program with transformed nodes
+    * @param ir
+    *   The IR program
+    * @param f
+    *   The transformation function to apply to each node
+    * @return
+    *   A new IR program with transformed nodes
     */
   protected def transformNodes(ir: IRProgram)(f: IRNode => IRNode): IRProgram =
     ir.copy(nodes = ir.nodes.map { case (id, node) => id -> f(node) })
 
   /** Helper to filter nodes from the IR program.
     *
-    * @param ir The IR program
-    * @param p The predicate - nodes where p returns true are kept
-    * @return A new IR program with only nodes matching the predicate
+    * @param ir
+    *   The IR program
+    * @param p
+    *   The predicate - nodes where p returns true are kept
+    * @return
+    *   A new IR program with only nodes matching the predicate
     */
   protected def filterNodes(ir: IRProgram)(p: (UUID, IRNode) => Boolean): IRProgram =
     ir.copy(nodes = ir.nodes.filter { case (id, node) => p(id, node) })
 
   /** Helper to replace node references throughout the IR program.
     *
-    * @param ir The IR program
-    * @param replacements A map from old node IDs to new node IDs
-    * @return A new IR program with references updated
+    * @param ir
+    *   The IR program
+    * @param replacements
+    *   A map from old node IDs to new node IDs
+    * @return
+    *   A new IR program with references updated
     */
   protected def replaceReferences(ir: IRProgram, replacements: Map[UUID, UUID]): IRProgram = {
     def replace(id: UUID): UUID = replacements.getOrElse(id, id)
 
     def replaceInNode(node: IRNode): IRNode = node match {
-      case n: IRNode.Input => n
+      case n: IRNode.Input       => n
       case n: IRNode.LiteralNode => n
       case n: IRNode.ModuleCall =>
         n.copy(inputs = n.inputs.map { case (k, v) => k -> replace(v) })
@@ -88,7 +99,7 @@ trait OptimizationPass {
         n.copy(elements = n.elements.map(replace))
     }
 
-    val newNodes = ir.nodes.map { case (id, node) => id -> replaceInNode(node) }
+    val newNodes    = ir.nodes.map { case (id, node) => id -> replaceInNode(node) }
     val newBindings = ir.variableBindings.map { case (name, id) => name -> replace(id) }
 
     ir.copy(nodes = newNodes, variableBindings = newBindings)

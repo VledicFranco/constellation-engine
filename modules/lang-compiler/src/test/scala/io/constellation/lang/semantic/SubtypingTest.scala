@@ -2,7 +2,7 @@ package io.constellation.lang.semantic
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lang.semantic.SemanticType._
+import io.constellation.lang.semantic.SemanticType.*
 
 class SubtypingTest extends AnyFlatSpec with Matchers {
 
@@ -100,7 +100,7 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
 
   it should "handle record width subtyping" in {
     val narrow = SRecord(Map("name" -> SString))
-    val wide = SRecord(Map("name" -> SString, "age" -> SInt))
+    val wide   = SRecord(Map("name" -> SString, "age" -> SInt))
 
     // Wide record is subtype of narrow (has all required fields plus extra)
     Subtyping.isSubtype(wide, narrow) shouldBe true
@@ -121,15 +121,19 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle combined width + depth record subtyping" in {
-    val sub = SRecord(Map(
-      "name" -> SString,
-      "age" -> SInt,
-      "data" -> SList(SNothing)
-    ))
-    val sup = SRecord(Map(
-      "name" -> SString,
-      "data" -> SList(SInt)
-    ))
+    val sub = SRecord(
+      Map(
+        "name" -> SString,
+        "age"  -> SInt,
+        "data" -> SList(SNothing)
+      )
+    )
+    val sup = SRecord(
+      Map(
+        "name" -> SString,
+        "data" -> SList(SInt)
+      )
+    )
 
     // sub has extra field (age) and compatible data field (List<Nothing> <: List<Int>)
     Subtyping.isSubtype(sub, sup) shouldBe true
@@ -333,7 +337,7 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
 
   it should "explain missing record fields" in {
     val narrow = SRecord(Map("name" -> SString))
-    val wide = SRecord(Map("name" -> SString, "age" -> SInt))
+    val wide   = SRecord(Map("name" -> SString, "age" -> SInt))
 
     val explanation = Subtyping.explainFailure(narrow, wide)
     explanation shouldBe defined
@@ -351,7 +355,7 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "explain union membership failures" in {
-    val union = SUnion(Set(SInt, SString))
+    val union       = SUnion(Set(SInt, SString))
     val explanation = Subtyping.explainFailure(SBoolean, union)
 
     explanation shouldBe defined
@@ -382,7 +386,7 @@ class SubtypingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty records" in {
-    val empty = SRecord(Map.empty)
+    val empty    = SRecord(Map.empty)
     val nonEmpty = SRecord(Map("x" -> SInt))
 
     // Any record is subtype of empty record

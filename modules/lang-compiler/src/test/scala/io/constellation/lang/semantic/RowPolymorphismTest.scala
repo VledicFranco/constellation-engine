@@ -2,13 +2,13 @@ package io.constellation.lang.semantic
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lang.semantic.SemanticType._
+import io.constellation.lang.semantic.SemanticType.*
 
 /** Tests for row polymorphism implementation.
   *
-  * Row polymorphism allows functions to accept records with "at least" certain fields.
-  * This is essential for flexible data transformation pipelines where extra fields
-  * should pass through without explicit projection.
+  * Row polymorphism allows functions to accept records with "at least" certain fields. This is
+  * essential for flexible data transformation pipelines where extra fields should pass through
+  * without explicit projection.
   */
 class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
@@ -48,28 +48,28 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   "Subtyping with SOpenRecord" should "allow closed record with exact fields" in {
     val closed = SRecord(Map("name" -> SString))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
   }
 
   it should "allow closed record with extra fields" in {
     val closed = SRecord(Map("name" -> SString, "age" -> SInt, "email" -> SString))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
   }
 
   it should "reject closed record missing required fields" in {
     val closed = SRecord(Map("age" -> SInt))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe false
   }
 
   it should "reject closed record with incompatible field type" in {
-    val closed = SRecord(Map("name" -> SInt))  // Wrong type!
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val closed = SRecord(Map("name" -> SInt)) // Wrong type!
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe false
   }
@@ -98,7 +98,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject open record as subtype of closed record" in {
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
     val closed = SRecord(Map("name" -> SString))
 
     Subtyping.isSubtype(open, closed) shouldBe false
@@ -110,7 +110,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   "Subtyping.explainFailure" should "explain missing fields for open records" in {
     val closed = SRecord(Map("age" -> SInt))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val explanation = Subtyping.explainFailure(closed, open)
     explanation shouldBe defined
@@ -119,7 +119,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "explain incompatible field types for open records" in {
     val closed = SRecord(Map("name" -> SInt))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val explanation = Subtyping.explainFailure(closed, open)
     explanation shouldBe defined
@@ -132,7 +132,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   "RowUnification.unifyClosedWithOpen" should "capture extra fields in row variable" in {
     val closed = SRecord(Map("name" -> SString, "age" -> SInt, "active" -> SBoolean))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val result = RowUnification.unifyClosedWithOpen(closed, open)
     result.isRight shouldBe true
@@ -143,7 +143,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "produce empty row for exact match" in {
     val closed = SRecord(Map("name" -> SString))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val result = RowUnification.unifyClosedWithOpen(closed, open)
     result.isRight shouldBe true
@@ -154,7 +154,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "fail for missing required fields" in {
     val closed = SRecord(Map("age" -> SInt))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val result = RowUnification.unifyClosedWithOpen(closed, open)
     result.isLeft shouldBe true
@@ -163,7 +163,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "fail for incompatible field types" in {
     val closed = SRecord(Map("name" -> SInt))
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open   = SOpenRecord(Map("name" -> SString), RowVar(1))
 
     val result = RowUnification.unifyClosedWithOpen(closed, open)
     result.isLeft shouldBe true
@@ -175,7 +175,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   // ===========================================================================
 
   "RowUnification.applySubstitution" should "close open record when row var is bound" in {
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open  = SOpenRecord(Map("name" -> SString), RowVar(1))
     val subst = RowUnification.Substitution.empty.withRowVar(RowVar(1), Map("age" -> SInt))
 
     val result = RowUnification.applySubstitution(open, subst)
@@ -183,7 +183,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   }
 
   it should "leave open record unchanged when row var is not bound" in {
-    val open = SOpenRecord(Map("name" -> SString), RowVar(1))
+    val open  = SOpenRecord(Map("name" -> SString), RowVar(1))
     val subst = RowUnification.Substitution.empty
 
     val result = RowUnification.applySubstitution(open, subst)
@@ -191,7 +191,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle nested types" in {
-    val open = SList(SOpenRecord(Map("id" -> SInt), RowVar(1)))
+    val open  = SList(SOpenRecord(Map("id" -> SInt), RowVar(1)))
     val subst = RowUnification.Substitution.empty.withRowVar(RowVar(1), Map("name" -> SString))
 
     val result = RowUnification.applySubstitution(open, subst)
@@ -232,7 +232,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
       rowVars = List(rv)
     )
 
-    var counter = 100
+    var counter  = 100
     val freshGen = () => { counter += 1; RowVar(counter) }
 
     val instantiated = sig.instantiate(freshGen)
@@ -244,7 +244,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
     // Check the param type was also updated
     instantiated.params.head._2 match {
       case SOpenRecord(_, newRv) => newRv.id shouldBe 101
-      case _ => fail("Expected SOpenRecord")
+      case _                     => fail("Expected SOpenRecord")
     }
   }
 
@@ -274,9 +274,9 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   // ===========================================================================
 
   "Row polymorphism" should "handle nested record fields" in {
-    val inner = SRecord(Map("x" -> SInt, "y" -> SInt))
+    val inner  = SRecord(Map("x" -> SInt, "y" -> SInt))
     val closed = SRecord(Map("point" -> inner, "color" -> SString))
-    val open = SOpenRecord(Map("point" -> inner), RowVar(1))
+    val open   = SOpenRecord(Map("point" -> inner), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
 
@@ -287,7 +287,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "handle list field types" in {
     val closed = SRecord(Map("items" -> SList(SInt), "count" -> SInt))
-    val open = SOpenRecord(Map("items" -> SList(SInt)), RowVar(1))
+    val open   = SOpenRecord(Map("items" -> SList(SInt)), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
 
@@ -299,7 +299,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
   it should "use subtyping for field type checking" in {
     // List<Nothing> is subtype of List<Int>
     val closed = SRecord(Map("items" -> SList(SNothing)))
-    val open = SOpenRecord(Map("items" -> SList(SInt)), RowVar(1))
+    val open   = SOpenRecord(Map("items" -> SList(SInt)), RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
 
@@ -309,7 +309,7 @@ class RowPolymorphismTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty open record (accepts any record)" in {
     val closed = SRecord(Map("a" -> SInt, "b" -> SString))
-    val open = SOpenRecord(Map.empty, RowVar(1))
+    val open   = SOpenRecord(Map.empty, RowVar(1))
 
     Subtyping.isSubtype(closed, open) shouldBe true
 

@@ -208,8 +208,8 @@ object LspMessages {
 
   case class GetDagVisualizationParams(
       uri: String,
-      direction: Option[String] = None,    // "TB" or "LR", defaults to "TB"
-      executionId: Option[String] = None   // If provided, include execution state
+      direction: Option[String] = None,  // "TB" or "LR", defaults to "TB"
+      executionId: Option[String] = None // If provided, include execution state
   )
 
   case class GetDagVisualizationResult(
@@ -228,7 +228,7 @@ object LspMessages {
 
   case class DagVizNode(
       id: String,
-      kind: String,           // "Input", "Output", "Operation", etc.
+      kind: String, // "Input", "Output", "Operation", etc.
       label: String,
       typeSignature: String,
       position: Option[DagVizPosition],
@@ -240,7 +240,7 @@ object LspMessages {
       source: String,
       target: String,
       label: Option[String],
-      kind: String            // "Data", "Optional", "Control"
+      kind: String // "Data", "Optional", "Control"
   )
 
   case class DagVizGroup(
@@ -261,7 +261,7 @@ object LspMessages {
   )
 
   case class DagVizExecutionState(
-      status: String,               // "Pending", "Running", "Completed", "Failed"
+      status: String, // "Pending", "Running", "Completed", "Failed"
       value: Option[Json],
       durationMs: Option[Long],
       error: Option[String]

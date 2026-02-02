@@ -36,8 +36,8 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
     moduleStatuses = Map.empty
   )
 
-  private val inputDataId = UUID.randomUUID()
-  private val moduleId = UUID.randomUUID()
+  private val inputDataId  = UUID.randomUUID()
+  private val moduleId     = UUID.randomUUID()
   private val outputDataId = UUID.randomUUID()
 
   private def mkSimpleDag: DagSpec = DagSpec(
@@ -50,7 +50,7 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputDataId -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
+      inputDataId  -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
       outputDataId -> DataNodeSpec("result", Map.empty, CType.CString)
     ),
     inEdges = Set((inputDataId, moduleId)),
@@ -63,7 +63,7 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   "SuspensionStore" should "save and load a suspended execution" in {
-    val store = mkStore
+    val store     = mkStore
     val suspended = mkSuspended()
 
     val result = (for {
@@ -93,7 +93,7 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   it should "delete a stored suspension" in {
-    val store = mkStore
+    val store     = mkStore
     val suspended = mkSuspended()
 
     val result = (for {
@@ -119,12 +119,12 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
 
   it should "list all stored suspensions" in {
     val store = mkStore
-    val s1 = mkSuspended(hash = "hash-1")
-    val s2 = mkSuspended(hash = "hash-2")
+    val s1    = mkSuspended(hash = "hash-1")
+    val s2    = mkSuspended(hash = "hash-2")
 
     val result = (for {
-      _ <- store.save(s1)
-      _ <- store.save(s2)
+      _   <- store.save(s1)
+      _   <- store.save(s2)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -140,9 +140,9 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = mkStore
 
     val result = (for {
-      _ <- store.save(mkSuspended(hash = "hash-A"))
-      _ <- store.save(mkSuspended(hash = "hash-B"))
-      _ <- store.save(mkSuspended(hash = "hash-A"))
+      _        <- store.save(mkSuspended(hash = "hash-A"))
+      _        <- store.save(mkSuspended(hash = "hash-B"))
+      _        <- store.save(mkSuspended(hash = "hash-A"))
       filtered <- store.list(SuspensionFilter(structuralHash = Some("hash-A")))
     } yield filtered).unsafeRunSync()
 
@@ -156,12 +156,12 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
 
   it should "filter by execution ID" in {
     val store = mkStore
-    val s1 = mkSuspended()
-    val s2 = mkSuspended()
+    val s1    = mkSuspended()
+    val s2    = mkSuspended()
 
     val result = (for {
-      _ <- store.save(s1)
-      _ <- store.save(s2)
+      _        <- store.save(s1)
+      _        <- store.save(s2)
       filtered <- store.list(SuspensionFilter(executionId = Some(s1.executionId)))
     } yield filtered).unsafeRunSync()
 
@@ -177,12 +177,14 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = mkStore
 
     val result = (for {
-      _ <- store.save(mkSuspended(resumptionCount = 0))
-      _ <- store.save(mkSuspended(resumptionCount = 2))
-      _ <- store.save(mkSuspended(resumptionCount = 5))
+      _    <- store.save(mkSuspended(resumptionCount = 0))
+      _    <- store.save(mkSuspended(resumptionCount = 2))
+      _    <- store.save(mkSuspended(resumptionCount = 5))
       min2 <- store.list(SuspensionFilter(minResumptionCount = Some(2)))
       max2 <- store.list(SuspensionFilter(maxResumptionCount = Some(2)))
-      range <- store.list(SuspensionFilter(minResumptionCount = Some(1), maxResumptionCount = Some(3)))
+      range <- store.list(
+        SuspensionFilter(minResumptionCount = Some(1), maxResumptionCount = Some(3))
+      )
     } yield (min2, max2, range)).unsafeRunSync()
 
     result._1 should have size 2 // count 2 and 5
@@ -200,7 +202,7 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
     val suspended = mkSuspended(inputs = Map.empty)
 
     val result = (for {
-      _ <- store.save(suspended)
+      _         <- store.save(suspended)
       summaries <- store.list()
     } yield summaries).unsafeRunSync()
 
@@ -211,11 +213,11 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
   }
 
   it should "report empty missingInputs when all inputs are provided" in {
-    val store = mkStore
+    val store     = mkStore
     val suspended = mkSuspended(inputs = Map("text" -> CValue.CString("hello")))
 
     val result = (for {
-      _ <- store.save(suspended)
+      _         <- store.save(suspended)
       summaries <- store.list()
     } yield summaries).unsafeRunSync()
 
@@ -227,7 +229,7 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   it should "round-trip through codec when validation is enabled" in {
-    val store = mkStoreWithCodec
+    val store     = mkStoreWithCodec
     val suspended = mkSuspended()
 
     val result = (for {
@@ -244,12 +246,12 @@ class SuspensionStoreTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   it should "handle concurrent saves without data loss" in {
-    val store = mkStore
+    val store       = mkStore
     val suspensions = (1 to 20).map(i => mkSuspended(hash = s"hash-$i")).toList
 
     val result = (for {
       // Save all concurrently
-      _ <- suspensions.parTraverse(store.save)
+      _   <- suspensions.parTraverse(store.save)
       all <- store.list()
     } yield all).unsafeRunSync()
 

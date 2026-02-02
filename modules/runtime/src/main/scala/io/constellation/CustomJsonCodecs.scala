@@ -111,28 +111,28 @@ trait CustomJsonCodecs {
 
   // CValue codecs with tagged union format
   given cvalueEncoder: Encoder[CValue] = Encoder.instance {
-    case CValue.CString(value)   => Json.obj("tag" -> "CString".asJson, "value" -> value.asJson)
-    case CValue.CInt(value)      => Json.obj("tag" -> "CInt".asJson, "value" -> value.asJson)
-    case CValue.CFloat(value)    => Json.obj("tag" -> "CFloat".asJson, "value" -> value.asJson)
-    case CValue.CBoolean(value)  => Json.obj("tag" -> "CBoolean".asJson, "value" -> value.asJson)
+    case CValue.CString(value)  => Json.obj("tag" -> "CString".asJson, "value" -> value.asJson)
+    case CValue.CInt(value)     => Json.obj("tag" -> "CInt".asJson, "value" -> value.asJson)
+    case CValue.CFloat(value)   => Json.obj("tag" -> "CFloat".asJson, "value" -> value.asJson)
+    case CValue.CBoolean(value) => Json.obj("tag" -> "CBoolean".asJson, "value" -> value.asJson)
     case CValue.CList(value, subtype) =>
       Json.obj("tag" -> "CList".asJson, "value" -> value.asJson, "subtype" -> subtype.asJson)
     case CValue.CMap(value, keysType, valuesType) =>
       val pairs = value.map { case (k, v) => Json.obj("key" -> k.asJson, "value" -> v.asJson) }
       Json.obj(
-        "tag" -> "CMap".asJson,
-        "value" -> pairs.asJson,
-        "keysType" -> keysType.asJson,
+        "tag"        -> "CMap".asJson,
+        "value"      -> pairs.asJson,
+        "keysType"   -> keysType.asJson,
         "valuesType" -> valuesType.asJson
       )
     case CValue.CProduct(value, structure) =>
       Json.obj("tag" -> "CProduct".asJson, "value" -> value.asJson, "structure" -> structure.asJson)
     case CValue.CUnion(value, structure, tag) =>
       Json.obj(
-        "tag" -> "CUnion".asJson,
-        "value" -> value.asJson,
+        "tag"       -> "CUnion".asJson,
+        "value"     -> value.asJson,
         "structure" -> structure.asJson,
-        "unionTag" -> tag.asJson
+        "unionTag"  -> tag.asJson
       )
     case CValue.CSome(value, innerType) =>
       Json.obj("tag" -> "CSome".asJson, "value" -> value.asJson, "innerType" -> innerType.asJson)
@@ -189,18 +189,18 @@ trait CustomJsonCodecs {
   // ModuleCallOptions codec
   given moduleCallOptionsEncoder: Encoder[ModuleCallOptions] = Encoder.instance { opts =>
     Json.obj(
-      "retry" -> opts.retry.asJson,
-      "timeoutMs" -> opts.timeoutMs.asJson,
-      "delayMs" -> opts.delayMs.asJson,
-      "backoff" -> opts.backoff.asJson,
-      "cacheMs" -> opts.cacheMs.asJson,
-      "cacheBackend" -> opts.cacheBackend.asJson,
+      "retry"         -> opts.retry.asJson,
+      "timeoutMs"     -> opts.timeoutMs.asJson,
+      "delayMs"       -> opts.delayMs.asJson,
+      "backoff"       -> opts.backoff.asJson,
+      "cacheMs"       -> opts.cacheMs.asJson,
+      "cacheBackend"  -> opts.cacheBackend.asJson,
       "throttleCount" -> opts.throttleCount.asJson,
       "throttlePerMs" -> opts.throttlePerMs.asJson,
-      "concurrency" -> opts.concurrency.asJson,
-      "onError" -> opts.onError.asJson,
-      "lazyEval" -> opts.lazyEval.asJson,
-      "priority" -> opts.priority.asJson
+      "concurrency"   -> opts.concurrency.asJson,
+      "onError"       -> opts.onError.asJson,
+      "lazyEval"      -> opts.lazyEval.asJson,
+      "priority"      -> opts.priority.asJson
     )
   }
 
@@ -218,16 +218,28 @@ trait CustomJsonCodecs {
       onError       <- c.downField("onError").as[Option[String]]
       lazyEval      <- c.downField("lazyEval").as[Option[Boolean]]
       priority      <- c.downField("priority").as[Option[Int]]
-    } yield ModuleCallOptions(retry, timeoutMs, delayMs, backoff, cacheMs, cacheBackend,
-      throttleCount, throttlePerMs, concurrency, onError, lazyEval, priority)
+    } yield ModuleCallOptions(
+      retry,
+      timeoutMs,
+      delayMs,
+      backoff,
+      cacheMs,
+      cacheBackend,
+      throttleCount,
+      throttlePerMs,
+      concurrency,
+      onError,
+      lazyEval,
+      priority
+    )
   }
 
   // ComponentMetadata codec
   given componentMetadataEncoder: Encoder[ComponentMetadata] = Encoder.instance { m =>
     Json.obj(
-      "name" -> m.name.asJson,
-      "description" -> m.description.asJson,
-      "tags" -> m.tags.asJson,
+      "name"         -> m.name.asJson,
+      "description"  -> m.description.asJson,
+      "tags"         -> m.tags.asJson,
       "majorVersion" -> m.majorVersion.asJson,
       "minorVersion" -> m.minorVersion.asJson
     )
@@ -262,19 +274,19 @@ trait CustomJsonCodecs {
   given dataNodeSpecEncoder: Encoder[DataNodeSpec] = Encoder.instance { d =>
     val transformTag = d.inlineTransform.map(_.getClass.getSimpleName.stripSuffix("$"))
     Json.obj(
-      "name" -> d.name.asJson,
-      "nicknames" -> d.nicknames.map { case (k, v) => k.toString -> v }.asJson,
-      "cType" -> d.cType.asJson,
+      "name"                -> d.name.asJson,
+      "nicknames"           -> d.nicknames.map { case (k, v) => k.toString -> v }.asJson,
+      "cType"               -> d.cType.asJson,
       "inlineTransformType" -> transformTag.asJson,
-      "transformInputs" -> d.transformInputs.map { case (k, v) => k -> v.toString }.asJson
+      "transformInputs"     -> d.transformInputs.map { case (k, v) => k -> v.toString }.asJson
     )
   }
 
   given dataNodeSpecDecoder: Decoder[DataNodeSpec] = Decoder.instance { c =>
     for {
-      name      <- c.downField("name").as[String]
-      nicknames <- c.downField("nicknames").as[Map[String, String]]
-      cType     <- c.downField("cType").as[CType]
+      name               <- c.downField("name").as[String]
+      nicknames          <- c.downField("nicknames").as[Map[String, String]]
+      cType              <- c.downField("cType").as[CType]
       transformInputsStr <- c.downField("transformInputs").as[Map[String, String]]
     } yield DataNodeSpec(
       name = name,
@@ -288,10 +300,10 @@ trait CustomJsonCodecs {
   // ModuleNodeSpec codec
   given moduleNodeSpecEncoder: Encoder[ModuleNodeSpec] = Encoder.instance { m =>
     Json.obj(
-      "metadata" -> m.metadata.asJson,
-      "consumes" -> m.consumes.asJson,
-      "produces" -> m.produces.asJson,
-      "config" -> m.config.asJson,
+      "metadata"          -> m.metadata.asJson,
+      "consumes"          -> m.consumes.asJson,
+      "produces"          -> m.produces.asJson,
+      "config"            -> m.config.asJson,
       "definitionContext" -> m.definitionContext.asJson
     )
   }
@@ -302,7 +314,7 @@ trait CustomJsonCodecs {
       consumes          <- c.downField("consumes").as[Map[String, CType]]
       produces          <- c.downField("produces").as[Map[String, CType]]
       config            <- c.downField("config").as[ModuleConfig]
-      definitionContext  <- c.downField("definitionContext").as[Option[Map[String, Json]]]
+      definitionContext <- c.downField("definitionContext").as[Option[Map[String, Json]]]
     } yield ModuleNodeSpec(metadata, consumes, produces, config, definitionContext)
   }
 
@@ -310,30 +322,34 @@ trait CustomJsonCodecs {
   given dagSpecEncoder: Encoder[DagSpec] = Encoder.instance { d =>
     Json.obj(
       "metadata" -> d.metadata.asJson,
-      "modules" -> d.modules.asJson,
-      "data" -> d.data.asJson,
-      "inEdges" -> d.inEdges.toList.map { case (a, b) => Json.arr(a.toString.asJson, b.toString.asJson) }.asJson,
-      "outEdges" -> d.outEdges.toList.map { case (a, b) => Json.arr(a.toString.asJson, b.toString.asJson) }.asJson,
+      "modules"  -> d.modules.asJson,
+      "data"     -> d.data.asJson,
+      "inEdges" -> d.inEdges.toList.map { case (a, b) =>
+        Json.arr(a.toString.asJson, b.toString.asJson)
+      }.asJson,
+      "outEdges" -> d.outEdges.toList.map { case (a, b) =>
+        Json.arr(a.toString.asJson, b.toString.asJson)
+      }.asJson,
       "declaredOutputs" -> d.declaredOutputs.asJson,
-      "outputBindings" -> d.outputBindings.map { case (k, v) => k -> v.toString }.asJson
+      "outputBindings"  -> d.outputBindings.map { case (k, v) => k -> v.toString }.asJson
     )
   }
 
   given dagSpecDecoder: Decoder[DagSpec] = Decoder.instance { c =>
     for {
-      metadata <- c.downField("metadata").as[ComponentMetadata]
-      modules  <- c.downField("modules").as[Map[UUID, ModuleNodeSpec]]
-      data     <- c.downField("data").as[Map[UUID, DataNodeSpec]]
-      inEdgesRaw  <- c.downField("inEdges").as[List[List[String]]]
-      outEdgesRaw <- c.downField("outEdges").as[List[List[String]]]
-      declaredOutputs <- c.downField("declaredOutputs").as[List[String]]
+      metadata          <- c.downField("metadata").as[ComponentMetadata]
+      modules           <- c.downField("modules").as[Map[UUID, ModuleNodeSpec]]
+      data              <- c.downField("data").as[Map[UUID, DataNodeSpec]]
+      inEdgesRaw        <- c.downField("inEdges").as[List[List[String]]]
+      outEdgesRaw       <- c.downField("outEdges").as[List[List[String]]]
+      declaredOutputs   <- c.downField("declaredOutputs").as[List[String]]
       outputBindingsRaw <- c.downField("outputBindings").as[Map[String, String]]
     } yield {
-      val inEdges = inEdgesRaw.collect {
-        case List(a, b) => (UUID.fromString(a), UUID.fromString(b))
+      val inEdges = inEdgesRaw.collect { case List(a, b) =>
+        (UUID.fromString(a), UUID.fromString(b))
       }.toSet
-      val outEdges = outEdgesRaw.collect {
-        case List(a, b) => (UUID.fromString(a), UUID.fromString(b))
+      val outEdges = outEdgesRaw.collect { case List(a, b) =>
+        (UUID.fromString(a), UUID.fromString(b))
       }.toSet
       val outputBindings = outputBindingsRaw.map { case (k, v) => k -> UUID.fromString(v) }
       DagSpec(metadata, modules, data, inEdges, outEdges, declaredOutputs, outputBindings)

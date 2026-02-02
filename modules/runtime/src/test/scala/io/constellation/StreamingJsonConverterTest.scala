@@ -33,9 +33,9 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   "StreamingJsonConverter" should "parse valid small payloads" in {
-    val json = """[1, 2, 3, 4, 5]"""
+    val json      = """[1, 2, 3, 4, 5]"""
     val converter = StreamingJsonConverter()
-    val result = converter.streamFromString(json, CType.CList(CType.CInt))
+    val result    = converter.streamFromString(json, CType.CList(CType.CInt))
 
     result match {
       case Right(CValue.CList(values, _)) =>
@@ -48,12 +48,12 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject payloads exceeding size limit (from bytes)" in {
-    val limits = StreamingLimits(maxPayloadSize = 100)
+    val limits    = StreamingLimits(maxPayloadSize = 100)
     val converter = StreamingJsonConverter(limits)
 
     // Create a payload larger than 100 bytes
     val largeJson = "[" + (1 to 50).map(_ => "1").mkString(",") + "]"
-    val bytes = largeJson.getBytes("UTF-8")
+    val bytes     = largeJson.getBytes("UTF-8")
 
     converter.streamToCValue(bytes, CType.CList(CType.CInt)) match {
       case Left(error) =>
@@ -64,7 +64,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject payloads exceeding size limit (from string)" in {
-    val limits = StreamingLimits(maxPayloadSize = 100)
+    val limits    = StreamingLimits(maxPayloadSize = 100)
     val converter = StreamingJsonConverter(limits)
 
     // Create a large string
@@ -79,11 +79,11 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject payloads exceeding size limit (from InputStream)" in {
-    val limits = StreamingLimits(maxPayloadSize = 100)
+    val limits    = StreamingLimits(maxPayloadSize = 100)
     val converter = StreamingJsonConverter(limits)
 
     // Create a large payload
-    val largeJson = "[" + (1 to 50).map(_ => "1").mkString(",") + "]"
+    val largeJson   = "[" + (1 to 50).map(_ => "1").mkString(",") + "]"
     val inputStream = new ByteArrayInputStream(largeJson.getBytes("UTF-8"))
 
     converter.streamFromInputStream(inputStream, CType.CList(CType.CInt)).unsafeRunSync() match {
@@ -97,7 +97,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   it should "reject arrays exceeding element limit" in {
     val limits = StreamingLimits(
       maxPayloadSize = 1_000_000, // Large enough
-      maxArrayElements = 10        // Only 10 elements allowed
+      maxArrayElements = 10       // Only 10 elements allowed
     )
     val converter = StreamingJsonConverter(limits)
 
@@ -115,7 +115,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   it should "reject deeply nested structures exceeding depth limit" in {
     val limits = StreamingLimits(
       maxPayloadSize = 1_000_000,
-      maxNestingDepth = 5  // Only 5 levels deep
+      maxNestingDepth = 5 // Only 5 levels deep
     )
     val converter = StreamingJsonConverter(limits)
 
@@ -132,7 +132,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "accept structures at the depth limit" in {
-    val limits = StreamingLimits(maxNestingDepth = 5)
+    val limits    = StreamingLimits(maxNestingDepth = 5)
     val converter = StreamingJsonConverter(limits)
 
     // Create a 5-level deep nested array: [[[[[1]]]]]
@@ -140,14 +140,14 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
 
     converter.streamFromString(nested, nestedListType(5)) match {
       case Right(_) =>
-        // Should succeed
+      // Should succeed
       case Left(error) =>
         fail(s"Should have accepted structure at limit: $error")
     }
   }
 
   it should "reject deeply nested structures during skipValue" in {
-    val limits = StreamingLimits(maxNestingDepth = 5)
+    val limits    = StreamingLimits(maxNestingDepth = 5)
     val converter = StreamingJsonConverter(limits)
 
     // Create a product with an unknown field containing deeply nested data
@@ -192,7 +192,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
     val converter = StreamingJsonConverter(limits)
 
     // Nested array: [[1, 2], [3, 4], [5, 6]]
-    val json = "[[1, 2], [3, 4], [5, 6]]"
+    val json     = "[[1, 2], [3, 4], [5, 6]]"
     val listType = CType.CList(CType.CList(CType.CInt))
 
     converter.streamFromString(json, listType) match {
@@ -204,25 +204,27 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle products with nested arrays within limits" in {
-    val limits = StreamingLimits(maxNestingDepth = 10, maxArrayElements = 100)
+    val limits    = StreamingLimits(maxNestingDepth = 10, maxArrayElements = 100)
     val converter = StreamingJsonConverter(limits)
 
     val json = """{"values": [1, 2, 3], "nested": [[4, 5]]}"""
-    val productType = CType.CProduct(Map(
-      "values" -> CType.CList(CType.CInt),
-      "nested" -> CType.CList(CType.CList(CType.CInt))
-    ))
+    val productType = CType.CProduct(
+      Map(
+        "values" -> CType.CList(CType.CInt),
+        "nested" -> CType.CList(CType.CList(CType.CInt))
+      )
+    )
 
     converter.streamFromString(json, productType) match {
       case Right(_) =>
-        // Success
+      // Success
       case Left(error) =>
         fail(s"Should have accepted valid nested product: $error")
     }
   }
 
   it should "properly clean up resources on error" in {
-    val limits = StreamingLimits(maxArrayElements = 5)
+    val limits    = StreamingLimits(maxArrayElements = 5)
     val converter = StreamingJsonConverter(limits)
 
     // This should fail due to array limit
@@ -231,7 +233,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
     // Multiple attempts should not cause resource leaks
     (1 to 10).foreach { _ =>
       converter.streamFromString(json, CType.CList(CType.CInt)) match {
-        case Left(_) => // Expected
+        case Left(_)  => // Expected
         case Right(_) => fail("Should have rejected")
       }
     }
@@ -245,7 +247,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
 
     converter.streamFromString(reasonableArray, CType.CList(CType.CInt)) match {
       case Right(_) =>
-        // Success with defaults
+      // Success with defaults
       case Left(error) =>
         fail(s"Default limits should allow reasonable payloads: $error")
     }
@@ -253,8 +255,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
 
   // Helper to create nested list types
   // depth = number of CType.CList wrappers around CType.CInt
-  private def nestedListType(depth: Int): CType = {
-    if (depth == 0) CType.CInt
+  private def nestedListType(depth: Int): CType =
+    if depth == 0 then CType.CInt
     else CType.CList(nestedListType(depth - 1))
-  }
 }

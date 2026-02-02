@@ -16,12 +16,12 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   // Simple test routes
   private val testRoutes = HttpRoutes.of[IO] {
-    case GET -> Root / "data"    => Ok(Json.obj("value" -> Json.fromString("secret")))
-    case POST -> Root / "data"   => Ok(Json.obj("created" -> Json.fromBoolean(true)))
-    case DELETE -> Root / "data"  => Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
-    case GET -> Root / "health"  => Ok(Json.obj("status" -> Json.fromString("ok")))
+    case GET -> Root / "data"            => Ok(Json.obj("value" -> Json.fromString("secret")))
+    case POST -> Root / "data"           => Ok(Json.obj("created" -> Json.fromBoolean(true)))
+    case DELETE -> Root / "data"         => Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
+    case GET -> Root / "health"          => Ok(Json.obj("status" -> Json.fromString("ok")))
     case GET -> Root / "health" / "live" => Ok(Json.obj("status" -> Json.fromString("alive")))
-    case GET -> Root / "metrics" => Ok(Json.obj("uptime" -> Json.fromInt(100)))
+    case GET -> Root / "metrics"         => Ok(Json.obj("uptime" -> Json.fromInt(100)))
   }
 
   private val authConfig = AuthConfig(
@@ -37,7 +37,7 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
   // --- Missing header ---
 
   "AuthMiddleware" should "return 401 when no Authorization header is present" in {
-    val request = Request[IO](Method.GET, uri"/data")
+    val request  = Request[IO](Method.GET, uri"/data")
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Unauthorized
@@ -49,7 +49,9 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "return 401 for an invalid API key" in {
     val request = Request[IO](Method.GET, uri"/data")
-      .putHeaders(Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "wrong-key")))
+      .putHeaders(
+        Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "wrong-key"))
+      )
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Unauthorized
@@ -62,7 +64,9 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "allow GET with Admin key" in {
     val request = Request[IO](Method.GET, uri"/data")
-      .putHeaders(Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key")))
+      .putHeaders(
+        Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key"))
+      )
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -70,7 +74,9 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "allow POST with Admin key" in {
     val request = Request[IO](Method.POST, uri"/data")
-      .putHeaders(Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key")))
+      .putHeaders(
+        Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key"))
+      )
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -78,7 +84,9 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "allow DELETE with Admin key" in {
     val request = Request[IO](Method.DELETE, uri"/data")
-      .putHeaders(Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key")))
+      .putHeaders(
+        Authorization(Credentials.Token(org.typelevel.ci.CIString("Bearer"), "admin-key"))
+      )
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -133,21 +141,21 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
   // --- Public paths ---
 
   it should "allow access to public paths without auth" in {
-    val request = Request[IO](Method.GET, uri"/health")
+    val request  = Request[IO](Method.GET, uri"/health")
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
   }
 
   it should "allow access to public path sub-routes without auth" in {
-    val request = Request[IO](Method.GET, uri"/health/live")
+    val request  = Request[IO](Method.GET, uri"/health/live")
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
   }
 
   it should "allow access to /metrics without auth" in {
-    val request = Request[IO](Method.GET, uri"/metrics")
+    val request  = Request[IO](Method.GET, uri"/metrics")
     val response = protectedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -157,9 +165,9 @@ class AuthMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "pass through all requests when disabled (no keys configured)" in {
     val disabledConfig = AuthConfig(hashedKeys = List.empty)
-    val unprotected = AuthMiddleware(disabledConfig)(testRoutes)
+    val unprotected    = AuthMiddleware(disabledConfig)(testRoutes)
 
-    val request = Request[IO](Method.GET, uri"/data")
+    val request  = Request[IO](Method.GET, uri"/data")
     val response = unprotected.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok

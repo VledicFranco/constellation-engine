@@ -18,15 +18,15 @@ import org.scalatest.matchers.should.Matchers
 /** LSP integration tests for @example annotation extraction in GetInputSchema.
   *
   * Tests cover:
-  * - Primitive type examples (String, Int, Float, Boolean)
-  * - Inputs without @example annotations
-  * - Mixed inputs with and without annotations
-  * - Multiple inputs with different example types
-  * - Complex expressions (return None since unsupported)
+  *   - Primitive type examples (String, Int, Float, Boolean)
+  *   - Inputs without @example annotations
+  *   - Mixed inputs with and without annotations
+  *   - Multiple inputs with different example types
+  *   - Complex expressions (return None since unsupported)
   *
-  * Note: The LSP server only converts literal expressions to JSON.
-  * Variable references, function calls, and other complex expressions return None.
-  * Record and list literals are not supported by the parser in expressions.
+  * Note: The LSP server only converts literal expressions to JSON. Variable references, function
+  * calls, and other complex expressions return None. Record and list literals are not supported by
+  * the parser in expressions.
   *
   * See Issue #110: https://github.com/VledicFranco/constellation-engine/issues/110
   */
@@ -46,7 +46,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
 
     for {
       constellation <- ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
+      _             <- constellation.setModule(uppercaseModule)
 
       compiler = LangCompiler.builder
         .withModule(
@@ -92,8 +92,8 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
   /** Helper to extract the example JSON from the first input in the schema result */
   private def extractFirstExample(resultJson: Json): Option[Json] =
     for {
-      inputs <- (resultJson \\ "inputs").headOption.flatMap(_.asArray)
-      firstInput <- inputs.headOption
+      inputs       <- (resultJson \\ "inputs").headOption.flatMap(_.asArray)
+      firstInput   <- inputs.headOption
       exampleField <- firstInput.asObject.flatMap(_("example"))
       if !exampleField.isNull
     } yield exampleField
@@ -101,8 +101,8 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
   /** Helper to extract the example JSON from input at given index */
   private def extractExampleAtIndex(resultJson: Json, index: Int): Option[Json] =
     for {
-      inputs <- (resultJson \\ "inputs").headOption.flatMap(_.asArray)
-      input <- inputs.lift(index)
+      inputs       <- (resultJson \\ "inputs").headOption.flatMap(_.asArray)
+      input        <- inputs.lift(index)
       exampleField <- input.asObject.flatMap(_("example"))
       if !exampleField.isNull
     } yield exampleField
@@ -145,7 +145,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromString(""))
   }
 
@@ -163,7 +163,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromString("hello\nworld"))
   }
 
@@ -185,7 +185,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromInt(42))
   }
 
@@ -203,7 +203,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromInt(0))
   }
 
@@ -221,7 +221,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromInt(-100))
   }
 
@@ -239,7 +239,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromLong(2147483647L))
   }
 
@@ -261,7 +261,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromDoubleOrNull(3.14))
   }
 
@@ -279,7 +279,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromDoubleOrNull(0.0))
   }
 
@@ -297,7 +297,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromDoubleOrNull(3.141592653))
   }
 
@@ -319,7 +319,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromBoolean(true))
   }
 
@@ -337,7 +337,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.fromBoolean(false))
   }
 
@@ -583,8 +583,8 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     // Get the first input field
     val firstInput = for {
       inputs <- (schemaJson \\ "inputs").headOption.flatMap(_.asArray)
-      input <- inputs.headOption
-      obj <- input.asObject
+      input  <- inputs.headOption
+      obj    <- input.asObject
     } yield obj
 
     firstInput shouldBe defined
@@ -615,7 +615,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.arr())
   }
 
@@ -633,7 +633,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.arr(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3)))
   }
 
@@ -651,12 +651,14 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
-    example shouldBe Some(Json.arr(
-      Json.fromString("Alice"),
-      Json.fromString("Bob"),
-      Json.fromString("Charlie")
-    ))
+    val example    = extractFirstExample(schemaJson)
+    example shouldBe Some(
+      Json.arr(
+        Json.fromString("Alice"),
+        Json.fromString("Bob"),
+        Json.fromString("Charlie")
+      )
+    )
   }
 
   it should "return example for list of booleans" in {
@@ -673,12 +675,14 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
-    example shouldBe Some(Json.arr(
-      Json.fromBoolean(true),
-      Json.fromBoolean(false),
-      Json.fromBoolean(true)
-    ))
+    val example    = extractFirstExample(schemaJson)
+    example shouldBe Some(
+      Json.arr(
+        Json.fromBoolean(true),
+        Json.fromBoolean(false),
+        Json.fromBoolean(true)
+      )
+    )
   }
 
   it should "return example for list of floats" in {
@@ -695,12 +699,14 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
-    example shouldBe Some(Json.arr(
-      Json.fromDoubleOrNull(1.5),
-      Json.fromDoubleOrNull(2.5),
-      Json.fromDoubleOrNull(3.5)
-    ))
+    val example    = extractFirstExample(schemaJson)
+    example shouldBe Some(
+      Json.arr(
+        Json.fromDoubleOrNull(1.5),
+        Json.fromDoubleOrNull(2.5),
+        Json.fromDoubleOrNull(3.5)
+      )
+    )
   }
 
   it should "return example for single element list" in {
@@ -717,7 +723,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.arr(Json.fromInt(42)))
   }
 
@@ -735,7 +741,7 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     } yield schema
 
     val schemaJson = result.unsafeRunSync()
-    val example = extractFirstExample(schemaJson)
+    val example    = extractFirstExample(schemaJson)
     example shouldBe Some(Json.arr(Json.fromInt(-1), Json.fromInt(-2), Json.fromInt(-3)))
   }
 
@@ -760,7 +766,9 @@ class ExampleLspSpec extends AnyFlatSpec with Matchers {
     (schemaJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
 
     extractExampleAtIndex(schemaJson, 0) shouldBe Some(Json.fromString("hello"))
-    extractExampleAtIndex(schemaJson, 1) shouldBe Some(Json.arr(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3)))
+    extractExampleAtIndex(schemaJson, 1) shouldBe Some(
+      Json.arr(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3))
+    )
     extractExampleAtIndex(schemaJson, 2) shouldBe Some(Json.fromInt(42))
   }
 }

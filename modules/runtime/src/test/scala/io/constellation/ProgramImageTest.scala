@@ -10,18 +10,20 @@ class ProgramImageTest extends AnyFlatSpec with Matchers {
 
   private def simpleDagSpec: DagSpec = {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(moduleId -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("TestModule"),
-        consumes = Map("input" -> CType.CString),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        moduleId -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("TestModule"),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
+        inputId  -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
         outputId -> DataNodeSpec("output", Map(moduleId -> "out"), CType.CString)
       ),
       inEdges = Set((inputId, moduleId)),
@@ -32,7 +34,7 @@ class ProgramImageTest extends AnyFlatSpec with Matchers {
   }
 
   "ProgramImage.computeStructuralHash" should "delegate to ContentHash" in {
-    val dag = simpleDagSpec
+    val dag  = simpleDagSpec
     val hash = ProgramImage.computeStructuralHash(dag)
     hash shouldBe ContentHash.computeStructuralHash(dag)
   }
@@ -55,7 +57,7 @@ class ProgramImageTest extends AnyFlatSpec with Matchers {
   }
 
   "structural hash" should "round-trip through ProgramImage" in {
-    val dag = simpleDagSpec
+    val dag  = simpleDagSpec
     val hash = ProgramImage.computeStructuralHash(dag)
     val image = ProgramImage(
       structuralHash = hash,

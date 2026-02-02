@@ -10,6 +10,7 @@ sealed trait ApiError {
 }
 
 object ApiError {
+
   /** Error during input conversion (JSON → CValue) */
   case class InputError(message: String) extends ApiError
 
@@ -53,33 +54,39 @@ object ErrorHandling {
   def pure[E, A](a: A): EitherT[IO, E, A] =
     EitherT.pure[IO, E](a)
 
-  /**
-   * Handle errors in notification handlers by logging instead of silently swallowing.
-   *
-   * Use this for LSP notification handlers (didOpen, didChange, didClose) where
-   * we can't return an error response but shouldn't completely ignore failures.
-   *
-   * @param operation Name of the operation for logging context
-   * @param logger Function to log warning messages
-   * @param fa The IO operation to execute
-   * @return IO[Unit] that completes successfully even if the operation fails
-   */
+  /** Handle errors in notification handlers by logging instead of silently swallowing.
+    *
+    * Use this for LSP notification handlers (didOpen, didChange, didClose) where we can't return an
+    * error response but shouldn't completely ignore failures.
+    *
+    * @param operation
+    *   Name of the operation for logging context
+    * @param logger
+    *   Function to log warning messages
+    * @param fa
+    *   The IO operation to execute
+    * @return
+    *   IO[Unit] that completes successfully even if the operation fails
+    */
   def handleNotification(operation: String, logger: String => IO[Unit])(fa: IO[Unit]): IO[Unit] =
     fa.handleErrorWith { error =>
       logger(s"Error in $operation: ${error.getMessage}")
     }
 
-  /**
-   * Execute an IO operation and convert to Option, logging errors.
-   *
-   * Use this for request handlers where we want to return None on failure
-   * rather than propagating exceptions, but still want visibility into failures.
-   *
-   * @param operation Name of the operation for logging context
-   * @param logger Function to log warning messages
-   * @param fa The IO operation to execute
-   * @return IO[Option[A]] - Some(result) on success, None on failure
-   */
+  /** Execute an IO operation and convert to Option, logging errors.
+    *
+    * Use this for request handlers where we want to return None on failure rather than propagating
+    * exceptions, but still want visibility into failures.
+    *
+    * @param operation
+    *   Name of the operation for logging context
+    * @param logger
+    *   Function to log warning messages
+    * @param fa
+    *   The IO operation to execute
+    * @return
+    *   IO[Option[A]] - Some(result) on success, None on failure
+    */
   def handleRequestWithLogging[A](
       operation: String,
       logger: String => IO[Unit]
@@ -89,17 +96,20 @@ object ErrorHandling {
       case Left(e)  => logger(s"Error in $operation: ${e.getMessage}") *> IO.pure(None)
     }
 
-  /**
-   * Execute an IO and map failure to a result type.
-   *
-   * Use this when you need to return a structured error result rather than
-   * throwing or returning Option.
-   *
-   * @param fa The IO operation to execute
-   * @param onSuccess Function to build success result
-   * @param onError Function to build error result from exception
-   * @return IO[R] - success or error result
-   */
+  /** Execute an IO and map failure to a result type.
+    *
+    * Use this when you need to return a structured error result rather than throwing or returning
+    * Option.
+    *
+    * @param fa
+    *   The IO operation to execute
+    * @param onSuccess
+    *   Function to build success result
+    * @param onError
+    *   Function to build error result from exception
+    * @return
+    *   IO[R] - success or error result
+    */
   def executeWithResult[A, R](fa: IO[A])(onSuccess: A => R, onError: Throwable => R): IO[R] =
     fa.attempt.map {
       case Right(a) => onSuccess(a)

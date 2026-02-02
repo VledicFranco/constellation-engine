@@ -12,8 +12,8 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
     val spec = ModuleNodeSpec(
       metadata = ComponentMetadata.empty("test.branch-abc12345"),
       consumes = Map(
-        "cond0" -> CType.CBoolean,
-        "expr0" -> CType.CString,
+        "cond0"     -> CType.CBoolean,
+        "expr0"     -> CType.CString,
         "otherwise" -> CType.CString
       ),
       produces = Map("out" -> CType.CString)
@@ -63,8 +63,10 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
     val spec2 = ModuleNodeSpec(
       metadata = ComponentMetadata.empty("test.branch-bbb22222"),
       consumes = Map(
-        "cond0" -> CType.CBoolean, "expr0" -> CType.CString,
-        "cond1" -> CType.CBoolean, "expr1" -> CType.CString,
+        "cond0"     -> CType.CBoolean,
+        "expr0"     -> CType.CString,
+        "cond1"     -> CType.CBoolean,
+        "expr1"     -> CType.CString,
         "otherwise" -> CType.CString
       ),
       produces = Map("out" -> CType.CString)

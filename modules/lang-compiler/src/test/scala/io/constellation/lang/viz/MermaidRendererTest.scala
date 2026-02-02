@@ -5,14 +5,18 @@ import org.scalatest.matchers.should.Matchers
 
 class MermaidRendererTest extends AnyFunSuite with Matchers {
 
-  private def makeNode(id: String, kind: NodeKind = NodeKind.Operation, label: String = ""): VizNode =
-    VizNode(id, kind, if (label.isEmpty) s"Node$id" else label, "String", None, None)
+  private def makeNode(
+      id: String,
+      kind: NodeKind = NodeKind.Operation,
+      label: String = ""
+  ): VizNode =
+    VizNode(id, kind, if label.isEmpty then s"Node$id" else label, "String", None, None)
 
   private def makeEdge(source: String, target: String, kind: EdgeKind = EdgeKind.Data): VizEdge =
     VizEdge(s"e-$source-$target", source, target, None, kind)
 
   test("render empty dag") {
-    val dag = DagVizIR(nodes = List.empty, edges = List.empty)
+    val dag    = DagVizIR(nodes = List.empty, edges = List.empty)
     val result = MermaidRenderer.render(dag)
 
     result should include("graph TD")
@@ -28,7 +32,7 @@ class MermaidRendererTest extends AnyFunSuite with Matchers {
     val result = MermaidRenderer.render(dag)
 
     result should include("graph TD")
-    result should include("([")  // Stadium shape for input
+    result should include("([") // Stadium shape for input
     result should include("data")
   }
 
@@ -48,11 +52,11 @@ class MermaidRendererTest extends AnyFunSuite with Matchers {
     val result = MermaidRenderer.render(dag)
 
     result should include("graph TD")
-    result should include("-->")  // Solid arrows
+    result should include("-->") // Solid arrows
     result should include("input")
     result should include("Process")
     result should include("output")
-    result should include("[[")  // Output shape
+    result should include("[[") // Output shape
   }
 
   test("render different node shapes") {
@@ -66,17 +70,17 @@ class MermaidRendererTest extends AnyFunSuite with Matchers {
       makeNode("literal", NodeKind.Literal)
     )
 
-    val dag = DagVizIR(nodes = nodes, edges = List.empty)
+    val dag    = DagVizIR(nodes = nodes, edges = List.empty)
     val result = MermaidRenderer.render(dag)
 
     // Check different shape markers are present
-    result should include("([")   // Input - stadium
-    result should include("[[")   // Output - subroutine
-    result should include("[\"")  // Operation - rectangle (with quote)
-    result should include("((")   // Merge - circle
-    result should include("{")    // Conditional - diamond
-    result should include("{{")   // Guard - hexagon
-    result should include("(\"")  // Literal - rounded
+    result should include("([")  // Input - stadium
+    result should include("[[")  // Output - subroutine
+    result should include("[\"") // Operation - rectangle (with quote)
+    result should include("((")  // Merge - circle
+    result should include("{")   // Conditional - diamond
+    result should include("{{")  // Guard - hexagon
+    result should include("(\"") // Literal - rounded
   }
 
   test("render different edge kinds") {
@@ -96,9 +100,9 @@ class MermaidRendererTest extends AnyFunSuite with Matchers {
 
     val result = MermaidRenderer.render(dag)
 
-    result should include("-->")   // Data edge - solid
-    result should include("-.->")  // Optional edge - dashed
-    result should include("==>")   // Control edge - thick
+    result should include("-->")  // Data edge - solid
+    result should include("-.->") // Optional edge - dashed
+    result should include("==>")  // Control edge - thick
   }
 
   test("render edge labels") {

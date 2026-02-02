@@ -14,7 +14,7 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   "DocumentManager" should "create empty manager" in {
     val result = for {
       manager <- DocumentManager.create
-      docs <- manager.getAllDocuments
+      docs    <- manager.getAllDocuments
     } yield docs
 
     val docs = result.unsafeRunSync()
@@ -44,7 +44,7 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "return None for non-existent document" in {
     val result = for {
       manager <- DocumentManager.create
-      doc <- manager.getDocument("file:///nonexistent.cst")
+      doc     <- manager.getDocument("file:///nonexistent.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -54,9 +54,9 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "update document content" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///test.cst", "constellation", 1, "in x: Int")
-      _ <- manager.updateDocument("file:///test.cst", 2, "in y: String")
-      doc <- manager.getDocument("file:///test.cst")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 1, "in x: Int")
+      _       <- manager.updateDocument("file:///test.cst", 2, "in y: String")
+      doc     <- manager.getDocument("file:///test.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -68,8 +68,8 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "ignore update for non-existent document" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.updateDocument("file:///nonexistent.cst", 1, "text")
-      doc <- manager.getDocument("file:///nonexistent.cst")
+      _       <- manager.updateDocument("file:///nonexistent.cst", 1, "text")
+      doc     <- manager.getDocument("file:///nonexistent.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -79,9 +79,9 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "close a document" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///test.cst", "constellation", 1, "in x: Int")
-      _ <- manager.closeDocument("file:///test.cst")
-      doc <- manager.getDocument("file:///test.cst")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 1, "in x: Int")
+      _       <- manager.closeDocument("file:///test.cst")
+      doc     <- manager.getDocument("file:///test.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -91,8 +91,8 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "handle closing non-existent document" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.closeDocument("file:///nonexistent.cst")
-      docs <- manager.getAllDocuments
+      _       <- manager.closeDocument("file:///nonexistent.cst")
+      docs    <- manager.getAllDocuments
     } yield docs
 
     val docs = result.unsafeRunSync()
@@ -102,10 +102,10 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "manage multiple documents" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///a.cst", "constellation", 1, "in a: Int")
-      _ <- manager.openDocument("file:///b.cst", "constellation", 1, "in b: String")
-      _ <- manager.openDocument("file:///c.cst", "constellation", 1, "in c: Float")
-      docs <- manager.getAllDocuments
+      _       <- manager.openDocument("file:///a.cst", "constellation", 1, "in a: Int")
+      _       <- manager.openDocument("file:///b.cst", "constellation", 1, "in b: String")
+      _       <- manager.openDocument("file:///c.cst", "constellation", 1, "in c: Float")
+      docs    <- manager.getAllDocuments
     } yield docs
 
     val docs = result.unsafeRunSync()
@@ -116,9 +116,9 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "overwrite document when opened with same URI" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///test.cst", "constellation", 1, "first")
-      _ <- manager.openDocument("file:///test.cst", "constellation", 2, "second")
-      doc <- manager.getDocument("file:///test.cst")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 1, "first")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 2, "second")
+      doc     <- manager.getDocument("file:///test.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -352,14 +352,16 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   "DocumentManager concurrency" should "handle concurrent updates" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///test.cst", "constellation", 1, "initial")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 1, "initial")
       // Simulate concurrent updates
-      _ <- IO.parSequenceN(4)(List(
-        manager.updateDocument("file:///test.cst", 2, "update1"),
-        manager.updateDocument("file:///test.cst", 3, "update2"),
-        manager.updateDocument("file:///test.cst", 4, "update3"),
-        manager.updateDocument("file:///test.cst", 5, "update4")
-      ))
+      _ <- IO.parSequenceN(4)(
+        List(
+          manager.updateDocument("file:///test.cst", 2, "update1"),
+          manager.updateDocument("file:///test.cst", 3, "update2"),
+          manager.updateDocument("file:///test.cst", 4, "update3"),
+          manager.updateDocument("file:///test.cst", 5, "update4")
+        )
+      )
       doc <- manager.getDocument("file:///test.cst")
     } yield doc
 
@@ -613,12 +615,14 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "handle concurrent open and close" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- IO.parSequenceN(4)(List(
-        manager.openDocument("file:///a.cst", "constellation", 1, "a"),
-        manager.openDocument("file:///b.cst", "constellation", 1, "b"),
-        manager.closeDocument("file:///c.cst"), // Non-existent
-        manager.openDocument("file:///d.cst", "constellation", 1, "d")
-      ))
+      _ <- IO.parSequenceN(4)(
+        List(
+          manager.openDocument("file:///a.cst", "constellation", 1, "a"),
+          manager.openDocument("file:///b.cst", "constellation", 1, "b"),
+          manager.closeDocument("file:///c.cst"), // Non-existent
+          manager.openDocument("file:///d.cst", "constellation", 1, "d")
+        )
+      )
       docs <- manager.getAllDocuments
     } yield docs
 
@@ -630,8 +634,8 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
     val largeContent = "in x: Int\n" * 10000
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///large.cst", "constellation", 1, largeContent)
-      doc <- manager.getDocument("file:///large.cst")
+      _       <- manager.openDocument("file:///large.cst", "constellation", 1, largeContent)
+      doc     <- manager.getDocument("file:///large.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()
@@ -642,11 +646,11 @@ class DocumentManagerTest extends AnyFlatSpec with Matchers {
   it should "preserve document state through multiple updates" in {
     val result = for {
       manager <- DocumentManager.create
-      _ <- manager.openDocument("file:///test.cst", "constellation", 1, "v1")
-      _ <- manager.updateDocument("file:///test.cst", 2, "v2")
-      _ <- manager.updateDocument("file:///test.cst", 3, "v3")
-      _ <- manager.updateDocument("file:///test.cst", 4, "v4")
-      doc <- manager.getDocument("file:///test.cst")
+      _       <- manager.openDocument("file:///test.cst", "constellation", 1, "v1")
+      _       <- manager.updateDocument("file:///test.cst", 2, "v2")
+      _       <- manager.updateDocument("file:///test.cst", 3, "v3")
+      _       <- manager.updateDocument("file:///test.cst", 4, "v4")
+      doc     <- manager.getDocument("file:///test.cst")
     } yield doc
 
     val doc = result.unsafeRunSync()

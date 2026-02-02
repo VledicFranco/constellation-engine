@@ -15,7 +15,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
     // Program: x + 1 (unused), x * 2 (used as output)
     val ir = IRProgram(
       nodes = Map(
-        uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
+        uuid("input")    -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal1") -> IRNode.LiteralNode(uuid("literal1"), 1, SemanticType.SInt, None),
         uuid("literal2") -> IRNode.LiteralNode(uuid("literal2"), 2, SemanticType.SInt, None),
         uuid("unused") -> IRNode.ModuleCall(
@@ -40,7 +40,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("input")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("input"),
+        "x"      -> uuid("input"),
         "unused" -> uuid("unused"),
         "result" -> uuid("used")
       )
@@ -54,14 +54,14 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
     optimized.nodes should contain key uuid("used")
 
     // Should remove: literal1, unused (not reachable from output)
-    optimized.nodes should not contain key (uuid("unused"))
-    optimized.nodes should not contain key (uuid("literal1"))
+    optimized.nodes should not contain key(uuid("unused"))
+    optimized.nodes should not contain key(uuid("literal1"))
   }
 
   it should "preserve all nodes when all are reachable" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
+        uuid("input")   -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal") -> IRNode.LiteralNode(uuid("literal"), 1, SemanticType.SInt, None),
         uuid("add") -> IRNode.ModuleCall(
           uuid("add"),
@@ -76,7 +76,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("input")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("input"),
+        "x"      -> uuid("input"),
         "result" -> uuid("add")
       )
     )
@@ -133,7 +133,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
     val ir = IRProgram(
       nodes = Map(
         uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
-        uuid("a") -> IRNode.LiteralNode(uuid("a"), 1, SemanticType.SInt, None),
+        uuid("a")     -> IRNode.LiteralNode(uuid("a"), 1, SemanticType.SInt, None),
         uuid("b") -> IRNode.ModuleCall(
           uuid("b"),
           "stdlib.math.add",
@@ -157,10 +157,10 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("input")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("input"),
-        "a" -> uuid("a"),
-        "b" -> uuid("b"),
-        "c" -> uuid("c"),
+        "x"      -> uuid("input"),
+        "a"      -> uuid("a"),
+        "b"      -> uuid("b"),
+        "c"      -> uuid("c"),
         "result" -> uuid("d")
       )
     )
@@ -169,9 +169,9 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
 
     // Only d should remain (it's the output)
     optimized.nodes should contain key uuid("d")
-    optimized.nodes should not contain key (uuid("a"))
-    optimized.nodes should not contain key (uuid("b"))
-    optimized.nodes should not contain key (uuid("c"))
+    optimized.nodes should not contain key(uuid("a"))
+    optimized.nodes should not contain key(uuid("b"))
+    optimized.nodes should not contain key(uuid("c"))
   }
 
   it should "handle conditionals correctly" in {
@@ -203,8 +203,8 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   it should "handle boolean expressions" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("a") -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
-        uuid("b") -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),
+        uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
+        uuid("b")   -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),
         uuid("and") -> IRNode.AndNode(uuid("and"), uuid("a"), uuid("b"), None)
       ),
       inputs = List.empty,

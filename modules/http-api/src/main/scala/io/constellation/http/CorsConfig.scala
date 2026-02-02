@@ -4,13 +4,13 @@ import org.slf4j.LoggerFactory
 
 /** Configuration for Cross-Origin Resource Sharing (CORS).
   *
-  * When `allowedOrigins` is non-empty the CORS middleware is applied.
-  * An empty set means CORS is disabled and adds zero overhead.
+  * When `allowedOrigins` is non-empty the CORS middleware is applied. An empty set means CORS is
+  * disabled and adds zero overhead.
   *
   * Environment variable:
-  *   - `CONSTELLATION_CORS_ORIGINS` — comma-separated origin URLs,
-  *     e.g. `https://app.example.com,https://admin.example.com`
-  *     Use `*` to allow all origins (development only).
+  *   - `CONSTELLATION_CORS_ORIGINS` — comma-separated origin URLs, e.g.
+  *     `https://app.example.com,https://admin.example.com` Use `*` to allow all origins
+  *     (development only).
   *
   * @param allowedOrigins
   *   Set of allowed origin URLs. Use `Set("*")` for wildcard.
@@ -50,23 +50,25 @@ object CorsConfig {
 
   /** Validate a CORS origin URL.
     *
-    * @param origin The origin URL to validate
-    * @return Either an error message or the validated origin
+    * @param origin
+    *   The origin URL to validate
+    * @return
+    *   Either an error message or the validated origin
     */
-  private[http] def validateOrigin(origin: String): Either[String, String] = {
-    if (origin == "*") {
+  private[http] def validateOrigin(origin: String): Either[String, String] =
+    if origin == "*" then {
       Right(origin) // Wildcard is valid
     } else {
       try {
-        val url = new java.net.URL(origin)
+        val url    = new java.net.URL(origin)
         val scheme = url.getProtocol.toLowerCase
 
         // Require HTTPS unless localhost
         val isLocalhost = url.getHost.toLowerCase.matches("localhost|127\\.0\\.0\\.1|\\[::1\\]")
 
-        if (scheme == "https" || (scheme == "http" && isLocalhost)) {
+        if scheme == "https" || (scheme == "http" && isLocalhost) then {
           Right(origin)
-        } else if (scheme == "http") {
+        } else if scheme == "http" then {
           Left(s"HTTP not allowed for non-localhost origins (use HTTPS): $origin")
         } else {
           Left(s"Invalid scheme '$scheme' (expected http/https): $origin")
@@ -76,36 +78,42 @@ object CorsConfig {
           Left(s"Malformed URL: ${e.getMessage}")
       }
     }
-  }
 
   /** Create configuration from environment variables.
     *
     * `CONSTELLATION_CORS_ORIGINS=https://app.example.com,https://admin.example.com`
     *
-    * Invalid origins are logged as warnings and skipped.
-    * Only origin counts are logged — specific domains are not exposed in logs.
+    * Invalid origins are logged as warnings and skipped. Only origin counts are logged — specific
+    * domains are not exposed in logs.
     */
   def fromEnv: CorsConfig = {
-    val origins = sys.env.get("CONSTELLATION_CORS_ORIGINS").map { raw =>
-      raw.split(',').zipWithIndex.flatMap { case (origin, idx) =>
-        val trimmed = origin.trim
-        if (trimmed.isEmpty) {
-          None
-        } else {
-          validateOrigin(trimmed) match {
-            case Right(validOrigin) =>
-              Some(validOrigin)
-            case Left(error) =>
-              // Log error category without exposing the origin value
-              logger.warn("CORS origin #{} rejected: validation failed", idx + 1)
+    val origins = sys.env
+      .get("CONSTELLATION_CORS_ORIGINS")
+      .map { raw =>
+        raw
+          .split(',')
+          .zipWithIndex
+          .flatMap { case (origin, idx) =>
+            val trimmed = origin.trim
+            if trimmed.isEmpty then {
               None
+            } else {
+              validateOrigin(trimmed) match {
+                case Right(validOrigin) =>
+                  Some(validOrigin)
+                case Left(error) =>
+                  // Log error category without exposing the origin value
+                  logger.warn("CORS origin #{} rejected: validation failed", idx + 1)
+                  None
+              }
+            }
           }
-        }
-      }.toSet
-    }.getOrElse(Set.empty)
+          .toSet
+      }
+      .getOrElse(Set.empty)
 
-    if (origins.nonEmpty) {
-      val wildcardNote = if (origins.contains("*")) " (wildcard)" else ""
+    if origins.nonEmpty then {
+      val wildcardNote = if origins.contains("*") then " (wildcard)" else ""
       logger.info("Loaded {} CORS origin(s){}", origins.size, wildcardNote)
     }
 

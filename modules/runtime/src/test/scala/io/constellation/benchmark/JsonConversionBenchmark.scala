@@ -1,8 +1,8 @@
 package io.constellation.benchmark
 
 import io.circe.Json
-import io.circe.syntax._
-import io.constellation._
+import io.circe.syntax.*
+import io.constellation.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -11,15 +11,15 @@ import scala.collection.mutable
 /** Benchmarks for JSON conversion strategies.
   *
   * Measures performance of:
-  * - Eager conversion (jsonToCValue)
-  * - Adaptive conversion (convertAdaptive)
-  * - Streaming conversion (StreamingJsonConverter)
+  *   - Eager conversion (jsonToCValue)
+  *   - Adaptive conversion (convertAdaptive)
+  *   - Streaming conversion (StreamingJsonConverter)
   *
   * Run with: sbt "runtime/testOnly *JsonConversionBenchmark"
   */
 class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
 
-  val WarmupIterations = 5
+  val WarmupIterations  = 5
   val MeasureIterations = 20
 
   // -------------------------------------------------------------------------
@@ -40,7 +40,7 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
   def measureWithWarmup[A](name: String, warmup: Int, iterations: Int)(op: => A): TimingResult = {
     // Warmup
     var i = 0
-    while (i < warmup) {
+    while i < warmup do {
       op
       i += 1
     }
@@ -48,7 +48,7 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
     // Measure
     val timings = mutable.ArrayBuffer[Double]()
     i = 0
-    while (i < iterations) {
+    while i < iterations do {
       val start = System.nanoTime()
       op
       val end = System.nanoTime()
@@ -56,12 +56,12 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
       i += 1
     }
 
-    val sorted = timings.sorted
-    val avg = timings.sum / timings.length
-    val min = sorted.head
-    val max = sorted.last
+    val sorted   = timings.sorted
+    val avg      = timings.sum / timings.length
+    val min      = sorted.head
+    val max      = sorted.last
     val variance = timings.map(t => math.pow(t - avg, 2)).sum / timings.length
-    val stdDev = math.sqrt(variance)
+    val stdDev   = math.sqrt(variance)
 
     TimingResult(name, avg, min, max, stdDev)
   }
@@ -78,7 +78,7 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
 
   /** Medium payload (~10KB) - feature vector */
   val mediumJson: Json = Json.obj(
-    "features" -> Json.arr(List.fill(1000)(Json.fromDoubleOrNull(0.5)): _*)
+    "features" -> Json.arr(List.fill(1000)(Json.fromDoubleOrNull(0.5))*)
   )
   val mediumType: CType = CType.CProduct(Map("features" -> CType.CList(CType.CFloat)))
 
@@ -86,25 +86,29 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
   val largeJson: Json = Json.obj(
     "embeddings" -> Json.arr(
       List.fill(100)(
-        Json.arr(List.fill(768)(Json.fromDoubleOrNull(0.1)): _*)
-      ): _*
+        Json.arr(List.fill(768)(Json.fromDoubleOrNull(0.1))*)
+      )*
     )
   )
-  val largeType: CType = CType.CProduct(Map(
-    "embeddings" -> CType.CList(CType.CList(CType.CFloat))
-  ))
+  val largeType: CType = CType.CProduct(
+    Map(
+      "embeddings" -> CType.CList(CType.CList(CType.CFloat))
+    )
+  )
 
   /** Very large payload (~1MB) - large batch of embeddings */
   val veryLargeJson: Json = Json.obj(
     "batch" -> Json.arr(
       List.fill(500)(
-        Json.arr(List.fill(1536)(Json.fromDoubleOrNull(0.1)): _*)
-      ): _*
+        Json.arr(List.fill(1536)(Json.fromDoubleOrNull(0.1))*)
+      )*
     )
   )
-  val veryLargeType: CType = CType.CProduct(Map(
-    "batch" -> CType.CList(CType.CList(CType.CFloat))
-  ))
+  val veryLargeType: CType = CType.CProduct(
+    Map(
+      "batch" -> CType.CList(CType.CList(CType.CFloat))
+    )
+  )
 
   // -------------------------------------------------------------------------
   // Benchmarks
@@ -226,8 +230,9 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
     println(s"Large payload:      ${converter.getLastStrategy}")
 
     // Verify thresholds with custom converter
-    val customConverter = new AdaptiveJsonConverter(lazyThreshold = 5000, streamingThreshold = 50000)
-    customConverter.convert(mediumJson, mediumType)  // Now should be Lazy since threshold is lower
+    val customConverter =
+      new AdaptiveJsonConverter(lazyThreshold = 5000, streamingThreshold = 50000)
+    customConverter.convert(mediumJson, mediumType) // Now should be Lazy since threshold is lower
     customConverter.getLastStrategy shouldBe ConversionStrategy.Lazy
     println(s"Medium (custom):    ${customConverter.getLastStrategy}")
   }
@@ -238,7 +243,7 @@ class JsonConversionBenchmark extends AnyFlatSpec with Matchers {
     println("=" * 70)
 
     // Create a large numeric array
-    val floatArrayJson = Json.arr(List.fill(10000)(Json.fromDoubleOrNull(0.5)): _*)
+    val floatArrayJson = Json.arr(List.fill(10000)(Json.fromDoubleOrNull(0.5))*)
     val floatArrayType = CType.CList(CType.CFloat)
 
     val cvalue = measureWithWarmup("floatarray_cvalue", WarmupIterations, MeasureIterations) {

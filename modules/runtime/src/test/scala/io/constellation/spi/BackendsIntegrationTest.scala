@@ -2,12 +2,12 @@ package io.constellation.spi
 
 import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
-import io.constellation._
+import io.constellation.*
 import io.constellation.execution.GlobalScheduler
 
 class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
@@ -24,8 +24,8 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   /** Build a simple DAG: input -> Uppercase -> output */
   private def buildSimpleDag(): (DagSpec, Map[UUID, Module.Uninitialized]) = {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val uppercaseModule = createUppercaseModule()
@@ -67,48 +67,95 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
   private case class SpanRecord(name: String, attributes: Map[String, String])
   private case class ListenerEvent(eventType: String, args: Map[String, String])
 
-  private def recordingMetrics(ref: Ref[IO, List[MetricRecord]]): MetricsProvider = new MetricsProvider {
-    def counter(name: String, tags: Map[String, String]): IO[Unit] =
-      ref.update(MetricRecord(name, None, tags) :: _)
-    def histogram(name: String, value: Double, tags: Map[String, String]): IO[Unit] =
-      ref.update(MetricRecord(name, Some(value), tags) :: _)
-    def gauge(name: String, value: Double, tags: Map[String, String]): IO[Unit] =
-      ref.update(MetricRecord(name, Some(value), tags) :: _)
-  }
+  private def recordingMetrics(ref: Ref[IO, List[MetricRecord]]): MetricsProvider =
+    new MetricsProvider {
+      def counter(name: String, tags: Map[String, String]): IO[Unit] =
+        ref.update(MetricRecord(name, None, tags) :: _)
+      def histogram(name: String, value: Double, tags: Map[String, String]): IO[Unit] =
+        ref.update(MetricRecord(name, Some(value), tags) :: _)
+      def gauge(name: String, value: Double, tags: Map[String, String]): IO[Unit] =
+        ref.update(MetricRecord(name, Some(value), tags) :: _)
+    }
 
   private def recordingTracer(ref: Ref[IO, List[SpanRecord]]): TracerProvider = new TracerProvider {
     def span[A](name: String, attributes: Map[String, String])(body: IO[A]): IO[A] =
       ref.update(SpanRecord(name, attributes) :: _) *> body
   }
 
-  private def recordingListener(ref: Ref[IO, List[ListenerEvent]]): ExecutionListener = new ExecutionListener {
-    def onExecutionStart(executionId: UUID, dagName: String): IO[Unit] =
-      ref.update(ListenerEvent("executionStart", Map("dagName" -> dagName)) :: _)
-    def onModuleStart(executionId: UUID, moduleId: UUID, moduleName: String): IO[Unit] =
-      ref.update(ListenerEvent("moduleStart", Map("moduleName" -> moduleName)) :: _)
-    def onModuleComplete(executionId: UUID, moduleId: UUID, moduleName: String, durationMs: Long): IO[Unit] =
-      ref.update(ListenerEvent("moduleComplete", Map("moduleName" -> moduleName, "durationMs" -> durationMs.toString)) :: _)
-    def onModuleFailed(executionId: UUID, moduleId: UUID, moduleName: String, error: Throwable): IO[Unit] =
-      ref.update(ListenerEvent("moduleFailed", Map("moduleName" -> moduleName, "error" -> error.getMessage)) :: _)
-    def onExecutionComplete(executionId: UUID, dagName: String, succeeded: Boolean, durationMs: Long): IO[Unit] =
-      ref.update(ListenerEvent("executionComplete", Map("dagName" -> dagName, "succeeded" -> succeeded.toString)) :: _)
-  }
+  private def recordingListener(ref: Ref[IO, List[ListenerEvent]]): ExecutionListener =
+    new ExecutionListener {
+      def onExecutionStart(executionId: UUID, dagName: String): IO[Unit] =
+        ref.update(ListenerEvent("executionStart", Map("dagName" -> dagName)) :: _)
+      def onModuleStart(executionId: UUID, moduleId: UUID, moduleName: String): IO[Unit] =
+        ref.update(ListenerEvent("moduleStart", Map("moduleName" -> moduleName)) :: _)
+      def onModuleComplete(
+          executionId: UUID,
+          moduleId: UUID,
+          moduleName: String,
+          durationMs: Long
+      ): IO[Unit] =
+        ref.update(
+          ListenerEvent(
+            "moduleComplete",
+            Map("moduleName" -> moduleName, "durationMs" -> durationMs.toString)
+          ) :: _
+        )
+      def onModuleFailed(
+          executionId: UUID,
+          moduleId: UUID,
+          moduleName: String,
+          error: Throwable
+      ): IO[Unit] =
+        ref.update(
+          ListenerEvent(
+            "moduleFailed",
+            Map("moduleName" -> moduleName, "error" -> error.getMessage)
+          ) :: _
+        )
+      def onExecutionComplete(
+          executionId: UUID,
+          dagName: String,
+          succeeded: Boolean,
+          durationMs: Long
+      ): IO[Unit] =
+        ref.update(
+          ListenerEvent(
+            "executionComplete",
+            Map("dagName" -> dagName, "succeeded" -> succeeded.toString)
+          ) :: _
+        )
+    }
 
   "runWithBackends" should "produce correct results with noop backends (same as runWithScheduler)" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
-    val noopState = Runtime.runWithBackends(
-      dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, ConstellationBackends.defaults
-    ).unsafeRunSync()
+    val noopState = Runtime
+      .runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        ConstellationBackends.defaults
+      )
+      .unsafeRunSync()
 
-    val schedulerState = Runtime.runWithScheduler(
-      dag, inputs, modules, Map.empty, GlobalScheduler.unbounded
-    ).unsafeRunSync()
+    val schedulerState = Runtime
+      .runWithScheduler(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded
+      )
+      .unsafeRunSync()
 
     // Both should produce the same output data
-    val noopOutput = noopState.data.values.map(_.value).collect { case CValue.CString(s) => s }.toSet
-    val schedulerOutput = schedulerState.data.values.map(_.value).collect { case CValue.CString(s) => s }.toSet
+    val noopOutput =
+      noopState.data.values.map(_.value).collect { case CValue.CString(s) => s }.toSet
+    val schedulerOutput =
+      schedulerState.data.values.map(_.value).collect { case CValue.CString(s) => s }.toSet
 
     noopOutput should contain("HELLO")
     schedulerOutput should contain("HELLO")
@@ -117,14 +164,21 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fire listener onExecutionStart with correct dagName" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       listenerEvents <- Ref.of[IO, List[ListenerEvent]](Nil)
       backends = ConstellationBackends(listener = recordingListener(listenerEvents))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
       // Small delay for fire-and-forget fibers to complete
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _      <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       events <- listenerEvents.get
     } yield events).unsafeRunSync()
 
@@ -135,13 +189,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fire listener onModuleStart and onModuleComplete for each module" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       listenerEvents <- Ref.of[IO, List[ListenerEvent]](Nil)
       backends = ConstellationBackends(listener = recordingListener(listenerEvents))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _      <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       events <- listenerEvents.get
     } yield events).unsafeRunSync()
 
@@ -156,13 +217,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fire listener onExecutionComplete with correct succeeded flag" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       listenerEvents <- Ref.of[IO, List[ListenerEvent]](Nil)
       backends = ConstellationBackends(listener = recordingListener(listenerEvents))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _      <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       events <- listenerEvents.get
     } yield events).unsafeRunSync()
 
@@ -174,13 +242,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "record constellation.execution.total counter" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       metricRecords <- Ref.of[IO, List[MetricRecord]](Nil)
       backends = ConstellationBackends(metrics = recordingMetrics(metricRecords))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _       <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       metrics <- metricRecords.get
     } yield metrics).unsafeRunSync()
 
@@ -192,13 +267,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "record constellation.execution.duration_ms histogram" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       metricRecords <- Ref.of[IO, List[MetricRecord]](Nil)
       backends = ConstellationBackends(metrics = recordingMetrics(metricRecords))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _       <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       metrics <- metricRecords.get
     } yield metrics).unsafeRunSync()
 
@@ -211,13 +293,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "record constellation.module.duration_ms histogram per module" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       metricRecords <- Ref.of[IO, List[MetricRecord]](Nil)
       backends = ConstellationBackends(metrics = recordingMetrics(metricRecords))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _       <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       metrics <- metricRecords.get
     } yield metrics).unsafeRunSync()
 
@@ -231,13 +320,20 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "create tracer spans for execution and each module" in {
     val (dag, modules) = buildSimpleDag()
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs         = Map("input" -> CValue.CString("hello"))
 
     val result = (for {
       spanRecords <- Ref.of[IO, List[SpanRecord]](Nil)
       backends = ConstellationBackends(tracer = recordingTracer(spanRecords))
-      _ <- Runtime.runWithBackends(dag, inputs, modules, Map.empty, GlobalScheduler.unbounded, backends)
-      _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
+      _ <- Runtime.runWithBackends(
+        dag,
+        inputs,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        backends
+      )
+      _     <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
       spans <- spanRecords.get
     } yield spans).unsafeRunSync()
 
@@ -256,7 +352,8 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
       metricRecords  <- Ref.of[IO, List[MetricRecord]](Nil)
       spanRecords    <- Ref.of[IO, List[SpanRecord]](Nil)
 
-      constellation <- impl.ConstellationImpl.builder()
+      constellation <- impl.ConstellationImpl
+        .builder()
         .withMetrics(recordingMetrics(metricRecords))
         .withTracer(recordingTracer(spanRecords))
         .withListener(recordingListener(listenerEvents))
@@ -266,8 +363,8 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
       uppercaseModule = createUppercaseModule()
       _ <- constellation.setModule(uppercaseModule)
 
-      moduleId = UUID.randomUUID()
-      inputDataId = UUID.randomUUID()
+      moduleId     = UUID.randomUUID()
+      inputDataId  = UUID.randomUUID()
       outputDataId = UUID.randomUUID()
 
       dag = DagSpec(
@@ -280,7 +377,11 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
           )
         ),
         data = Map(
-          inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+          inputDataId -> DataNodeSpec(
+            "input",
+            Map(inputDataId -> "input", moduleId -> "text"),
+            CType.CString
+          ),
           outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
         ),
         inEdges = Set((inputDataId, moduleId)),

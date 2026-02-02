@@ -5,7 +5,12 @@ import cats.implicits.*
 import io.constellation.*
 import io.constellation.cache.CacheBackend
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler}
-import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsProvider, TracerProvider}
+import io.constellation.spi.{
+  ConstellationBackends,
+  ExecutionListener,
+  MetricsProvider,
+  TracerProvider
+}
 
 import java.time.Instant
 import java.util.UUID
@@ -13,8 +18,8 @@ import scala.concurrent.duration.FiniteDuration
 
 /** Default implementation of the [[io.constellation.Constellation]] API.
   *
-  * Manages module registry, delegates execution to the [[io.constellation.Runtime]],
-  * and integrates with the SPI backend layer for metrics, tracing, caching, and lifecycle management.
+  * Manages module registry, delegates execution to the [[io.constellation.Runtime]], and integrates
+  * with the SPI backend layer for metrics, tracing, caching, and lifecycle management.
   *
   * ==Construction==
   *
@@ -34,14 +39,21 @@ import scala.concurrent.duration.FiniteDuration
   *   .build()
   * }}}
   *
-  * @param moduleRegistry Registry for module definitions
-  * @param programStoreInstance Program image store
-  * @param scheduler Global scheduler for task ordering and concurrency control
-  * @param backends Pluggable SPI backends (metrics, tracing, listener, cache, circuit breakers)
-  * @param defaultTimeout Optional default timeout applied to all DAG executions
-  * @param lifecycle Optional lifecycle manager for graceful shutdown support
+  * @param moduleRegistry
+  *   Registry for module definitions
+  * @param programStoreInstance
+  *   Program image store
+  * @param scheduler
+  *   Global scheduler for task ordering and concurrency control
+  * @param backends
+  *   Pluggable SPI backends (metrics, tracing, listener, cache, circuit breakers)
+  * @param defaultTimeout
+  *   Optional default timeout applied to all DAG executions
+  * @param lifecycle
+  *   Optional lifecycle manager for graceful shutdown support
   *
-  * @see [[io.constellation.impl.ConstellationImpl.ConstellationBuilder]] for the builder API
+  * @see
+  *   [[io.constellation.impl.ConstellationImpl.ConstellationBuilder]] for the builder API
   */
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
@@ -73,7 +85,7 @@ final class ConstellationImpl(
       inputs: Map[String, CValue],
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature] = {
-    val dagSpec = loaded.image.dagSpec
+    val dagSpec   = loaded.image.dagSpec
     val startedAt = Instant.now()
 
     for {
@@ -84,7 +96,10 @@ final class ConstellationImpl(
       // Execute
       state <- executeWithTimeout(
         Runtime.runWithBackends(dagSpec, inputs, allModules, Map.empty, scheduler, backends),
-        dagSpec, inputs, allModules, Map.empty
+        dagSpec,
+        inputs,
+        allModules,
+        Map.empty
       )
     } yield buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
   }
@@ -95,10 +110,8 @@ final class ConstellationImpl(
       options: ExecutionOptions
   ): IO[DataSignature] = {
     val hashLookup: IO[Option[ProgramImage]] =
-      if (ref.startsWith("sha256:"))
-        programStoreInstance.get(ref.stripPrefix("sha256:"))
-      else
-        programStoreInstance.getByName(ref)
+      if ref.startsWith("sha256:") then programStoreInstance.get(ref.stripPrefix("sha256:"))
+      else programStoreInstance.getByName(ref)
 
     hashLookup.flatMap {
       case Some(image) =>
@@ -130,7 +143,7 @@ final class ConstellationImpl(
               registryModules <- moduleRegistry.initModules(suspended.dagSpec)
               // Reconstruct synthetic modules from DagSpec
               syntheticModules = SyntheticModuleFactory.fromDagSpec(suspended.dagSpec)
-              allModules = syntheticModules ++ registryModules
+              allModules       = syntheticModules ++ registryModules
               // Delegate to SuspendableExecution.resume
               result <- SuspendableExecution.resume(
                 suspended = suspended,
@@ -168,15 +181,18 @@ final class ConstellationImpl(
     // Use outputBindings (name -> UUID) for reliable lookup since data node
     // names may differ from variable names (e.g. "Uppercase_output" vs "result")
     val outputs: Map[String, CValue] = dagSpec.declaredOutputs.flatMap { name =>
-      dagSpec.outputBindings.get(name).flatMap { dataNodeUuid =>
-        state.data.get(dataNodeUuid).map(evalCValue => name -> evalCValue.value)
-      }.orElse(computedNodes.get(name).map(name -> _))
+      dagSpec.outputBindings
+        .get(name)
+        .flatMap { dataNodeUuid =>
+          state.data.get(dataNodeUuid).map(evalCValue => name -> evalCValue.value)
+        }
+        .orElse(computedNodes.get(name).map(name -> _))
     }.toMap
 
     // Missing inputs
     val expectedInputNames = dagSpec.userInputDataNodes.values.flatMap(_.nicknames.values).toSet
     val providedInputNames = inputs.keySet
-    val missingInputs = (expectedInputNames -- providedInputNames).toList.sorted
+    val missingInputs      = (expectedInputNames -- providedInputNames).toList.sorted
 
     // Pending outputs
     val pendingOutputs = dagSpec.declaredOutputs.filterNot(outputs.contains)
@@ -186,42 +202,51 @@ final class ConstellationImpl(
       evalStatus.value match {
         case Module.Status.Failed(error) =>
           val moduleName = dagSpec.modules.get(uuid).map(_.name).getOrElse(uuid.toString)
-          Some(ExecutionError(
-            nodeName = moduleName,
-            moduleName = moduleName,
-            message = error.getMessage,
-            cause = Some(error)
-          ))
+          Some(
+            ExecutionError(
+              nodeName = moduleName,
+              moduleName = moduleName,
+              message = error.getMessage,
+              cause = Some(error)
+            )
+          )
         case _ => None
       }
     }
 
     val status: PipelineStatus =
-      if (failedModules.nonEmpty) PipelineStatus.Failed(failedModules)
-      else if (pendingOutputs.isEmpty && missingInputs.isEmpty) PipelineStatus.Completed
+      if failedModules.nonEmpty then PipelineStatus.Failed(failedModules)
+      else if pendingOutputs.isEmpty && missingInputs.isEmpty then PipelineStatus.Completed
       else PipelineStatus.Suspended
 
     val completedAt = Instant.now()
     val metadata = MetadataBuilder.build(
-      state, dagSpec, options, startedAt, completedAt,
+      state,
+      dagSpec,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = inputs.keySet
     )
 
     // Build suspended state if not completed
     val suspendedState: Option[SuspendedExecution] =
-      if (status == PipelineStatus.Completed) None
-      else Some(SuspendedExecution(
-        executionId = state.processUuid,
-        structuralHash = loaded.structuralHash,
-        resumptionCount = resumptionCount,
-        dagSpec = dagSpec,
-        moduleOptions = loaded.image.moduleOptions,
-        providedInputs = inputs,
-        computedValues = state.data.map { case (uuid, evalCValue) => uuid -> evalCValue.value },
-        moduleStatuses = state.moduleStatus.map { case (uuid, evalStatus) =>
-          uuid -> evalStatus.value.toString
-        }
-      ))
+      if status == PipelineStatus.Completed then None
+      else
+        Some(
+          SuspendedExecution(
+            executionId = state.processUuid,
+            structuralHash = loaded.structuralHash,
+            resumptionCount = resumptionCount,
+            dagSpec = dagSpec,
+            moduleOptions = loaded.image.moduleOptions,
+            providedInputs = inputs,
+            computedValues = state.data.map { case (uuid, evalCValue) => uuid -> evalCValue.value },
+            moduleStatuses = state.moduleStatus.map { case (uuid, evalStatus) =>
+              uuid -> evalStatus.value.toString
+            }
+          )
+        )
 
     DataSignature(
       executionId = state.processUuid,
@@ -239,7 +264,13 @@ final class ConstellationImpl(
   }
 
   /** Execute with optional timeout applied. */
-  private def executeWithTimeout(run: IO[Runtime.State], dagSpec: DagSpec, inputs: Map[String, CValue], modules: Map[java.util.UUID, Module.Uninitialized], priorities: Map[java.util.UUID, Int]): IO[Runtime.State] =
+  private def executeWithTimeout(
+      run: IO[Runtime.State],
+      dagSpec: DagSpec,
+      inputs: Map[String, CValue],
+      modules: Map[java.util.UUID, Module.Uninitialized],
+      priorities: Map[java.util.UUID, Int]
+  ): IO[Runtime.State] =
     defaultTimeout match {
       case Some(timeout) =>
         Runtime.runWithTimeout(timeout, dagSpec, inputs, modules, priorities, scheduler, backends)
@@ -262,8 +293,10 @@ object ConstellationImpl {
 
   /** Initialize with a custom scheduler for priority-based execution.
     *
-    * @param scheduler The global scheduler to use for task ordering
-    * @return ConstellationImpl with scheduler support
+    * @param scheduler
+    *   The global scheduler to use for task ordering
+    * @return
+    *   ConstellationImpl with scheduler support
     */
   def initWithScheduler(scheduler: GlobalScheduler): IO[ConstellationImpl] =
     for {
@@ -280,12 +313,18 @@ object ConstellationImpl {
 
   /** Builder for constructing a ConstellationImpl with custom configuration.
     *
-    * @param scheduler The global scheduler for task ordering
-    * @param backends Pluggable backend services (metrics, tracing, listener, cache)
-    * @param defaultTimeout Optional default timeout for DAG executions
-    * @param lifecycle Optional lifecycle manager for graceful shutdown
-    * @param programStoreOpt Optional pre-configured ProgramStore
-    * @param suspensionStoreOpt Optional SuspensionStore for persist/resume of suspended executions
+    * @param scheduler
+    *   The global scheduler for task ordering
+    * @param backends
+    *   Pluggable backend services (metrics, tracing, listener, cache)
+    * @param defaultTimeout
+    *   Optional default timeout for DAG executions
+    * @param lifecycle
+    *   Optional lifecycle manager for graceful shutdown
+    * @param programStoreOpt
+    *   Optional pre-configured ProgramStore
+    * @param suspensionStoreOpt
+    *   Optional SuspensionStore for persist/resume of suspended executions
     */
   final case class ConstellationBuilder(
       scheduler: GlobalScheduler = GlobalScheduler.unbounded,
@@ -295,6 +334,7 @@ object ConstellationImpl {
       programStoreOpt: Option[ProgramStore] = None,
       suspensionStoreOpt: Option[SuspensionStore] = None
   ) {
+
     /** Set the global scheduler for task ordering and concurrency control. */
     def withScheduler(s: GlobalScheduler): ConstellationBuilder = copy(scheduler = s)
 
@@ -302,16 +342,20 @@ object ConstellationImpl {
     def withBackends(b: ConstellationBackends): ConstellationBuilder = copy(backends = b)
 
     /** Set the metrics provider (e.g., Prometheus, Datadog). */
-    def withMetrics(m: MetricsProvider): ConstellationBuilder = copy(backends = backends.copy(metrics = m))
+    def withMetrics(m: MetricsProvider): ConstellationBuilder =
+      copy(backends = backends.copy(metrics = m))
 
     /** Set the distributed tracing provider (e.g., OpenTelemetry, Jaeger). */
-    def withTracer(t: TracerProvider): ConstellationBuilder = copy(backends = backends.copy(tracer = t))
+    def withTracer(t: TracerProvider): ConstellationBuilder =
+      copy(backends = backends.copy(tracer = t))
 
     /** Set the execution event listener (e.g., Kafka, database audit log). */
-    def withListener(l: ExecutionListener): ConstellationBuilder = copy(backends = backends.copy(listener = l))
+    def withListener(l: ExecutionListener): ConstellationBuilder =
+      copy(backends = backends.copy(listener = l))
 
     /** Set the cache backend for compiled DAGs and results (e.g., Redis, Caffeine). */
-    def withCache(c: CacheBackend): ConstellationBuilder = copy(backends = backends.copy(cache = Some(c)))
+    def withCache(c: CacheBackend): ConstellationBuilder =
+      copy(backends = backends.copy(cache = Some(c)))
 
     /** Set a default timeout applied to all DAG executions. */
     def withDefaultTimeout(t: FiniteDuration): ConstellationBuilder = copy(defaultTimeout = Some(t))
@@ -323,7 +367,8 @@ object ConstellationImpl {
     def withProgramStore(ps: ProgramStore): ConstellationBuilder = copy(programStoreOpt = Some(ps))
 
     /** Set a SuspensionStore for persisting and resuming suspended executions. */
-    def withSuspensionStore(ss: SuspensionStore): ConstellationBuilder = copy(suspensionStoreOpt = Some(ss))
+    def withSuspensionStore(ss: SuspensionStore): ConstellationBuilder =
+      copy(suspensionStoreOpt = Some(ss))
 
     /** Enable circuit breakers for module execution with the given configuration.
       *

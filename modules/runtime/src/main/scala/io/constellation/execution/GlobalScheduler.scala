@@ -2,13 +2,13 @@ package io.constellation.execution
 
 import cats.effect.{Deferred, IO, Ref, Resource}
 import cats.effect.std.{Queue, Semaphore}
-import cats.implicits._
+import cats.implicits.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable.TreeSet
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** Exception thrown when the scheduler queue is full and cannot accept new tasks. */
 class QueueFullException(val currentSize: Int, val maxSize: Int)
@@ -16,13 +16,20 @@ class QueueFullException(val currentSize: Int, val maxSize: Int)
 
 /** Statistics for the global scheduler.
   *
-  * @param activeCount Tasks currently executing
-  * @param queuedCount Tasks waiting in the priority queue
-  * @param totalSubmitted Total tasks submitted since creation
-  * @param totalCompleted Total tasks completed since creation
-  * @param highPriorityCompleted Tasks completed with priority >= 75
-  * @param lowPriorityCompleted Tasks completed with priority < 25
-  * @param starvationPromotions Times a task's effective priority was boosted due to aging
+  * @param activeCount
+  *   Tasks currently executing
+  * @param queuedCount
+  *   Tasks waiting in the priority queue
+  * @param totalSubmitted
+  *   Total tasks submitted since creation
+  * @param totalCompleted
+  *   Total tasks completed since creation
+  * @param highPriorityCompleted
+  *   Tasks completed with priority >= 75
+  * @param lowPriorityCompleted
+  *   Tasks completed with priority < 25
+  * @param starvationPromotions
+  *   Times a task's effective priority was boosted due to aging
   */
 final case class SchedulerStats(
     activeCount: Int,
@@ -40,8 +47,8 @@ object SchedulerStats {
 
 /** Global priority scheduler for bounded concurrency with priority ordering.
   *
-  * Provides a unified interface for task scheduling across all DAG executions.
-  * High-priority tasks from any execution run before low-priority tasks.
+  * Provides a unified interface for task scheduling across all DAG executions. High-priority tasks
+  * from any execution run before low-priority tasks.
   *
   * ==Priority Levels==
   *
@@ -64,12 +71,15 @@ trait GlobalScheduler {
 
   /** Submit a task with the given priority.
     *
-    * The task will be queued and executed when a slot becomes available.
-    * Higher priority tasks execute before lower priority tasks.
+    * The task will be queued and executed when a slot becomes available. Higher priority tasks
+    * execute before lower priority tasks.
     *
-    * @param priority Task priority (0-100, higher = more important)
-    * @param task The IO task to execute
-    * @return The task result
+    * @param priority
+    *   Task priority (0-100, higher = more important)
+    * @param task
+    *   The IO task to execute
+    * @return
+    *   The task result
     */
   def submit[A](priority: Int, task: IO[A]): IO[A]
 
@@ -87,20 +97,24 @@ object GlobalScheduler {
 
   /** Unbounded scheduler that executes tasks immediately.
     *
-    * This is the default scheduler that preserves current behavior.
-    * Tasks execute immediately without any concurrency limiting or priority ordering.
+    * This is the default scheduler that preserves current behavior. Tasks execute immediately
+    * without any concurrency limiting or priority ordering.
     */
   val unbounded: GlobalScheduler = new GlobalScheduler {
     def submit[A](priority: Int, task: IO[A]): IO[A] = task
-    def stats: IO[SchedulerStats] = IO.pure(SchedulerStats.empty)
+    def stats: IO[SchedulerStats]                    = IO.pure(SchedulerStats.empty)
   }
 
   /** Create a bounded scheduler with priority queue.
     *
-    * @param maxConcurrency Maximum number of tasks executing simultaneously
-    * @param maxQueueSize Maximum number of tasks waiting in the queue (0 = unlimited)
-    * @param starvationTimeout Duration after which low-priority tasks get priority boost
-    * @return Resource that manages the scheduler lifecycle
+    * @param maxConcurrency
+    *   Maximum number of tasks executing simultaneously
+    * @param maxQueueSize
+    *   Maximum number of tasks waiting in the queue (0 = unlimited)
+    * @param starvationTimeout
+    *   Duration after which low-priority tasks get priority boost
+    * @return
+    *   Resource that manages the scheduler lifecycle
     */
   def bounded(
       maxConcurrency: Int,
@@ -119,16 +133,15 @@ object GlobalScheduler {
 
   /** Create a bounded scheduler for simpler use cases without Resource lifecycle.
     *
-    * Note: The scheduler will continue running until the JVM exits.
-    * For long-running applications, prefer `bounded` which properly cleans up.
+    * Note: The scheduler will continue running until the JVM exits. For long-running applications,
+    * prefer `bounded` which properly cleans up.
     */
   def boundedUnsafe(
       maxConcurrency: Int,
       maxQueueSize: Int = 0,
       starvationTimeout: FiniteDuration = 30.seconds
-  ): IO[GlobalScheduler] = {
+  ): IO[GlobalScheduler] =
     BoundedGlobalScheduler.create(maxConcurrency, starvationTimeout, maxQueueSize)
-  }
 }
 
 /** Entry in the priority queue waiting for execution. */
@@ -137,18 +150,20 @@ private[execution] final case class QueueEntry(
     priority: Int,
     submittedAt: FiniteDuration,
     gate: Deferred[IO, Unit],
-    effectivePriority: Int  // Increases over time to prevent starvation
+    effectivePriority: Int // Increases over time to prevent starvation
 ) {
+
   /** Calculate current effective priority considering age. */
   def withAging(now: FiniteDuration, boostPerSecond: Int): QueueEntry = {
-    val waitTime = now - submittedAt
-    val boost = (waitTime.toSeconds * boostPerSecond / 5).toInt  // Boost every 5 seconds
+    val waitTime     = now - submittedAt
+    val boost        = (waitTime.toSeconds * boostPerSecond / 5).toInt // Boost every 5 seconds
     val newEffective = math.min(priority + boost, 100)
     copy(effectivePriority = newEffective)
   }
 }
 
 private[execution] object QueueEntry {
+
   /** Ordering: higher effective priority first, then earlier submission (FIFO). */
   implicit val ordering: Ordering[QueueEntry] =
     Ordering.by[QueueEntry, (Int, Long)](e => (-e.effectivePriority, e.id))
@@ -176,12 +191,12 @@ private[execution] final case class SchedulerState(
 
   def complete(priority: Int): SchedulerState = {
     val isHigh = priority >= 75
-    val isLow = priority < 25
+    val isLow  = priority < 25
     copy(
       activeCount = activeCount - 1,
       totalCompleted = totalCompleted + 1,
-      highPriorityCompleted = if (isHigh) highPriorityCompleted + 1 else highPriorityCompleted,
-      lowPriorityCompleted = if (isLow) lowPriorityCompleted + 1 else lowPriorityCompleted
+      highPriorityCompleted = if isHigh then highPriorityCompleted + 1 else highPriorityCompleted,
+      lowPriorityCompleted = if isLow then lowPriorityCompleted + 1 else lowPriorityCompleted
     )
   }
 
@@ -229,22 +244,25 @@ private[execution] class BoundedGlobalScheduler private (
     agingFiber: cats.effect.Fiber[IO, Throwable, Unit]
 ) extends GlobalScheduler {
 
-  private val boostPerSecond: Int = 10  // Priority boost per 5 seconds of waiting
+  private val boostPerSecond: Int = 10 // Priority boost per 5 seconds of waiting
 
-  def submit[A](priority: Int, task: IO[A]): IO[A] = {
+  def submit[A](priority: Int, task: IO[A]): IO[A] =
     for {
       // Check if shutting down
       state <- stateRef.get
-      _ <- IO.raiseError(new IllegalStateException("Scheduler is shutting down")).whenA(state.shuttingDown)
+      _ <- IO
+        .raiseError(new IllegalStateException("Scheduler is shutting down"))
+        .whenA(state.shuttingDown)
 
       // Check queue capacity
-      _ <- IO.raiseError(new QueueFullException(state.queue.size, maxQueueSize))
+      _ <- IO
+        .raiseError(new QueueFullException(state.queue.size, maxQueueSize))
         .whenA(maxQueueSize > 0 && state.queue.size >= maxQueueSize)
 
       // Create entry
-      now <- IO.realTime
+      now  <- IO.realTime
       gate <- Deferred[IO, Unit]
-      taskId = taskIdCounter.incrementAndGet()
+      taskId          = taskIdCounter.incrementAndGet()
       clampedPriority = math.max(0, math.min(100, priority))
       entry = QueueEntry(
         id = taskId,
@@ -268,52 +286,52 @@ private[execution] class BoundedGlobalScheduler private (
         task.guarantee {
           for {
             _ <- stateRef.update(_.complete(clampedPriority))
-            _ <- dispatch  // Try to dispatch next task
+            _ <- dispatch // Try to dispatch next task
           } yield ()
         }
       }
     } yield result
-  }
 
   def stats: IO[SchedulerStats] = stateRef.get.map(_.toStats)
 
   /** Try to dispatch the highest priority queued task. */
-  private def dispatch: IO[Unit] = {
-    stateRef.modify { state =>
-      if (state.activeCount < maxConcurrency && state.queue.nonEmpty) {
-        val (maybeEntry, newState) = state.dequeue
-        maybeEntry match {
-          case Some(entry) => (newState, Some(entry.gate))
-          case None        => (state, None)
+  private def dispatch: IO[Unit] =
+    stateRef
+      .modify { state =>
+        if state.activeCount < maxConcurrency && state.queue.nonEmpty then {
+          val (maybeEntry, newState) = state.dequeue
+          maybeEntry match {
+            case Some(entry) => (newState, Some(entry.gate))
+            case None        => (state, None)
+          }
+        } else {
+          (state, None)
         }
-      } else {
-        (state, None)
       }
-    }.flatMap {
-      case Some(gate) => gate.complete(()).void
-      case None       => IO.unit
-    }
-  }
+      .flatMap {
+        case Some(gate) => gate.complete(()).void
+        case None       => IO.unit
+      }
 
   /** Shutdown the scheduler gracefully. */
-  def shutdown: IO[Unit] = {
+  def shutdown: IO[Unit] =
     for {
       _ <- stateRef.update(_.copy(shuttingDown = true))
       _ <- agingFiber.cancel
     } yield ()
-  }
 }
 
 private[execution] object BoundedGlobalScheduler {
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.BoundedGlobalScheduler")
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.BoundedGlobalScheduler")
 
   def create(
       maxConcurrency: Int,
       starvationTimeout: FiniteDuration,
       maxQueueSize: Int = 0
-  ): IO[BoundedGlobalScheduler] = {
+  ): IO[BoundedGlobalScheduler] =
     for {
-      stateRef <- Ref.of[IO, SchedulerState](SchedulerState.empty)
+      stateRef  <- Ref.of[IO, SchedulerState](SchedulerState.empty)
       semaphore <- Semaphore[IO](maxConcurrency)
       taskIdCounter = new AtomicLong(0)
 
@@ -329,32 +347,31 @@ private[execution] object BoundedGlobalScheduler {
       taskIdCounter = taskIdCounter,
       agingFiber = agingFiber
     )
-  }
 
   /** Background fiber that periodically boosts priority of waiting tasks. */
   private def startAgingFiber(
       stateRef: Ref[IO, SchedulerState],
       starvationTimeout: FiniteDuration
   ): IO[Unit] = {
-    val agingInterval = 5.seconds
-    val boostPerInterval = 10  // Priority boost per interval
+    val agingInterval    = 5.seconds
+    val boostPerInterval = 10 // Priority boost per interval
 
-    def loop: IO[Unit] = {
+    def loop: IO[Unit] =
       for {
-        _ <- IO.sleep(agingInterval)
+        _   <- IO.sleep(agingInterval)
         now <- IO.realTime
 
         // Update effective priorities for waiting tasks
         promotionCount <- stateRef.modify { state =>
-          if (state.shuttingDown) {
+          if state.shuttingDown then {
             (state, 0)
           } else {
             var promotions = 0
             val updatedQueue = state.queue.map { entry =>
-              val waitTime = now - entry.submittedAt
-              val boost = (waitTime.toSeconds / 5 * boostPerInterval).toInt
+              val waitTime     = now - entry.submittedAt
+              val boost        = (waitTime.toSeconds / 5 * boostPerInterval).toInt
               val newEffective = math.min(entry.priority + boost, 100)
-              if (newEffective > entry.effectivePriority) {
+              if newEffective > entry.effectivePriority then {
                 promotions += 1
                 entry.copy(effectivePriority = newEffective)
               } else {
@@ -373,9 +390,8 @@ private[execution] object BoundedGlobalScheduler {
 
         // Continue unless shutting down
         state <- stateRef.get
-        _ <- loop.unlessA(state.shuttingDown)
+        _     <- loop.unlessA(state.shuttingDown)
       } yield ()
-    }
 
     loop.handleErrorWith { error =>
       // Log error but don't crash - aging is best-effort

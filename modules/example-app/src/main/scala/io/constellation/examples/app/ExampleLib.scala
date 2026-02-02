@@ -317,14 +317,15 @@ object ExampleLib {
     alwaysFailsServiceSig
   )
 
-  val allSignatures: List[FunctionSignature] = dataSignatures ++ textSignatures ++ resilienceSignatures
+  val allSignatures: List[FunctionSignature] =
+    dataSignatures ++ textSignatures ++ resilienceSignatures
 
   // ========== Module Mappings ==========
 
   /** All example modules mapped by name */
   def allModules: Map[String, Module.Uninitialized] = {
-    val dataModuleMap = DataModules.all.map(m => m.spec.name -> m).toMap
-    val textModuleMap = TextModules.all.map(m => m.spec.name -> m).toMap
+    val dataModuleMap       = DataModules.all.map(m => m.spec.name -> m).toMap
+    val textModuleMap       = TextModules.all.map(m => m.spec.name -> m).toMap
     val resilienceModuleMap = ResilienceModules.all.map(m => m.spec.name -> m).toMap
     dataModuleMap ++ textModuleMap ++ resilienceModuleMap
   }

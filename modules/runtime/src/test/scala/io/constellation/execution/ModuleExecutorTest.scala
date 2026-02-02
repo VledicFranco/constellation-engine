@@ -5,7 +5,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
 class ModuleExecutorTest extends AnyFlatSpec with Matchers {
@@ -15,10 +15,12 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "executeWithRetry" should "succeed on first attempt if no error" in {
-    val result = ModuleExecutor.executeWithRetry(
-      IO.pure(42),
-      maxRetries = 3
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        IO.pure(42),
+        maxRetries = 3
+      )
+      .unsafeRunSync()
 
     result shouldBe 42
   }
@@ -28,14 +30,16 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 3) throw new RuntimeException(s"Attempt $attempt failed")
+      if attempt < 3 then throw new RuntimeException(s"Attempt $attempt failed")
       else "success"
     }
 
-    val result = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 3
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 3
+      )
+      .unsafeRunSync()
 
     result shouldBe "success"
     counter.get() shouldBe 3
@@ -50,13 +54,15 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     }
 
     val error = intercept[RetryExhaustedException] {
-      ModuleExecutor.executeWithRetry(
-        operation,
-        maxRetries = 2
-      ).unsafeRunSync()
+      ModuleExecutor
+        .executeWithRetry(
+          operation,
+          maxRetries = 2
+        )
+        .unsafeRunSync()
     }
 
-    error.totalAttempts shouldBe 3  // 1 initial + 2 retries
+    error.totalAttempts shouldBe 3 // 1 initial + 2 retries
     error.errors.size shouldBe 3
     counter.get() shouldBe 3
   }
@@ -66,15 +72,18 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 2) throw new RuntimeException("Retry")
+      if attempt < 2 then throw new RuntimeException("Retry")
       else "done"
     }
 
-    val (duration, result) = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 2,
-      delay = Some(100.millis)
-    ).timed.unsafeRunSync()
+    val (duration, result) = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 2,
+        delay = Some(100.millis)
+      )
+      .timed
+      .unsafeRunSync()
 
     result shouldBe "done"
     duration.toMillis should be >= 100L // At least one delay
@@ -82,21 +91,25 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
 
   it should "call onRetry callback before each retry" in {
     val retryLog = scala.collection.mutable.ListBuffer[(Int, String)]()
-    val counter = new AtomicInteger(0)
+    val counter  = new AtomicInteger(0)
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 3) throw new RuntimeException(s"Error $attempt")
+      if attempt < 3 then throw new RuntimeException(s"Error $attempt")
       else "ok"
     }
 
-    val result = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 3,
-      onRetry = Some((attempt, error) => IO {
-        retryLog += ((attempt, error.getMessage))
-      })
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 3,
+        onRetry = Some((attempt, error) =>
+          IO {
+            retryLog += ((attempt, error.getMessage))
+          }
+        )
+      )
+      .unsafeRunSync()
 
     result shouldBe "ok"
     retryLog.toList shouldBe List(
@@ -114,10 +127,12 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     }
 
     intercept[RuntimeException] {
-      ModuleExecutor.executeWithRetry(
-        operation,
-        maxRetries = 0
-      ).unsafeRunSync()
+      ModuleExecutor
+        .executeWithRetry(
+          operation,
+          maxRetries = 0
+        )
+        .unsafeRunSync()
     }
 
     counter.get() shouldBe 1
@@ -128,20 +143,24 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "executeWithTimeout" should "succeed if operation completes in time" in {
-    val result = ModuleExecutor.executeWithTimeout(
-      IO.pure(42),
-      timeout = 1.second
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithTimeout(
+        IO.pure(42),
+        timeout = 1.second
+      )
+      .unsafeRunSync()
 
     result shouldBe 42
   }
 
   it should "throw ModuleTimeoutException if operation exceeds timeout" in {
     val error = intercept[ModuleTimeoutException] {
-      ModuleExecutor.executeWithTimeout(
-        IO.sleep(500.millis) *> IO.pure(42),
-        timeout = 100.millis
-      ).unsafeRunSync()
+      ModuleExecutor
+        .executeWithTimeout(
+          IO.sleep(500.millis) *> IO.pure(42),
+          timeout = 100.millis
+        )
+        .unsafeRunSync()
     }
 
     error.timeout shouldBe 100.millis
@@ -157,10 +176,12 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     }
 
     intercept[ModuleTimeoutException] {
-      ModuleExecutor.executeWithTimeout(
-        operation,
-        timeout = 50.millis
-      ).unsafeRunSync()
+      ModuleExecutor
+        .executeWithTimeout(
+          operation,
+          timeout = 50.millis
+        )
+        .unsafeRunSync()
     }
 
     // Give some time for any potential completion
@@ -173,19 +194,23 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "executeWithFallback" should "return result if operation succeeds" in {
-    val result = ModuleExecutor.executeWithFallback(
-      IO.pure(42),
-      fallback = IO.pure(0)
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithFallback(
+        IO.pure(42),
+        fallback = IO.pure(0)
+      )
+      .unsafeRunSync()
 
     result shouldBe 42
   }
 
   it should "return fallback if operation fails" in {
-    val result = ModuleExecutor.executeWithFallback(
-      IO.raiseError[Int](new RuntimeException("Failed")),
-      fallback = IO.pure(0)
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithFallback(
+        IO.raiseError[Int](new RuntimeException("Failed")),
+        fallback = IO.pure(0)
+      )
+      .unsafeRunSync()
 
     result shouldBe 0
   }
@@ -193,13 +218,15 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   it should "evaluate fallback lazily" in {
     val fallbackCalled = new AtomicInteger(0)
 
-    val result = ModuleExecutor.executeWithFallback(
-      IO.pure(42),
-      fallback = IO {
-        fallbackCalled.incrementAndGet()
-        0
-      }
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithFallback(
+        IO.pure(42),
+        fallback = IO {
+          fallbackCalled.incrementAndGet()
+          0
+        }
+      )
+      .unsafeRunSync()
 
     result shouldBe 42
     fallbackCalled.get() shouldBe 0 // Fallback never evaluated
@@ -208,13 +235,17 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   it should "call onFallback callback when fallback is used" in {
     var capturedError: Option[Throwable] = None
 
-    val result = ModuleExecutor.executeWithFallback(
-      IO.raiseError[Int](new RuntimeException("Original error")),
-      fallback = IO.pure(0),
-      onFallback = Some(error => IO {
-        capturedError = Some(error)
-      })
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithFallback(
+        IO.raiseError[Int](new RuntimeException("Original error")),
+        fallback = IO.pure(0),
+        onFallback = Some(error =>
+          IO {
+            capturedError = Some(error)
+          }
+        )
+      )
+      .unsafeRunSync()
 
     result shouldBe 0
     capturedError shouldBe defined
@@ -230,7 +261,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 2) {
+      if attempt < 2 then {
         Thread.sleep(200) // First attempt times out
         "slow"
       } else {
@@ -238,13 +269,15 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
       }
     }
 
-    val result = ModuleExecutor.execute(
-      operation,
-      ExecutionOptions(
-        retry = Some(2),
-        timeout = Some(100.millis)
+    val result = ModuleExecutor
+      .execute(
+        operation,
+        ExecutionOptions(
+          retry = Some(2),
+          timeout = Some(100.millis)
+        )
       )
-    ).unsafeRunSync()
+      .unsafeRunSync()
 
     result shouldBe "fast"
     counter.get() shouldBe 2
@@ -258,26 +291,30 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
       throw new RuntimeException("Always fails")
     }
 
-    val result = ModuleExecutor.execute[String](
-      operation,
-      ExecutionOptions(
-        retry = Some(2),
-        fallback = Some(IO.pure("fallback"))
+    val result = ModuleExecutor
+      .execute[String](
+        operation,
+        ExecutionOptions(
+          retry = Some(2),
+          fallback = Some(IO.pure("fallback"))
+        )
       )
-    ).unsafeRunSync()
+      .unsafeRunSync()
 
     result shouldBe "fallback"
     counter.get() shouldBe 3 // 1 initial + 2 retries
   }
 
   it should "use fallback after timeout with no retries" in {
-    val result = ModuleExecutor.execute[String](
-      IO.sleep(500.millis) *> IO.pure("slow"),
-      ExecutionOptions(
-        timeout = Some(50.millis),
-        fallback = Some(IO.pure("fast fallback"))
+    val result = ModuleExecutor
+      .execute[String](
+        IO.sleep(500.millis) *> IO.pure("slow"),
+        ExecutionOptions(
+          timeout = Some(50.millis),
+          fallback = Some(IO.pure("fast fallback"))
+        )
       )
-    ).unsafeRunSync()
+      .unsafeRunSync()
 
     result shouldBe "fast fallback"
   }
@@ -289,35 +326,42 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   "retryWithDelay" should "retry with specified delay" in {
     val counter = new AtomicInteger(0)
 
-    val (duration, result) = ModuleExecutor.retryWithDelay(
-      IO {
-        if (counter.incrementAndGet() < 2) throw new RuntimeException("Retry")
-        else "done"
-      },
-      maxRetries = 2,
-      delay = 50.millis
-    ).timed.unsafeRunSync()
+    val (duration, result) = ModuleExecutor
+      .retryWithDelay(
+        IO {
+          if counter.incrementAndGet() < 2 then throw new RuntimeException("Retry")
+          else "done"
+        },
+        maxRetries = 2,
+        delay = 50.millis
+      )
+      .timed
+      .unsafeRunSync()
 
     result shouldBe "done"
     duration.toMillis should be >= 50L
   }
 
   "timeoutOrElse" should "return fallback on timeout" in {
-    val result = ModuleExecutor.timeoutOrElse(
-      IO.sleep(500.millis) *> IO.pure(42),
-      timeout = 50.millis,
-      fallback = 0
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .timeoutOrElse(
+        IO.sleep(500.millis) *> IO.pure(42),
+        timeout = 50.millis,
+        fallback = 0
+      )
+      .unsafeRunSync()
 
     result shouldBe 0
   }
 
   it should "return result if no timeout" in {
-    val result = ModuleExecutor.timeoutOrElse(
-      IO.pure(42),
-      timeout = 1.second,
-      fallback = 0
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .timeoutOrElse(
+        IO.pure(42),
+        timeout = 1.second,
+        fallback = 0
+      )
+      .unsafeRunSync()
 
     result shouldBe 42
   }
@@ -383,33 +427,45 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "cap delay at maxDelay" in {
-    val base = 1.second
+    val base     = 1.second
     val maxDelay = 5.seconds
 
     // Exponential: 1s, 2s, 4s, 8s -> capped at 5s
     BackoffStrategy.computeDelay(base, 1, BackoffStrategy.Exponential, maxDelay) shouldBe 1.second
     BackoffStrategy.computeDelay(base, 2, BackoffStrategy.Exponential, maxDelay) shouldBe 2.seconds
     BackoffStrategy.computeDelay(base, 3, BackoffStrategy.Exponential, maxDelay) shouldBe 4.seconds
-    BackoffStrategy.computeDelay(base, 4, BackoffStrategy.Exponential, maxDelay) shouldBe 5.seconds // capped
-    BackoffStrategy.computeDelay(base, 5, BackoffStrategy.Exponential, maxDelay) shouldBe 5.seconds // capped
+    BackoffStrategy.computeDelay(
+      base,
+      4,
+      BackoffStrategy.Exponential,
+      maxDelay
+    ) shouldBe 5.seconds // capped
+    BackoffStrategy.computeDelay(
+      base,
+      5,
+      BackoffStrategy.Exponential,
+      maxDelay
+    ) shouldBe 5.seconds // capped
   }
 
   "executeWithRetry with backoff" should "apply exponential backoff delays" in {
-    val counter = new AtomicInteger(0)
+    val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 4) throw new RuntimeException(s"Attempt $attempt")
+      if attempt < 4 then throw new RuntimeException(s"Attempt $attempt")
       else "success"
     }
 
-    val result = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 3,
-      delay = Some(50.millis),
-      backoff = BackoffStrategy.Exponential
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 3,
+        delay = Some(50.millis),
+        backoff = BackoffStrategy.Exponential
+      )
+      .unsafeRunSync()
 
     val totalTime = (System.nanoTime() - startTime) / 1e6
 
@@ -422,21 +478,23 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "apply linear backoff delays" in {
-    val counter = new AtomicInteger(0)
+    val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 4) throw new RuntimeException(s"Attempt $attempt")
+      if attempt < 4 then throw new RuntimeException(s"Attempt $attempt")
       else "success"
     }
 
-    val result = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 3,
-      delay = Some(50.millis),
-      backoff = BackoffStrategy.Linear
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 3,
+        delay = Some(50.millis),
+        backoff = BackoffStrategy.Linear
+      )
+      .unsafeRunSync()
 
     val totalTime = (System.nanoTime() - startTime) / 1e6
 
@@ -448,22 +506,24 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "respect maxDelay cap" in {
-    val counter = new AtomicInteger(0)
+    val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 
     val operation = IO {
       val attempt = counter.incrementAndGet()
-      if (attempt < 4) throw new RuntimeException(s"Attempt $attempt")
+      if attempt < 4 then throw new RuntimeException(s"Attempt $attempt")
       else "success"
     }
 
-    val result = ModuleExecutor.executeWithRetry(
-      operation,
-      maxRetries = 3,
-      delay = Some(100.millis),
-      backoff = BackoffStrategy.Exponential,
-      maxDelay = 150.millis  // Cap at 150ms
-    ).unsafeRunSync()
+    val result = ModuleExecutor
+      .executeWithRetry(
+        operation,
+        maxRetries = 3,
+        delay = Some(100.millis),
+        backoff = BackoffStrategy.Exponential,
+        maxDelay = 150.millis // Cap at 150ms
+      )
+      .unsafeRunSync()
 
     val totalTime = (System.nanoTime() - startTime) / 1e6
 

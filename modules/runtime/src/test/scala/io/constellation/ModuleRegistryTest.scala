@@ -21,13 +21,13 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   "ModuleRegistry" should "initialize empty" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val modules = registry.listModules.unsafeRunSync()
+    val modules  = registry.listModules.unsafeRunSync()
     modules shouldBe empty
   }
 
   it should "register and retrieve a module" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module = createTestModule("TestModule")
+    val module   = createTestModule("TestModule")
 
     registry.register("TestModule", module).unsafeRunSync()
 
@@ -45,9 +45,9 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "list all registered modules" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module1 = createTestModule("Module1")
-    val module2 = createTestModule("Module2")
-    val module3 = createTestModule("Module3")
+    val module1  = createTestModule("Module1")
+    val module2  = createTestModule("Module2")
+    val module3  = createTestModule("Module3")
 
     registry.register("Module1", module1).unsafeRunSync()
     registry.register("Module2", module2).unsafeRunSync()
@@ -59,7 +59,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "overwrite existing module on duplicate registration" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module1 = createTestModule("SameName")
+    val module1  = createTestModule("SameName")
     val module2 = ModuleBuilder
       .metadata("SameName", "Updated description", 2, 0)
       .implementationPure[TestInput, TestOutput](in => TestOutput(in.x * 3))
@@ -76,7 +76,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "get module by stripped name prefix" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module = createTestModule("Uppercase")
+    val module   = createTestModule("Uppercase")
 
     registry.register("Uppercase", module).unsafeRunSync()
 
@@ -88,7 +88,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "prefer exact match over stripped name" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module1 = createTestModule("Uppercase")
+    val module1  = createTestModule("Uppercase")
     val module2 = ModuleBuilder
       .metadata("test.Uppercase", "Exact match module", 1, 0)
       .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
@@ -105,11 +105,11 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   "initModules" should "initialize modules for a DAG" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module = createTestModule("TestModule")
+    val module   = createTestModule("TestModule")
     registry.register("TestModule", module).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val dataId = UUID.randomUUID()
+    val moduleId  = UUID.randomUUID()
+    val dataId    = UUID.randomUUID()
     val outDataId = UUID.randomUUID()
 
     val moduleSpec = ModuleNodeSpec(
@@ -122,7 +122,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(moduleId -> moduleSpec),
       data = Map(
-        dataId -> DataNodeSpec("input", Map(moduleId -> "x"), CType.CInt),
+        dataId    -> DataNodeSpec("input", Map(moduleId -> "x"), CType.CInt),
         outDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((dataId, moduleId)),
@@ -136,11 +136,11 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "initialize modules using stripped name matching" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module = createTestModule("Uppercase")
+    val module   = createTestModule("Uppercase")
     registry.register("Uppercase", module).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val dataId = UUID.randomUUID()
+    val moduleId  = UUID.randomUUID()
+    val dataId    = UUID.randomUUID()
     val outDataId = UUID.randomUUID()
 
     // DAG uses prefixed name
@@ -154,7 +154,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(moduleId -> moduleSpec),
       data = Map(
-        dataId -> DataNodeSpec("input", Map(moduleId -> "x"), CType.CInt),
+        dataId    -> DataNodeSpec("input", Map(moduleId -> "x"), CType.CInt),
         outDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((dataId, moduleId)),
@@ -169,8 +169,8 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
   it should "return empty map for DAG with no registered modules" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val dataId = UUID.randomUUID()
+    val moduleId  = UUID.randomUUID()
+    val dataId    = UUID.randomUUID()
     val outDataId = UUID.randomUUID()
 
     val moduleSpec = ModuleNodeSpec(
@@ -181,7 +181,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(moduleId -> moduleSpec),
       data = Map(
-        dataId -> DataNodeSpec("input", Map.empty, CType.CInt),
+        dataId    -> DataNodeSpec("input", Map.empty, CType.CInt),
         outDataId -> DataNodeSpec("output", Map.empty, CType.CInt)
       ),
       inEdges = Set.empty,
@@ -194,7 +194,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "initialize only registered modules from DAG" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module1 = createTestModule("RegisteredModule")
+    val module1  = createTestModule("RegisteredModule")
     registry.register("RegisteredModule", module1).unsafeRunSync()
 
     val moduleId1 = UUID.randomUUID()

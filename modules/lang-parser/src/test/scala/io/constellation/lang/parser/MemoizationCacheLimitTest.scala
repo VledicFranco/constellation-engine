@@ -9,8 +9,12 @@ class MemoizationCacheLimitTest extends AnyFlatSpec with Matchers {
   // Create a test class that exposes MemoizationSupport for testing
   private class TestMemoizationParser extends MemoizationSupport {
     def testClearCache(): Unit = clearMemoCache()
-    def testGetCacheSize: Int = getCacheSize
-    def testCacheResult(offset: Int, parserId: Int, result: Either[cats.parse.Parser.Error, String]): Unit =
+    def testGetCacheSize: Int  = getCacheSize
+    def testCacheResult(
+        offset: Int,
+        parserId: Int,
+        result: Either[cats.parse.Parser.Error, String]
+    ): Unit =
       cacheResult("test", offset, parserId, result)
     def testCheckCache[A](offset: Int, parserId: Int): Option[Either[cats.parse.Parser.Error, A]] =
       checkCache[A]("test", offset, parserId)

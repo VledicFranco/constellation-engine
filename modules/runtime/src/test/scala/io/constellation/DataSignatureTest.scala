@@ -35,9 +35,11 @@ class DataSignatureTest extends AnyFlatSpec with Matchers {
     executionId = UUID.randomUUID(),
     structuralHash = "ghi789",
     resumptionCount = 1,
-    status = PipelineStatus.Failed(List(
-      ExecutionError("ModuleA", "ModuleA", "boom")
-    )),
+    status = PipelineStatus.Failed(
+      List(
+        ExecutionError("ModuleA", "ModuleA", "boom")
+      )
+    ),
     inputs = Map("x" -> CValue.CString("test")),
     computedNodes = Map("x" -> CValue.CString("test")),
     outputs = Map.empty,

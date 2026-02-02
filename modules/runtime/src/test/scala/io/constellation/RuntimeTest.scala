@@ -3,7 +3,7 @@ package io.constellation
 import cats.Eval
 import cats.effect.{Deferred, IO, Ref}
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -28,22 +28,25 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
       stateRef <- createEmptyState(dag).flatMap(Ref.of[IO, Runtime.State])
     } yield Runtime(table = Map.empty, state = stateRef)
 
-  private def createRuntimeWithTable(dag: DagSpec, dataIds: List[UUID]): IO[(Runtime, Map[UUID, Deferred[IO, Any]])] =
+  private def createRuntimeWithTable(
+      dag: DagSpec,
+      dataIds: List[UUID]
+  ): IO[(Runtime, Map[UUID, Deferred[IO, Any]])] =
     for {
-      stateRef <- createEmptyState(dag).flatMap(Ref.of[IO, Runtime.State])
+      stateRef  <- createEmptyState(dag).flatMap(Ref.of[IO, Runtime.State])
       deferreds <- dataIds.traverse(id => Deferred[IO, Any].map(id -> _))
       table = deferreds.toMap
     } yield (Runtime(table = table, state = stateRef), table)
 
   // Tests for setModuleStatus
   "setModuleStatus" should "update module status to Unfired" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -52,14 +55,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update module status to Fired" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
-    val latency = 100.millis
+    val latency  = 100.millis
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, None))
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, None))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -67,15 +70,15 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update module status to Fired with context" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
-    val latency = 100.millis
-    val context = Map("key" -> io.circe.Json.fromString("value"))
+    val latency  = 100.millis
+    val context  = Map("key" -> io.circe.Json.fromString("value"))
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, Some(context)))
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Fired(latency, Some(context)))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -88,14 +91,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update module status to Failed" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
-    val error = new RuntimeException("Test error")
+    val error    = new RuntimeException("Test error")
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Failed(error))
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Failed(error))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -106,14 +109,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update module status to Timed" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
-    val latency = 500.millis
+    val latency  = 500.millis
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Timed(latency))
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Timed(latency))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -121,14 +124,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "overwrite existing module status" in {
-    val dag = createEmptyDag
+    val dag      = createEmptyDag
     val moduleId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
-      _ <- runtime.setModuleStatus(moduleId, Module.Status.Fired(100.millis, None))
-      state <- runtime.state.get
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Unfired)
+      _       <- runtime.setModuleStatus(moduleId, Module.Status.Fired(100.millis, None))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -137,14 +140,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
 
   // Tests for setStateData
   "setStateData" should "store CValue in state" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
-    val value = CValue.CString("test")
+    val value  = CValue.CString("test")
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setStateData(dataId, value)
-      state <- runtime.state.get
+      _       <- runtime.setStateData(dataId, value)
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -153,7 +156,7 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "store different CValue types" in {
-    val dag = createEmptyDag
+    val dag     = createEmptyDag
     val dataId1 = UUID.randomUUID()
     val dataId2 = UUID.randomUUID()
     val dataId3 = UUID.randomUUID()
@@ -161,11 +164,11 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setStateData(dataId1, CValue.CString("hello"))
-      _ <- runtime.setStateData(dataId2, CValue.CInt(42))
-      _ <- runtime.setStateData(dataId3, CValue.CFloat(3.14))
-      _ <- runtime.setStateData(dataId4, CValue.CBoolean(true))
-      state <- runtime.state.get
+      _       <- runtime.setStateData(dataId1, CValue.CString("hello"))
+      _       <- runtime.setStateData(dataId2, CValue.CInt(42))
+      _       <- runtime.setStateData(dataId3, CValue.CFloat(3.14))
+      _       <- runtime.setStateData(dataId4, CValue.CBoolean(true))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -176,14 +179,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "store complex CValue types" in {
-    val dag = createEmptyDag
-    val dataId = UUID.randomUUID()
+    val dag       = createEmptyDag
+    val dataId    = UUID.randomUUID()
     val listValue = CValue.CList(Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)), CType.CInt)
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setStateData(dataId, listValue)
-      state <- runtime.state.get
+      _       <- runtime.setStateData(dataId, listValue)
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -191,14 +194,14 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "overwrite existing data" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setStateData(dataId, CValue.CString("first"))
-      _ <- runtime.setStateData(dataId, CValue.CString("second"))
-      state <- runtime.state.get
+      _       <- runtime.setStateData(dataId, CValue.CString("first"))
+      _       <- runtime.setStateData(dataId, CValue.CString("second"))
+      state   <- runtime.state.get
     } yield state
 
     val state = result.unsafeRunSync()
@@ -207,13 +210,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
 
   // Tests for table data operations
   "getTableData" should "retrieve data from table" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableData(dataId, "test value")
+      _    <- runtime.setTableData(dataId, "test value")
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -222,12 +225,12 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fail for missing data ID" in {
-    val dag = createEmptyDag
+    val dag       = createEmptyDag
     val missingId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag)
-      data <- runtime.getTableData(missingId)
+      data    <- runtime.getTableData(missingId)
     } yield data
 
     val attempt = result.attempt.unsafeRunSync()
@@ -236,13 +239,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   "setTableData" should "complete deferred in table" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableData(dataId, 42L)
+      _    <- runtime.setTableData(dataId, 42L)
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -251,12 +254,12 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fail for missing data ID" in {
-    val dag = createEmptyDag
+    val dag       = createEmptyDag
     val missingId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag)
-      _ <- runtime.setTableData(missingId, "value")
+      _       <- runtime.setTableData(missingId, "value")
     } yield ()
 
     val attempt = result.attempt.unsafeRunSync()
@@ -265,13 +268,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   "setTableDataCValue" should "convert CValue and store in table" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataCValue(dataId, CValue.CString("converted"))
+      _    <- runtime.setTableDataCValue(dataId, CValue.CString("converted"))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -280,13 +283,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CInt to Long" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataCValue(dataId, CValue.CInt(42))
+      _    <- runtime.setTableDataCValue(dataId, CValue.CInt(42))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -295,16 +298,19 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CList to List" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataCValue(dataId, CValue.CList(
-        Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
-        CType.CInt
-      ))
+      _ <- runtime.setTableDataCValue(
+        dataId,
+        CValue.CList(
+          Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
+          CType.CInt
+        )
+      )
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -313,13 +319,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CSome to Some" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataCValue(dataId, CValue.CSome(CValue.CInt(42), CType.CInt))
+      _    <- runtime.setTableDataCValue(dataId, CValue.CSome(CValue.CInt(42), CType.CInt))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -328,13 +334,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CNone to None" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataCValue(dataId, CValue.CNone(CType.CInt))
+      _    <- runtime.setTableDataCValue(dataId, CValue.CNone(CType.CInt))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -343,12 +349,12 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "succeed silently for data ID not in table" in {
-    val dag = createEmptyDag
+    val dag       = createEmptyDag
     val missingId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag) // Empty table
-      _ <- runtime.setTableDataCValue(missingId, CValue.CString("ignored"))
+      _       <- runtime.setTableDataCValue(missingId, CValue.CString("ignored"))
     } yield ()
 
     // Should not throw - silently succeeds for passthrough DAGs
@@ -356,13 +362,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   "setTableDataRawValue" should "convert RawValue and store in table" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataRawValue(dataId, RawValue.RString("raw"))
+      _    <- runtime.setTableDataRawValue(dataId, RawValue.RString("raw"))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -371,13 +377,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert RInt to Long" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataRawValue(dataId, RawValue.RInt(100))
+      _    <- runtime.setTableDataRawValue(dataId, RawValue.RInt(100))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -386,13 +392,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert RIntList to List" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataRawValue(dataId, RawValue.RIntList(Array(1L, 2L, 3L)))
+      _    <- runtime.setTableDataRawValue(dataId, RawValue.RIntList(Array(1L, 2L, 3L)))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -401,13 +407,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert RSome to Some" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataRawValue(dataId, RawValue.RSome(RawValue.RInt(42)))
+      _    <- runtime.setTableDataRawValue(dataId, RawValue.RSome(RawValue.RInt(42)))
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -416,13 +422,13 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert RNone to None" in {
-    val dag = createEmptyDag
+    val dag    = createEmptyDag
     val dataId = UUID.randomUUID()
 
     val result = for {
       pair <- createRuntimeWithTable(dag, List(dataId))
       (runtime, _) = pair
-      _ <- runtime.setTableDataRawValue(dataId, RawValue.RNone)
+      _    <- runtime.setTableDataRawValue(dataId, RawValue.RNone)
       data <- runtime.getTableData(dataId)
     } yield data
 
@@ -431,12 +437,12 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "succeed silently for data ID not in table" in {
-    val dag = createEmptyDag
+    val dag       = createEmptyDag
     val missingId = UUID.randomUUID()
 
     val result = for {
       runtime <- createRuntime(dag) // Empty table
-      _ <- runtime.setTableDataRawValue(missingId, RawValue.RString("ignored"))
+      _       <- runtime.setTableDataRawValue(missingId, RawValue.RString("ignored"))
     } yield ()
 
     // Should not throw - silently succeeds for passthrough DAGs
@@ -445,11 +451,11 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
 
   // Tests for close
   "close" should "set latency in state" in {
-    val dag = createEmptyDag
+    val dag     = createEmptyDag
     val latency = 500.millis
 
     val result = for {
-      runtime <- createRuntime(dag)
+      runtime    <- createRuntime(dag)
       finalState <- runtime.close(latency)
     } yield finalState
 
@@ -470,7 +476,7 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "store module status as lazy Eval" in {
-    val moduleId = UUID.randomUUID()
+    val moduleId  = UUID.randomUUID()
     var evaluated = false
     val lazyStatus = Eval.later {
       evaluated = true
@@ -490,7 +496,7 @@ class RuntimeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "store data as lazy Eval" in {
-    val dataId = UUID.randomUUID()
+    val dataId    = UUID.randomUUID()
     var evaluated = false
     val lazyData = Eval.later {
       evaluated = true

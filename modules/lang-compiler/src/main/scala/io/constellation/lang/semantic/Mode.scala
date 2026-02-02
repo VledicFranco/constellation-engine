@@ -3,16 +3,19 @@ package io.constellation.lang.semantic
 /** Type checking mode for bidirectional type inference.
   *
   * Bidirectional type checking operates in two modes:
-  * - Inference (⇑): Synthesize a type from the expression structure (bottom-up)
-  * - Checking (⇓): Verify expression against an expected type (top-down)
+  *   - Inference (⇑): Synthesize a type from the expression structure (bottom-up)
+  *   - Checking (⇓): Verify expression against an expected type (top-down)
   *
-  * The key insight is that expected type information flows down into expressions,
-  * enabling type inference for constructs that would otherwise need annotations.
+  * The key insight is that expected type information flows down into expressions, enabling type
+  * inference for constructs that would otherwise need annotations.
   *
-  * @see "Bidirectional Typing" by Dunfield & Krishnaswami (2021)
-  * @see "Complete and Easy Bidirectional Typechecking" by Dunfield & Pfenning (2013)
+  * @see
+  *   "Bidirectional Typing" by Dunfield & Krishnaswami (2021)
+  * @see
+  *   "Complete and Easy Bidirectional Typechecking" by Dunfield & Pfenning (2013)
   */
 sealed trait Mode {
+
   /** Human-readable description of the mode for error messages */
   def describe: String
 }
@@ -21,12 +24,12 @@ object Mode {
 
   /** Inference mode (⇑): Synthesize type from expression structure.
     *
-    * Used when no expected type is available. The type checker must derive
-    * the type purely from the expression's structure.
+    * Used when no expected type is available. The type checker must derive the type purely from the
+    * expression's structure.
     *
     * Examples where inference mode is used:
-    * - `x = 42` (no type annotation, infer Int from literal)
-    * - `result = Process(data)` (infer from function return type)
+    *   - `x = 42` (no type annotation, infer Int from literal)
+    *   - `result = Process(data)` (infer from function return type)
     */
   case object Infer extends Mode {
     def describe: String = "inference mode"
@@ -34,16 +37,16 @@ object Mode {
 
   /** Checking mode (⇓): Verify expression against expected type.
     *
-    * Used when an expected type is available from context. The type checker
-    * can use this information to:
-    * - Infer lambda parameter types
-    * - Type empty collections
-    * - Produce better error messages
+    * Used when an expected type is available from context. The type checker can use this
+    * information to:
+    *   - Infer lambda parameter types
+    *   - Type empty collections
+    *   - Produce better error messages
     *
     * Examples where checking mode is used:
-    * - `x: Int = ...` (check expression against Int)
-    * - `Filter(users, u => u.active)` (check lambda against expected function type)
-    * - `defaults: List<Int> = []` (check empty list against List<Int>)
+    *   - `x: Int = ...` (check expression against Int)
+    *   - `Filter(users, u => u.active)` (check lambda against expected function type)
+    *   - `defaults: List<Int> = []` (check empty list against List<Int>)
     */
   final case class Check(expected: SemanticType) extends Mode {
     def describe: String = s"checking mode (expected: ${expected.prettyPrint})"
@@ -81,7 +84,8 @@ object Mode {
     }
 
     /** In a record field */
-    final case class RecordField(fieldName: String, expectedType: SemanticType) extends TypeContext {
+    final case class RecordField(fieldName: String, expectedType: SemanticType)
+        extends TypeContext {
       def describe: String = s"in record field '$fieldName' (expected: ${expectedType.prettyPrint})"
     }
 

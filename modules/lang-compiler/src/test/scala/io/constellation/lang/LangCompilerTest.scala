@@ -366,7 +366,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Output should be Candidates with projected fields
-    val outputDataNodes = compiled.program.image.dagSpec.data.values.filter(_.name.contains("project"))
+    val outputDataNodes =
+      compiled.program.image.dagSpec.data.values.filter(_.name.contains("project"))
     outputDataNodes should not be empty
   }
 
@@ -1202,7 +1203,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 branch modules
-    val branchModules = compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
+    val branchModules =
+      compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
     branchModules should have size 2
   }
 
@@ -1238,72 +1240,86 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
   private def hofCompiler: LangCompiler = {
     val registry = FunctionRegistry.empty
     // filter: (List<Int>, (Int) => Boolean) => List<Int>
-    registry.register(FunctionSignature(
-      name = "filter",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.filter-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "filter",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.filter-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // map: (List<Int>, (Int) => Int) => List<Int>
-    registry.register(FunctionSignature(
-      name = "map",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.map-int-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "map",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.map-int-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // all: (List<Int>, (Int) => Boolean) => Boolean
-    registry.register(FunctionSignature(
-      name = "all",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.hof.all-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "all",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.hof.all-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // any: (List<Int>, (Int) => Boolean) => Boolean
-    registry.register(FunctionSignature(
-      name = "any",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.hof.any-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "any",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.hof.any-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // Comparison functions for use in lambda bodies
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
     // Arithmetic functions for map
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply",
+        namespace = Some("stdlib.math")
+      )
+    )
     LangCompiler(registry, Map.empty)
   }
 
@@ -1322,7 +1338,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have a higher-order node in the DAG
     compiled.program.image.dagSpec.data.values.exists(d =>
-      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.FilterTransform]
+      )
     ) shouldBe true
   }
 
@@ -1341,7 +1359,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have a higher-order node with MapTransform
     compiled.program.image.dagSpec.data.values.exists(d =>
-      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.MapTransform]
+      )
     ) shouldBe true
   }
 
@@ -1360,7 +1380,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have a higher-order node with AllTransform
     compiled.program.image.dagSpec.data.values.exists(d =>
-      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.AllTransform]
+      )
     ) shouldBe true
   }
 
@@ -1379,7 +1401,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have a higher-order node with AnyTransform
     compiled.program.image.dagSpec.data.values.exists(d =>
-      d.name.contains("hof") && d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.AnyTransform]
+      )
     ) shouldBe true
   }
 
@@ -1426,7 +1450,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "filter-output-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
@@ -1447,7 +1471,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "all-output-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
@@ -1841,9 +1865,11 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Verify DAG has coalesce nodes for primary ?? secondary ?? 0
-    val coalesceNodes = compiled.program.image.dagSpec.data.values.filter(
-      _.inlineTransform.contains(InlineTransform.CoalesceTransform)
-    ).toList
+    val coalesceNodes = compiled.program.image.dagSpec.data.values
+      .filter(
+        _.inlineTransform.contains(InlineTransform.CoalesceTransform)
+      )
+      .toList
     coalesceNodes.size should be >= 2
 
     // Verify DAG has guard node for `selected when selected > threshold`
@@ -1885,7 +1911,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have 2 branch modules (nested)
-    val branchModules = compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
+    val branchModules =
+      compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
     branchModules should have size 2
 
     // Should have guard and coalesce transforms
@@ -2005,7 +2032,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "multi-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2027,7 +2054,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "typedef-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType shouldBe a[CType.CUnion]
   }
@@ -2046,7 +2073,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "record-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2134,7 +2161,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "assign-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("y")
     resultBinding.isDefined shouldBe true
 
@@ -2158,7 +2185,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "optional-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2167,7 +2194,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
         // Should have an Optional<Int> member
         structure.values.exists {
           case CType.COptional(CType.CInt) => true
-          case _ => false
+          case _                           => false
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }
@@ -2184,7 +2211,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "list-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2193,7 +2220,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
         // Should have a List<Int> member
         structure.values.exists {
           case CType.CList(CType.CInt) => true
-          case _ => false
+          case _                       => false
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }
@@ -2211,7 +2238,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "candidates-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2220,7 +2247,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
         // Should have a Candidates<Item> member (represented as CList)
         structure.values.exists {
           case CType.CList(CType.CProduct(_)) => true
-          case _ => false
+          case _                              => false
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }
@@ -2240,7 +2267,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "nested-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2265,7 +2292,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "tagged-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -2334,13 +2361,15 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
   it should "compile lambda with addition arithmetic" in {
     val registry = hofCompiler.functionRegistry
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
     val compiler = LangCompiler(registry, Map.empty)
 
     val source = """
@@ -2445,7 +2474,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     ) shouldBe true
 
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -2467,7 +2496,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     ) shouldBe true
 
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -2530,7 +2559,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     ) shouldBe true
 
     val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
 
@@ -2570,9 +2599,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val hofNode = compiled.program.image.dagSpec.data.values.find(d =>
-      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
-    ).get
+    val hofNode = compiled.program.image.dagSpec.data.values
+      .find(d => d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform]))
+      .get
 
     // HOF node should have transformInputs for the source
     hofNode.transformInputs should not be empty
@@ -2679,7 +2708,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Output type should be String
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CString
   }
 
@@ -2735,11 +2764,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
-      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
-    ).get
+    val interpNode = compiled.program.image.dagSpec.data.values
+      .find(d =>
+        d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+      )
+      .get
 
-    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    val transform =
+      interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
     // parts should be ["Hello, ", "!"]
     transform.parts shouldBe List("Hello, ", "!")
   }
@@ -2757,11 +2789,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
-      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
-    ).get
+    val interpNode = compiled.program.image.dagSpec.data.values
+      .find(d =>
+        d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+      )
+      .get
 
-    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    val transform =
+      interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
     // First part should be empty when interpolation is at start
     transform.parts.head shouldBe ""
   }
@@ -2779,11 +2814,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
-      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
-    ).get
+    val interpNode = compiled.program.image.dagSpec.data.values
+      .find(d =>
+        d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+      )
+      .get
 
-    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    val transform =
+      interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
     // Last part should be empty when interpolation is at end
     transform.parts.last shouldBe ""
   }
@@ -2801,24 +2839,29 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
-      d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
-    ).get
+    val interpNode = compiled.program.image.dagSpec.data.values
+      .find(d =>
+        d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
+      )
+      .get
 
-    val transform = interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
+    val transform =
+      interpNode.inlineTransform.get.asInstanceOf[InlineTransform.StringInterpolationTransform]
     // Parts should be ["", ""] when only interpolation
     transform.parts shouldBe List("", "")
   }
 
   it should "compile string interpolation with function call" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "trim",
-      params = List("s" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "stdlib.trim",
-      namespace = Some("stdlib.string")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "trim",
+        params = List("s" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "stdlib.trim",
+        namespace = Some("stdlib.string")
+      )
+    )
     val compiler = LangCompiler(registry, Map.empty)
 
     val source = """
@@ -2892,12 +2935,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
   it should "compile string interpolation used as function argument" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "process"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "process"
+      )
+    )
     val compiler = LangCompiler(registry, Map.empty)
 
     val source = """
@@ -3094,7 +3139,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = Map(
-      "test.trim" -> trimModule,
+      "test.trim"   -> trimModule,
       "test.length" -> lengthModule
     )
     val compiler = LangCompiler(registry, modules)
@@ -3177,18 +3222,22 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "step1",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "pipeline.step1"
-    ))
-    registry.register(FunctionSignature(
-      name = "step2",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "pipeline.step2"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "step1",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "pipeline.step1"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "step2",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "pipeline.step2"
+      )
+    )
 
     val modules = Map(
       "pipeline.step1" -> step1Module,
@@ -3224,18 +3273,22 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "registered_func",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "registered.func"
-    ))
-    registry.register(FunctionSignature(
-      name = "unregistered_func",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "unregistered.func"  // Not in modules map
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "registered_func",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "registered.func"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "unregistered_func",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "unregistered.func" // Not in modules map
+      )
+    )
 
     // Only provide one module, not the other
     val compiler = LangCompiler(registry, Map("registered.func" -> registeredModule))
@@ -3290,12 +3343,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule))
 
@@ -3335,18 +3390,22 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt"
-    ))
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt"
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule, "stdlib.lt" -> ltModule))
 
@@ -3390,12 +3449,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map("stdlib.gt" -> gtModule))
 
@@ -3429,12 +3490,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "isPositive",
-      params = List("value" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "validate.positive"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "isPositive",
+        params = List("value" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "validate.positive"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map("validate.positive" -> isPositiveModule))
 
@@ -3491,12 +3554,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       .build
 
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "format",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "format.upper"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "format",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "format.upper"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map("format.upper" -> formatModule))
 
@@ -3523,15 +3588,17 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     // Register a sortBy function - the moduleName must contain "sortBy"
     // for IRGenerator.getHigherOrderOp to return HigherOrderOp.SortBy
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "sortBy",
-      params = List(
-        "list" -> SemanticType.SList(SemanticType.SInt),
-        "fn" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.sortBy-int"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "sortBy",
+        params = List(
+          "list" -> SemanticType.SList(SemanticType.SInt),
+          "fn"   -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.sortBy-int"
+      )
+    )
 
     val compiler = LangCompiler(registry, Map.empty)
 

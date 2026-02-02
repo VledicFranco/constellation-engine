@@ -19,10 +19,11 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   "ServerBuilder with default config" should "accept a builder with no hardening" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
     // This should compile and work exactly as before
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withPort(0) // random port
 
     // Verify the config has no hardening
@@ -45,9 +46,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   "ServerBuilder" should "accept auth configuration" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withAuth(AuthConfig(hashedKeys = List(HashedApiKey("key1", ApiRole.Admin))))
 
     // Should not throw
@@ -58,9 +60,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "accept CORS configuration" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
 
     noException should be thrownBy {
@@ -70,9 +73,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "accept rate limit configuration" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
 
     noException should be thrownBy {
@@ -82,9 +86,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "accept health check configuration" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withHealthChecks(HealthCheckConfig(enableDetailEndpoint = true))
 
     noException should be thrownBy {
@@ -94,9 +99,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "accept all hardening options together" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withAuth(AuthConfig(hashedKeys = List(HashedApiKey("key1", ApiRole.Admin))))
       .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
       .withRateLimit(RateLimitConfig(requestsPerMinute = 100, burst = 20))
@@ -126,9 +132,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fail to build with invalid CORS config" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withCors(CorsConfig(allowedOrigins = Set("*"), allowCredentials = true))
 
     val error = intercept[IllegalArgumentException] {
@@ -139,9 +146,10 @@ class ServerBuilderIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fail to build with invalid rate limit config" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler = LangCompiler.empty
+    val compiler      = LangCompiler.empty
 
-    val builder = ConstellationServer.builder(constellation, compiler)
+    val builder = ConstellationServer
+      .builder(constellation, compiler)
       .withRateLimit(RateLimitConfig(requestsPerMinute = -1))
 
     val error = intercept[IllegalArgumentException] {

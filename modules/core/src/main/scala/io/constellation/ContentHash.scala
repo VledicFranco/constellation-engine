@@ -5,23 +5,22 @@ import java.util.UUID
 
 /** Utilities for computing deterministic content hashes of DAG specifications.
   *
-  * Used by [[ProgramImage]] to derive structural and syntactic hashes that
-  * enable deduplication, caching, and change detection.
+  * Used by [[ProgramImage]] to derive structural and syntactic hashes that enable deduplication,
+  * caching, and change detection.
   */
 object ContentHash {
 
   /** Compute a SHA-256 hex digest of the given bytes. */
   def computeSHA256(bytes: Array[Byte]): String = {
     val digest = MessageDigest.getInstance("SHA-256")
-    val hash = digest.digest(bytes)
+    val hash   = digest.digest(bytes)
     hash.map("%02x".format(_)).mkString
   }
 
   /** Produce a deterministic canonical string representation of a [[DagSpec]].
     *
-    * The canonical form sorts all maps by key and replaces UUIDs with
-    * positional indices so that two structurally equivalent DAGs produce
-    * the same string regardless of UUID generation order.
+    * The canonical form sorts all maps by key and replaces UUIDs with positional indices so that
+    * two structurally equivalent DAGs produce the same string regardless of UUID generation order.
     */
   def canonicalizeDagSpec(dag: DagSpec): String = {
     // Collect all UUIDs in a deterministic, structure-based order.
@@ -52,17 +51,18 @@ object ContentHash {
     }
 
     // Data nodes sorted by name (structure-based, not UUID-based)
-    dag.data.toList.sortBy { case (_, spec) => (spec.name, spec.cType.toString) }.foreach { case (uuid, spec) =>
-      sb.append(s"  data[${idx(uuid)}]:${spec.name}=${spec.cType}\n")
-      spec.nicknames.toList.sortBy(_._1.toString).foreach { case (moduleUuid, nick) =>
-        sb.append(s"    nickname:${idx(moduleUuid)}=$nick\n")
-      }
-      spec.inlineTransform.foreach { t =>
-        sb.append(s"    transform:${t.getClass.getSimpleName}\n")
-      }
-      spec.transformInputs.toList.sortBy(_._1).foreach { case (name, inputUuid) =>
-        sb.append(s"    transformInput:$name=${idx(inputUuid)}\n")
-      }
+    dag.data.toList.sortBy { case (_, spec) => (spec.name, spec.cType.toString) }.foreach {
+      case (uuid, spec) =>
+        sb.append(s"  data[${idx(uuid)}]:${spec.name}=${spec.cType}\n")
+        spec.nicknames.toList.sortBy(_._1.toString).foreach { case (moduleUuid, nick) =>
+          sb.append(s"    nickname:${idx(moduleUuid)}=$nick\n")
+        }
+        spec.inlineTransform.foreach { t =>
+          sb.append(s"    transform:${t.getClass.getSimpleName}\n")
+        }
+        spec.transformInputs.toList.sortBy(_._1).foreach { case (name, inputUuid) =>
+          sb.append(s"    transformInput:$name=${idx(inputUuid)}\n")
+        }
     }
 
     // Edges sorted
@@ -88,8 +88,8 @@ object ContentHash {
 
   /** Compute a structural hash of a [[DagSpec]].
     *
-    * Two DAGs that are structurally equivalent (same topology, same module
-    * names, same types) will produce the same hash even if their UUIDs differ.
+    * Two DAGs that are structurally equivalent (same topology, same module names, same types) will
+    * produce the same hash even if their UUIDs differ.
     */
   def computeStructuralHash(dag: DagSpec): String = {
     val canonical = canonicalizeDagSpec(dag)

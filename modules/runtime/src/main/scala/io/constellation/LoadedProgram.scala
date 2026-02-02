@@ -4,11 +4,13 @@ import java.util.UUID
 
 /** A program that is ready to execute.
   *
-  * Combines an immutable [[ProgramImage]] with the runtime module instances
-  * (synthetic modules like branch modules) needed for execution.
+  * Combines an immutable [[ProgramImage]] with the runtime module instances (synthetic modules like
+  * branch modules) needed for execution.
   *
-  * @param image            The immutable program snapshot
-  * @param syntheticModules Module implementations keyed by node UUID
+  * @param image
+  *   The immutable program snapshot
+  * @param syntheticModules
+  *   Module implementations keyed by node UUID
   */
 final case class LoadedProgram(
     image: ProgramImage,

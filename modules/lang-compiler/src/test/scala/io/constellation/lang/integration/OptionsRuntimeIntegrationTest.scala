@@ -4,24 +4,27 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.CType
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.compiler.{CompilationOutput, DagCompiler, IRModuleCallOptions, ModuleOptionsExecutor}
+import io.constellation.lang.compiler.{
+  CompilationOutput,
+  DagCompiler,
+  IRModuleCallOptions,
+  ModuleOptionsExecutor
+}
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
-/**
- * End-to-end integration tests for module call options.
- * These tests verify that options specified in constellation-lang source code
- * are correctly parsed, compiled, and executed at runtime.
- */
+/** End-to-end integration tests for module call options. These tests verify that options specified
+  * in constellation-lang source code are correctly parsed, compiled, and executed at runtime.
+  */
 class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
 
   // Create a compiler with a test function registered
-  private def compilerWithFunction(name: String): LangCompiler = {
+  private def compilerWithFunction(name: String): LangCompiler =
     LangCompiler.builder
       .withFunction(
         FunctionSignature(
@@ -32,19 +35,19 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
         )
       )
       .build
-  }
 
-  /** Compile source and extract IRModuleCallOptions from the underlying DagCompileOutput.
-    * Uses compileToIR + DagCompiler to get the raw IR-level options needed by ModuleOptionsExecutor.
+  /** Compile source and extract IRModuleCallOptions from the underlying DagCompileOutput. Uses
+    * compileToIR + DagCompiler to get the raw IR-level options needed by ModuleOptionsExecutor.
     */
-  private def compileAndGetOptions(source: String, moduleName: String): Either[Any, IRModuleCallOptions] = {
+  private def compileAndGetOptions(
+      source: String,
+      moduleName: String
+  ): Either[Any, IRModuleCallOptions] = {
     val compiler = compilerWithFunction(moduleName)
     for {
-      ir <- compiler.compileToIR(source, "test-dag")
+      ir     <- compiler.compileToIR(source, "test-dag")
       result <- DagCompiler.compile(ir, "test-dag", Map.empty).left.map(e => List(e))
-    } yield {
-      result.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
-    }
+    } yield result.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
   }
 
   // ============================================================================
@@ -68,7 +71,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
     val operation = IO {
       val count = counter.incrementAndGet()
-      if (count < 3) throw new RuntimeException(s"Attempt $count failed")
+      if count < 3 then throw new RuntimeException(s"Attempt $count failed")
       "success"
     }
 
@@ -103,13 +106,15 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     // Simulate slow execution
     val result = (for {
       executor <- ModuleOptionsExecutor.create
-      result <- executor.executeWithOptions(
-        operation = IO.sleep(5.seconds) >> IO.pure("too slow"),
-        moduleId = UUID.randomUUID(),
-        moduleName = "TestModule",
-        options = options,
-        outputType = CType.CString
-      ).attempt
+      result <- executor
+        .executeWithOptions(
+          operation = IO.sleep(5.seconds) >> IO.pure("too slow"),
+          moduleId = UUID.randomUUID(),
+          moduleName = "TestModule",
+          options = options,
+          outputType = CType.CString
+        )
+        .attempt
     } yield result).unsafeRunSync()
 
     result.isLeft shouldBe true
@@ -130,14 +135,14 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     options.cacheMs shouldBe Some(300000L) // 5min in ms
 
     // Simulate cacheable execution
-    val counter = new AtomicInteger(0)
+    val counter  = new AtomicInteger(0)
     val moduleId = UUID.randomUUID()
 
     val result = (for {
       executor <- ModuleOptionsExecutor.create
       // First call
       result1 <- executor.executeWithOptions(
-        operation = IO { counter.incrementAndGet() },
+        operation = IO(counter.incrementAndGet()),
         moduleId = moduleId,
         moduleName = "TestModule",
         options = options,
@@ -145,7 +150,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
       )
       // Second call should use cache
       result2 <- executor.executeWithOptions(
-        operation = IO { counter.incrementAndGet() },
+        operation = IO(counter.incrementAndGet()),
         moduleId = moduleId,
         moduleName = "TestModule",
         options = options,
@@ -174,13 +179,13 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     options.backoff shouldBe Some(io.constellation.lang.ast.BackoffStrategy.Exponential)
 
     // Simulate failing operation that succeeds on attempt 3
-    val counter = new AtomicInteger(0)
+    val counter    = new AtomicInteger(0)
     val timestamps = new java.util.concurrent.ConcurrentLinkedQueue[Long]()
 
     val operation = IO {
       timestamps.add(System.currentTimeMillis())
       val count = counter.incrementAndGet()
-      if (count < 3) throw new RuntimeException(s"Attempt $count failed")
+      if count < 3 then throw new RuntimeException(s"Attempt $count failed")
       "success"
     }
 
@@ -200,7 +205,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
 
     // Verify exponential backoff was applied
     val times = timestamps.toArray.map(_.asInstanceOf[Long])
-    if (times.length >= 3) {
+    if times.length >= 3 then {
       val gap1 = times(1) - times(0)
       val gap2 = times(2) - times(1)
       // Gap2 should be >= gap1 for exponential backoff
@@ -226,21 +231,23 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
 
     val result = (for {
       executor <- ModuleOptionsExecutor.create
-      start <- IO.realTime
+      start    <- IO.realTime
       // Execute 4 operations with throttle of 2 per 100ms
       _ <- (1 to 4).toList.foldLeft(IO.unit) { (prev, _) =>
-        prev >> executor.executeWithOptions(
-          operation = IO { counter.incrementAndGet() },
-          moduleId = UUID.randomUUID(),
-          moduleName = "TestModule",
-          options = options,
-          outputType = CType.CInt
-        ).void
+        prev >> executor
+          .executeWithOptions(
+            operation = IO(counter.incrementAndGet()),
+            moduleId = UUID.randomUUID(),
+            moduleName = "TestModule",
+            options = options,
+            outputType = CType.CInt
+          )
+          .void
       }
       end <- IO.realTime
     } yield (counter.get(), (end - start).toMillis)).unsafeRunSync()
 
-    result._1 shouldBe 4 // All executed
+    result._1 shouldBe 4       // All executed
     result._2 should be >= 50L // Should take some time due to throttle
   }
 
@@ -257,10 +264,10 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val options = compiled.toOption.get
     options.concurrency shouldBe Some(2)
 
-    val maxActive = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
-    import cats.implicits._
+    import cats.implicits.*
     val result = (for {
       executor <- ModuleOptionsExecutor.create
       _ <- (1 to 5).toList.parTraverse_ { _ =>
@@ -268,7 +275,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
           operation = IO {
             val active = currentActive.incrementAndGet()
             maxActive.updateAndGet(m => math.max(m, active))
-          } >> IO.sleep(30.millis) >> IO { currentActive.decrementAndGet() },
+          } >> IO.sleep(30.millis) >> IO(currentActive.decrementAndGet()),
           moduleId = UUID.randomUUID(),
           moduleName = "TestModule",
           options = options,
@@ -388,7 +395,8 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val dagResult = DagCompiler.compile(ir.toOption.get, "test-dag", Map.empty)
     dagResult.isRight shouldBe true
 
-    val options = dagResult.toOption.get.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
+    val options =
+      dagResult.toOption.get.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
 
     options.retry shouldBe Some(2)
     options.timeoutMs shouldBe Some(1000L)

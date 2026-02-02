@@ -101,7 +101,10 @@ trait ListFunctions {
   )
   val listConcatSignature: FunctionSignature = FunctionSignature(
     "list-concat",
-    List("a" -> SemanticType.SList(SemanticType.SInt), "b" -> SemanticType.SList(SemanticType.SInt)),
+    List(
+      "a" -> SemanticType.SList(SemanticType.SInt),
+      "b" -> SemanticType.SList(SemanticType.SInt)
+    ),
     SemanticType.SList(SemanticType.SInt),
     "stdlib.list-concat",
     Some("stdlib.list")

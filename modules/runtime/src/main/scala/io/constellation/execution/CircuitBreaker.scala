@@ -1,9 +1,9 @@
 package io.constellation.execution
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** State of a circuit breaker. */
 enum CircuitState:
@@ -20,9 +20,12 @@ final case class CircuitStats(
 
 /** Configuration for circuit breaker behavior.
   *
-  * @param failureThreshold Number of consecutive failures before opening the circuit
-  * @param resetDuration How long to wait in Open state before transitioning to HalfOpen
-  * @param halfOpenMaxProbes Maximum concurrent probe attempts in HalfOpen state
+  * @param failureThreshold
+  *   Number of consecutive failures before opening the circuit
+  * @param resetDuration
+  *   How long to wait in Open state before transitioning to HalfOpen
+  * @param halfOpenMaxProbes
+  *   Maximum concurrent probe attempts in HalfOpen state
   */
 final case class CircuitBreakerConfig(
     failureThreshold: Int = 5,
@@ -45,8 +48,10 @@ trait CircuitBreaker {
 
   /** Wrap an operation with circuit breaker protection.
     *
-    * @param operation The IO operation to protect
-    * @return The operation result, or CircuitOpenException if circuit is open
+    * @param operation
+    *   The IO operation to protect
+    * @return
+    *   The operation result, or CircuitOpenException if circuit is open
     */
   def protect[A](operation: IO[A]): IO[A]
 
@@ -94,8 +99,10 @@ object CircuitBreaker {
 
   /** Create a new circuit breaker for the given module.
     *
-    * @param moduleName The module name (for error messages)
-    * @param config Circuit breaker configuration
+    * @param moduleName
+    *   The module name (for error messages)
+    * @param config
+    *   Circuit breaker configuration
     */
   def create(moduleName: String, config: CircuitBreakerConfig): IO[CircuitBreaker] =
     Ref.of[IO, InternalState](InternalState.initial).map { ref =>
@@ -110,23 +117,24 @@ object CircuitBreaker {
 
     def protect[A](operation: IO[A]): IO[A] =
       for {
-        now       <- IO.monotonic
+        now        <- IO.monotonic
         canProceed <- checkAndTransition(now)
-        result <- if (canProceed) {
-          operation.attempt.flatMap {
-            case Right(value) =>
-              onSuccess.as(value)
-            case Left(error) =>
-              onFailure(now) *> IO.raiseError(error)
+        result <-
+          if canProceed then {
+            operation.attempt.flatMap {
+              case Right(value) =>
+                onSuccess.as(value)
+              case Left(error) =>
+                onFailure(now) *> IO.raiseError(error)
+            }
+          } else {
+            stateRef.update(s => s.copy(totalRejected = s.totalRejected + 1)) *>
+              IO.raiseError(new CircuitOpenException(moduleName))
           }
-        } else {
-          stateRef.update(s => s.copy(totalRejected = s.totalRejected + 1)) *>
-          IO.raiseError(new CircuitOpenException(moduleName))
-        }
       } yield result
 
-    /** Check current state and decide whether the operation can proceed.
-      * Also handles Open → HalfOpen transition based on elapsed time.
+    /** Check current state and decide whether the operation can proceed. Also handles Open →
+      * HalfOpen transition based on elapsed time.
       */
     private def checkAndTransition(now: FiniteDuration): IO[Boolean] =
       stateRef.modify { s =>
@@ -144,7 +152,7 @@ object CircuitBreaker {
             }
 
           case CircuitState.HalfOpen =>
-            if (s.halfOpenProbes < config.halfOpenMaxProbes) {
+            if s.halfOpenProbes < config.halfOpenMaxProbes then {
               (s.copy(halfOpenProbes = s.halfOpenProbes + 1), true)
             } else {
               (s, false)
@@ -166,7 +174,7 @@ object CircuitBreaker {
     private def onFailure(now: FiniteDuration): IO[Unit] =
       stateRef.update { s =>
         val newFailures = s.consecutiveFailures + 1
-        if (s.circuitState == CircuitState.HalfOpen || newFailures >= config.failureThreshold) {
+        if s.circuitState == CircuitState.HalfOpen || newFailures >= config.failureThreshold then {
           s.copy(
             circuitState = CircuitState.Open,
             consecutiveFailures = newFailures,

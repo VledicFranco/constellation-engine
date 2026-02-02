@@ -23,9 +23,9 @@ enum ApiRole:
 /** Hashed API key for secure storage.
   *
   * Stores SHA-256 hash instead of plaintext to prevent:
-  * - Exposure in memory dumps
-  * - Accidental logging of secrets
-  * - Timing attacks (via constant-time comparison)
+  *   - Exposure in memory dumps
+  *   - Accidental logging of secrets
+  *   - Timing attacks (via constant-time comparison)
   */
 case class HashedApiKey(hash: Array[Byte], role: ApiRole) {
 
@@ -40,9 +40,8 @@ case class HashedApiKey(hash: Array[Byte], role: ApiRole) {
 object HashedApiKey {
 
   /** Create a hashed API key from plaintext. */
-  def apply(plaintextKey: String, role: ApiRole): HashedApiKey = {
+  def apply(plaintextKey: String, role: ApiRole): HashedApiKey =
     HashedApiKey(hashKey(plaintextKey), role)
-  }
 
   /** Hash a key using SHA-256. */
   private[http] def hashKey(key: String): Array[Byte] = {
@@ -53,17 +52,16 @@ object HashedApiKey {
 
 /** Configuration for static API-key authentication.
   *
-  * When `hashedKeys` is non-empty, every request that does not match a public path
-  * must carry an `Authorization: Bearer <key>` header that verifies against a hashed key.
+  * When `hashedKeys` is non-empty, every request that does not match a public path must carry an
+  * `Authorization: Bearer <key>` header that verifies against a hashed key.
   *
   * Environment variable:
-  *   - `CONSTELLATION_API_KEYS` — comma-separated `key:Role` pairs,
-  *     e.g. `key1:Admin,key2:Execute`
+  *   - `CONSTELLATION_API_KEYS` — comma-separated `key:Role` pairs, e.g. `key1:Admin,key2:Execute`
   *
   * Keys are hashed with SHA-256 on startup to prevent:
-  * - Exposure in memory dumps
-  * - Accidental logging
-  * - Timing attacks (constant-time verification)
+  *   - Exposure in memory dumps
+  *   - Accidental logging
+  *   - Timing attacks (constant-time verification)
   *
   * @param hashedKeys
   *   List of hashed API keys with their roles
@@ -79,15 +77,13 @@ case class AuthConfig(
   def isEnabled: Boolean = hashedKeys.nonEmpty
 
   /** Verify a plaintext key and return its role if valid. */
-  def verifyKey(plaintextKey: String): Option[ApiRole] = {
+  def verifyKey(plaintextKey: String): Option[ApiRole] =
     hashedKeys.find(_.verify(plaintextKey)).map(_.role)
-  }
 
   /** Validate the configuration. */
-  def validate: Either[String, AuthConfig] = {
+  def validate: Either[String, AuthConfig] =
     // No validation needed for hashed keys (validation done during fromEnv)
     Right(this)
-  }
 }
 
 object AuthConfig {
@@ -105,63 +101,71 @@ object AuthConfig {
 
   /** Validate an API key meets security requirements.
     *
-    * @param key The plaintext API key to validate
-    * @return Either an error message or the validated key
+    * @param key
+    *   The plaintext API key to validate
+    * @return
+    *   Either an error message or the validated key
     */
-  private[http] def validateApiKey(key: String): Either[String, String] = {
-    if (key.isBlank) {
+  private[http] def validateApiKey(key: String): Either[String, String] =
+    if key.isBlank then {
       Left("API key cannot be blank or whitespace-only")
-    } else if (key.length < MinKeyLength) {
+    } else if key.length < MinKeyLength then {
       Left(s"API key too short: ${key.length} chars (minimum $MinKeyLength required)")
-    } else if (key.exists(c => c.isControl)) {
+    } else if key.exists(c => c.isControl) then {
       Left(s"API key contains control characters")
     } else {
       Right(key)
     }
-  }
 
   /** Create configuration from environment variables.
     *
     * `CONSTELLATION_API_KEYS=key1:Admin,key2:Execute`
     *
-    * Keys are hashed on startup for secure storage.
-    * Invalid keys are logged as warnings and skipped.
-    * API key values are NEVER logged — only counts and error categories.
+    * Keys are hashed on startup for secure storage. Invalid keys are logged as warnings and
+    * skipped. API key values are NEVER logged — only counts and error categories.
     */
   def fromEnv: AuthConfig = {
-    val hashedKeys = sys.env.get("CONSTELLATION_API_KEYS").map { raw =>
-      raw.split(",").zipWithIndex.flatMap { case (entry, idx) =>
-        entry.split(":", 2) match {
-          case Array(k, r) =>
-            val key = k.trim
+    val hashedKeys = sys.env
+      .get("CONSTELLATION_API_KEYS")
+      .map { raw =>
+        raw
+          .split(",")
+          .zipWithIndex
+          .flatMap { case (entry, idx) =>
+            entry.split(":", 2) match {
+              case Array(k, r) =>
+                val key = k.trim
 
-            // Validate API key
-            val keyValidation = validateApiKey(key)
-            val roleValidation = parseRole(r).toRight(s"Invalid role format")
+                // Validate API key
+                val keyValidation  = validateApiKey(key)
+                val roleValidation = parseRole(r).toRight(s"Invalid role format")
 
-            (keyValidation, roleValidation) match {
-              case (Right(validKey), Right(role)) =>
-                Some(HashedApiKey(validKey, role))
+                (keyValidation, roleValidation) match {
+                  case (Right(validKey), Right(role)) =>
+                    Some(HashedApiKey(validKey, role))
 
-              case (Left(keyError), _) =>
-                // Log error category only — never log key content or length hints
-                logger.warn("API key #{} rejected: validation failed", idx + 1)
-                None
+                  case (Left(keyError), _) =>
+                    // Log error category only — never log key content or length hints
+                    logger.warn("API key #{} rejected: validation failed", idx + 1)
+                    None
 
-              case (_, Left(roleError)) =>
-                logger.warn("API key #{}: {}", idx + 1, roleError)
+                  case (_, Left(roleError)) =>
+                    logger.warn("API key #{}: {}", idx + 1, roleError)
+                    None
+                }
+
+              case _ =>
+                logger.warn("API key #{}: expected 'key:Role' format", idx + 1)
                 None
             }
+          }
+          .toList
+      }
+      .getOrElse(List.empty)
 
-          case _ =>
-            logger.warn("API key #{}: expected 'key:Role' format", idx + 1)
-            None
-        }
-      }.toList
-    }.getOrElse(List.empty)
-
-    if (hashedKeys.nonEmpty) {
-      val roleCounts = hashedKeys.groupBy(_.role).map { case (role, keys) => s"$role=${keys.size}" }.mkString(", ")
+    if hashedKeys.nonEmpty then {
+      val roleCounts =
+        hashedKeys.groupBy(_.role).map { case (role, keys) => s"$role=${keys.size}" }.mkString(", ")
       logger.info("Loaded {} API key(s) [{}]", hashedKeys.length, roleCounts)
     }
 

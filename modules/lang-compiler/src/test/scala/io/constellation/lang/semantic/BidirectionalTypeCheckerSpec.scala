@@ -9,9 +9,9 @@ import io.constellation.lang.ast.CompileError
 /** Tests for bidirectional type inference.
   *
   * These tests verify that bidirectional type checking enables:
-  * - Lambda parameter inference from function context
-  * - Empty list typing from expected context
-  * - Enhanced error messages with context
+  *   - Lambda parameter inference from function context
+  *   - Empty list typing from expected context
+  *   - Enhanced error messages with context
   */
 class BidirectionalTypeCheckerSpec extends AnyFlatSpec with Matchers {
 
@@ -21,93 +21,118 @@ class BidirectionalTypeCheckerSpec extends AnyFlatSpec with Matchers {
     val registry = FunctionRegistry.empty
 
     // filter: (List<Int>, (Int) => Boolean) => List<Int>
-    registry.register(FunctionSignature(
-      name = "filter",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.filter-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "filter",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.filter-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
 
     // filter-records: For testing record lambdas
-    registry.register(FunctionSignature(
-      name = "filter-users",
-      params = List(
-        "users" -> SemanticType.SList(SemanticType.SRecord(Map(
-          "name" -> SemanticType.SString,
-          "active" -> SemanticType.SBoolean
-        ))),
-        "predicate" -> SemanticType.SFunction(
-          List(SemanticType.SRecord(Map(
-            "name" -> SemanticType.SString,
-            "active" -> SemanticType.SBoolean
-          ))),
-          SemanticType.SBoolean
-        )
-      ),
-      returns = SemanticType.SList(SemanticType.SRecord(Map(
-        "name" -> SemanticType.SString,
-        "active" -> SemanticType.SBoolean
-      ))),
-      moduleName = "stdlib.hof.filter-users"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "filter-users",
+        params = List(
+          "users" -> SemanticType.SList(
+            SemanticType.SRecord(
+              Map(
+                "name"   -> SemanticType.SString,
+                "active" -> SemanticType.SBoolean
+              )
+            )
+          ),
+          "predicate" -> SemanticType.SFunction(
+            List(
+              SemanticType.SRecord(
+                Map(
+                  "name"   -> SemanticType.SString,
+                  "active" -> SemanticType.SBoolean
+                )
+              )
+            ),
+            SemanticType.SBoolean
+          )
+        ),
+        returns = SemanticType.SList(
+          SemanticType.SRecord(
+            Map(
+              "name"   -> SemanticType.SString,
+              "active" -> SemanticType.SBoolean
+            )
+          )
+        ),
+        moduleName = "stdlib.hof.filter-users"
+      )
+    )
 
     // map: (List<Int>, (Int) => String) => List<String>
-    registry.register(FunctionSignature(
-      name = "map-to-string",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SString)
-      ),
-      returns = SemanticType.SList(SemanticType.SString),
-      moduleName = "stdlib.hof.map-to-string"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "map-to-string",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SString)
+        ),
+        returns = SemanticType.SList(SemanticType.SString),
+        moduleName = "stdlib.hof.map-to-string"
+      )
+    )
 
     // Comparison functions
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt"
+      )
+    )
 
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt"
+      )
+    )
 
     // Arithmetic
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("left" -> SemanticType.SInt, "right" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply"
+      )
+    )
 
     // Simple identity for testing
-    registry.register(FunctionSignature(
-      name = "Identity",
-      params = List("value" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "Identity"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "Identity",
+        params = List("value" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "Identity"
+      )
+    )
 
     registry
   }
 
   private def parse(source: String) = ConstellationParser.parse(source)
 
-  private def typeCheck(source: String): Either[List[CompileError], TypedProgram] = {
+  private def typeCheck(source: String): Either[List[CompileError], TypedProgram] =
     parse(source) match {
-      case Left(err) => Left(List(err))
+      case Left(err)      => Left(List(err))
       case Right(program) => TypeChecker.check(program, createRegistry)
     }
-  }
 
   // ============================================================================
   // Lambda Parameter Inference Tests
@@ -347,8 +372,8 @@ class BidirectionalTypeCheckerSpec extends AnyFlatSpec with Matchers {
 /** Tests for the Mode types */
 class ModeSpec extends AnyFlatSpec with Matchers {
 
-  import Mode._
-  import Mode.TypeContext._
+  import Mode.*
+  import Mode.TypeContext.*
 
   "Mode.Infer" should "describe itself correctly" in {
     Infer.describe shouldBe "inference mode"

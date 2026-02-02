@@ -15,10 +15,10 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
   // Test helpers
   // ---------------------------------------------------------------------------
 
-  private val moduleId1 = UUID.randomUUID()
-  private val moduleId2 = UUID.randomUUID()
-  private val inputDataId = UUID.randomUUID()
-  private val midDataId = UUID.randomUUID()
+  private val moduleId1    = UUID.randomUUID()
+  private val moduleId2    = UUID.randomUUID()
+  private val inputDataId  = UUID.randomUUID()
+  private val midDataId    = UUID.randomUUID()
   private val outputDataId = UUID.randomUUID()
 
   /** A simple linear DAG: input -> module1 -> mid -> module2 -> output */
@@ -37,8 +37,8 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputDataId -> DataNodeSpec("input", Map(moduleId1 -> "text"), CType.CString),
-      midDataId -> DataNodeSpec("mid", Map(moduleId2 -> "text"), CType.CString),
+      inputDataId  -> DataNodeSpec("input", Map(moduleId1 -> "text"), CType.CString),
+      midDataId    -> DataNodeSpec("mid", Map(moduleId2 -> "text"), CType.CString),
       outputDataId -> DataNodeSpec("output", Map.empty, CType.CString)
     ),
     inEdges = Set((inputDataId, moduleId1), (midDataId, moduleId2)),
@@ -46,7 +46,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     declaredOutputs = List("output")
   )
 
-  private val startedAt = Instant.parse("2026-01-01T00:00:00Z")
+  private val startedAt   = Instant.parse("2026-01-01T00:00:00Z")
   private val completedAt = Instant.parse("2026-01-01T00:00:01Z")
 
   private def allFlagsOn: ExecutionOptions = ExecutionOptions(
@@ -67,8 +67,8 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       moduleId2 -> Eval.now(Module.Status.Fired(200.millis))
     ),
     data = Map(
-      inputDataId -> Eval.now(CValue.CString("hello")),
-      midDataId -> Eval.now(CValue.CString("HELLO")),
+      inputDataId  -> Eval.now(CValue.CString("hello")),
+      midDataId    -> Eval.now(CValue.CString("HELLO")),
       outputDataId -> Eval.now(CValue.CString("HELLO!"))
     )
   )
@@ -90,7 +90,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   "MetadataBuilder" should "always include startedAt, completedAt, and totalDuration" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOff, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOff,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -105,7 +109,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return None for nodeTimings when flag is off" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOff, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOff,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -114,7 +122,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "populate nodeTimings from Fired module statuses" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOn, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -133,7 +145,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     )
 
     val metadata = MetadataBuilder.build(
-      partialState, linearDag, allFlagsOn, startedAt, completedAt,
+      partialState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -149,7 +165,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return None for provenance when flag is off" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOff, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOff,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -158,7 +178,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "classify input nodes as '<input>' in provenance" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOn, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -168,7 +192,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "classify module-produced nodes by module name in provenance" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOn, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -194,7 +222,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     )
 
     val metadata = MetadataBuilder.build(
-      stateWithTransform, dagWithTransform, allFlagsOn, startedAt, completedAt,
+      stateWithTransform,
+      dagWithTransform,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -208,7 +240,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return None for blockedGraph when flag is off" in {
     val metadata = MetadataBuilder.build(
-      suspendedState, linearDag, allFlagsOff, startedAt, completedAt,
+      suspendedState,
+      linearDag,
+      allFlagsOff,
+      startedAt,
+      completedAt,
       inputNodeNames = Set.empty
     )
 
@@ -217,7 +253,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "build blockedGraph for suspended execution with missing inputs" in {
     val metadata = MetadataBuilder.build(
-      suspendedState, linearDag, allFlagsOn, startedAt, completedAt,
+      suspendedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set.empty
     )
 
@@ -229,7 +269,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return empty blockedGraph for completed execution" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOn, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -243,7 +287,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return None for resolutionSources when flag is off" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOff, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOff,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
 
@@ -252,7 +300,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "classify resolution sources correctly (input, module, manual)" in {
     val metadata = MetadataBuilder.build(
-      completedState, linearDag, allFlagsOn, startedAt, completedAt,
+      completedState,
+      linearDag,
+      allFlagsOn,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input"),
       resolvedNodeNames = Set("mid")
     )
@@ -270,7 +322,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
   it should "populate each field independently based on its own flag" in {
     val timingsOnly = ExecutionOptions(includeTimings = true)
     val m1 = MetadataBuilder.build(
-      completedState, linearDag, timingsOnly, startedAt, completedAt,
+      completedState,
+      linearDag,
+      timingsOnly,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
     m1.nodeTimings shouldBe defined
@@ -280,7 +336,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
     val provenanceOnly = ExecutionOptions(includeProvenance = true)
     val m2 = MetadataBuilder.build(
-      completedState, linearDag, provenanceOnly, startedAt, completedAt,
+      completedState,
+      linearDag,
+      provenanceOnly,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
     m2.nodeTimings shouldBe None
@@ -290,7 +350,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
     val blockedOnly = ExecutionOptions(includeBlockedGraph = true)
     val m3 = MetadataBuilder.build(
-      completedState, linearDag, blockedOnly, startedAt, completedAt,
+      completedState,
+      linearDag,
+      blockedOnly,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
     m3.nodeTimings shouldBe None
@@ -300,7 +364,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
     val resolutionOnly = ExecutionOptions(includeResolutionSources = true)
     val m4 = MetadataBuilder.build(
-      completedState, linearDag, resolutionOnly, startedAt, completedAt,
+      completedState,
+      linearDag,
+      resolutionOnly,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input")
     )
     m4.nodeTimings shouldBe None

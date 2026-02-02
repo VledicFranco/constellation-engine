@@ -1,39 +1,40 @@
 package io.constellation.lang.parser
 
-import cats.parse.{Parser => P, Parser0}
+import cats.parse.{Parser as P, Parser0}
 
 import scala.collection.mutable
 
 /** Memoization support for the Constellation parser.
   *
-  * Provides caching utilities for expensive parsing operations.
-  * Uses ThreadLocal storage for thread-safety in concurrent parsing scenarios.
+  * Provides caching utilities for expensive parsing operations. Uses ThreadLocal storage for
+  * thread-safety in concurrent parsing scenarios.
   *
-  * Note: cats-parse Parser is sealed and cannot be extended directly.
-  * This trait provides memoization at the source-string level for
-  * repeated parsing of the same expressions.
+  * Note: cats-parse Parser is sealed and cannot be extended directly. This trait provides
+  * memoization at the source-string level for repeated parsing of the same expressions.
   */
 trait MemoizationSupport {
 
-  /** Maximum cache size per thread to prevent memory leaks.
-    * When exceeded, least recently used entries are evicted.
+  /** Maximum cache size per thread to prevent memory leaks. When exceeded, least recently used
+    * entries are evicted.
     */
   private val MaxCacheSize = 1000
 
-  /** Thread-local LRU cache for expression parsing results.
-    * Key: (offset, parserId)
-    * Value: Parsing result
+  /** Thread-local LRU cache for expression parsing results. Key: (offset, parserId) Value: Parsing
+    * result
     *
-    * Uses LinkedHashMap in access-order mode for LRU eviction.
-    * Limited to MaxCacheSize entries to prevent unbounded growth.
+    * Uses LinkedHashMap in access-order mode for LRU eviction. Limited to MaxCacheSize entries to
+    * prevent unbounded growth.
     */
   private val expressionCache =
     new ThreadLocal[mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]]] {
       override def initialValue(): mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]] =
         new mutable.LinkedHashMap[(Int, Int), Either[P.Error, Any]]() {
-          override def put(key: (Int, Int), value: Either[P.Error, Any]): Option[Either[P.Error, Any]] = {
+          override def put(
+              key: (Int, Int),
+              value: Either[P.Error, Any]
+          ): Option[Either[P.Error, Any]] = {
             // LRU eviction: remove eldest entry if size limit exceeded
-            if (size >= MaxCacheSize) {
+            if size >= MaxCacheSize then {
               // Remove the first (eldest) entry
               val eldest = head
               remove(eldest._1)
@@ -47,9 +48,8 @@ trait MemoizationSupport {
   private val cacheHits   = new ThreadLocal[Int] { override def initialValue() = 0 }
   private val cacheMisses = new ThreadLocal[Int] { override def initialValue() = 0 }
 
-  /** Clear the memoization cache.
-    * Should be called before each top-level parse to prevent stale entries
-    * and unbounded memory growth.
+  /** Clear the memoization cache. Should be called before each top-level parse to prevent stale
+    * entries and unbounded memory growth.
     */
   protected def clearMemoCache(): Unit = {
     expressionCache.get().clear()
@@ -58,23 +58,31 @@ trait MemoizationSupport {
   }
 
   /** Get cache statistics for debugging/benchmarking.
-    * @return (hits, misses)
+    * @return
+    *   (hits, misses)
     */
-  protected def getCacheStats: (Int, Int) = {
+  protected def getCacheStats: (Int, Int) =
     (cacheHits.get(), cacheMisses.get())
-  }
 
   /** Cache size for monitoring memory usage */
   protected def getCacheSize: Int = expressionCache.get().size
 
   /** Check cache for a previously computed result.
     *
-    * @param input The input string being parsed (unused - kept for API compatibility)
-    * @param offset The current position in the input
-    * @param parserId Unique identifier for the parser type
-    * @return Cached result if available
+    * @param input
+    *   The input string being parsed (unused - kept for API compatibility)
+    * @param offset
+    *   The current position in the input
+    * @param parserId
+    *   Unique identifier for the parser type
+    * @return
+    *   Cached result if available
     */
-  protected def checkCache[A](input: String, offset: Int, parserId: Int): Option[Either[P.Error, A]] = {
+  protected def checkCache[A](
+      input: String,
+      offset: Int,
+      parserId: Int
+  ): Option[Either[P.Error, A]] = {
     val key    = (offset, parserId)
     val cache  = expressionCache.get()
     val cached = cache.get(key)
@@ -93,10 +101,14 @@ trait MemoizationSupport {
 
   /** Store a parsing result in the cache.
     *
-    * @param input The input string being parsed (unused - kept for API compatibility)
-    * @param offset The position where parsing started
-    * @param parserId Unique identifier for the parser type
-    * @param result The parsing result to cache
+    * @param input
+    *   The input string being parsed (unused - kept for API compatibility)
+    * @param offset
+    *   The position where parsing started
+    * @param parserId
+    *   Unique identifier for the parser type
+    * @param result
+    *   The parsing result to cache
     */
   protected def cacheResult[A](
       input: String,
@@ -108,61 +120,69 @@ trait MemoizationSupport {
     expressionCache.get().put(key, result)
   }
 
-  /** Wrapper for creating cached parser execution.
-    * Creates a function that checks cache before parsing and caches results.
+  /** Wrapper for creating cached parser execution. Creates a function that checks cache before
+    * parsing and caches results.
     *
-    * @param parserId Unique identifier for this parser
-    * @param parser The underlying parser to memoize
-    * @return A function that performs cached parsing
+    * @param parserId
+    *   Unique identifier for this parser
+    * @param parser
+    *   The underlying parser to memoize
+    * @return
+    *   A function that performs cached parsing
     *
-    * Note: Uses offset 0 as key since this caches full-input parses.
-    * Cache is cleared before each parse, so offset 0 uniquely identifies the input.
+    * Note: Uses offset 0 as key since this caches full-input parses. Cache is cleared before each
+    * parse, so offset 0 uniquely identifies the input.
     */
-  protected def cachedParse[A](parserId: Int, parser: P[A]): String => Either[P.Error, (String, A)] = {
-    input =>
-      val key = (0, parserId) // offset 0 for full-input parsing
-      expressionCache.get().get(key) match {
-        case Some(Right((remaining: String, value))) =>
-          cacheHits.set(cacheHits.get() + 1)
-          Right((remaining, value.asInstanceOf[A]))
-        case Some(Left(error: P.Error)) =>
-          cacheHits.set(cacheHits.get() + 1)
-          Left(error)
-        case _ =>
-          cacheMisses.set(cacheMisses.get() + 1)
-          val result = parser.parse(input)
-          expressionCache.get().put(key, result)
-          result
-      }
+  protected def cachedParse[A](
+      parserId: Int,
+      parser: P[A]
+  ): String => Either[P.Error, (String, A)] = { input =>
+    val key = (0, parserId) // offset 0 for full-input parsing
+    expressionCache.get().get(key) match {
+      case Some(Right((remaining: String, value))) =>
+        cacheHits.set(cacheHits.get() + 1)
+        Right((remaining, value.asInstanceOf[A]))
+      case Some(Left(error: P.Error)) =>
+        cacheHits.set(cacheHits.get() + 1)
+        Left(error)
+      case _ =>
+        cacheMisses.set(cacheMisses.get() + 1)
+        val result = parser.parse(input)
+        expressionCache.get().put(key, result)
+        result
+    }
   }
 }
 
 /** Parser optimization utilities for cats-parse.
   *
-  * Note: cats-parse has a sealed Parser type with Parser vs Parser0 distinction.
-  * The most effective optimizations are:
-  * 1. Use P.oneOf instead of chained | for alternatives
-  * 2. Use .backtrack only where needed
-  * 3. Order alternatives by likelihood (most common first)
-  * 4. Use P.charIn/P.stringIn for simple character-based choices
+  * Note: cats-parse has a sealed Parser type with Parser vs Parser0 distinction. The most effective
+  * optimizations are:
+  *   1. Use P.oneOf instead of chained | for alternatives 2. Use .backtrack only where needed 3.
+  *      Order alternatives by likelihood (most common first) 4. Use P.charIn/P.stringIn for simple
+  *      character-based choices
   */
 object ParserOptimizations {
-  import cats.parse.{Parser => P}
+  import cats.parse.Parser as P
 
-  /** Create an optimized choice from a list of alternatives.
-    * Uses P.oneOf which is more efficient than chained |.
+  /** Create an optimized choice from a list of alternatives. Uses P.oneOf which is more efficient
+    * than chained |.
     *
-    * @param alternatives List of parser alternatives to try
-    * @return Combined parser
+    * @param alternatives
+    *   List of parser alternatives to try
+    * @return
+    *   Combined parser
     */
   def oneOfOptimized[A](alternatives: List[P[A]]): P[A] =
     P.oneOf(alternatives)
 
-  /** Create an optimized choice with backtracking on all alternatives.
-    * Use when any alternative might partially consume input before failing.
+  /** Create an optimized choice with backtracking on all alternatives. Use when any alternative
+    * might partially consume input before failing.
     *
-    * @param alternatives List of parser alternatives to try
-    * @return Combined parser with backtracking
+    * @param alternatives
+    *   List of parser alternatives to try
+    * @return
+    *   Combined parser with backtracking
     */
   def oneOfWithBacktrack[A](alternatives: List[P[A]]): P[A] =
     P.oneOf(alternatives.map(_.backtrack))

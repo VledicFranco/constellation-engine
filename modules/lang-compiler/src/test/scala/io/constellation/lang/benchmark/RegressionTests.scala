@@ -1,6 +1,6 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang._
+import io.constellation.lang.*
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -12,13 +12,12 @@ import scala.collection.mutable.ListBuffer
   *
   * Run with: sbt "langCompiler/testOnly *RegressionTests"
   *
-  * This suite enforces performance baselines to prevent regressions.
-  * Tests will fail if performance degrades beyond the configured tolerance.
+  * This suite enforces performance baselines to prevent regressions. Tests will fail if performance
+  * degrades beyond the configured tolerance.
   *
   * To update baselines after performance improvements:
-  * 1. Run benchmarks to get new times
-  * 2. Update the baseline values below
-  * 3. Add a comment explaining why the baseline changed
+  *   1. Run benchmarks to get new times 2. Update the baseline values below 3. Add a comment
+  *      explaining why the baseline changed
   */
 class RegressionTests extends AnyFlatSpec with Matchers {
 
@@ -31,17 +30,17 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   // Tolerance is built into these values (typically 20-50% above expected).
   val baselines: Map[String, Double] = Map(
     // Parsing baselines (generous to account for JVM variance)
-    "parse_small"  -> 50.0,   // Expected: <5ms, allowing up to 50ms
-    "parse_medium" -> 100.0,  // Expected: <30ms, allowing up to 100ms
-    "parse_large"  -> 300.0,  // Expected: <100ms, allowing up to 300ms
+    "parse_small"  -> 50.0,  // Expected: <5ms, allowing up to 50ms
+    "parse_medium" -> 100.0, // Expected: <30ms, allowing up to 100ms
+    "parse_large"  -> 300.0, // Expected: <100ms, allowing up to 300ms
 
     // Full pipeline baselines
-    "pipeline_small"  -> 100.0,  // Expected: <30ms
-    "pipeline_medium" -> 200.0,  // Expected: <80ms
-    "pipeline_large"  -> 500.0,  // Expected: <200ms
+    "pipeline_small"  -> 100.0, // Expected: <30ms
+    "pipeline_medium" -> 200.0, // Expected: <80ms
+    "pipeline_large"  -> 500.0, // Expected: <200ms
 
     // Cache performance baselines
-    "cache_warm_small"  -> 10.0,  // Cache hits should be very fast
+    "cache_warm_small"  -> 10.0, // Cache hits should be very fast
     "cache_warm_medium" -> 10.0,
     "cache_warm_large"  -> 15.0,
 
@@ -134,8 +133,8 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "TypeCheck performance" should "not regress for small programs" in {
-    val source = TestFixtures.smallProgram
-    val parsed = ConstellationParser.parse(source).toOption.get
+    val source   = TestFixtures.smallProgram
+    val parsed   = ConstellationParser.parse(source).toOption.get
     val registry = FunctionRegistry.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -153,8 +152,8 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for medium programs" in {
-    val source = TestFixtures.mediumProgram
-    val parsed = ConstellationParser.parse(source).toOption.get
+    val source   = TestFixtures.mediumProgram
+    val parsed   = ConstellationParser.parse(source).toOption.get
     val registry = FunctionRegistry.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -172,8 +171,8 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for large programs" in {
-    val source = TestFixtures.largeProgram
-    val parsed = ConstellationParser.parse(source).toOption.get
+    val source   = TestFixtures.largeProgram
+    val parsed   = ConstellationParser.parse(source).toOption.get
     val registry = FunctionRegistry.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -195,7 +194,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "Full pipeline performance" should "not regress for small programs" in {
-    val source = TestFixtures.smallProgram
+    val source   = TestFixtures.smallProgram
     val compiler = LangCompiler.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -213,7 +212,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for medium programs" in {
-    val source = TestFixtures.mediumProgram
+    val source   = TestFixtures.mediumProgram
     val compiler = LangCompiler.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -231,7 +230,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for large programs" in {
-    val source = TestFixtures.largeProgram
+    val source   = TestFixtures.largeProgram
     val compiler = LangCompiler.empty
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -253,7 +252,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "Cache performance" should "not regress for warm cache hits (small)" in {
-    val source = TestFixtures.smallProgram
+    val source   = TestFixtures.smallProgram
     val compiler = LangCompiler.builder.withCaching().build
 
     // Warm the cache
@@ -274,7 +273,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for warm cache hits (medium)" in {
-    val source = TestFixtures.mediumProgram
+    val source   = TestFixtures.mediumProgram
     val compiler = LangCompiler.builder.withCaching().build
 
     // Warm the cache
@@ -295,7 +294,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
   }
 
   it should "not regress for warm cache hits (large)" in {
-    val source = TestFixtures.largeProgram
+    val source   = TestFixtures.largeProgram
     val compiler = LangCompiler.builder.withCaching().build
 
     // Warm the cache
@@ -384,7 +383,7 @@ class RegressionTests extends AnyFlatSpec with Matchers {
     println()
     println(s"Results: $passed/$total within baseline")
 
-    if (passed == total) {
+    if passed == total then {
       println("All regression tests PASSED")
     } else {
       println("WARNING: Some tests exceeded baselines (see failures above)")

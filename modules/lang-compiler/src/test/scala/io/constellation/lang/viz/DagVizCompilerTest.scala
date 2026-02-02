@@ -30,8 +30,8 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
   }
 
   test("compile linear pipeline A -> B -> C") {
-    val inputId = UUID.randomUUID()
-    val moduleId = UUID.randomUUID()
+    val inputId       = UUID.randomUUID()
+    val moduleId      = UUID.randomUUID()
     val fieldAccessId = UUID.randomUUID()
 
     val ir = IRProgram(
@@ -46,7 +46,8 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
           IRModuleCallOptions.empty,
           None
         ),
-        fieldAccessId -> IRNode.FieldAccessNode(fieldAccessId, moduleId, "result", SemanticType.SString, None)
+        fieldAccessId -> IRNode
+          .FieldAccessNode(fieldAccessId, moduleId, "result", SemanticType.SString, None)
       ),
       inputs = List(inputId),
       declaredOutputs = List("result"),
@@ -65,7 +66,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     nodeKinds(inputId.toString) shouldBe NodeKind.Input
     nodeKinds(moduleId.toString) shouldBe NodeKind.Operation
     nodeKinds(fieldAccessId.toString) shouldBe NodeKind.FieldAccess // Keeps original kind
-    nodeKinds("output_result") shouldBe NodeKind.Output // Separate output node
+    nodeKinds("output_result") shouldBe NodeKind.Output             // Separate output node
 
     // Check edges exist
     val edgePairs = vizIR.edges.map(e => (e.source, e.target)).toSet
@@ -78,8 +79,8 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     // sum = add(a, b); out sum
     // Should create: Input(a), Input(b), Operation(add), Output(sum)
     // With edges: a→add, b→add, add→sum
-    val aId = UUID.randomUUID()
-    val bId = UUID.randomUUID()
+    val aId   = UUID.randomUUID()
+    val bId   = UUID.randomUUID()
     val addId = UUID.randomUUID()
 
     val ir = IRProgram(
@@ -107,7 +108,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     vizIR.nodes should have length 4
 
     // Check node types and labels
-    val nodeKinds = vizIR.nodes.map(n => n.id -> n.kind).toMap
+    val nodeKinds  = vizIR.nodes.map(n => n.id -> n.kind).toMap
     val nodeLabels = vizIR.nodes.map(n => n.id -> n.label).toMap
 
     nodeKinds(aId.toString) shouldBe NodeKind.Input
@@ -140,9 +141,31 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val ir = IRProgram(
       nodes = Map(
         aId -> IRNode.Input(aId, "a", SemanticType.SString, None),
-        bId -> IRNode.ModuleCall(bId, "ModuleB", "ModuleB", Map("x" -> aId), SemanticType.SString, IRModuleCallOptions.empty, None),
-        cId -> IRNode.ModuleCall(cId, "ModuleC", "ModuleC", Map("x" -> aId), SemanticType.SString, IRModuleCallOptions.empty, None),
-        dId -> IRNode.MergeNode(dId, bId, cId, SemanticType.SRecord(Map("b" -> SemanticType.SString, "c" -> SemanticType.SString)), None)
+        bId -> IRNode.ModuleCall(
+          bId,
+          "ModuleB",
+          "ModuleB",
+          Map("x" -> aId),
+          SemanticType.SString,
+          IRModuleCallOptions.empty,
+          None
+        ),
+        cId -> IRNode.ModuleCall(
+          cId,
+          "ModuleC",
+          "ModuleC",
+          Map("x" -> aId),
+          SemanticType.SString,
+          IRModuleCallOptions.empty,
+          None
+        ),
+        dId -> IRNode.MergeNode(
+          dId,
+          bId,
+          cId,
+          SemanticType.SRecord(Map("b" -> SemanticType.SString, "c" -> SemanticType.SString)),
+          None
+        )
       ),
       inputs = List(aId),
       declaredOutputs = List.empty,
@@ -181,13 +204,13 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
 
   test("compile with guard node") {
     val inputId = UUID.randomUUID()
-    val condId = UUID.randomUUID()
+    val condId  = UUID.randomUUID()
     val guardId = UUID.randomUUID()
 
     val ir = IRProgram(
       nodes = Map(
         inputId -> IRNode.Input(inputId, "value", SemanticType.SInt, None),
-        condId -> IRNode.LiteralNode(condId, true, SemanticType.SBoolean, None),
+        condId  -> IRNode.LiteralNode(condId, true, SemanticType.SBoolean, None),
         guardId -> IRNode.GuardNode(guardId, inputId, condId, SemanticType.SInt, None)
       ),
       inputs = List(inputId),
@@ -205,13 +228,15 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
 
   test("compile with record type abbreviation") {
     val inputId = UUID.randomUUID()
-    val recordType = SemanticType.SRecord(Map(
-      "field1" -> SemanticType.SString,
-      "field2" -> SemanticType.SInt,
-      "field3" -> SemanticType.SFloat,
-      "field4" -> SemanticType.SBoolean,
-      "field5" -> SemanticType.SString
-    ))
+    val recordType = SemanticType.SRecord(
+      Map(
+        "field1" -> SemanticType.SString,
+        "field2" -> SemanticType.SInt,
+        "field3" -> SemanticType.SFloat,
+        "field4" -> SemanticType.SBoolean,
+        "field5" -> SemanticType.SString
+      )
+    )
 
     val ir = IRProgram(
       nodes = Map(

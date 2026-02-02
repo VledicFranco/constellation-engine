@@ -11,13 +11,14 @@ import java.util.UUID
 
 /** Standard library of modules for constellation-lang.
   *
-  * These modules provide common operations for pipeline orchestration. The implementation is
-  * split across category files in the `categories/` directory for maintainability.
+  * These modules provide common operations for pipeline orchestration. The implementation is split
+  * across category files in the `categories/` directory for maintainability.
   *
   * Categories:
   *   - MathFunctions: add, subtract, multiply, divide, max, min, abs, modulo, round, negate
   *   - StringFunctions: concat, string-length, join, split, contains, trim, replace
-  *   - ListFunctions: list-length, list-first, list-last, list-is-empty, list-sum, list-concat, list-contains, list-reverse
+  *   - ListFunctions: list-length, list-first, list-last, list-is-empty, list-sum, list-concat,
+  *     list-contains, list-reverse
   *   - BooleanFunctions: and, or, not
   *   - ComparisonFunctions: eq-int, eq-string, gt, lt, gte, lte
   *   - UtilityFunctions: identity, log

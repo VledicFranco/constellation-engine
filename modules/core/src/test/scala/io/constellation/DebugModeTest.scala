@@ -55,8 +55,8 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
   "DebugMode.level" should "be one of the three debug levels" in {
     DebugMode.level should (
       equal(DebugLevel.Off) or
-      equal(DebugLevel.ErrorsOnly) or
-      equal(DebugLevel.Full)
+        equal(DebugLevel.ErrorsOnly) or
+        equal(DebugLevel.Full)
     )
   }
 
@@ -66,43 +66,43 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
 
   "DebugMode.safeCast" should "cast valid types successfully in all modes" in {
     val stringValue: Any = "hello"
-    val result = DebugMode.safeCast[String](stringValue, "test context")
+    val result           = DebugMode.safeCast[String](stringValue, "test context")
     result shouldBe "hello"
   }
 
   it should "cast integers successfully" in {
     val intValue: Any = 42
-    val result = DebugMode.safeCast[Int](intValue, "test context")
+    val result        = DebugMode.safeCast[Int](intValue, "test context")
     result shouldBe 42
   }
 
   it should "cast boxed primitives successfully" in {
     val longValue: Any = 100L
-    val result = DebugMode.safeCast[Long](longValue, "test context")
+    val result         = DebugMode.safeCast[Long](longValue, "test context")
     result shouldBe 100L
   }
 
   it should "cast collection types successfully" in {
     val listValue: Any = List(1, 2, 3)
-    val result = DebugMode.safeCast[List[Int]](listValue, "test context")
+    val result         = DebugMode.safeCast[List[Int]](listValue, "test context")
     result shouldBe List(1, 2, 3)
   }
 
   it should "handle null values" in {
     val nullValue: Any = null
-    val result = DebugMode.safeCast[String](nullValue, "test context")
+    val result         = DebugMode.safeCast[String](nullValue, "test context")
     result shouldBe null
   }
 
   it should "cast custom types successfully" in {
     case class Person(name: String)
     val person: Any = Person("Alice")
-    val result = DebugMode.safeCast[Person](person, "test context")
+    val result      = DebugMode.safeCast[Person](person, "test context")
     result shouldBe Person("Alice")
   }
 
   "DebugMode.safeCast with invalid cast in Full mode" should "throw TypeMismatchError" in {
-    if (DebugMode.level == DebugLevel.Full) {
+    if DebugMode.level == DebugLevel.Full then {
       val stringValue: Any = "hello"
       val error = intercept[TypeMismatchError] {
         DebugMode.safeCast[java.util.List[?]](stringValue, "test context")
@@ -118,7 +118,7 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
   // are expected to succeed. Testing invalid casts in this mode is not meaningful.
 
   "DebugMode.safeCast in Off mode" should "not validate types" in {
-    if (DebugMode.level == DebugLevel.Off) {
+    if DebugMode.level == DebugLevel.Off then {
       // Should not validate, just cast
       noException should be thrownBy {
         val _ = DebugMode.safeCast[CharSequence]("hello", "test")
@@ -137,7 +137,7 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "use custom type name in Full mode" in {
-    if (DebugMode.level == DebugLevel.Full) {
+    if DebugMode.level == DebugLevel.Full then {
       val stringValue: Any = "hello"
       val error = intercept[TypeMismatchError] {
         DebugMode.safeCastNamed[java.util.List[?]](stringValue, "CustomList", "test context")
@@ -147,7 +147,6 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
       error.context("location") shouldBe "test context"
     }
   }
-
 
   "DebugMode.debugAssert" should "behave according to debug level" in {
     DebugMode.level match {
@@ -190,7 +189,7 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
   }
 
   it should "log in enabled modes" in {
-    if (DebugMode.isEnabled) {
+    if DebugMode.isEnabled then {
       val stderr = captureStderr {
         DebugMode.debugLog("Test log message")
       }
@@ -200,8 +199,8 @@ class DebugModeTest extends AnyFlatSpec with Matchers {
 
   // Helper to capture stderr output
   private def captureStderr(block: => Unit): String = {
-    val baos = new ByteArrayOutputStream()
-    val ps = new PrintStream(baos)
+    val baos   = new ByteArrayOutputStream()
+    val ps     = new PrintStream(baos)
     val oldErr = System.err
 
     System.setErr(ps)

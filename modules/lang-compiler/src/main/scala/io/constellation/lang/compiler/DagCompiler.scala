@@ -23,23 +23,24 @@ private[compiler] final case class DagCompileOutput(
   *
   * The `asInstanceOf` casts in this file are **safe by construction**:
   *
-  *   - '''Lambda casts''': HOF lambda arguments are always TypedExpression.Lambda because
-  *     the IR generator only produces lambda arguments for higher-order functions
+  *   - '''Lambda casts''': HOF lambda arguments are always TypedExpression.Lambda because the IR
+  *     generator only produces lambda arguments for higher-order functions
   *
-  *   - '''Boolean casts''' (in evaluateLambdaBody): Logical operations (And, Or, Not)
-  *     and conditionals receive Boolean operands because the type checker verifies
-  *     all operand types during semantic analysis before IR generation
+  *   - '''Boolean casts''' (in evaluateLambdaBody): Logical operations (And, Or, Not) and
+  *     conditionals receive Boolean operands because the type checker verifies all operand types
+  *     during semantic analysis before IR generation
   *
-  *   - '''Numeric casts''' (in evaluateLambdaBody): Arithmetic operations receive
-  *     numeric operands because the type checker verifies operand types
+  *   - '''Numeric casts''' (in evaluateLambdaBody): Arithmetic operations receive numeric operands
+  *     because the type checker verifies operand types
   *
-  *   - '''Condition result cast''' (in ConditionalModule): WhenNode conditions are
-  *     type-checked to be Boolean during semantic analysis
+  *   - '''Condition result cast''' (in ConditionalModule): WhenNode conditions are type-checked to
+  *     be Boolean during semantic analysis
   *
-  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for
-  * development and debugging purposes. See [[io.constellation.DebugMode]].
+  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for development and
+  * debugging purposes. See [[io.constellation.DebugMode]].
   *
-  * @see [[io.constellation.DebugMode]] for optional runtime type validation
+  * @see
+  *   [[io.constellation.DebugMode]] for optional runtime type validation
   */
 object DagCompiler {
 
@@ -66,7 +67,7 @@ object DagCompiler {
     private var outEdges: Set[(UUID, UUID)]                       = Set.empty // module -> data
 
     // Maps module UUID -> module call options (for runtime execution)
-    private var moduleOptions: Map[UUID, IRModuleCallOptions]     = Map.empty
+    private var moduleOptions: Map[UUID, IRModuleCallOptions] = Map.empty
 
     // Maps IR node ID -> its output data node UUID
     private var nodeOutputs: Map[UUID, UUID] = Map.empty
@@ -77,14 +78,15 @@ object DagCompiler {
 
     def compile(program: IRProgram): Either[DagCompilerError, DagCompileOutput] = {
       // Process nodes in topological order
-      val processResult = program.topologicalOrder.foldLeft[Either[DagCompilerError, Unit]](Right(())) {
-        case (Right(_), nodeId) =>
-          program.nodes.get(nodeId) match {
-            case Some(node) => processNode(node)
-            case None       => Right(()) // Skip missing nodes
-          }
-        case (left @ Left(_), _) => left
-      }
+      val processResult =
+        program.topologicalOrder.foldLeft[Either[DagCompilerError, Unit]](Right(())) {
+          case (Right(_), nodeId) =>
+            program.nodes.get(nodeId) match {
+              case Some(node) => processNode(node)
+              case None       => Right(()) // Skip missing nodes
+            }
+          case (left @ Left(_), _) => left
+        }
 
       processResult.map { _ =>
         // Build output bindings: map output variable names to data node UUIDs
@@ -180,7 +182,7 @@ object DagCompiler {
       val outputDataId = UUID.randomUUID()
 
       // Store module call options if not empty
-      if (!options.isEmpty) {
+      if !options.isEmpty then {
         moduleOptions = moduleOptions + (moduleId -> options)
       }
 
@@ -331,7 +333,8 @@ object DagCompiler {
           nicknames = Map.empty,
           cType = outputCType,
           inlineTransform = Some(InlineTransform.ConditionalTransform),
-          transformInputs = Map("cond" -> condDataId, "thenBr" -> thenDataId, "elseBr" -> elseDataId)
+          transformInputs =
+            Map("cond" -> condDataId, "thenBr" -> thenDataId, "elseBr" -> elseDataId)
         ))
         nodeOutputs = nodeOutputs + (id -> outputDataId)
       }
@@ -519,12 +522,14 @@ object DagCompiler {
         // Update nicknames for input data nodes
         caseDataIds.zipWithIndex.foreach { case ((condDataId, exprDataId), idx) =>
           dataNodes = dataNodes.updatedWith(condDataId) {
-            case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"cond$idx")))
-            case None       => None
+            case Some(spec) =>
+              Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"cond$idx")))
+            case None => None
           }
           dataNodes = dataNodes.updatedWith(exprDataId) {
-            case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"expr$idx")))
-            case None       => None
+            case Some(spec) =>
+              Some(spec.copy(nicknames = spec.nicknames + (moduleId -> s"expr$idx")))
+            case None => None
           }
         }
         dataNodes = dataNodes.updatedWith(otherwiseDataId) {
@@ -630,7 +635,7 @@ object DagCompiler {
                   _      <- runtime.setTableData(outId, result)
                   // Also store in state for output extraction
                   cValue = Runtime.anyToCValue(result, outputCType)
-                  _      <- runtime.setStateData(outId, cValue)
+                  _ <- runtime.setStateData(outId, cValue)
                 } yield ()
               }
             )
@@ -638,11 +643,11 @@ object DagCompiler {
       )
 
     private def processHigherOrderNode(
-      id: UUID,
-      operation: HigherOrderOp,
-      source: UUID,
-      lambda: TypedLambda,
-      outputType: SemanticType
+        id: UUID,
+        operation: HigherOrderOp,
+        source: UUID,
+        lambda: TypedLambda,
+        outputType: SemanticType
     ): Either[DagCompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
@@ -697,7 +702,7 @@ object DagCompiler {
     private def createHigherOrderTransform(
         operation: HigherOrderOp,
         lambda: TypedLambda
-    ): Either[DagCompilerError, InlineTransform] = {
+    ): Either[DagCompilerError, InlineTransform] =
       // Create the lambda evaluator function - this can fail
       createLambdaEvaluator(lambda).flatMap { lambdaEvaluator =>
         operation match {
@@ -713,15 +718,14 @@ object DagCompiler {
             Left(DagCompilerError.UnsupportedOperation("SortBy"))
         }
       }
-    }
 
-    /** Create a lambda evaluator function from a TypedLambda.
-      * Returns Either to handle potential errors in lambda body structure.
+    /** Create a lambda evaluator function from a TypedLambda. Returns Either to handle potential
+      * errors in lambda body structure.
       */
-    private def createLambdaEvaluator(lambda: TypedLambda): Either[DagCompilerError, Any => Any] = {
+    private def createLambdaEvaluator(lambda: TypedLambda): Either[DagCompilerError, Any => Any] =
       // Validate the lambda body structure upfront
-      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map { _ =>
-        (element: Any) => {
+      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map { _ => (element: Any) =>
+        {
           // Bind parameter to element value
           val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap
 
@@ -730,42 +734,43 @@ object DagCompiler {
           evaluateLambdaBodyUnsafe(lambda.bodyNodes, lambda.bodyOutputId, paramBindings)
         }
       }
-    }
 
     /** Validate lambda body structure at compile time */
     private def validateLambdaBody(
         nodes: Map[UUID, IRNode],
         outputId: UUID
     ): Either[DagCompilerError, Unit] = {
-      def validateNode(nodeId: UUID): Either[DagCompilerError, Unit] = {
+      def validateNode(nodeId: UUID): Either[DagCompilerError, Unit] =
         nodes.get(nodeId) match {
           case None => Left(DagCompilerError.NodeNotFound(nodeId, "lambda body"))
-          case Some(node) => node match {
-            case IRNode.Input(_, _, _, _) => Right(())
-            case IRNode.LiteralNode(_, _, _, _) => Right(())
-            case IRNode.FieldAccessNode(_, source, _, _, _) => validateNode(source)
-            case IRNode.AndNode(_, left, right, _) =>
-              validateNode(left).flatMap(_ => validateNode(right))
-            case IRNode.OrNode(_, left, right, _) =>
-              validateNode(left).flatMap(_ => validateNode(right))
-            case IRNode.NotNode(_, operand, _) => validateNode(operand)
-            case IRNode.ModuleCall(_, moduleName, _, inputs, _, _, _) =>
-              validateBuiltinFunction(moduleName).flatMap { _ =>
-                inputs.values.toList.traverse(validateNode).map(_ => ())
-              }
-            case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
-              for {
-                _ <- validateNode(cond)
-                _ <- validateNode(thenBr)
-                _ <- validateNode(elseBr)
-              } yield ()
-            case IRNode.ListLiteralNode(_, elems, _, _) =>
-              elems.traverse(validateNode).map(_ => ())
-            case other =>
-              Left(DagCompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body"))
-          }
+          case Some(node) =>
+            node match {
+              case IRNode.Input(_, _, _, _)                   => Right(())
+              case IRNode.LiteralNode(_, _, _, _)             => Right(())
+              case IRNode.FieldAccessNode(_, source, _, _, _) => validateNode(source)
+              case IRNode.AndNode(_, left, right, _) =>
+                validateNode(left).flatMap(_ => validateNode(right))
+              case IRNode.OrNode(_, left, right, _) =>
+                validateNode(left).flatMap(_ => validateNode(right))
+              case IRNode.NotNode(_, operand, _) => validateNode(operand)
+              case IRNode.ModuleCall(_, moduleName, _, inputs, _, _, _) =>
+                validateBuiltinFunction(moduleName).flatMap { _ =>
+                  inputs.values.toList.traverse(validateNode).map(_ => ())
+                }
+              case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
+                for {
+                  _ <- validateNode(cond)
+                  _ <- validateNode(thenBr)
+                  _ <- validateNode(elseBr)
+                } yield ()
+              case IRNode.ListLiteralNode(_, elems, _, _) =>
+                elems.traverse(validateNode).map(_ => ())
+              case other =>
+                Left(
+                  DagCompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body")
+                )
+            }
         }
-      }
       validateNode(outputId)
     }
 
@@ -773,51 +778,64 @@ object DagCompiler {
     private def validateBuiltinFunction(moduleName: String): Either[DagCompilerError, Unit] = {
       val funcName = moduleName.split('.').last
       val supported = Set(
-        "add", "add-int", "subtract", "sub-int", "multiply", "mul-int", "divide", "div-int",
-        "gt", "lt", "gte", "lte", "eq-int", "eq-string"
+        "add",
+        "add-int",
+        "subtract",
+        "sub-int",
+        "multiply",
+        "mul-int",
+        "divide",
+        "div-int",
+        "gt",
+        "lt",
+        "gte",
+        "lte",
+        "eq-int",
+        "eq-string"
       )
-      if (supported.contains(funcName)) Right(())
+      if supported.contains(funcName) then Right(())
       else Left(DagCompilerError.UnsupportedFunction(moduleName, funcName))
     }
 
-    /** Evaluate lambda body nodes with given parameter bindings.
-      * This is called at runtime after validation, so errors become exceptions.
+    /** Evaluate lambda body nodes with given parameter bindings. This is called at runtime after
+      * validation, so errors become exceptions.
       */
     private def evaluateLambdaBodyUnsafe(
-      nodes: Map[UUID, IRNode],
-      outputId: UUID,
-      paramBindings: Map[String, Any]
+        nodes: Map[UUID, IRNode],
+        outputId: UUID,
+        paramBindings: Map[String, Any]
     ): Any = {
       // Simple interpreter for lambda body nodes
       var evaluatedNodes: Map[UUID, Any] = Map.empty
 
-      def evaluateNode(nodeId: UUID): Any = {
+      def evaluateNode(nodeId: UUID): Any =
         evaluatedNodes.get(nodeId) match {
           case Some(value) => value
           case None =>
-            val node = nodes(nodeId)
+            val node  = nodes(nodeId)
             val value = evaluateLambdaNodeUnsafe(node, nodes, paramBindings, evaluateNode)
             evaluatedNodes = evaluatedNodes + (nodeId -> value)
             value
         }
-      }
 
       evaluateNode(outputId)
     }
 
-    /** Evaluate a single IR node in lambda context.
-      * Called at runtime after compile-time validation.
+    /** Evaluate a single IR node in lambda context. Called at runtime after compile-time
+      * validation.
       */
     private def evaluateLambdaNodeUnsafe(
-      node: IRNode,
-      nodes: Map[UUID, IRNode],
-      paramBindings: Map[String, Any],
-      evaluateNode: UUID => Any
+        node: IRNode,
+        nodes: Map[UUID, IRNode],
+        paramBindings: Map[String, Any],
+        evaluateNode: UUID => Any
     ): Any = node match {
       case IRNode.Input(_, name, _, _) =>
         // Lambda parameter - look up in bindings
-        paramBindings.getOrElse(name,
-          throw DagCompilerError.toException(DagCompilerError.LambdaParameterNotBound(name)))
+        paramBindings.getOrElse(
+          name,
+          throw DagCompilerError.toException(DagCompilerError.LambdaParameterNotBound(name))
+        )
 
       case IRNode.LiteralNode(_, value, _, _) =>
         value
@@ -828,16 +846,17 @@ object DagCompiler {
           case m: Map[String, ?] @unchecked => m(field)
           case _ =>
             throw DagCompilerError.toException(
-              DagCompilerError.InvalidFieldAccess(field, sourceValue.getClass.getSimpleName))
+              DagCompilerError.InvalidFieldAccess(field, sourceValue.getClass.getSimpleName)
+            )
         }
 
       case IRNode.AndNode(_, left, right, _) =>
         val leftVal = evaluateNode(left).asInstanceOf[Boolean]
-        if (!leftVal) false else evaluateNode(right).asInstanceOf[Boolean]
+        if !leftVal then false else evaluateNode(right).asInstanceOf[Boolean]
 
       case IRNode.OrNode(_, left, right, _) =>
         val leftVal = evaluateNode(left).asInstanceOf[Boolean]
-        if (leftVal) true else evaluateNode(right).asInstanceOf[Boolean]
+        if leftVal then true else evaluateNode(right).asInstanceOf[Boolean]
 
       case IRNode.NotNode(_, operand, _) =>
         !evaluateNode(operand).asInstanceOf[Boolean]
@@ -849,18 +868,19 @@ object DagCompiler {
 
       case IRNode.ConditionalNode(_, cond, thenBr, elseBr, _, _) =>
         val condVal = evaluateNode(cond).asInstanceOf[Boolean]
-        if (condVal) evaluateNode(thenBr) else evaluateNode(elseBr)
+        if condVal then evaluateNode(thenBr) else evaluateNode(elseBr)
 
       case IRNode.ListLiteralNode(_, elems, _, _) =>
         elems.map(evaluateNode).toList
 
       case other =>
         throw DagCompilerError.toException(
-          DagCompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body"))
+          DagCompilerError.UnsupportedNodeType(other.getClass.getSimpleName, "lambda body")
+        )
     }
 
-    /** Evaluate a built-in function for use in lambda bodies.
-      * Called at runtime after compile-time validation.
+    /** Evaluate a built-in function for use in lambda bodies. Called at runtime after compile-time
+      * validation.
       */
     private def evaluateBuiltinFunctionUnsafe(moduleName: String, inputs: Map[String, Any]): Any = {
       // Extract function name from module name (e.g., "stdlib.multiply" -> "multiply")
@@ -876,7 +896,7 @@ object DagCompiler {
           inputs("a").asInstanceOf[Long] * inputs("b").asInstanceOf[Long]
         case "divide" | "div-int" =>
           val b = inputs("b").asInstanceOf[Long]
-          if (b != 0) inputs("a").asInstanceOf[Long] / b else 0L
+          if b != 0 then inputs("a").asInstanceOf[Long] / b else 0L
 
         // Comparison operations
         case "gt" =>
@@ -893,7 +913,9 @@ object DagCompiler {
           inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
 
         case _ =>
-          throw DagCompilerError.toException(DagCompilerError.UnsupportedFunction(moduleName, funcName))
+          throw DagCompilerError.toException(
+            DagCompilerError.UnsupportedFunction(moduleName, funcName)
+          )
       }
     }
   }

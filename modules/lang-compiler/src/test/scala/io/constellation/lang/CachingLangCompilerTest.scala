@@ -1,7 +1,7 @@
 package io.constellation.lang
 
 import cats.effect.IO
-import io.constellation._
+import io.constellation.*
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.FunctionRegistry
@@ -39,10 +39,9 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
   class MockCompiler(registry: FunctionRegistry) extends LangCompiler {
     def functionRegistry: FunctionRegistry = registry
 
-    def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
+    def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] =
       // Return different compilation results based on source hashCode (to simulate uniqueness)
       Right(mockCompileResult(dagName, s"source-${source.hashCode}"))
-    }
 
     def compileToIR(source: String, dagName: String) = ???
   }
@@ -62,10 +61,10 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
 
     // However, if they happen to have the same hashCode (collision),
     // the cache should NOT return the wrong result
-    val registry = FunctionRegistry.empty
+    val registry     = FunctionRegistry.empty
     val mockCompiler = new MockCompiler(registry)
-    val cache = CompilationCache.createUnsafe()
-    val caching = new CachingLangCompiler(mockCompiler, cache)
+    val cache        = CompilationCache.createUnsafe()
+    val caching      = new CachingLangCompiler(mockCompiler, cache)
 
     val result1 = caching.compile(source1, "test")
     val result2 = caching.compile(source2, "test")
@@ -85,10 +84,10 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
 
   it should "correctly hash source strings to avoid collisions" in {
     // Demonstrate that hashCode can collide but SHA-256 won't
-    val registry = FunctionRegistry.empty
+    val registry     = FunctionRegistry.empty
     val mockCompiler = new MockCompiler(registry)
-    val cache = CompilationCache.createUnsafe()
-    val caching = new CachingLangCompiler(mockCompiler, cache)
+    val cache        = CompilationCache.createUnsafe()
+    val caching      = new CachingLangCompiler(mockCompiler, cache)
 
     // Create multiple different sources
     val sources = List(
@@ -118,7 +117,7 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "cache identical sources correctly" in {
-    val source = "in x: String\nout x"
+    val source   = "in x: String\nout x"
     val registry = FunctionRegistry.empty
 
     // Create a compiler that tracks invocation count
@@ -132,7 +131,7 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
       def compileToIR(src: String, dagName: String) = ???
     }
 
-    val cache = CompilationCache.createUnsafe()
+    val cache   = CompilationCache.createUnsafe()
     val caching = new CachingLangCompiler(countingCompiler, cache)
 
     // First compilation - should invoke underlying compiler
@@ -152,10 +151,10 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
     val source1 = "in x: String\nout x"
     val source2 = "in y: String\nout y"
 
-    val registry = FunctionRegistry.empty
+    val registry     = FunctionRegistry.empty
     val mockCompiler = new MockCompiler(registry)
-    val cache = CompilationCache.createUnsafe()
-    val caching = new CachingLangCompiler(mockCompiler, cache)
+    val cache        = CompilationCache.createUnsafe()
+    val caching      = new CachingLangCompiler(mockCompiler, cache)
 
     // Compile first source
     val result1 = caching.compile(source1, "test")

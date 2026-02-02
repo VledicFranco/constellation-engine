@@ -4,9 +4,8 @@ import cats.effect.IO
 
 /** Persistent store for compiled program images.
   *
-  * Supports storage, retrieval, aliasing (human-readable names), and a
-  * syntactic index that maps (syntacticHash, registryHash) pairs to
-  * structural hashes for cache-hit detection.
+  * Supports storage, retrieval, aliasing (human-readable names), and a syntactic index that maps
+  * (syntacticHash, registryHash) pairs to structural hashes for cache-hit detection.
   */
 trait ProgramStore {
 
@@ -30,9 +29,12 @@ trait ProgramStore {
 
   /** Index a syntactic hash to a structural hash for cache lookups.
     *
-    * @param syntacticHash Hash of the source text
-    * @param registryHash  Hash of the function registry at compile time
-    * @param structuralHash The structural hash of the resulting program
+    * @param syntacticHash
+    *   Hash of the source text
+    * @param registryHash
+    *   Hash of the function registry at compile time
+    * @param structuralHash
+    *   The structural hash of the resulting program
     */
   def indexSyntactic(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit]
 

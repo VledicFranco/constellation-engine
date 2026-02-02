@@ -2,26 +2,25 @@ package io.constellation
 
 import cats.effect.IO
 import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
-import java.io.{InputStream, FilterInputStream}
+import java.io.{FilterInputStream, InputStream}
 
 /** Configuration for streaming JSON parser limits.
   *
   * Prevents DoS attacks via:
-  * - Payload size limits (memory exhaustion)
-  * - Array element limits (memory exhaustion)
-  * - Nesting depth limits (stack overflow)
+  *   - Payload size limits (memory exhaustion)
+  *   - Array element limits (memory exhaustion)
+  *   - Nesting depth limits (stack overflow)
   */
 case class StreamingLimits(
     maxPayloadSize: Long = 100 * 1024 * 1024, // 100MB
-    maxArrayElements: Int = 1_000_000,         // 1M elements
-    maxNestingDepth: Int = 50                  // 50 levels deep
+    maxArrayElements: Int = 1_000_000,        // 1M elements
+    maxNestingDepth: Int = 50                 // 50 levels deep
 ) {
-  def validate: Either[String, StreamingLimits] = {
-    if (maxPayloadSize <= 0) Left("maxPayloadSize must be positive")
-    else if (maxArrayElements <= 0) Left("maxArrayElements must be positive")
-    else if (maxNestingDepth <= 0) Left("maxNestingDepth must be positive")
+  def validate: Either[String, StreamingLimits] =
+    if maxPayloadSize <= 0 then Left("maxPayloadSize must be positive")
+    else if maxArrayElements <= 0 then Left("maxArrayElements must be positive")
+    else if maxNestingDepth <= 0 then Left("maxNestingDepth must be positive")
     else Right(this)
-  }
 }
 
 object StreamingLimits {
@@ -32,42 +31,42 @@ object StreamingLimits {
   *
   * Throws IllegalStateException when limit is exceeded.
   */
-private class BoundedInputStream(underlying: InputStream, maxBytes: Long) extends FilterInputStream(underlying) {
+private class BoundedInputStream(underlying: InputStream, maxBytes: Long)
+    extends FilterInputStream(underlying) {
   private var bytesRead: Long = 0
 
   override def read(): Int = {
     checkLimit(1)
     val result = super.read()
-    if (result != -1) bytesRead += 1
+    if result != -1 then bytesRead += 1
     result
   }
 
   override def read(b: Array[Byte], off: Int, len: Int): Int = {
     checkLimit(len)
     val result = super.read(b, off, len)
-    if (result > 0) bytesRead += result
+    if result > 0 then bytesRead += result
     result
   }
 
-  private def checkLimit(requestedBytes: Int): Unit = {
-    if (bytesRead + requestedBytes > maxBytes) {
+  private def checkLimit(requestedBytes: Int): Unit =
+    if bytesRead + requestedBytes > maxBytes then {
       throw new IllegalStateException(
         s"Payload size limit exceeded: ${bytesRead + requestedBytes} > $maxBytes bytes"
       )
     }
-  }
 
   def getBytesRead: Long = bytesRead
 }
 
-/** Streaming JSON converter using Jackson for memory-efficient parsing of large payloads.
-  * Parses JSON incrementally without loading entire structure into memory.
+/** Streaming JSON converter using Jackson for memory-efficient parsing of large payloads. Parses
+  * JSON incrementally without loading entire structure into memory.
   *
   * ==Security Features==
   *
-  * - **Payload size limit**: Default 100MB (prevents memory exhaustion)
-  * - **Array element limit**: Default 1M elements (prevents memory exhaustion)
-  * - **Nesting depth limit**: Default 50 levels (prevents stack overflow)
+  *   - **Payload size limit**: Default 100MB (prevents memory exhaustion)
+  *   - **Array element limit**: Default 1M elements (prevents memory exhaustion)
+  *   - **Nesting depth limit**: Default 50 levels (prevents stack overflow)
   *
   * ==Usage==
   *
@@ -91,9 +90,9 @@ private class BoundedInputStream(underlying: InputStream, maxBytes: Long) extend
   * ==Performance==
   *
   * The streaming converter is most beneficial for:
-  * - Large payloads (>100KB)
-  * - Numeric arrays (embeddings, feature vectors)
-  * - When memory is constrained
+  *   - Large payloads (>100KB)
+  *   - Numeric arrays (embeddings, feature vectors)
+  *   - When memory is constrained
   *
   * For small payloads, the overhead of Jackson parsing may exceed the benefits.
   */
@@ -103,49 +102,53 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
   // Validate limits on construction
   limits.validate match {
     case Left(error) => throw new IllegalArgumentException(s"Invalid StreamingLimits: $error")
-    case Right(_) => // OK
+    case Right(_)    => // OK
   }
 
-  /** Stream JSON from InputStream directly to CValue.
-    * Memory-efficient for large payloads.
+  /** Stream JSON from InputStream directly to CValue. Memory-efficient for large payloads.
     *
-    * @param input The InputStream to read from
-    * @param expectedType The expected CType
-    * @return IO containing Either error message or converted CValue
+    * @param input
+    *   The InputStream to read from
+    * @param expectedType
+    *   The expected CType
+    * @return
+    *   IO containing Either error message or converted CValue
     */
-  def streamFromInputStream(input: InputStream, expectedType: CType): IO[Either[String, CValue]] = IO.blocking {
-    // Wrap input stream with size limit
-    val boundedInput = new BoundedInputStream(input, limits.maxPayloadSize)
+  def streamFromInputStream(input: InputStream, expectedType: CType): IO[Either[String, CValue]] =
+    IO.blocking {
+      // Wrap input stream with size limit
+      val boundedInput = new BoundedInputStream(input, limits.maxPayloadSize)
 
-    try {
-      val parser = factory.createParser(boundedInput)
       try {
-        parser.nextToken() // Move to first token
-        Right(parseValue(parser, expectedType, "", depth = 0))
-      } finally {
-        parser.close()
+        val parser = factory.createParser(boundedInput)
+        try {
+          parser.nextToken() // Move to first token
+          Right(parseValue(parser, expectedType, "", depth = 0))
+        } finally parser.close()
+      } catch {
+        case e: IllegalStateException if e.getMessage.contains("Payload size limit exceeded") =>
+          Left(s"Payload too large: ${e.getMessage}")
+        case e: IllegalStateException if e.getMessage.contains("Nesting depth limit exceeded") =>
+          Left(e.getMessage)
+        case e: IllegalStateException if e.getMessage.contains("Array element limit exceeded") =>
+          Left(e.getMessage)
+        case e: Exception =>
+          Left(s"Streaming parse error: ${e.getMessage}")
       }
-    } catch {
-      case e: IllegalStateException if e.getMessage.contains("Payload size limit exceeded") =>
-        Left(s"Payload too large: ${e.getMessage}")
-      case e: IllegalStateException if e.getMessage.contains("Nesting depth limit exceeded") =>
-        Left(e.getMessage)
-      case e: IllegalStateException if e.getMessage.contains("Array element limit exceeded") =>
-        Left(e.getMessage)
-      case e: Exception =>
-        Left(s"Streaming parse error: ${e.getMessage}")
     }
-  }
 
   /** Parse from byte array using streaming (still streaming internally, but from memory).
     *
-    * @param bytes The JSON bytes to parse
-    * @param expectedType The expected CType
-    * @return Either error message or converted CValue
+    * @param bytes
+    *   The JSON bytes to parse
+    * @param expectedType
+    *   The expected CType
+    * @return
+    *   Either error message or converted CValue
     */
   def streamToCValue(bytes: Array[Byte], expectedType: CType): Either[String, CValue] = {
     // Check byte array size before parsing
-    if (bytes.length > limits.maxPayloadSize) {
+    if bytes.length > limits.maxPayloadSize then {
       return Left(s"Payload too large: ${bytes.length} > ${limits.maxPayloadSize} bytes")
     }
 
@@ -154,9 +157,7 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
       try {
         parser.nextToken() // Move to first token
         Right(parseValue(parser, expectedType, "", depth = 0))
-      } finally {
-        parser.close()
-      }
+      } finally parser.close()
     } catch {
       case e: IllegalStateException if e.getMessage.contains("Nesting depth limit exceeded") =>
         Left(e.getMessage)
@@ -169,14 +170,17 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
 
   /** Parse from string using streaming.
     *
-    * @param jsonString The JSON string to parse
-    * @param expectedType The expected CType
-    * @return Either error message or converted CValue
+    * @param jsonString
+    *   The JSON string to parse
+    * @param expectedType
+    *   The expected CType
+    * @return
+    *   Either error message or converted CValue
     */
   def streamFromString(jsonString: String, expectedType: CType): Either[String, CValue] = {
     // Check string size before parsing (rough estimate: 2 bytes per char)
     val estimatedSize = jsonString.length * 2L
-    if (estimatedSize > limits.maxPayloadSize) {
+    if estimatedSize > limits.maxPayloadSize then {
       return Left(s"Payload too large: estimated $estimatedSize > ${limits.maxPayloadSize} bytes")
     }
 
@@ -185,9 +189,7 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
       try {
         parser.nextToken()
         Right(parseValue(parser, expectedType, "", depth = 0))
-      } finally {
-        parser.close()
-      }
+      } finally parser.close()
     } catch {
       case e: IllegalStateException if e.getMessage.contains("Nesting depth limit exceeded") =>
         Left(e.getMessage)
@@ -198,9 +200,14 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
     }
   }
 
-  private def parseValue(parser: JsonParser, expectedType: CType, path: String, depth: Int): CValue = {
+  private def parseValue(
+      parser: JsonParser,
+      expectedType: CType,
+      path: String,
+      depth: Int
+  ): CValue = {
     // Check nesting depth
-    if (depth > limits.maxNestingDepth) {
+    if depth > limits.maxNestingDepth then {
       throw new IllegalStateException(
         s"Nesting depth limit exceeded: $depth > ${limits.maxNestingDepth} at path '$path'"
       )
@@ -243,13 +250,18 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
     }
   }
 
-  private def parseArray(parser: JsonParser, elemType: CType, path: String, depth: Int): CValue.CList = {
+  private def parseArray(
+      parser: JsonParser,
+      elemType: CType,
+      path: String,
+      depth: Int
+  ): CValue.CList = {
     val builder = Vector.newBuilder[CValue]
-    var idx = 0
+    var idx     = 0
 
-    while (parser.nextToken() != JsonToken.END_ARRAY) {
+    while parser.nextToken() != JsonToken.END_ARRAY do {
       // Check array element limit
-      if (idx >= limits.maxArrayElements) {
+      if idx >= limits.maxArrayElements then {
         throw new IllegalStateException(
           s"Array element limit exceeded: $idx >= ${limits.maxArrayElements} at path '$path'"
         )
@@ -262,16 +274,21 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
     CValue.CList(builder.result(), elemType)
   }
 
-  private def parseObject(parser: JsonParser, fields: Map[String, CType], path: String, depth: Int): CValue.CProduct = {
+  private def parseObject(
+      parser: JsonParser,
+      fields: Map[String, CType],
+      path: String,
+      depth: Int
+  ): CValue.CProduct = {
     val values = scala.collection.mutable.Map[String, CValue]()
 
-    while (parser.nextToken() != JsonToken.END_OBJECT) {
+    while parser.nextToken() != JsonToken.END_OBJECT do {
       val fieldName = parser.getCurrentName
       parser.nextToken() // Move to value
 
       fields.get(fieldName) match {
         case Some(fieldType) =>
-          val fieldPath = if (path.isEmpty) fieldName else s"$path.$fieldName"
+          val fieldPath = if path.isEmpty then fieldName else s"$path.$fieldName"
           values(fieldName) = parseValue(parser, fieldType, fieldPath, depth + 1)
         case None =>
           skipValue(parser, depth) // Skip unknown fields
@@ -280,19 +297,26 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
 
     // Check for missing required fields
     val missing = fields.keySet -- values.keySet
-    if (missing.nonEmpty) {
-      throw new IllegalArgumentException(s"Missing required fields at '$path': ${missing.mkString(", ")}")
+    if missing.nonEmpty then {
+      throw new IllegalArgumentException(
+        s"Missing required fields at '$path': ${missing.mkString(", ")}"
+      )
     }
 
     CValue.CProduct(values.toMap, fields)
   }
 
-  private def parseUnion(parser: JsonParser, structure: Map[String, CType], path: String, depth: Int): CValue.CUnion = {
-    var tag: Option[String] = None
-    var value: Option[CValue] = None
+  private def parseUnion(
+      parser: JsonParser,
+      structure: Map[String, CType],
+      path: String,
+      depth: Int
+  ): CValue.CUnion = {
+    var tag: Option[String]      = None
+    var value: Option[CValue]    = None
     var valueType: Option[CType] = None
 
-    while (parser.nextToken() != JsonToken.END_OBJECT) {
+    while parser.nextToken() != JsonToken.END_OBJECT do {
       val fieldName = parser.getCurrentName
       parser.nextToken()
 
@@ -331,14 +355,16 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
         throw new IllegalArgumentException(s"Union missing 'value' field at path '$path'")
       case (Some(_), Some(_), None) =>
         // This shouldn't happen in valid code (value set but valueType not set)
-        throw new IllegalArgumentException(s"Internal error: value parsed but type unknown at path '$path'")
+        throw new IllegalArgumentException(
+          s"Internal error: value parsed but type unknown at path '$path'"
+        )
     }
   }
 
   /** Skip a value and all its children */
   private def skipValue(parser: JsonParser, depth: Int): Unit = {
     // Check nesting depth when skipping
-    if (depth > limits.maxNestingDepth) {
+    if depth > limits.maxNestingDepth then {
       throw new IllegalStateException(
         s"Nesting depth limit exceeded while skipping: $depth > ${limits.maxNestingDepth}"
       )
@@ -348,8 +374,8 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
     token match {
       case JsonToken.START_ARRAY =>
         var elementCount = 0
-        while (parser.nextToken() != JsonToken.END_ARRAY) {
-          if (elementCount >= limits.maxArrayElements) {
+        while parser.nextToken() != JsonToken.END_ARRAY do {
+          if elementCount >= limits.maxArrayElements then {
             throw new IllegalStateException(
               s"Array element limit exceeded while skipping: $elementCount >= ${limits.maxArrayElements}"
             )
@@ -358,7 +384,7 @@ class StreamingJsonConverter(limits: StreamingLimits = StreamingLimits.default) 
           elementCount += 1
         }
       case JsonToken.START_OBJECT =>
-        while (parser.nextToken() != JsonToken.END_OBJECT) {
+        while parser.nextToken() != JsonToken.END_OBJECT do {
           parser.nextToken() // Move to value
           skipValue(parser, depth + 1)
         }

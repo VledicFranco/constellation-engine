@@ -4,8 +4,8 @@ import io.constellation.lang.ast.{CompileError, SourceFile, Span}
 
 /** Formatted error message with all contextual information.
   *
-  * This is the structured output of error formatting, containing
-  * all the pieces needed to display a helpful error message.
+  * This is the structured output of error formatting, containing all the pieces needed to display a
+  * helpful error message.
   */
 case class FormattedError(
     code: String,
@@ -31,8 +31,7 @@ case class FormattedError(
       "",
       explanation.linesIterator.map(l => s"  $l").mkString("\n"),
       "",
-      if (suggestions.nonEmpty)
-        suggestions.map(s => s"  → $s").mkString("\n")
+      if suggestions.nonEmpty then suggestions.map(s => s"  → $s").mkString("\n")
       else "",
       docUrl.map(url => s"\n  See: $url").getOrElse("")
     )
@@ -52,7 +51,7 @@ case class FormattedError(
       "",
       explanation,
       "",
-      if (suggestions.nonEmpty)
+      if suggestions.nonEmpty then
         "**Suggestions:**\n" + suggestions.map(s => s"- $s").mkString("\n")
       else "",
       docUrl.map(url => s"\n[Documentation]($url)").getOrElse("")
@@ -73,7 +72,8 @@ case class FormattedError(
   *   - "Did you mean?" suggestions
   *   - Documentation links
   *
-  * @param source The source code being compiled
+  * @param source
+  *   The source code being compiled
   */
 class ErrorFormatter(source: String) {
   private val sourceFile = SourceFile("<input>", source)
@@ -81,11 +81,17 @@ class ErrorFormatter(source: String) {
 
   /** Format a compile error with full context.
     *
-    * @param error The compile error to format
-    * @param context Suggestion context with available symbols
-    * @return Formatted error with all contextual information
+    * @param error
+    *   The compile error to format
+    * @param context
+    *   Suggestion context with available symbols
+    * @return
+    *   Formatted error with all contextual information
     */
-  def format(error: CompileError, context: SuggestionContext = SuggestionContext.empty): FormattedError = {
+  def format(
+      error: CompileError,
+      context: SuggestionContext = SuggestionContext.empty
+  ): FormattedError = {
     val errorCode = ErrorCodes.fromCompileError(error)
 
     FormattedError(
@@ -103,9 +109,12 @@ class ErrorFormatter(source: String) {
 
   /** Format multiple errors.
     *
-    * @param errors List of compile errors
-    * @param context Suggestion context
-    * @return List of formatted errors
+    * @param errors
+    *   List of compile errors
+    * @param context
+    *   Suggestion context
+    * @return
+    *   List of formatted errors
     */
   def formatAll(
       errors: List[CompileError],
@@ -140,14 +149,14 @@ class ErrorFormatter(source: String) {
 
         val snippetLines = (fromLine to toLine).flatMap { lineNum =>
           val lineIdx     = lineNum - 1
-          val lineContent = if (lineIdx < lines.length) lines(lineIdx) else ""
+          val lineContent = if lineIdx < lines.length then lines(lineIdx) else ""
           val lineNumStr  = lineNum.toString.reverse.padTo(lineNumWidth, ' ').reverse
           val prefix      = s"$lineNumStr │ "
 
-          if (lineNum == errorLine) {
+          if lineNum == errorLine then {
             // This is the error line - add underline
-            val startCol    = startLC.col
-            val endCol      = if (startLC.line == endLC.line) endLC.col else lineContent.length + 1
+            val startCol = startLC.col
+            val endCol   = if startLC.line == endLC.line then endLC.col else lineContent.length + 1
             val underlineLen = Math.max(1, endCol - startCol)
 
             val padding   = " " * lineNumWidth + " │ " + " " * (startCol - 1)

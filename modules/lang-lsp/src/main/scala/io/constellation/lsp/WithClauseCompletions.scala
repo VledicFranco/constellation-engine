@@ -2,31 +2,30 @@ package io.constellation.lsp
 
 import io.constellation.lsp.protocol.LspTypes.{CompletionItem, CompletionItemKind}
 
-/**
- * Completion support for the `with` clause in module calls.
- *
- * Provides context-aware completions for:
- * - `with` keyword after module calls
- * - Option names (retry, timeout, cache, etc.)
- * - Option values (backoff strategies, error strategies, priority levels)
- * - Duration units (ms, s, min, h, d)
- *
- * Uses text-based heuristics for context detection, enabling completions
- * even before the parser fully supports the `with` clause syntax.
- */
+/** Completion support for the `with` clause in module calls.
+  *
+  * Provides context-aware completions for:
+  *   - `with` keyword after module calls
+  *   - Option names (retry, timeout, cache, etc.)
+  *   - Option values (backoff strategies, error strategies, priority levels)
+  *   - Duration units (ms, s, min, h, d)
+  *
+  * Uses text-based heuristics for context detection, enabling completions even before the parser
+  * fully supports the `with` clause syntax.
+  */
 object WithClauseCompletions {
 
   /** Context detected from analyzing text before cursor */
   sealed trait WithClauseContext
-  case object AfterModuleCall extends WithClauseContext
-  case object AfterWith extends WithClauseContext
-  case class AfterComma(usedOptions: Set[String]) extends WithClauseContext
-  case object AfterBackoffColon extends WithClauseContext
-  case object AfterOnErrorColon extends WithClauseContext
-  case object AfterPriorityColon extends WithClauseContext
+  case object AfterModuleCall                        extends WithClauseContext
+  case object AfterWith                              extends WithClauseContext
+  case class AfterComma(usedOptions: Set[String])    extends WithClauseContext
+  case object AfterBackoffColon                      extends WithClauseContext
+  case object AfterOnErrorColon                      extends WithClauseContext
+  case object AfterPriorityColon                     extends WithClauseContext
   case class AfterCacheBackendColon(partial: String) extends WithClauseContext
-  case class AfterNumber(number: String) extends WithClauseContext
-  case object NotInWithClause extends WithClauseContext
+  case class AfterNumber(number: String)             extends WithClauseContext
+  case object NotInWithClause                        extends WithClauseContext
 
   /** Definition of a module call option */
   case class OptionDef(
@@ -158,13 +157,15 @@ object WithClauseCompletions {
     ("d", "Days")
   )
 
-  /**
-   * Analyze the text before cursor to determine completion context.
-   *
-   * @param textBeforeCursor The text on the current line, up to the cursor position
-   * @param fullLineText The complete line text (for multi-line context if needed)
-   * @return The detected WithClauseContext
-   */
+  /** Analyze the text before cursor to determine completion context.
+    *
+    * @param textBeforeCursor
+    *   The text on the current line, up to the cursor position
+    * @param fullLineText
+    *   The complete line text (for multi-line context if needed)
+    * @return
+    *   The detected WithClauseContext
+    */
   def analyzeContext(textBeforeCursor: String, fullLineText: String): WithClauseContext = {
     // Use original text for patterns that check trailing characters
     // Use trimmed for patterns that don't depend on trailing whitespace
@@ -172,17 +173,20 @@ object WithClauseCompletions {
 
     // Check for specific option value contexts first (most specific patterns)
     // These end with colon followed by optional whitespace - use original text
-    if (textBeforeCursor.matches(""".*\bbackoff:\s*$""")) {
+    if textBeforeCursor.matches(""".*\bbackoff:\s*$""") then {
       return AfterBackoffColon
     }
-    if (textBeforeCursor.matches(""".*\bon_error:\s*$""")) {
+    if textBeforeCursor.matches(""".*\bon_error:\s*$""") then {
       return AfterOnErrorColon
     }
-    if (textBeforeCursor.matches(""".*\bpriority:\s*$""")) {
+    if textBeforeCursor.matches(""".*\bpriority:\s*$""") then {
       return AfterPriorityColon
     }
-    if (textBeforeCursor.matches(""".*\bcache_backend:\s*"?(\w*)$""")) {
-      val partial = """cache_backend:\s*"?(\w*)$""".r.findFirstMatchIn(textBeforeCursor).map(_.group(1)).getOrElse("")
+    if textBeforeCursor.matches(""".*\bcache_backend:\s*"?(\w*)$""") then {
+      val partial = """cache_backend:\s*"?(\w*)$""".r
+        .findFirstMatchIn(textBeforeCursor)
+        .map(_.group(1))
+        .getOrElse("")
       return AfterCacheBackendColon(partial)
     }
 
@@ -196,41 +200,39 @@ object WithClauseCompletions {
 
     // Check for "with" followed by space (suggest option names)
     // Use original text to preserve trailing space
-    if (textBeforeCursor.matches(""".*\bwith\s+$""")) {
+    if textBeforeCursor.matches(""".*\bwith\s+$""") then {
       return AfterWith
     }
 
     // Check for comma after an option value (suggest remaining options)
     // Pattern: `with option: value, ` or `with option: value,`
-    if (textBeforeCursor.matches(""".*\bwith\s+.+,\s*$""")) {
+    if textBeforeCursor.matches(""".*\bwith\s+.+,\s*$""") then {
       val usedOptions = extractUsedOptions(textBeforeCursor)
       return AfterComma(usedOptions)
     }
 
     // Check for module call pattern: `Identifier(...)` possibly followed by whitespace
     // This should suggest "with" keyword
-    if (trimmed.matches(""".*[A-Z]\w*\s*\([^)]*\)\s*$""")) {
+    if trimmed.matches(""".*[A-Z]\w*\s*\([^)]*\)\s*$""") then {
       return AfterModuleCall
     }
 
     NotInWithClause
   }
 
-  /**
-   * Extract option names that have already been used in the with clause.
-   */
+  /** Extract option names that have already been used in the with clause.
+    */
   private def extractUsedOptions(text: String): Set[String] = {
     val optionPattern = """\b(\w+)\s*:""".r
-    val withIdx = text.lastIndexOf("with")
-    if (withIdx < 0) return Set.empty
+    val withIdx       = text.lastIndexOf("with")
+    if withIdx < 0 then return Set.empty
 
     val withClauseText = text.substring(withIdx)
     optionPattern.findAllMatchIn(withClauseText).map(_.group(1)).toSet
   }
 
-  /**
-   * Get completion items for the given context.
-   */
+  /** Get completion items for the given context.
+    */
   def getCompletions(context: WithClauseContext): List[CompletionItem] = context match {
     case AfterModuleCall =>
       List(
@@ -238,7 +240,9 @@ object WithClauseCompletions {
           label = "with",
           kind = Some(CompletionItemKind.Keyword),
           detail = Some("Add module call options"),
-          documentation = Some("Configure retry, timeout, cache, and other execution options for this module call."),
+          documentation = Some(
+            "Configure retry, timeout, cache, and other execution options for this module call."
+          ),
           insertText = Some("with "),
           filterText = Some("with"),
           sortText = Some("0_with") // Sort first
@@ -321,10 +325,9 @@ object WithClauseCompletions {
       List.empty
   }
 
-  /**
-   * Build completion items for option names, excluding already-used options.
-   */
-  private def buildOptionCompletions(usedOptions: Set[String]): List[CompletionItem] = {
+  /** Build completion items for option names, excluding already-used options.
+    */
+  private def buildOptionCompletions(usedOptions: Set[String]): List[CompletionItem] =
     allOptions
       .filterNot(opt => usedOptions.contains(opt.name))
       .map { opt =>
@@ -338,5 +341,4 @@ object WithClauseCompletions {
           sortText = Some(opt.name)
         )
       }
-  }
 }

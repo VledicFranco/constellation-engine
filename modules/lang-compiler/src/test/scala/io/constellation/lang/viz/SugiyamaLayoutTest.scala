@@ -156,7 +156,7 @@ class SugiyamaLayoutTest extends AnyFunSuite with Matchers {
   }
 
   test("layout handles empty dag") {
-    val dag = DagVizIR(nodes = List.empty, edges = List.empty)
+    val dag    = DagVizIR(nodes = List.empty, edges = List.empty)
     val result = SugiyamaLayout.layout(dag)
     result.nodes shouldBe empty
   }

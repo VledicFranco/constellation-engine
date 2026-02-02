@@ -33,7 +33,9 @@ trait StringFunctions {
   val joinModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.join", "Join strings with delimiter", 1, 0)
     .tags("stdlib", "string")
-    .implementationPure[ListStringAndSeparator, StringOut](in => StringOut(in.list.mkString(in.separator)))
+    .implementationPure[ListStringAndSeparator, StringOut](in =>
+      StringOut(in.list.mkString(in.separator))
+    )
     .build
 
   val splitModule: Module.Uninitialized = ModuleBuilder
@@ -47,7 +49,9 @@ trait StringFunctions {
   val containsModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.contains", "Check if string contains substring", 1, 0)
     .tags("stdlib", "string")
-    .implementationPure[StringAndSubstring, StringBoolOut](in => StringBoolOut(in.value.contains(in.substring)))
+    .implementationPure[StringAndSubstring, StringBoolOut](in =>
+      StringBoolOut(in.value.contains(in.substring))
+    )
     .build
 
   val trimModule: Module.Uninitialized = ModuleBuilder
@@ -59,7 +63,9 @@ trait StringFunctions {
   val replaceModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.replace", "Replace occurrences in string", 1, 0)
     .tags("stdlib", "string")
-    .implementationPure[ReplaceIn, StringOut](in => StringOut(in.value.replace(in.target, in.replacement)))
+    .implementationPure[ReplaceIn, StringOut](in =>
+      StringOut(in.value.replace(in.target, in.replacement))
+    )
     .build
 
   // Signatures
@@ -107,7 +113,11 @@ trait StringFunctions {
   )
   val replaceSignature: FunctionSignature = FunctionSignature(
     "replace",
-    List("value" -> SemanticType.SString, "target" -> SemanticType.SString, "replacement" -> SemanticType.SString),
+    List(
+      "value"       -> SemanticType.SString,
+      "target"      -> SemanticType.SString,
+      "replacement" -> SemanticType.SString
+    ),
     SemanticType.SString,
     "stdlib.replace",
     Some("stdlib.string")

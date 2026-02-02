@@ -36,13 +36,11 @@ final case class ResumeInProgressError(executionId: UUID)
 
 /** Provides the ability to resume a suspended pipeline execution.
   *
-  * Given a [[SuspendedExecution]] snapshot, additional inputs, and optionally
-  * manually-resolved node values, this re-executes the pipeline from where
-  * it left off.
+  * Given a [[SuspendedExecution]] snapshot, additional inputs, and optionally manually-resolved
+  * node values, this re-executes the pipeline from where it left off.
   *
-  * Thread-safety: Concurrent resume calls for the same executionId are
-  * prevented by an in-flight operation tracker. Only one resume can proceed
-  * at a time per suspended execution.
+  * Thread-safety: Concurrent resume calls for the same executionId are prevented by an in-flight
+  * operation tracker. Only one resume can proceed at a time per suspended execution.
   */
 object SuspendableExecution {
 
@@ -52,14 +50,22 @@ object SuspendableExecution {
 
   /** Resume a suspended execution with additional inputs and/or resolved nodes.
     *
-    * @param suspended       The suspended execution snapshot to resume from
-    * @param additionalInputs New input values to add (keyed by variable name)
-    * @param resolvedNodes   Manually-resolved data node values (keyed by variable name)
-    * @param modules         Module implementations to use for execution
-    * @param options         Execution options
-    * @param scheduler       Task scheduler
-    * @param backends        SPI backends
-    * @return A new DataSignature reflecting the resumed execution outcome
+    * @param suspended
+    *   The suspended execution snapshot to resume from
+    * @param additionalInputs
+    *   New input values to add (keyed by variable name)
+    * @param resolvedNodes
+    *   Manually-resolved data node values (keyed by variable name)
+    * @param modules
+    *   Module implementations to use for execution
+    * @param options
+    *   Execution options
+    * @param scheduler
+    *   Task scheduler
+    * @param backends
+    *   SPI backends
+    * @return
+    *   A new DataSignature reflecting the resumed execution outcome
     */
   def resume(
       suspended: SuspendedExecution,
@@ -71,8 +77,8 @@ object SuspendableExecution {
       backends: ConstellationBackends = ConstellationBackends.defaults
   ): IO[DataSignature] = {
     val executionId = suspended.executionId
-    val dagSpec = suspended.dagSpec
-    val startedAt = Instant.now()
+    val dagSpec     = suspended.dagSpec
+    val startedAt   = Instant.now()
 
     // Atomic check-and-set: claim this execution for resume or fail
     val claimResult = Option(inFlightResumes.putIfAbsent(executionId, System.currentTimeMillis()))
@@ -84,7 +90,16 @@ object SuspendableExecution {
 
       case None =>
         // Successfully claimed - proceed with resume, ensuring cleanup on completion/failure
-        doResume(suspended, additionalInputs, resolvedNodes, modules, options, scheduler, backends, startedAt)
+        doResume(
+          suspended,
+          additionalInputs,
+          resolvedNodes,
+          modules,
+          options,
+          scheduler,
+          backends,
+          startedAt
+        )
           .guarantee(IO.delay(inFlightResumes.remove(executionId)))
     }
   }
@@ -103,7 +118,8 @@ object SuspendableExecution {
     val dagSpec = suspended.dagSpec
 
     // Validate additional inputs
-    val inputValidation = validateAdditionalInputs(dagSpec, suspended.providedInputs, additionalInputs)
+    val inputValidation =
+      validateAdditionalInputs(dagSpec, suspended.providedInputs, additionalInputs)
     // Validate resolved nodes
     val nodeValidation = validateResolvedNodes(dagSpec, suspended.computedValues, resolvedNodes)
 
@@ -112,8 +128,8 @@ object SuspendableExecution {
       val mergedInputs = suspended.providedInputs ++ additionalInputs
 
       // Merge computed values: existing + resolved nodes (mapped from name to UUID)
-      val nameToUuid: Map[String, UUID] = dagSpec.data.collect {
-        case (uuid, spec) => spec.name -> uuid
+      val nameToUuid: Map[String, UUID] = dagSpec.data.collect { case (uuid, spec) =>
+        spec.name -> uuid
       }
       val resolvedByUuid: Map[UUID, CValue] = resolvedNodes.flatMap { case (name, value) =>
         nameToUuid.get(name).map(_ -> value)
@@ -122,16 +138,31 @@ object SuspendableExecution {
 
       // Reconstruct synthetic modules from DagSpec
       val syntheticModules = SyntheticModuleFactory.fromDagSpec(dagSpec)
-      val allModules = syntheticModules ++ modules
+      val allModules       = syntheticModules ++ modules
 
       // Execute the pipeline with pre-populated values
       for {
-        state <- Runtime.runWithBackends(dagSpec, mergedInputs, allModules, Map.empty, scheduler, backends)
+        state <- Runtime.runWithBackends(
+          dagSpec,
+          mergedInputs,
+          allModules,
+          Map.empty,
+          scheduler,
+          backends
+        )
       } yield {
         val newResumptionCount = suspended.resumptionCount + 1
-        buildDataSignature(state, dagSpec, suspended.structuralHash,
-          mergedInputs, options, startedAt, newResumptionCount, suspended.moduleOptions,
-          resolvedNodeNames = resolvedNodes.keySet)
+        buildDataSignature(
+          state,
+          dagSpec,
+          suspended.structuralHash,
+          mergedInputs,
+          options,
+          startedAt,
+          newResumptionCount,
+          suspended.moduleOptions,
+          resolvedNodeNames = resolvedNodes.keySet
+        )
       }
     }
   }
@@ -152,21 +183,21 @@ object SuspendableExecution {
         case None => List(UnknownNodeError(name))
         case Some(expectedType) =>
           val typeErrors =
-            if (value.ctype != expectedType)
+            if value.ctype != expectedType then
               List(InputTypeMismatchError(name, expectedType, value.ctype))
             else Nil
 
           // Check for duplicate with different value
           val dupErrors = existingInputs.get(name) match {
             case Some(existing) if existing != value => List(InputAlreadyProvidedError(name))
-            case _                                    => Nil
+            case _                                   => Nil
           }
 
           typeErrors ++ dupErrors
       }
     }
 
-    if (errors.isEmpty) IO.unit
+    if errors.isEmpty then IO.unit
     else IO.raiseError(errors.head)
   }
 
@@ -185,20 +216,19 @@ object SuspendableExecution {
         case None => List(UnknownNodeError(name))
         case Some((uuid, spec)) =>
           val typeErrors =
-            if (value.ctype != spec.cType)
+            if value.ctype != spec.cType then
               List(NodeTypeMismatchError(name, spec.cType, value.ctype))
             else Nil
 
           val alreadyComputed =
-            if (computedValues.contains(uuid))
-              List(NodeAlreadyResolvedError(name))
+            if computedValues.contains(uuid) then List(NodeAlreadyResolvedError(name))
             else Nil
 
           typeErrors ++ alreadyComputed
       }
     }
 
-    if (errors.isEmpty) IO.unit
+    if errors.isEmpty then IO.unit
     else IO.raiseError(errors.head)
   }
 
@@ -225,8 +255,8 @@ object SuspendableExecution {
     }.toMap
 
     val expectedInputNames = dagSpec.userInputDataNodes.values.flatMap(_.nicknames.values).toSet
-    val missingInputs = (expectedInputNames -- inputs.keySet).toList.sorted
-    val pendingOutputs = dagSpec.declaredOutputs.filterNot(outputs.contains)
+    val missingInputs      = (expectedInputNames -- inputs.keySet).toList.sorted
+    val pendingOutputs     = dagSpec.declaredOutputs.filterNot(outputs.contains)
 
     val failedModules = state.moduleStatus.toList.flatMap { case (uuid, evalStatus) =>
       evalStatus.value match {
@@ -238,31 +268,38 @@ object SuspendableExecution {
     }
 
     val status: PipelineStatus =
-      if (failedModules.nonEmpty) PipelineStatus.Failed(failedModules)
-      else if (pendingOutputs.isEmpty && missingInputs.isEmpty) PipelineStatus.Completed
+      if failedModules.nonEmpty then PipelineStatus.Failed(failedModules)
+      else if pendingOutputs.isEmpty && missingInputs.isEmpty then PipelineStatus.Completed
       else PipelineStatus.Suspended
 
     val completedAt = Instant.now()
     val metadata = MetadataBuilder.build(
-      state, dagSpec, options, startedAt, completedAt,
+      state,
+      dagSpec,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = inputs.keySet,
       resolvedNodeNames = resolvedNodeNames
     )
 
     val suspendedState: Option[SuspendedExecution] =
-      if (status == PipelineStatus.Completed) None
-      else Some(SuspendedExecution(
-        executionId = state.processUuid,
-        structuralHash = structuralHash,
-        resumptionCount = resumptionCount,
-        dagSpec = dagSpec,
-        moduleOptions = moduleOptions,
-        providedInputs = inputs,
-        computedValues = state.data.map { case (uuid, evalCValue) => uuid -> evalCValue.value },
-        moduleStatuses = state.moduleStatus.map { case (uuid, evalStatus) =>
-          uuid -> evalStatus.value.toString
-        }
-      ))
+      if status == PipelineStatus.Completed then None
+      else
+        Some(
+          SuspendedExecution(
+            executionId = state.processUuid,
+            structuralHash = structuralHash,
+            resumptionCount = resumptionCount,
+            dagSpec = dagSpec,
+            moduleOptions = moduleOptions,
+            providedInputs = inputs,
+            computedValues = state.data.map { case (uuid, evalCValue) => uuid -> evalCValue.value },
+            moduleStatuses = state.moduleStatus.map { case (uuid, evalStatus) =>
+              uuid -> evalStatus.value.toString
+            }
+          )
+        )
 
     DataSignature(
       executionId = state.processUuid,

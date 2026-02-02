@@ -198,7 +198,9 @@ object ConstellationParser extends MemoizationSupport {
       .map(d => (opts: ModuleCallOptions) => opts.copy(cache = Some(d)))
 
     // cache_backend: "redis"
-    val cacheBackendOpt = (token(P.string("cache_backend")) *> colon *> token(P.char('"') *> P.until0(P.char('"')) <* P.char('"')))
+    val cacheBackendOpt = (token(P.string("cache_backend")) *> colon *> token(
+      P.char('"') *> P.until0(P.char('"')) <* P.char('"')
+    ))
       .map(s => (opts: ModuleCallOptions) => opts.copy(cacheBackend = Some(s)))
 
     // throttle: 100/1min
@@ -206,8 +208,9 @@ object ConstellationParser extends MemoizationSupport {
       .map(r => (opts: ModuleCallOptions) => opts.copy(throttle = Some(r)))
 
     // concurrency: 5
-    val concurrencyOpt = (token(P.string("concurrency")) *> colon *> token(Numbers.nonNegativeIntString))
-      .map(v => (opts: ModuleCallOptions) => opts.copy(concurrency = Some(v.toInt)))
+    val concurrencyOpt =
+      (token(P.string("concurrency")) *> colon *> token(Numbers.nonNegativeIntString))
+        .map(v => (opts: ModuleCallOptions) => opts.copy(concurrency = Some(v.toInt)))
 
     // on_error: skip
     val onErrorOpt = (token(P.string("on_error")) *> colon *> token(errorStrategy))
@@ -223,9 +226,12 @@ object ConstellationParser extends MemoizationSupport {
     val priorityLevelOpt = token(priorityLevel)
       .map(p => (opts: ModuleCallOptions) => opts.copy(priority = Some(Left(p))))
     val priorityNumericOpt = token(Numbers.signedIntString)
-      .map(v => (opts: ModuleCallOptions) => opts.copy(priority = Some(Right(CustomPriority(v.toInt)))))
-    val priorityOpt = (token(P.string("priority")) *> colon *> (priorityLevelOpt.backtrack | priorityNumericOpt))
-      .map(f => f) // f is already the right type
+      .map(v =>
+        (opts: ModuleCallOptions) => opts.copy(priority = Some(Right(CustomPriority(v.toInt))))
+      )
+    val priorityOpt =
+      (token(P.string("priority")) *> colon *> (priorityLevelOpt.backtrack | priorityNumericOpt))
+        .map(f => f) // f is already the right type
 
     P.oneOf(
       List(
@@ -234,7 +240,7 @@ object ConstellationParser extends MemoizationSupport {
         delayOpt.backtrack,
         backoffOpt.backtrack,
         fallbackOpt.backtrack,
-        cacheBackendOpt.backtrack,  // must come before cache
+        cacheBackendOpt.backtrack, // must come before cache
         cacheOpt.backtrack,
         throttleOpt.backtrack,
         concurrencyOpt.backtrack,
@@ -248,7 +254,7 @@ object ConstellationParser extends MemoizationSupport {
   // With clause: with option1: value1, option2: value2, ...
   private lazy val withClause: P[ModuleCallOptions] =
     (withKw *> moduleOption.repSep(comma)).map { options =>
-      options.foldLeft(ModuleCallOptions.empty) { (acc, f) => f(acc) }
+      options.foldLeft(ModuleCallOptions.empty)((acc, f) => f(acc))
     }
 
   // Optional with clause
@@ -304,7 +310,7 @@ object ConstellationParser extends MemoizationSupport {
   private lazy val typeExprUnion: P[TypeExpr] =
     (typeExprMerge ~ (pipe *> typeExprMerge).rep0).map { case (first, rest) =>
       if rest.isEmpty then first
-      else TypeExpr.Union((first :: rest.toList))
+      else TypeExpr.Union(first :: rest.toList)
     }
 
   // Type merge: A + B (record field merge)
@@ -336,8 +342,8 @@ object ConstellationParser extends MemoizationSupport {
 
   // Lambda parameter: x or x: Int
   private lazy val lambdaParam: P[Expression.LambdaParam] =
-    (withSpan(identifier) ~ (colon *> withSpan(typeExpr)).?).map {
-      case (name, typeAnnotation) => Expression.LambdaParam(name, typeAnnotation)
+    (withSpan(identifier) ~ (colon *> withSpan(typeExpr)).?).map { case (name, typeAnnotation) =>
+      Expression.LambdaParam(name, typeAnnotation)
     }
 
   // Lambda parameters: (x) or (a, b) or (x: Int, y: String)
@@ -346,8 +352,8 @@ object ConstellationParser extends MemoizationSupport {
 
   // Lambda expression: (x) => x + 1 or (a, b) => a + b
   private lazy val lambdaExpr: P[Expression.Lambda] =
-    (lambdaParams ~ (fatArrow *> withSpan(P.defer(expression)))).map {
-      case (params, body) => Expression.Lambda(params, body)
+    (lambdaParams ~ (fatArrow *> withSpan(P.defer(expression)))).map { case (params, body) =>
+      Expression.Lambda(params, body)
     }
 
   // Expressions
@@ -505,7 +511,9 @@ object ConstellationParser extends MemoizationSupport {
     identifier.map(Expression.VarRef(_))
 
   private lazy val functionCall: P[Expression.FunctionCall] =
-    ((qualifiedName <* ws) ~ (openParen *> withSpan(expression).repSep0(comma) <* closeParen) ~ optionalWithClause)
+    ((qualifiedName <* ws) ~ (openParen *> withSpan(expression).repSep0(
+      comma
+    ) <* closeParen) ~ optionalWithClause)
       .map { case ((name, args), options) =>
         Expression.FunctionCall(name, args.toList, options)
       }
@@ -587,8 +595,7 @@ object ConstellationParser extends MemoizationSupport {
   private val stringPart: Parser0[String] = stringContentChar.rep0.map(_.mkString)
 
   // Interpolated string content: alternating parts and expressions
-  private lazy val interpolatedStringContent
-      : Parser0[(List[String], List[Located[Expression]])] = {
+  private lazy val interpolatedStringContent: Parser0[(List[String], List[Located[Expression]])] =
     // Start with a string part
     stringPart.flatMap { firstPart =>
       // Then zero or more (interpolation, stringPart) pairs
@@ -601,7 +608,6 @@ object ConstellationParser extends MemoizationSupport {
         }
       }
     }
-  }
 
   // Interpolated string: returns StringLit if no interpolations, StringInterpolation otherwise
   private lazy val interpolatedString: P[Expression] =
@@ -633,11 +639,11 @@ object ConstellationParser extends MemoizationSupport {
   private val literal: P[Expression] =
     P.oneOf(
       List(
-        interpolatedString,       // starts with '"'
-        listLit,                  // starts with '['
-        boolLit.backtrack,        // 'true' or 'false' - need backtrack for keyword prefix
-        floatLit.backtrack,       // digits with '.' - try before intLit
-        intLit                    // digits only
+        interpolatedString, // starts with '"'
+        listLit,            // starts with '['
+        boolLit.backtrack,  // 'true' or 'false' - need backtrack for keyword prefix
+        floatLit.backtrack, // digits with '.' - try before intLit
+        intLit              // digits only
       )
     )
 
@@ -653,7 +659,9 @@ object ConstellationParser extends MemoizationSupport {
 
   // Input declaration with one or more annotations
   private val inputDeclWithAnnotations: P[Declaration.InputDecl] =
-    (exampleAnnotation.rep.map(_.toList) ~ (inKw *> withSpan(identifier)) ~ (colon *> withSpan(typeExpr)))
+    (exampleAnnotation.rep.map(_.toList) ~ (inKw *> withSpan(identifier)) ~ (colon *> withSpan(
+      typeExpr
+    )))
       .map { case ((annots, name), typ) => Declaration.InputDecl(name, typ, annots) }
 
   // Input declaration without annotations
@@ -685,11 +693,11 @@ object ConstellationParser extends MemoizationSupport {
   private val declaration: P[Declaration] =
     P.oneOf(
       List(
-        typeDef.backtrack,        // 'type' keyword, needs backtrack
-        inputDecl.backtrack,      // 'in' or '@', 'in' needs backtrack
-        outputDecl.backtrack,     // 'out' keyword, needs backtrack
-        useDecl.backtrack,        // 'use' keyword, needs backtrack
-        assignment                // fallback - identifier = expr
+        typeDef.backtrack,    // 'type' keyword, needs backtrack
+        inputDecl.backtrack,  // 'in' or '@', 'in' needs backtrack
+        outputDecl.backtrack, // 'out' keyword, needs backtrack
+        useDecl.backtrack,    // 'use' keyword, needs backtrack
+        assignment            // fallback - identifier = expr
       )
     )
 
@@ -707,8 +715,8 @@ object ConstellationParser extends MemoizationSupport {
       }
     }
 
-  /** Parse a constellation-lang program.
-    * Clears the memoization cache before parsing to ensure fresh state.
+  /** Parse a constellation-lang program. Clears the memoization cache before parsing to ensure
+    * fresh state.
     */
   def parse(source: String): Either[CompileError.ParseError, Program] = {
     clearMemoCache() // Clear cache for fresh parse
@@ -722,7 +730,8 @@ object ConstellationParser extends MemoizationSupport {
   }
 
   /** Parse with cache statistics for benchmarking.
-    * @return Either parse error or (program, (cache hits, cache misses))
+    * @return
+    *   Either parse error or (program, (cache hits, cache misses))
     */
   def parseWithStats(source: String): Either[CompileError.ParseError, (Program, (Int, Int))] = {
     clearMemoCache()

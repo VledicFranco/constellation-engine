@@ -2,11 +2,11 @@ package io.constellation.execution
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
 class CircuitBreakerTest extends AnyFlatSpec with Matchers {
@@ -16,7 +16,9 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "CircuitBreaker" should "execute operations normally in Closed state" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create("TestModule", CircuitBreakerConfig(failureThreshold = 3))
+      .unsafeRunSync()
 
     val result = cb.protect(IO.pure(42)).unsafeRunSync()
     result shouldBe 42
@@ -29,7 +31,9 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "track multiple successes" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create("TestModule", CircuitBreakerConfig(failureThreshold = 3))
+      .unsafeRunSync()
 
     (1 to 5).foreach { i =>
       cb.protect(IO.pure(i)).unsafeRunSync() shouldBe i
@@ -41,7 +45,9 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "track failures without opening if below threshold" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create("TestModule", CircuitBreakerConfig(failureThreshold = 3))
+      .unsafeRunSync()
 
     // 2 failures (threshold is 3)
     (1 to 2).foreach { _ =>
@@ -61,7 +67,9 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   it should "open after N consecutive failures" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create("TestModule", CircuitBreakerConfig(failureThreshold = 3))
+      .unsafeRunSync()
 
     // 3 consecutive failures
     (1 to 3).foreach { _ =>
@@ -74,10 +82,15 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject immediately when Open" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(
-      failureThreshold = 2,
-      resetDuration = 10.seconds // long duration to stay open
-    )).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create(
+        "TestModule",
+        CircuitBreakerConfig(
+          failureThreshold = 2,
+          resetDuration = 10.seconds // long duration to stay open
+        )
+      )
+      .unsafeRunSync()
 
     // Open the circuit
     (1 to 2).foreach { _ =>
@@ -102,7 +115,9 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reset consecutive failure count on success" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create("TestModule", CircuitBreakerConfig(failureThreshold = 3))
+      .unsafeRunSync()
 
     // 2 failures
     (1 to 2).foreach { _ =>
@@ -132,10 +147,15 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   it should "transition to HalfOpen after resetDuration" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(
-      failureThreshold = 2,
-      resetDuration = 200.millis
-    )).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create(
+        "TestModule",
+        CircuitBreakerConfig(
+          failureThreshold = 2,
+          resetDuration = 200.millis
+        )
+      )
+      .unsafeRunSync()
 
     // Open the circuit
     (1 to 2).foreach { _ =>
@@ -157,10 +177,15 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "revert to Open if probe fails in HalfOpen" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(
-      failureThreshold = 2,
-      resetDuration = 200.millis
-    )).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create(
+        "TestModule",
+        CircuitBreakerConfig(
+          failureThreshold = 2,
+          resetDuration = 200.millis
+        )
+      )
+      .unsafeRunSync()
 
     // Open the circuit
     (1 to 2).foreach { _ =>
@@ -185,10 +210,15 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   it should "reset manually" in {
-    val cb = CircuitBreaker.create("TestModule", CircuitBreakerConfig(
-      failureThreshold = 2,
-      resetDuration = 10.seconds
-    )).unsafeRunSync()
+    val cb = CircuitBreaker
+      .create(
+        "TestModule",
+        CircuitBreakerConfig(
+          failureThreshold = 2,
+          resetDuration = 10.seconds
+        )
+      )
+      .unsafeRunSync()
 
     // Open the circuit
     (1 to 2).foreach { _ =>
@@ -244,7 +274,8 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "aggregate stats from all breakers" in {
-    val registry = CircuitBreakerRegistry.create(CircuitBreakerConfig(failureThreshold = 5)).unsafeRunSync()
+    val registry =
+      CircuitBreakerRegistry.create(CircuitBreakerConfig(failureThreshold = 5)).unsafeRunSync()
 
     val cbA = registry.getOrCreate("ModuleA").unsafeRunSync()
     val cbB = registry.getOrCreate("ModuleB").unsafeRunSync()
@@ -263,9 +294,11 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
     val registry = CircuitBreakerRegistry.create(CircuitBreakerConfig()).unsafeRunSync()
 
     // Launch 10 concurrent getOrCreate for the same name
-    val cbs = (1 to 10).toList.parTraverse { _ =>
-      registry.getOrCreate("ModuleA")
-    }.unsafeRunSync()
+    val cbs = (1 to 10).toList
+      .parTraverse { _ =>
+        registry.getOrCreate("ModuleA")
+      }
+      .unsafeRunSync()
 
     // All should reference the same logical breaker
     val first = cbs.head
@@ -277,7 +310,8 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   "CircuitBreaker" should "share state across DAG executions" in {
-    val registry = CircuitBreakerRegistry.create(CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
+    val registry =
+      CircuitBreakerRegistry.create(CircuitBreakerConfig(failureThreshold = 3)).unsafeRunSync()
 
     // Simulate "execution 1" — 2 failures
     val cb1 = registry.getOrCreate("FailModule").unsafeRunSync()

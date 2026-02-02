@@ -33,7 +33,8 @@ final class TypedValueAccessor(val cType: CType) {
             throw TypeMismatchError(
               expected = s"product with at least ${fieldIndex + 1} fields",
               actual = s"product with ${values.length} fields",
-              context = Map("fieldIndex" -> fieldIndex.toString, "fieldCount" -> values.length.toString)
+              context =
+                Map("fieldIndex" -> fieldIndex.toString, "fieldCount" -> values.length.toString)
             )
           }
           values(fieldIndex)

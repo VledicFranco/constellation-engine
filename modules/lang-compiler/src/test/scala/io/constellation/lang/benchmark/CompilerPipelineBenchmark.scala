@@ -1,6 +1,6 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang._
+import io.constellation.lang.*
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.{DagCompiler, IRGenerator, IRProgram}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
@@ -20,9 +20,9 @@ import scala.collection.mutable.ListBuffer
 class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
 
   // Benchmark configuration
-  val WarmupIterations   = 5
-  val MeasureIterations  = 20
-  val RunStressTests     = false // Set to true for comprehensive testing
+  val WarmupIterations  = 5
+  val MeasureIterations = 20
+  val RunStressTests    = false // Set to true for comprehensive testing
 
   // Collect all results for final report
   private val allResults = ListBuffer[BenchmarkResult]()
@@ -93,8 +93,8 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
   // -----------------------------------------------------------------
 
   "TypeChecker benchmark" should "measure type checking time for small programs" in {
-    val source  = TestFixtures.smallProgram
-    val parsed  = ConstellationParser.parse(source).toOption.get
+    val source = TestFixtures.smallProgram
+    val parsed = ConstellationParser.parse(source).toOption.get
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "typecheck_small",
@@ -437,7 +437,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     // Identify bottlenecks by size
     List("small", "medium", "large").foreach { size =>
       val sizeResults = allResults.filter(_.inputSize == size).toList
-      if (sizeResults.nonEmpty) {
+      if sizeResults.nonEmpty then {
         BenchmarkReporter.printQuickStats(s"$size programs", sizeResults)
       }
     }

@@ -2,20 +2,19 @@ package io.constellation.cache
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation._
+import io.constellation.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterEach
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
 
   var cache: InMemoryCacheBackend = _
 
-  override def beforeEach(): Unit = {
+  override def beforeEach(): Unit =
     cache = InMemoryCacheBackend()
-  }
 
   // -------------------------------------------------------------------------
   // Basic Operations
@@ -157,7 +156,7 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
   }
 
   it should "handle concurrent writes without race conditions" in {
-    import cats.syntax.all._
+    import cats.syntax.all.*
 
     val limitedCache = InMemoryCacheBackend.withMaxSize(10)
 
@@ -221,12 +220,14 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     cache.set("key", "cached", 1.minute).unsafeRunSync()
 
     var computeCalled = false
-    val result = cache.getOrCompute("key", 1.minute) {
-      IO {
-        computeCalled = true
-        "computed"
+    val result = cache
+      .getOrCompute("key", 1.minute) {
+        IO {
+          computeCalled = true
+          "computed"
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
 
     result shouldBe "cached"
     computeCalled shouldBe false
@@ -234,22 +235,26 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
 
   it should "compute and cache value if missing" in {
     var computeCount = 0
-    val result = cache.getOrCompute("key", 1.minute) {
-      IO {
-        computeCount += 1
-        s"computed-$computeCount"
+    val result = cache
+      .getOrCompute("key", 1.minute) {
+        IO {
+          computeCount += 1
+          s"computed-$computeCount"
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
 
     result shouldBe "computed-1"
 
     // Second call should use cached value
-    val result2 = cache.getOrCompute("key", 1.minute) {
-      IO {
-        computeCount += 1
-        s"computed-$computeCount"
+    val result2 = cache
+      .getOrCompute("key", 1.minute) {
+        IO {
+          computeCount += 1
+          s"computed-$computeCount"
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
 
     result2 shouldBe "computed-1"
     computeCount shouldBe 1
@@ -276,7 +281,7 @@ class CacheKeyGeneratorTest extends AnyFlatSpec with Matchers {
 
   "CacheKeyGenerator" should "generate deterministic keys" in {
     val inputs = Map(
-      "text" -> CValue.CString("hello"),
+      "text"  -> CValue.CString("hello"),
       "count" -> CValue.CInt(42)
     )
 
@@ -353,48 +358,52 @@ class CacheKeyGeneratorTest extends AnyFlatSpec with Matchers {
 
   it should "handle CFloat values" in {
     val inputs = Map("num" -> CValue.CFloat(3.14))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
   it should "handle CBoolean values" in {
     val inputs = Map("flag" -> CValue.CBoolean(true))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
   it should "handle CMap values" in {
-    val inputs = Map("data" -> CValue.CMap(
-      Vector(
-        (CValue.CString("a"), CValue.CInt(1)),
-        (CValue.CString("b"), CValue.CInt(2))
-      ),
-      CType.CString,
-      CType.CInt
-    ))
+    val inputs = Map(
+      "data" -> CValue.CMap(
+        Vector(
+          (CValue.CString("a"), CValue.CInt(1)),
+          (CValue.CString("b"), CValue.CInt(2))
+        ),
+        CType.CString,
+        CType.CInt
+      )
+    )
     val key = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
   it should "handle CUnion values" in {
-    val inputs = Map("either" -> CValue.CUnion(
-      CValue.CString("value"),
-      Map("left" -> CType.CString, "right" -> CType.CInt),
-      "left"
-    ))
+    val inputs = Map(
+      "either" -> CValue.CUnion(
+        CValue.CString("value"),
+        Map("left" -> CType.CString, "right" -> CType.CInt),
+        "left"
+      )
+    )
     val key = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
   it should "handle CSome values" in {
     val inputs = Map("opt" -> CValue.CSome(CValue.CInt(42), CType.CInt))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
   it should "handle CNone values" in {
     val inputs = Map("opt" -> CValue.CNone(CType.CInt))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
     key.nonEmpty shouldBe true
   }
 
@@ -404,14 +413,16 @@ class CacheKeyGeneratorTest extends AnyFlatSpec with Matchers {
         (CValue.CString("b"), CValue.CInt(2)),
         (CValue.CString("a"), CValue.CInt(1))
       ),
-      CType.CString, CType.CInt
+      CType.CString,
+      CType.CInt
     )
     val map2 = CValue.CMap(
       Vector(
         (CValue.CString("a"), CValue.CInt(1)),
         (CValue.CString("b"), CValue.CInt(2))
       ),
-      CType.CString, CType.CInt
+      CType.CString,
+      CType.CInt
     )
 
     val key1 = CacheKeyGenerator.generateKey("Mod", Map("data" -> map1))
@@ -439,7 +450,7 @@ class CacheKeyGeneratorTest extends AnyFlatSpec with Matchers {
   it should "generate short key as prefix of full key" in {
     val inputs = Map("text" -> CValue.CString("hello"))
 
-    val fullKey = CacheKeyGenerator.generateKey("MyModule", inputs)
+    val fullKey  = CacheKeyGenerator.generateKey("MyModule", inputs)
     val shortKey = CacheKeyGenerator.generateShortKey("MyModule", inputs)
 
     fullKey should startWith(shortKey)
@@ -466,7 +477,7 @@ class CacheRegistryTest extends AnyFlatSpec with Matchers {
 
   "CacheRegistry" should "register and retrieve backends" in {
     val registry = CacheRegistry.create.unsafeRunSync()
-    val backend = InMemoryCacheBackend()
+    val backend  = InMemoryCacheBackend()
 
     registry.register("test", backend).unsafeRunSync()
 
@@ -512,10 +523,12 @@ class CacheRegistryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "clear all backends" in {
-    val registry = CacheRegistry.withBackends(
-      "cache1" -> InMemoryCacheBackend(),
-      "cache2" -> InMemoryCacheBackend()
-    ).unsafeRunSync()
+    val registry = CacheRegistry
+      .withBackends(
+        "cache1" -> InMemoryCacheBackend(),
+        "cache2" -> InMemoryCacheBackend()
+      )
+      .unsafeRunSync()
 
     // Add some data
     registry.get("cache1").unsafeRunSync().get.set("key", "value", 1.minute).unsafeRunSync()
@@ -530,10 +543,12 @@ class CacheRegistryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "get stats from all backends" in {
-    val registry = CacheRegistry.withBackends(
-      "cache1" -> InMemoryCacheBackend(),
-      "cache2" -> InMemoryCacheBackend()
-    ).unsafeRunSync()
+    val registry = CacheRegistry
+      .withBackends(
+        "cache1" -> InMemoryCacheBackend(),
+        "cache2" -> InMemoryCacheBackend()
+      )
+      .unsafeRunSync()
 
     // Generate some activity
     val cache1 = registry.get("cache1").unsafeRunSync().get
@@ -597,10 +612,12 @@ class CacheRegistryTest extends AnyFlatSpec with Matchers {
   }
 
   "CacheRegistry.withBackends" should "register multiple backends" in {
-    val registry = CacheRegistry.withBackends(
-      "backend1" -> InMemoryCacheBackend(),
-      "backend2" -> InMemoryCacheBackend()
-    ).unsafeRunSync()
+    val registry = CacheRegistry
+      .withBackends(
+        "backend1" -> InMemoryCacheBackend(),
+        "backend2" -> InMemoryCacheBackend()
+      )
+      .unsafeRunSync()
 
     registry.list.unsafeRunSync() shouldBe List("backend1", "backend2")
   }

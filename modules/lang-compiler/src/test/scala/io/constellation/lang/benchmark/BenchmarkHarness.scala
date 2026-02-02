@@ -8,7 +8,7 @@ object BenchmarkHarness {
   /** Run warmup iterations to trigger JIT compilation */
   def warmup[A](iterations: Int)(op: => A): Unit = {
     var i = 0
-    while (i < iterations) {
+    while i < iterations do {
       op
       i += 1
     }
@@ -16,10 +16,14 @@ object BenchmarkHarness {
 
   /** Measure operation performance
     *
-    * @param name Benchmark name for reporting
-    * @param iterations Number of measurement iterations
-    * @param op Operation to measure
-    * @return BenchmarkResult with timing statistics
+    * @param name
+    *   Benchmark name for reporting
+    * @param iterations
+    *   Number of measurement iterations
+    * @param op
+    *   Operation to measure
+    * @return
+    *   BenchmarkResult with timing statistics
     */
   def measure[A](name: String, iterations: Int, phase: String = "", inputSize: String = "")(
       op: => A
@@ -28,7 +32,7 @@ object BenchmarkHarness {
 
     // Collect measurements
     var i = 0
-    while (i < iterations) {
+    while i < iterations do {
       val start = System.nanoTime()
       op
       val end = System.nanoTime()
@@ -47,7 +51,7 @@ object BenchmarkHarness {
     val stdDev   = math.sqrt(variance)
 
     // Throughput (operations per second)
-    val throughput = if (avg > 0) 1000.0 / avg else 0.0
+    val throughput = if avg > 0 then 1000.0 / avg else 0.0
 
     BenchmarkResult(
       name = name,
@@ -65,12 +69,18 @@ object BenchmarkHarness {
 
   /** Measure with automatic warmup
     *
-    * @param name Benchmark name
-    * @param warmupIterations Warmup iterations before measuring
-    * @param measureIterations Measurement iterations
-    * @param phase Phase name (e.g., "parse", "typecheck")
-    * @param inputSize Size category (e.g., "small", "medium", "large")
-    * @param op Operation to measure
+    * @param name
+    *   Benchmark name
+    * @param warmupIterations
+    *   Warmup iterations before measuring
+    * @param measureIterations
+    *   Measurement iterations
+    * @param phase
+    *   Phase name (e.g., "parse", "typecheck")
+    * @param inputSize
+    *   Size category (e.g., "small", "medium", "large")
+    * @param op
+    *   Operation to measure
     */
   def measureWithWarmup[A](
       name: String,
@@ -85,17 +95,21 @@ object BenchmarkHarness {
 
   /** Run a benchmark suite with multiple phases
     *
-    * @param suiteName Name of the benchmark suite
-    * @param warmup Warmup iterations
-    * @param iterations Measurement iterations
-    * @param phases List of (phaseName, operation) pairs
+    * @param suiteName
+    *   Name of the benchmark suite
+    * @param warmup
+    *   Warmup iterations
+    * @param iterations
+    *   Measurement iterations
+    * @param phases
+    *   List of (phaseName, operation) pairs
     */
   def runSuite(
       suiteName: String,
       warmup: Int = 5,
       iterations: Int = 20,
       inputSize: String = ""
-  )(phases: List[(String, () => Any)]): List[BenchmarkResult] = {
+  )(phases: List[(String, () => Any)]): List[BenchmarkResult] =
     phases.map { case (phaseName, op) =>
       measureWithWarmup(
         name = s"${suiteName}_$phaseName",
@@ -105,7 +119,6 @@ object BenchmarkHarness {
         inputSize = inputSize
       )(op())
     }
-  }
 }
 
 /** Result of a benchmark measurement */
@@ -124,7 +137,7 @@ case class BenchmarkResult(
 
   /** Format result for console output */
   def toConsoleString: String = {
-    val nameWidth = 40
+    val nameWidth  = 40
     val paddedName = name.padTo(nameWidth, ' ').take(nameWidth)
     f"$paddedName : $avgMs%8.2fms (±$stdDevMs%.2f) [$minMs%.2f - $maxMs%.2f] $throughputOpsPerSec%.1f ops/s"
   }

@@ -11,10 +11,9 @@ import io.constellation.http.ApiModels.ErrorResponse
 
 /** Middleware that enforces static API-key authentication.
   *
-  * Extracts the `Authorization: Bearer <token>` header, verifies it against
-  * hashed keys in `AuthConfig.hashedKeys`, and checks that the associated
-  * `ApiRole` permits the HTTP method. Public paths (prefix match) bypass
-  * authentication entirely.
+  * Extracts the `Authorization: Bearer <token>` header, verifies it against hashed keys in
+  * `AuthConfig.hashedKeys`, and checks that the associated `ApiRole` permits the HTTP method.
+  * Public paths (prefix match) bypass authentication entirely.
   */
 object AuthMiddleware {
 
@@ -27,7 +26,7 @@ object AuthMiddleware {
     * @return
     *   Authenticated routes
     */
-  def apply(config: AuthConfig)(routes: HttpRoutes[IO]): HttpRoutes[IO] = {
+  def apply(config: AuthConfig)(routes: HttpRoutes[IO]): HttpRoutes[IO] =
     if !config.isEnabled then routes
     else {
       Kleisli { (req: Request[IO]) =>
@@ -40,26 +39,37 @@ object AuthMiddleware {
         else {
           extractBearerToken(req) match {
             case None =>
-              OptionT.liftF(errorResponse(Status.Unauthorized,
-                "Unauthorized", "Missing or invalid Authorization header. Expected: Bearer <api-key>"))
+              OptionT.liftF(
+                errorResponse(
+                  Status.Unauthorized,
+                  "Unauthorized",
+                  "Missing or invalid Authorization header. Expected: Bearer <api-key>"
+                )
+              )
 
             case Some(token) =>
               config.verifyKey(token) match {
                 case None =>
-                  OptionT.liftF(errorResponse(Status.Unauthorized,
-                    "Unauthorized", "Invalid API key"))
+                  OptionT.liftF(
+                    errorResponse(Status.Unauthorized, "Unauthorized", "Invalid API key")
+                  )
 
                 case Some(role) =>
                   val method = req.method.name
                   if role.permits(method) then routes(req)
-                  else OptionT.liftF(errorResponse(Status.Forbidden,
-                    "Forbidden", s"Role '${role}' does not permit ${method} requests"))
+                  else
+                    OptionT.liftF(
+                      errorResponse(
+                        Status.Forbidden,
+                        "Forbidden",
+                        s"Role '${role}' does not permit ${method} requests"
+                      )
+                    )
               }
           }
         }
       }
     }
-  }
 
   private def errorResponse(status: Status, error: String, message: String): IO[Response[IO]] =
     IO.pure(Response[IO](status).withEntity(ErrorResponse(error = error, message = message)))

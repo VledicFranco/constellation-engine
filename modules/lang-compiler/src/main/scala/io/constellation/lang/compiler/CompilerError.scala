@@ -4,8 +4,8 @@ import java.util.UUID
 
 /** Errors that can occur during DAG compilation.
   *
-  * These are compile-time errors (not runtime), representing invalid IR structures
-  * or unsupported operations discovered during compilation.
+  * These are compile-time errors (not runtime), representing invalid IR structures or unsupported
+  * operations discovered during compilation.
   */
 sealed trait CompilerError {
   def message: String

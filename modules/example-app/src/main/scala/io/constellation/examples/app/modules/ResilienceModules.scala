@@ -3,7 +3,7 @@ package io.constellation.examples.app.modules
 import io.constellation.*
 import cats.effect.IO
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Resilience demonstration modules for showcasing module call options.
@@ -100,7 +100,7 @@ object ResilienceModules {
     .implementation[FlakyServiceInput, FlakyServiceOutput] { input =>
       IO {
         val attempt = flakyCallCount.incrementAndGet()
-        if (attempt % 3 != 0) {
+        if attempt % 3 != 0 then {
           throw new RuntimeException(s"Service temporarily unavailable (attempt $attempt)")
         }
         FlakyServiceOutput(s"Success for: ${input.request}")
@@ -129,7 +129,7 @@ object ResilienceModules {
     .implementation[TimeoutProneInput, TimeoutProneOutput] { input =>
       val count = timeoutCallCount.incrementAndGet()
       // First call is slow, subsequent calls are fast
-      val delay = if (count == 1) 3.seconds else 100.millis
+      val delay = if count == 1 then 3.seconds else 100.millis
       IO.sleep(delay) >> IO {
         TimeoutProneOutput(s"Response for: ${input.request}")
       }
@@ -199,7 +199,7 @@ object ResilienceModules {
       IO.sleep(10.millis) >> IO {
         // Simulate: data with "complex" needs deep analysis
         val needsDeep = input.data.toLowerCase.contains("complex")
-        val result = if (needsDeep) "needs-deep-analysis" else "valid"
+        val result    = if needsDeep then "needs-deep-analysis" else "valid"
         QuickCheckOutput(result)
       }
     }

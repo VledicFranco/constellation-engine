@@ -2,13 +2,13 @@ package io.constellation.execution
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 import io.constellation.{CType, CValue}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // ============================================================================
 // ErrorStrategy Tests
@@ -45,91 +45,108 @@ class ErrorStrategyExecutorTest extends AnyFlatSpec with Matchers {
   val failingOperation: IO[CValue] = IO.raiseError(new RuntimeException("test error"))
 
   "ErrorStrategyExecutor with Propagate" should "return success value" in {
-    val result = ErrorStrategyExecutor.execute(
-      successOperation,
-      ErrorStrategy.Propagate,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        successOperation,
+        ErrorStrategy.Propagate,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe CValue.CInt(42)
   }
 
   it should "propagate errors" in {
-    val result = ErrorStrategyExecutor.execute(
-      failingOperation,
-      ErrorStrategy.Propagate,
-      CType.CInt,
-      "TestModule"
-    ).attempt.unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        failingOperation,
+        ErrorStrategy.Propagate,
+        CType.CInt,
+        "TestModule"
+      )
+      .attempt
+      .unsafeRunSync()
 
     result.isLeft shouldBe true
     result.left.toOption.get.getMessage shouldBe "test error"
   }
 
   "ErrorStrategyExecutor with Skip" should "return success value" in {
-    val result = ErrorStrategyExecutor.execute(
-      successOperation,
-      ErrorStrategy.Skip,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        successOperation,
+        ErrorStrategy.Skip,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe CValue.CInt(42)
   }
 
   it should "return zero value on error" in {
-    val result = ErrorStrategyExecutor.execute(
-      failingOperation,
-      ErrorStrategy.Skip,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        failingOperation,
+        ErrorStrategy.Skip,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe CValue.CInt(0)
   }
 
   "ErrorStrategyExecutor with Log" should "return success value" in {
-    val result = ErrorStrategyExecutor.execute(
-      successOperation,
-      ErrorStrategy.Log,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        successOperation,
+        ErrorStrategy.Log,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe CValue.CInt(42)
   }
 
   it should "log and return zero value on error" in {
     // Note: This test doesn't verify logging, just behavior
-    val result = ErrorStrategyExecutor.execute(
-      failingOperation,
-      ErrorStrategy.Log,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        failingOperation,
+        ErrorStrategy.Log,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe CValue.CInt(0)
   }
 
   "ErrorStrategyExecutor with Wrap" should "wrap success in Right" in {
-    val result = ErrorStrategyExecutor.execute(
-      successOperation,
-      ErrorStrategy.Wrap,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        successOperation,
+        ErrorStrategy.Wrap,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe Right(CValue.CInt(42))
   }
 
   it should "wrap error in Left(ModuleError)" in {
-    val result = ErrorStrategyExecutor.execute(
-      failingOperation,
-      ErrorStrategy.Wrap,
-      CType.CInt,
-      "TestModule"
-    ).unsafeRunSync()
+    val result = ErrorStrategyExecutor
+      .execute(
+        failingOperation,
+        ErrorStrategy.Wrap,
+        CType.CInt,
+        "TestModule"
+      )
+      .unsafeRunSync()
 
     result shouldBe a[Left[_, _]]
     val Left(error) = result: @unchecked
@@ -162,18 +179,19 @@ class ErrorStrategyExecutorTest extends AnyFlatSpec with Matchers {
 
   it should "return empty map for CMap" in {
     val mapType = CType.CMap(CType.CString, CType.CInt)
-    ErrorStrategyExecutor.zeroValue(mapType) shouldBe CValue.CMap(Vector.empty, CType.CString, CType.CInt)
+    ErrorStrategyExecutor
+      .zeroValue(mapType) shouldBe CValue.CMap(Vector.empty, CType.CString, CType.CInt)
   }
 
   it should "return None for COptional" in {
     val optType = CType.COptional(CType.CInt)
-    val result = ErrorStrategyExecutor.zeroValue(optType)
+    val result  = ErrorStrategyExecutor.zeroValue(optType)
     result shouldBe a[CValue.CNone]
   }
 
   it should "return product with zero fields for CProduct" in {
     val productType = CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CString))
-    val result = ErrorStrategyExecutor.zeroValue(productType)
+    val result      = ErrorStrategyExecutor.zeroValue(productType)
     result shouldBe a[CValue.CProduct]
     val product = result.asInstanceOf[CValue.CProduct]
     product.value("x") shouldBe CValue.CInt(0)
@@ -216,7 +234,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lv <- LazyValue(IO { counter.incrementAndGet() })
+      lv <- LazyValue(IO(counter.incrementAndGet()))
       r1 <- lv.force
       r2 <- lv.force
       r3 <- lv.force
@@ -229,21 +247,21 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lv <- LazyValue(IO.sleep(50.millis) >> IO { counter.incrementAndGet() })
+      lv <- LazyValue(IO.sleep(50.millis) >> IO(counter.incrementAndGet()))
       // Force from multiple fibers concurrently
       results <- List.fill(5)(lv.force).parSequence
     } yield (results, counter.get())).unsafeRunSync()
 
     result._1.distinct.length shouldBe 1 // All got same value
-    result._2 shouldBe 1 // Computed only once
+    result._2 shouldBe 1                 // Computed only once
   }
 
   it should "report isComputed correctly" in {
     val result = (for {
-      lv <- LazyValue(IO.pure(42))
+      lv     <- LazyValue(IO.pure(42))
       before <- lv.isComputed
-      _ <- lv.force
-      after <- lv.isComputed
+      _      <- lv.force
+      after  <- lv.isComputed
     } yield (before, after)).unsafeRunSync()
 
     result shouldBe (false, true)
@@ -253,9 +271,9 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lv <- LazyValue(IO { counter.incrementAndGet() })
+      lv    <- LazyValue(IO(counter.incrementAndGet()))
       peek1 <- lv.peek
-      _ <- lv.force
+      _     <- lv.force
       peek2 <- lv.peek
     } yield (peek1, peek2, counter.get())).unsafeRunSync()
 
@@ -266,11 +284,11 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lv <- LazyValue(IO { counter.incrementAndGet() })
-      r1 <- lv.force
-      _ <- lv.reset
+      lv       <- LazyValue(IO(counter.incrementAndGet()))
+      r1       <- lv.force
+      _        <- lv.reset
       computed <- lv.isComputed
-      r2 <- lv.force
+      r2       <- lv.force
     } yield (r1, computed, r2, counter.get())).unsafeRunSync()
 
     result shouldBe (1, false, 2, 2) // Computed twice after reset
@@ -282,7 +300,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val result = (for {
       lv <- LazyValue(IO {
         val count = counter.incrementAndGet()
-        if (count == 1) throw new RuntimeException("first try fails")
+        if count == 1 then throw new RuntimeException("first try fails")
         count
       })
       r1 <- lv.force.attempt
@@ -294,9 +312,9 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
 
   "LazyValue.pure" should "create already-computed value" in {
     val result = (for {
-      lv <- LazyValue.pure(42)
+      lv       <- LazyValue.pure(42)
       computed <- lv.isComputed
-      value <- lv.force
+      value    <- lv.force
     } yield (computed, value)).unsafeRunSync()
 
     result shouldBe (true, 42)
@@ -306,11 +324,13 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lvs <- LazyValue.fromList(List(
-        IO { counter.incrementAndGet() },
-        IO { counter.incrementAndGet() },
-        IO { counter.incrementAndGet() }
-      ))
+      lvs <- LazyValue.fromList(
+        List(
+          IO(counter.incrementAndGet()),
+          IO(counter.incrementAndGet()),
+          IO(counter.incrementAndGet())
+        )
+      )
       before = counter.get()
       results <- LazyValue.sequence(lvs)
       after = counter.get()
@@ -325,7 +345,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
 
     val result = (for {
-      lv <- LazyValue(IO { counter.incrementAndGet() })
+      lv     <- LazyValue(IO(counter.incrementAndGet()))
       mapped <- lv.map(_ * 10)
       before = counter.get()
       value <- mapped.force
@@ -400,8 +420,8 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
 
     val result = (for {
       scheduler <- PriorityScheduler.create
-      r1 <- scheduler.submit(IO { counter.incrementAndGet() }, PriorityLevel.Normal)
-      r2 <- scheduler.submit(IO { counter.incrementAndGet() }, PriorityLevel.High)
+      r1        <- scheduler.submit(IO(counter.incrementAndGet()), PriorityLevel.Normal)
+      r2        <- scheduler.submit(IO(counter.incrementAndGet()), PriorityLevel.High)
     } yield (r1, r2, counter.get())).unsafeRunSync()
 
     result shouldBe (1, 2, 2)
@@ -410,8 +430,8 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "use default Normal priority" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.pure(42))
-      stats <- scheduler.stats
+      _         <- scheduler.submit(IO.pure(42))
+      stats     <- scheduler.stats
     } yield stats.forPriority(PriorityLevel.Normal)).unsafeRunSync()
 
     result shouldBe defined
@@ -421,11 +441,11 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "track statistics by priority" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Critical)
-      _ <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Critical)
-      _ <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Normal)
-      _ <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Low)
-      stats <- scheduler.stats
+      _         <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Critical)
+      _         <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Critical)
+      _         <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Normal)
+      _         <- scheduler.submit(IO.sleep(10.millis), PriorityLevel.Low)
+      stats     <- scheduler.stats
     } yield stats).unsafeRunSync()
 
     result.totalSubmitted shouldBe 4
@@ -438,8 +458,8 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "track duration by priority" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.sleep(50.millis), PriorityLevel.High)
-      stats <- scheduler.stats
+      _         <- scheduler.submit(IO.sleep(50.millis), PriorityLevel.High)
+      stats     <- scheduler.stats
     } yield stats.forPriority(PriorityLevel.High).get).unsafeRunSync()
 
     result.completed shouldBe 1
@@ -449,7 +469,9 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "handle errors without affecting stats" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.raiseError[Int](new RuntimeException("fail")), PriorityLevel.Normal).attempt
+      _ <- scheduler
+        .submit(IO.raiseError[Int](new RuntimeException("fail")), PriorityLevel.Normal)
+        .attempt
       stats <- scheduler.stats
     } yield stats).unsafeRunSync()
 
@@ -460,11 +482,11 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "reset statistics" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.pure(1), PriorityLevel.High)
-      _ <- scheduler.submit(IO.pure(2), PriorityLevel.Low)
-      before <- scheduler.stats
-      _ <- scheduler.resetStats
-      after <- scheduler.stats
+      _         <- scheduler.submit(IO.pure(1), PriorityLevel.High)
+      _         <- scheduler.submit(IO.pure(2), PriorityLevel.Low)
+      before    <- scheduler.stats
+      _         <- scheduler.resetStats
+      after     <- scheduler.stats
     } yield (before.totalSubmitted, after.totalSubmitted)).unsafeRunSync()
 
     result shouldBe (2, 0)
@@ -473,9 +495,9 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "calculate completion rate" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.pure(1))
-      _ <- scheduler.submit(IO.pure(2))
-      stats <- scheduler.stats
+      _         <- scheduler.submit(IO.pure(1))
+      _         <- scheduler.submit(IO.pure(2))
+      stats     <- scheduler.stats
     } yield stats.completionRate).unsafeRunSync()
 
     result shouldBe 1.0 // All completed
@@ -488,8 +510,8 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
   it should "return None for unregistered priority" in {
     val result = (for {
       scheduler <- PriorityScheduler.create
-      _ <- scheduler.submit(IO.pure(1), PriorityLevel.High)
-      stats <- scheduler.stats
+      _         <- scheduler.submit(IO.pure(1), PriorityLevel.High)
+      stats     <- scheduler.stats
     } yield stats.forPriority(PriorityLevel.Critical)).unsafeRunSync()
 
     result shouldBe None
@@ -505,8 +527,7 @@ class PriorityStatsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "record completions with duration" in {
-    val stats = PriorityStats.empty
-      .recordSubmission
+    val stats = PriorityStats.empty.recordSubmission
       .recordCompletion(100)
 
     stats.submitted shouldBe 1
@@ -516,19 +537,18 @@ class PriorityStatsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "calculate average duration" in {
-    val stats = PriorityStats.empty
-      .recordSubmission.recordCompletion(100)
-      .recordSubmission.recordCompletion(200)
-      .recordSubmission.recordCompletion(300)
+    val stats = PriorityStats.empty.recordSubmission
+      .recordCompletion(100)
+      .recordSubmission
+      .recordCompletion(200)
+      .recordSubmission
+      .recordCompletion(300)
 
     stats.avgDurationMs shouldBe 200
   }
 
   it should "track pending count" in {
-    val stats = PriorityStats.empty
-      .recordSubmission
-      .recordSubmission
-      .recordSubmission
+    val stats = PriorityStats.empty.recordSubmission.recordSubmission.recordSubmission
       .recordCompletion(10)
 
     stats.pendingCount shouldBe 2

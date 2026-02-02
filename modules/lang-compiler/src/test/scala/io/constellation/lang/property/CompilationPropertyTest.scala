@@ -11,14 +11,14 @@ import io.constellation.lang.benchmark.TestFixtures
 
 /** Property-based tests for compilation determinism (RFC-013 Phase 5.2)
   *
-  * Verifies that parsing and compilation are deterministic and produce
-  * consistent results across repeated invocations.
+  * Verifies that parsing and compilation are deterministic and produce consistent results across
+  * repeated invocations.
   *
   * Run with: sbt "langCompiler/testOnly *CompilationPropertyTest"
   */
 class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
 
-  private val parser = ConstellationParser
+  private val parser   = ConstellationParser
   private val compiler = LangCompiler.empty
 
   // -------------------------------------------------------------------------
@@ -53,7 +53,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
     val chainLengths = List(10, 50, 100, 200)
 
     chainLengths.foreach { length =>
-      val source = TestFixtures.generateStressProgram(length)
+      val source  = TestFixtures.generateStressProgram(length)
       val result1 = parser.parse(source)
       val result2 = parser.parse(source)
 
@@ -81,7 +81,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
       val firstIsRight = results.head.isRight
       results.foreach(_.isRight shouldBe firstIsRight)
 
-      if (firstIsRight) {
+      if firstIsRight then {
         val dagSpecs = results.map(_.toOption.get.program.image.dagSpec)
         // Module counts, data counts, edge counts should match
         dagSpecs.sliding(2).foreach { pair =>
@@ -100,12 +100,12 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
 
     lengths.foreach { length =>
       val source = TestFixtures.generateStressProgram(length)
-      val r1 = compiler.compile(source, "stress")
-      val r2 = compiler.compile(source, "stress")
+      val r1     = compiler.compile(source, "stress")
+      val r2     = compiler.compile(source, "stress")
 
       r1.isRight shouldBe r2.isRight
 
-      if (r1.isRight) {
+      if r1.isRight then {
         val d1 = r1.toOption.get.program.image.dagSpec
         val d2 = r2.toOption.get.program.image.dagSpec
         d1.modules.size shouldBe d2.modules.size
@@ -122,8 +122,8 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
   "Parser errors" should "be consistent for the same invalid input" in {
     val invalidSources = List(
       "this is not valid code !!!",
-      "in x: String\n\n",  // No outputs
-      "out missing",        // Undeclared variable reference (parser may accept, compiler rejects)
+      "in x: String\n\n", // No outputs
+      "out missing",      // Undeclared variable reference (parser may accept, compiler rejects)
       "in x: String\n = broken syntax\nout x",
       "in x: \nout x"
     )
@@ -135,7 +135,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
       val firstIsRight = results.head.isRight
       results.foreach(_.isRight shouldBe firstIsRight)
 
-      if (!firstIsRight) {
+      if !firstIsRight then {
         // Error messages should be consistent
         val errors = results.map(_.left.toOption.get.message)
         errors.distinct.size shouldBe 1
@@ -161,7 +161,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
       val firstIsRight = results.head.isRight
       results.foreach(_.isRight shouldBe firstIsRight)
 
-      if (!firstIsRight) {
+      if !firstIsRight then {
         // Error counts should be consistent
         val errorCounts = results.map(_.left.toOption.get.size)
         errorCounts.distinct.size shouldBe 1

@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
 import io.constellation.{CType, CValue}
-import io.constellation.property.ConstellationGenerators._
+import io.constellation.property.ConstellationGenerators.*
 
 /** Property-based tests for the Constellation type system (RFC-013 Phase 5.2)
   *
@@ -31,7 +31,7 @@ class TypeSystemPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckPr
 
   "CType generator" should "produce all primitive types" in {
     val primitiveTypes = Set[CType](CType.CString, CType.CInt, CType.CFloat, CType.CBoolean)
-    val generated = (1 to 200).flatMap(_ => genPrimitiveCType.sample).toSet
+    val generated      = (1 to 200).flatMap(_ => genPrimitiveCType.sample).toSet
 
     primitiveTypes.foreach { pt =>
       generated should contain(pt)

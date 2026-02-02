@@ -2,21 +2,20 @@ package io.constellation.lsp
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lsp.SemanticTokenTypes._
+import io.constellation.lsp.SemanticTokenTypes.*
 
 class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
 
   private val provider = SemanticTokenProvider()
 
   // Helper to decode tokens for debugging
-  private def decodeTokens(tokens: List[Int]): List[(Int, Int, Int, Int, Int)] = {
+  private def decodeTokens(tokens: List[Int]): List[(Int, Int, Int, Int, Int)] =
     tokens.grouped(5).toList.map {
       case List(deltaLine, deltaStart, length, tokenType, modifiers) =>
         (deltaLine, deltaStart, length, tokenType, modifiers)
       case other =>
         fail(s"Invalid token group: $other")
     }
-  }
 
   // ========== Basic Token Extraction ==========
 
@@ -27,7 +26,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
 
   it should "return empty list for parse errors (graceful degradation)" in {
     val invalidSource = "this is not valid { syntax }"
-    val tokens = provider.computeTokens(invalidSource)
+    val tokens        = provider.computeTokens(invalidSource)
     tokens shouldBe empty
   }
 
@@ -54,7 +53,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out myInput
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
     val paramTokens = tokenGroups.filter(_._4 == TokenType.Parameter.index)
 
@@ -72,7 +71,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have variable tokens for 'result' (assignment) and 'result' (output)
@@ -87,7 +86,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have function token for Uppercase
@@ -106,7 +105,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out x
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have type token for MyType
@@ -126,7 +125,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out x
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have namespace token
@@ -141,7 +140,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out x
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have two namespace tokens: one for path, one for alias
@@ -158,7 +157,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have string token
@@ -173,7 +172,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have number token
@@ -188,7 +187,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Verify tokens are extracted
@@ -207,7 +206,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have property token for 'name'
@@ -224,7 +223,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have parameter tokens
@@ -265,7 +264,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out a
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have tokens on multiple lines
@@ -284,7 +283,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have multiple function tokens
@@ -301,7 +300,7 @@ class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
       |out result
     """.stripMargin.trim
 
-    val tokens = provider.computeTokens(source)
+    val tokens      = provider.computeTokens(source)
     val tokenGroups = decodeTokens(tokens)
 
     // Should have tokens for the conditional expression

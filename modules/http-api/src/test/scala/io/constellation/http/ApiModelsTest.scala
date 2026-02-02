@@ -1,6 +1,6 @@
 package io.constellation.http
 
-import io.circe.{Json, parser}
+import io.circe.{parser, Json}
 import io.circe.syntax.*
 import io.constellation.ComponentMetadata
 import io.constellation.http.ApiModels.*
@@ -26,7 +26,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON with dagName (legacy)" in {
     val jsonStr = """{"source":"in x: Int","dagName":"my-dag"}"""
-    val parsed = parser.decode[CompileRequest](jsonStr)
+    val parsed  = parser.decode[CompileRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
@@ -40,7 +40,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON with name (new API)" in {
     val jsonStr = """{"source":"in x: Int","name":"my-program"}"""
-    val parsed = parser.decode[CompileRequest](jsonStr)
+    val parsed  = parser.decode[CompileRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
@@ -54,7 +54,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "prefer name over dagName when both present" in {
     val jsonStr = """{"source":"in x: Int","name":"new-name","dagName":"old-name"}"""
-    val parsed = parser.decode[CompileRequest](jsonStr)
+    val parsed  = parser.decode[CompileRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
@@ -66,8 +66,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = CompileRequest("in y: String\nout y", dagName = Some("roundtrip-dag"))
-    val json = original.asJson
-    val parsed = json.as[CompileRequest]
+    val json     = original.asJson
+    val parsed   = json.as[CompileRequest]
 
     parsed shouldBe Right(original)
   }
@@ -120,8 +120,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = CompileResponse(true, dagName = Some("dag"), errors = List("warning"))
-    val json = original.asJson
-    val parsed = json.as[CompileResponse]
+    val json     = original.asJson
+    val parsed   = json.as[CompileResponse]
 
     parsed shouldBe Right(original)
   }
@@ -132,7 +132,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     val request = ExecuteRequest(
       ref = Some("my-program"),
       inputs = Map(
-        "x" -> Json.fromInt(42),
+        "x"    -> Json.fromInt(42),
         "name" -> Json.fromString("Alice")
       )
     )
@@ -146,7 +146,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize with dagName (legacy)" in {
     val jsonStr = """{"dagName":"complex","inputs":{"list":[1,2,3],"nested":{"a":"b"}}}"""
-    val parsed = parser.decode[ExecuteRequest](jsonStr)
+    val parsed  = parser.decode[ExecuteRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
@@ -160,7 +160,7 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize with ref (new API)" in {
     val jsonStr = """{"ref":"sha256:abc123","inputs":{"x":1}}"""
-    val parsed = parser.decode[ExecuteRequest](jsonStr)
+    val parsed  = parser.decode[ExecuteRequest](jsonStr)
 
     parsed match {
       case Right(request) =>
@@ -173,8 +173,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty inputs" in {
     val request = ExecuteRequest(dagName = Some("empty-inputs"), inputs = Map.empty)
-    val json = request.asJson
-    val parsed = json.as[ExecuteRequest]
+    val json    = request.asJson
+    val parsed  = json.as[ExecuteRequest]
 
     parsed shouldBe Right(request)
   }
@@ -209,8 +209,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ExecuteResponse(true, Map("x" -> Json.fromBoolean(true)), None)
-    val json = original.asJson
-    val parsed = json.as[ExecuteResponse]
+    val json     = original.asJson
+    val parsed   = json.as[ExecuteResponse]
 
     parsed shouldBe Right(original)
   }
@@ -231,8 +231,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = RunRequest("in y: String", Map("y" -> Json.fromString("test")))
-    val json = original.asJson
-    val parsed = json.as[RunRequest]
+    val json     = original.asJson
+    val parsed   = json.as[RunRequest]
 
     parsed shouldBe Right(original)
   }
@@ -295,8 +295,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = RunResponse(true, Map("a" -> Json.fromInt(1)), error = None)
-    val json = original.asJson
-    val parsed = json.as[RunResponse]
+    val json     = original.asJson
+    val parsed   = json.as[RunResponse]
 
     parsed shouldBe Right(original)
   }
@@ -322,8 +322,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ProgramSummary("h1", "h2", List("a"), "2026-01-01T00:00:00Z", 1, List("out"))
-    val json = original.asJson
-    val parsed = json.as[ProgramSummary]
+    val json     = original.asJson
+    val parsed   = json.as[ProgramSummary]
 
     parsed shouldBe Right(original)
   }
@@ -332,8 +332,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   "AliasRequest" should "round-trip through JSON" in {
     val original = AliasRequest("abc123")
-    val json = original.asJson
-    val parsed = json.as[AliasRequest]
+    val json     = original.asJson
+    val parsed   = json.as[AliasRequest]
 
     parsed shouldBe Right(original)
   }
@@ -343,8 +343,20 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
   "ModuleListResponse" should "serialize module list" in {
     val response = ModuleListResponse(
       modules = List(
-        ModuleInfo("Uppercase", "Converts to uppercase", "1.0", Map("text" -> "String"), Map("result" -> "String")),
-        ModuleInfo("Add", "Adds numbers", "1.0", Map("a" -> "Int", "b" -> "Int"), Map("sum" -> "Int"))
+        ModuleInfo(
+          "Uppercase",
+          "Converts to uppercase",
+          "1.0",
+          Map("text"   -> "String"),
+          Map("result" -> "String")
+        ),
+        ModuleInfo(
+          "Add",
+          "Adds numbers",
+          "1.0",
+          Map("a"   -> "Int", "b" -> "Int"),
+          Map("sum" -> "Int")
+        )
       )
     )
 
@@ -358,16 +370,18 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "serialize empty module list" in {
     val response = ModuleListResponse(List.empty)
-    val json = response.asJson.noSpaces
+    val json     = response.asJson.noSpaces
 
     json should include("\"modules\":[]")
   }
 
   it should "round-trip through JSON" in {
-    val original = ModuleListResponse(List(
-      ModuleInfo("Test", "Test module", "1.0", Map.empty, Map.empty)
-    ))
-    val json = original.asJson
+    val original = ModuleListResponse(
+      List(
+        ModuleInfo("Test", "Test module", "1.0", Map.empty, Map.empty)
+      )
+    )
+    val json   = original.asJson
     val parsed = json.as[ModuleListResponse]
 
     parsed shouldBe Right(original)
@@ -395,8 +409,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ModuleInfo("M", "desc", "1.0", Map("x" -> "Int"), Map("y" -> "Int"))
-    val json = original.asJson
-    val parsed = json.as[ModuleInfo]
+    val json     = original.asJson
+    val parsed   = json.as[ModuleInfo]
 
     parsed shouldBe Right(original)
   }
@@ -417,8 +431,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ErrorResponse("TestError", "Test message")
-    val json = original.asJson
-    val parsed = json.as[ErrorResponse]
+    val json     = original.asJson
+    val parsed   = json.as[ErrorResponse]
 
     parsed shouldBe Right(original)
   }
@@ -440,15 +454,15 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "serialize empty namespace list" in {
     val response = NamespaceListResponse(List.empty)
-    val json = response.asJson.noSpaces
+    val json     = response.asJson.noSpaces
 
     json should include("\"namespaces\":[]")
   }
 
   it should "round-trip through JSON" in {
     val original = NamespaceListResponse(List("ns1", "ns2"))
-    val json = original.asJson
-    val parsed = json.as[NamespaceListResponse]
+    val json     = original.asJson
+    val parsed   = json.as[NamespaceListResponse]
 
     parsed shouldBe Right(original)
   }
@@ -473,8 +487,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = FunctionInfo("func", "ns.func", List("x: String"), "String")
-    val json = original.asJson
-    val parsed = json.as[FunctionInfo]
+    val json     = original.asJson
+    val parsed   = json.as[FunctionInfo]
 
     parsed shouldBe Right(original)
   }
@@ -500,17 +514,20 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "serialize with empty function list" in {
     val response = NamespaceFunctionsResponse("empty.namespace", List.empty)
-    val json = response.asJson.noSpaces
+    val json     = response.asJson.noSpaces
 
     json should include("\"namespace\":\"empty.namespace\"")
     json should include("\"functions\":[]")
   }
 
   it should "round-trip through JSON" in {
-    val original = NamespaceFunctionsResponse("ns", List(
-      FunctionInfo("f", "ns.f", List.empty, "Unit")
-    ))
-    val json = original.asJson
+    val original = NamespaceFunctionsResponse(
+      "ns",
+      List(
+        FunctionInfo("f", "ns.f", List.empty, "Unit")
+      )
+    )
+    val json   = original.asJson
     val parsed = json.as[NamespaceFunctionsResponse]
 
     parsed shouldBe Right(original)
@@ -538,8 +555,8 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ComponentMetadata("Test", "Desc", List("tag"), 1, 0)
-    val json = original.asJson
-    val parsed = json.as[ComponentMetadata]
+    val json     = original.asJson
+    val parsed   = json.as[ComponentMetadata]
 
     parsed shouldBe Right(original)
   }

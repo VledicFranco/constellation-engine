@@ -37,7 +37,7 @@ class ExecutionTrackerTest extends AnyFlatSpec with Matchers {
     } yield trace).unsafeRunSync()
 
     result shouldBe defined
-    val trace  = result.get
+    val trace      = result.get
     val nodeResult = trace.nodeResults.get("node-1")
     nodeResult shouldBe defined
     nodeResult.get.status shouldBe NodeStatus.Running
@@ -252,7 +252,7 @@ class ExecutionTrackerTest extends AnyFlatSpec with Matchers {
   // ===========================================================================
 
   it should "handle concurrent operations safely" in {
-    import cats.implicits._
+    import cats.implicits.*
 
     val result = (for {
       tracker     <- ExecutionTracker.create
@@ -274,7 +274,7 @@ class ExecutionTrackerTest extends AnyFlatSpec with Matchers {
 
   "ExecutionTracker.fromRuntimeState" should "convert completed module status" in {
     import cats.Eval
-    import scala.concurrent.duration._
+    import scala.concurrent.duration.*
     import java.util.UUID
 
     val moduleId = UUID.randomUUID()
@@ -347,7 +347,7 @@ class ExecutionTrackerTest extends AnyFlatSpec with Matchers {
 
   it should "convert timed out module status" in {
     import cats.Eval
-    import scala.concurrent.duration._
+    import scala.concurrent.duration.*
     import java.util.UUID
 
     val moduleId = UUID.randomUUID()

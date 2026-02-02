@@ -9,9 +9,9 @@ import io.constellation.lang.ast.CompileError
 
 /** Adversarial input fuzzing tests (RFC-013 Phase 5.4)
   *
-  * Feeds random byte sequences, deeply nested expressions, and extremely
-  * long programs to the parser. Verifies all failures produce structured
-  * errors and no unhandled exceptions or stack overflows occur.
+  * Feeds random byte sequences, deeply nested expressions, and extremely long programs to the
+  * parser. Verifies all failures produce structured errors and no unhandled exceptions or stack
+  * overflows occur.
   *
   * Run with: sbt "langParser/testOnly *AdversarialFuzzingTest"
   */
@@ -26,28 +26,30 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   "Parser" should "handle 10000 random inputs without crashing" in {
     val random = new scala.util.Random(42) // deterministic seed
 
-    var parseErrors = 0
-    var parseSuccesses = 0
+    var parseErrors          = 0
+    var parseSuccesses       = 0
     var unexpectedExceptions = 0
 
     (1 to 10000).foreach { i =>
       val input = generateRandomInput(random, maxLength = 200)
-      try {
+      try
         parser.parse(input) match {
-          case Right(_) => parseSuccesses += 1
+          case Right(_)                         => parseSuccesses += 1
           case Left(_: CompileError.ParseError) => parseErrors += 1
         }
-      } catch {
+      catch {
         case _: StackOverflowError =>
           fail(s"StackOverflowError on input #$i: ${input.take(50)}...")
         case e: Exception =>
           unexpectedExceptions += 1
-          // Some exceptions may be acceptable (e.g., from cats-parse internals)
-          // but should be rare
+        // Some exceptions may be acceptable (e.g., from cats-parse internals)
+        // but should be rare
       }
     }
 
-    println(s"Random input results: $parseErrors errors, $parseSuccesses successes, $unexpectedExceptions unexpected exceptions")
+    println(
+      s"Random input results: $parseErrors errors, $parseSuccesses successes, $unexpectedExceptions unexpected exceptions"
+    )
 
     // The vast majority should produce structured ParseError, not crashes
     unexpectedExceptions should be < 100 // Allow a small number of edge cases
@@ -83,7 +85,7 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   // -------------------------------------------------------------------------
 
   it should "handle deeply nested parenthesized boolean expressions (100 levels)" in {
-    val depth = 100
+    val depth  = 100
     val nested = buildNestedBoolExpr(depth)
     val source = s"in flag: Boolean\nresult = $nested\nout result\n"
 
@@ -93,7 +95,7 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   }
 
   it should "handle deeply nested if-else expressions (100 levels)" in {
-    val depth = 100
+    val depth  = 100
     val nested = buildNestedConditional(depth)
     val source = s"in flag: Boolean\nin x: Int\nin y: Int\nresult = $nested\nout result\n"
 
@@ -104,14 +106,17 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
 
   it should "handle deeply nested coalesce chains (200 levels)" in {
     val depth = 200
-    val vars = (0 until depth).map(i => s"v$i")
-    val assignments = vars.zipWithIndex.map { case (v, i) =>
-      if (i == 0) s"$v = x when flag"
-      else s"$v = x when flag"
-    }.mkString("\n")
+    val vars  = (0 until depth).map(i => s"v$i")
+    val assignments = vars.zipWithIndex
+      .map { case (v, i) =>
+        if i == 0 then s"$v = x when flag"
+        else s"$v = x when flag"
+      }
+      .mkString("\n")
 
     val coalesce = vars.mkString(" ?? ") + " ?? fallback"
-    val source = s"in flag: Boolean\nin x: Int\nin fallback: Int\n$assignments\nresult = $coalesce\nout result\n"
+    val source =
+      s"in flag: Boolean\nin x: Int\nin fallback: Int\n$assignments\nresult = $coalesce\nout result\n"
 
     noException should be thrownBy {
       parser.parse(source)
@@ -119,19 +124,19 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   }
 
   it should "not stack overflow with 500-level nested boolean expressions" in {
-    val depth = 500
+    val depth  = 500
     val nested = buildNestedBoolExpr(depth)
     val source = s"in flag: Boolean\nresult = $nested\nout result\n"
 
     // Should not throw StackOverflowError
-    try {
+    try
       parser.parse(source)
       // Success or structured ParseError - both fine
-    } catch {
+    catch {
       case _: StackOverflowError =>
         fail("Parser stack overflowed on 500-level nested expression")
       case _: Exception =>
-        // Other exceptions are acceptable (e.g., parser giving up)
+      // Other exceptions are acceptable (e.g., parser giving up)
     }
   }
 
@@ -140,10 +145,12 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   // -------------------------------------------------------------------------
 
   it should "handle a program with 1000 variable assignments" in {
-    val assignments = (0 until 1000).map { i =>
-      if (i == 0) s"v$i = flag"
-      else s"v$i = v${i - 1} and flag"
-    }.mkString("\n")
+    val assignments = (0 until 1000)
+      .map { i =>
+        if i == 0 then s"v$i = flag"
+        else s"v$i = v${i - 1} and flag"
+      }
+      .mkString("\n")
 
     val source = s"in flag: Boolean\n$assignments\nout v999\n"
 
@@ -154,9 +161,11 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   }
 
   it should "handle a program with 500 output declarations" in {
-    val assignments = (0 until 500).map { i =>
-      s"v$i = flag"
-    }.mkString("\n")
+    val assignments = (0 until 500)
+      .map { i =>
+        s"v$i = flag"
+      }
+      .mkString("\n")
     val outputs = (0 until 500).map(i => s"out v$i").mkString("\n")
 
     val source = s"in flag: Boolean\n$assignments\n$outputs\n"
@@ -197,11 +206,11 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
       "in in in in in",
       "out out out",
       "type type type",
-      "# " * 1000,          // Very long comment
-      "\u0000\u0001\u0002", // Control characters
-      "in x: String\n" + ("x = x\n" * 500) + "out x\n", // Self-referential
+      "# " * 1000,                                              // Very long comment
+      "\u0000\u0001\u0002",                                     // Control characters
+      "in x: String\n" + ("x = x\n" * 500) + "out x\n",         // Self-referential
       "in " + ("a" * 10000) + ": String\nout " + ("a" * 10000), // Very long identifiers
-      "\r\n" * 1000         // Lots of empty lines (CRLF)
+      "\r\n" * 1000                                             // Lots of empty lines (CRLF)
     )
 
     adversarial.foreach { source =>
@@ -221,7 +230,7 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
       "in x: String\n# \u4e16\u754c\u4f60\u597d\nresult = x\nout result",
       "in x: String\nresult = x # \ud83d\ude00 emoji comment\nout result",
       "\ufeff" + "in x: String\nresult = x\nout result", // BOM
-      "in x: String\nresult = x\nout result\n\u200b"      // Zero-width space at end
+      "in x: String\nresult = x\nout result\n\u200b"     // Zero-width space at end
     )
 
     unicodeInputs.foreach { source =>
@@ -236,7 +245,7 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   // -------------------------------------------------------------------------
 
   private def generateRandomInput(random: scala.util.Random, maxLength: Int): String = {
-    val length = random.nextInt(maxLength)
+    val length   = random.nextInt(maxLength)
     val strategy = random.nextInt(5)
     strategy match {
       case 0 =>
@@ -244,17 +253,19 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
         (0 until length).map(_ => (random.nextInt(95) + 32).toChar).mkString
       case 1 =>
         // Random mix of keywords and symbols
-        val keywords = Array("in", "out", "type", "if", "else", "and", "or", "not", "when", "true", "false")
-        val symbols = Array("=", "(", ")", "{", "}", ":", ",", ".", "#", "\n", " ", "+", "-", "*", "/", "??")
+        val keywords =
+          Array("in", "out", "type", "if", "else", "and", "or", "not", "when", "true", "false")
+        val symbols =
+          Array("=", "(", ")", "{", "}", ":", ",", ".", "#", "\n", " ", "+", "-", "*", "/", "??")
         (0 until length).map { _ =>
-          if (random.nextBoolean()) keywords(random.nextInt(keywords.length))
+          if random.nextBoolean() then keywords(random.nextInt(keywords.length))
           else symbols(random.nextInt(symbols.length))
         }.mkString
       case 2 =>
         // Random valid-looking program fragments
         val head = "in x: String\n"
         val body = (0 until random.nextInt(20)).map(i => s"v$i = x\n").mkString
-        val out = "out x\n"
+        val out  = "out x\n"
         head + body + out
       case 3 =>
         // Binary-like noise
@@ -265,13 +276,11 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
     }
   }
 
-  private def buildNestedBoolExpr(depth: Int): String = {
-    if (depth <= 0) "flag"
+  private def buildNestedBoolExpr(depth: Int): String =
+    if depth <= 0 then "flag"
     else s"(${buildNestedBoolExpr(depth - 1)} and flag)"
-  }
 
-  private def buildNestedConditional(depth: Int): String = {
-    if (depth <= 0) "x"
+  private def buildNestedConditional(depth: Int): String =
+    if depth <= 0 then "x"
     else s"if (flag) ${buildNestedConditional(depth - 1)} else y"
-  }
 }

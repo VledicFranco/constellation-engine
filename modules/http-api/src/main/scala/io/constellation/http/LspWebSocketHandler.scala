@@ -2,9 +2,9 @@ package io.constellation.http
 
 import cats.effect.{IO, Ref}
 import cats.effect.std.Queue
-import cats.implicits._
+import cats.implicits.*
 import fs2.{Pipe, Stream}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.server.websocket.WebSocketBuilder2
@@ -34,8 +34,8 @@ class LspWebSocketHandler(
 ) {
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[LspWebSocketHandler])
 
-  /** Timeout for queue offer operations. If the queue is full for this long,
-    * the message is dropped and a warning is logged.
+  /** Timeout for queue offer operations. If the queue is full for this long, the message is dropped
+    * and a warning is logged.
     */
   private val queueOfferTimeout: FiniteDuration = 5.seconds
 
@@ -83,13 +83,20 @@ class LspWebSocketHandler(
                                   _ <- logger.debug(s"Sending response: ${json
                                       .take(200)}${if json.length > 200 then "..." else ""}")
                                   message = formatLspMessage(json)
-                                  _ <- offerWithTimeout(serverMessages, message, "response", droppedServerRef)
+                                  _ <- offerWithTimeout(
+                                    serverMessages,
+                                    message,
+                                    "response",
+                                    droppedServerRef
+                                  )
                                 } yield ()
                               case Right(notification) =>
                                 // Handle notification, no response
                                 for {
                                   _ <- logger
-                                    .debug(s"Processing notification method: ${notification.method}")
+                                    .debug(
+                                      s"Processing notification method: ${notification.method}"
+                                    )
                                   _ <- languageServer.handleNotification(notification)
                                 } yield ()
                             }
@@ -114,7 +121,12 @@ class LspWebSocketHandler(
                             // Buffer incoming data and extract complete LSP messages
                             bufferAndExtractMessages(bufferRef, data).flatMap { messages =>
                               messages.traverse_ { msg =>
-                                offerWithTimeout(clientMessages, msg, "client->server", droppedClientRef)
+                                offerWithTimeout(
+                                  clientMessages,
+                                  msg,
+                                  "client->server",
+                                  droppedClientRef
+                                )
                               }
                             }
                           case WebSocketFrame.Close(_) =>
@@ -134,8 +146,8 @@ class LspWebSocketHandler(
       }
   }
 
-  /** Offer a message to a bounded queue with a timeout.
-    * If the queue is full after the timeout, the message is dropped and a warning logged.
+  /** Offer a message to a bounded queue with a timeout. If the queue is full after the timeout, the
+    * message is dropped and a warning logged.
     */
   private def offerWithTimeout(
       queue: Queue[IO, String],
@@ -144,7 +156,7 @@ class LspWebSocketHandler(
       droppedRef: Ref[IO, Long]
   ): IO[Unit] =
     queue.tryOffer(message).flatMap {
-      case true => IO.unit
+      case true  => IO.unit
       case false =>
         // Queue is full — wait briefly then drop
         IO.sleep(queueOfferTimeout) *>
@@ -157,30 +169,35 @@ class LspWebSocketHandler(
           }
     }
 
-  /** Buffer incoming WebSocket data and extract complete LSP messages.
-    * LSP messages have format: "Content-Length: XXX\r\n\r\n{json}"
-    * WebSocket frames may contain partial messages or multiple messages.
+  /** Buffer incoming WebSocket data and extract complete LSP messages. LSP messages have format:
+    * "Content-Length: XXX\r\n\r\n{json}" WebSocket frames may contain partial messages or multiple
+    * messages.
     */
-  private def bufferAndExtractMessages(bufferRef: Ref[IO, String], newData: String): IO[List[String]] = {
+  private def bufferAndExtractMessages(
+      bufferRef: Ref[IO, String],
+      newData: String
+  ): IO[List[String]] =
     bufferRef.modify { buffer =>
       val combined = buffer + newData
       extractCompleteLspMessages(combined, List.empty)
     }
-  }
 
-  /** Recursively extract complete LSP messages from buffer.
-    * Returns (remaining buffer, list of complete messages).
+  /** Recursively extract complete LSP messages from buffer. Returns (remaining buffer, list of
+    * complete messages).
     */
   @scala.annotation.tailrec
-  private def extractCompleteLspMessages(buffer: String, acc: List[String]): (String, List[String]) = {
-    if (buffer.isEmpty || !buffer.startsWith("Content-Length:")) {
+  private def extractCompleteLspMessages(
+      buffer: String,
+      acc: List[String]
+  ): (String, List[String]) =
+    if buffer.isEmpty || !buffer.startsWith("Content-Length:") then {
       // If buffer doesn't start with Content-Length, it might be plain JSON (legacy)
       // or incomplete. For plain JSON, just return it as-is if it looks complete.
-      if (buffer.trim.startsWith("{") && buffer.trim.endsWith("}")) {
+      if buffer.trim.startsWith("{") && buffer.trim.endsWith("}") then {
         ("", acc :+ buffer)
-      } else if (buffer.trim.isEmpty) {
+      } else if buffer.trim.isEmpty then {
         ("", acc)
-      } else if (!buffer.startsWith("Content-Length:") && buffer.contains("{")) {
+      } else if !buffer.startsWith("Content-Length:") && buffer.contains("{") then {
         // Partial message or garbage - keep buffering
         (buffer, acc)
       } else {
@@ -189,22 +206,22 @@ class LspWebSocketHandler(
     } else {
       // Find the header/body separator
       val headerEnd = buffer.indexOf("\r\n\r\n")
-      if (headerEnd < 0) {
+      if headerEnd < 0 then {
         // Header not complete yet
         (buffer, acc)
       } else {
         // Parse Content-Length
-        val header = buffer.substring(0, headerEnd)
+        val header             = buffer.substring(0, headerEnd)
         val contentLengthMatch = """Content-Length:\s*(\d+)""".r.findFirstMatchIn(header)
         contentLengthMatch match {
           case Some(m) =>
             val contentLength = m.group(1).toInt
-            val bodyStart = headerEnd + 4
-            val bodyEnd = bodyStart + contentLength
-            if (buffer.length >= bodyEnd) {
+            val bodyStart     = headerEnd + 4
+            val bodyEnd       = bodyStart + contentLength
+            if buffer.length >= bodyEnd then {
               // Complete message - extract it and continue
               val completeMessage = buffer.substring(0, bodyEnd)
-              val remaining = buffer.substring(bodyEnd)
+              val remaining       = buffer.substring(bodyEnd)
               extractCompleteLspMessages(remaining, acc :+ completeMessage)
             } else {
               // Body not complete yet
@@ -213,7 +230,7 @@ class LspWebSocketHandler(
           case None =>
             // Malformed header, skip to next potential message
             val nextStart = buffer.indexOf("Content-Length:", 1)
-            if (nextStart > 0) {
+            if nextStart > 0 then {
               extractCompleteLspMessages(buffer.substring(nextStart), acc)
             } else {
               // Discard malformed buffer
@@ -222,7 +239,6 @@ class LspWebSocketHandler(
         }
       }
     }
-  }
 
   /** Format outgoing message with LSP Content-Length header */
   private def formatLspMessage(json: String): String = {
@@ -253,23 +269,25 @@ class LspWebSocketHandler(
     // Debug: log message preview
     val preview = jsonContent.take(100).replace("\n", "\\n").replace("\r", "\\r")
     logger.debug(s"Parsing message (${jsonContent.length} chars): $preview...") *>
-    IO.fromEither(
-      parse(jsonContent).left.map { err =>
-        // Log parse failures with more context
-        val msgPreview = message.take(200).replace("\n", "\\n").replace("\r", "\\r")
-        new Exception(s"${err.getMessage} | Raw message preview: $msgPreview")
-      }.flatMap { json =>
-        // Try to parse as Request first (has "id" field)
-        json.hcursor.downField("id").as[String] match {
-          case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
-            // Has "id" field, it's a request
-            json.as[Request].map(Left.apply)
-          case _ =>
-            // No "id" field, it's a notification
-            json.as[Notification].map(Right.apply)
-        }
-      }
-    )
+      IO.fromEither(
+        parse(jsonContent).left
+          .map { err =>
+            // Log parse failures with more context
+            val msgPreview = message.take(200).replace("\n", "\\n").replace("\r", "\\r")
+            new Exception(s"${err.getMessage} | Raw message preview: $msgPreview")
+          }
+          .flatMap { json =>
+            // Try to parse as Request first (has "id" field)
+            json.hcursor.downField("id").as[String] match {
+              case Right(_) | Left(_) if json.hcursor.downField("id").succeeded =>
+                // Has "id" field, it's a request
+                json.as[Request].map(Left.apply)
+              case _ =>
+                // No "id" field, it's a notification
+                json.as[Notification].map(Right.apply)
+            }
+          }
+      )
   }
 }
 

@@ -31,7 +31,7 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
 
     for {
       constellation <- ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
+      _             <- constellation.setModule(uppercaseModule)
 
       // Create compiler with Uppercase function registered
       compiler = LangCompiler.builder
@@ -57,11 +57,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   "ConstellationLanguageServer" should "handle initialize request" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "initialize",
-        params = Some(Json.obj("rootUri" -> Json.fromString("file:///project")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "initialize",
+          params = Some(Json.obj("rootUri" -> Json.fromString("file:///project")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -77,11 +79,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle shutdown request" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "shutdown",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "shutdown",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -95,11 +99,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return MethodNotFound for unknown request" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "unknown/method",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "unknown/method",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -112,26 +118,34 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
 
   it should "handle completion request with valid params" in {
     val result = for {
-      server <- createTestServer()
+      server     <- createTestServer()
       docManager <- DocumentManager.create
       _ <- docManager.openDocument("file:///test.cst", "constellation", 1, "in text: String\nUpper")
 
       // Need to open document in the server's document manager
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nUpper")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nUpper")
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/completion",
-        params = Some(CompletionParams(
-          textDocument = TextDocumentIdentifier("file:///test.cst"),
-          position = Position(1, 5)
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/completion",
+          params = Some(
+            CompletionParams(
+              textDocument = TextDocumentIdentifier("file:///test.cst"),
+              position = Position(1, 5)
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -143,11 +157,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return InvalidParams for completion without params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/completion",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/completion",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -158,14 +174,18 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return empty completion for non-existent document" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/completion",
-        params = Some(CompletionParams(
-          textDocument = TextDocumentIdentifier("file:///nonexistent.cst"),
-          position = Position(0, 0)
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/completion",
+          params = Some(
+            CompletionParams(
+              textDocument = TextDocumentIdentifier("file:///nonexistent.cst"),
+              position = Position(0, 0)
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -180,21 +200,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle hover request with valid params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "result = Uppercase(text)")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "result = Uppercase(text)")
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/hover",
-        params = Some(HoverParams(
-          textDocument = TextDocumentIdentifier("file:///test.cst"),
-          position = Position(0, 12) // Position at "Uppercase"
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/hover",
+          params = Some(
+            HoverParams(
+              textDocument = TextDocumentIdentifier("file:///test.cst"),
+              position = Position(0, 12) // Position at "Uppercase"
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -205,11 +233,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return InvalidParams for hover without params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/hover",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/hover",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -220,14 +250,18 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return None for hover on non-existent document" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/hover",
-        params = Some(HoverParams(
-          textDocument = TextDocumentIdentifier("file:///nonexistent.cst"),
-          position = Position(0, 0)
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/hover",
+          params = Some(
+            HoverParams(
+              textDocument = TextDocumentIdentifier("file:///nonexistent.cst"),
+              position = Position(0, 0)
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -240,18 +274,24 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema request" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nout text")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nout text")
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///test.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///test.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -262,11 +302,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return InvalidParams for getInputSchema without params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -279,18 +321,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getDagStructure request" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///test.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getDagStructure",
-        params = Some(GetDagStructureParams("file:///test.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getDagStructure",
+          params = Some(GetDagStructureParams("file:///test.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -301,11 +354,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return error for getDagStructure on non-existent document" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getDagStructure",
-        params = Some(GetDagStructureParams("file:///nonexistent.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getDagStructure",
+          params = Some(GetDagStructureParams("file:///nonexistent.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -319,21 +374,34 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle executePipeline request" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///test.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/executePipeline",
-        params = Some(ExecutePipelineParams(
-          uri = "file:///test.cst",
-          inputs = Map("text" -> Json.fromString("hello"))
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/executePipeline",
+          params = Some(
+            ExecutePipelineParams(
+              uri = "file:///test.cst",
+              inputs = Map("text" -> Json.fromString("hello"))
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -344,11 +412,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return error for executePipeline with invalid params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/executePipeline",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/executePipeline",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -361,21 +431,34 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStart request" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///test.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStart",
-        params = Some(StepStartParams(
-          uri = "file:///test.cst",
-          inputs = Map("text" -> Json.fromString("hello"))
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStart",
+          params = Some(
+            StepStartParams(
+              uri = "file:///test.cst",
+              inputs = Map("text" -> Json.fromString("hello"))
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -386,11 +469,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return error for stepNext with invalid session" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepNext",
-        params = Some(StepNextParams("invalid-session-id").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepNext",
+          params = Some(StepNextParams("invalid-session-id").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -402,11 +487,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStop request" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStop",
-        params = Some(StepStopParams("some-session-id").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStop",
+          params = Some(StepStopParams("some-session-id").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -419,10 +506,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle initialized notification" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "initialized",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "initialized",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -432,10 +521,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle exit notification" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "exit",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "exit",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -445,12 +536,16 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didOpen notification" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
+            ).asJson
+          )
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -461,20 +556,28 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     val result = for {
       server <- createTestServer()
       // First open the document
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
+            ).asJson
+          )
+        )
+      )
       // Then change it
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didChange",
-        params = Some(DidChangeTextDocumentParams(
-          textDocument = VersionedTextDocumentIdentifier("file:///test.cst", 2),
-          contentChanges = List(TextDocumentContentChangeEvent(None, None, "in y: String"))
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didChange",
+          params = Some(
+            DidChangeTextDocumentParams(
+              textDocument = VersionedTextDocumentIdentifier("file:///test.cst", 2),
+              contentChanges = List(TextDocumentContentChangeEvent(None, None, "in y: String"))
+            ).asJson
+          )
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -485,19 +588,27 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     val result = for {
       server <- createTestServer()
       // First open the document
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int")
+            ).asJson
+          )
+        )
+      )
       // Then close it
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didClose",
-        params = Some(DidCloseTextDocumentParams(
-          TextDocumentIdentifier("file:///test.cst")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didClose",
+          params = Some(
+            DidCloseTextDocumentParams(
+              TextDocumentIdentifier("file:///test.cst")
+            ).asJson
+          )
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -507,10 +618,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "ignore unknown notifications" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "unknown/notification",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "unknown/notification",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without error
@@ -522,11 +635,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle malformed completion params gracefully" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/completion",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/completion",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -537,11 +652,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle malformed hover params gracefully" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/hover",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/hover",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -556,44 +673,65 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
       server <- createTestServer()
 
       // 1. Open document
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///workflow.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///workflow.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
       // 2. Get input schema
-      schemaResponse <- server.handleRequest(Request(
-        id = StringId("2"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///workflow.cst").asJson)
-      ))
+      schemaResponse <- server.handleRequest(
+        Request(
+          id = StringId("2"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///workflow.cst").asJson)
+        )
+      )
 
       // 3. Get DAG structure
-      dagResponse <- server.handleRequest(Request(
-        id = StringId("3"),
-        method = "constellation/getDagStructure",
-        params = Some(GetDagStructureParams("file:///workflow.cst").asJson)
-      ))
+      dagResponse <- server.handleRequest(
+        Request(
+          id = StringId("3"),
+          method = "constellation/getDagStructure",
+          params = Some(GetDagStructureParams("file:///workflow.cst").asJson)
+        )
+      )
 
       // 4. Execute pipeline
-      execResponse <- server.handleRequest(Request(
-        id = StringId("4"),
-        method = "constellation/executePipeline",
-        params = Some(ExecutePipelineParams(
-          uri = "file:///workflow.cst",
-          inputs = Map("text" -> Json.fromString("hello world"))
-        ).asJson)
-      ))
+      execResponse <- server.handleRequest(
+        Request(
+          id = StringId("4"),
+          method = "constellation/executePipeline",
+          params = Some(
+            ExecutePipelineParams(
+              uri = "file:///workflow.cst",
+              inputs = Map("text" -> Json.fromString("hello world"))
+            ).asJson
+          )
+        )
+      )
 
       // 5. Close document
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didClose",
-        params = Some(DidCloseTextDocumentParams(
-          TextDocumentIdentifier("file:///workflow.cst")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didClose",
+          params = Some(
+            DidCloseTextDocumentParams(
+              TextDocumentIdentifier("file:///workflow.cst")
+            ).asJson
+          )
+        )
+      )
 
     } yield (schemaResponse, dagResponse, execResponse)
 
@@ -609,32 +747,44 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle completion at various positions" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = ")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = ")
+            ).asJson
+          )
+        )
+      )
 
       // Completion at beginning of line
-      response1 <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/completion",
-        params = Some(CompletionParams(
-          textDocument = TextDocumentIdentifier("file:///test.cst"),
-          position = Position(1, 0)
-        ).asJson)
-      ))
+      response1 <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/completion",
+          params = Some(
+            CompletionParams(
+              textDocument = TextDocumentIdentifier("file:///test.cst"),
+              position = Position(1, 0)
+            ).asJson
+          )
+        )
+      )
 
       // Completion at end of line
-      response2 <- server.handleRequest(Request(
-        id = StringId("2"),
-        method = "textDocument/completion",
-        params = Some(CompletionParams(
-          textDocument = TextDocumentIdentifier("file:///test.cst"),
-          position = Position(1, 9)
-        ).asJson)
-      ))
+      response2 <- server.handleRequest(
+        Request(
+          id = StringId("2"),
+          method = "textDocument/completion",
+          params = Some(
+            CompletionParams(
+              textDocument = TextDocumentIdentifier("file:///test.cst"),
+              position = Position(1, 9)
+            ).asJson
+          )
+        )
+      )
     } yield (response1, response2)
 
     val (response1, response2) = result.unsafeRunSync()
@@ -645,22 +795,35 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle hover at variable position" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in myVariable: String\nresult = Uppercase(myVariable)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///test.cst",
+                "constellation",
+                1,
+                "in myVariable: String\nresult = Uppercase(myVariable)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
       // Hover over variable
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "textDocument/hover",
-        params = Some(HoverParams(
-          textDocument = TextDocumentIdentifier("file:///test.cst"),
-          position = Position(1, 22) // Position at myVariable
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "textDocument/hover",
+          params = Some(
+            HoverParams(
+              textDocument = TextDocumentIdentifier("file:///test.cst"),
+              position = Position(1, 22) // Position at myVariable
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -670,18 +833,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with syntax error" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///error.cst", "constellation", 1, "in text: String\nresult = InvalidSyntax(((\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///error.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = InvalidSyntax(((\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///error.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///error.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -691,21 +865,34 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle executePipeline with missing input" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///test.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///test.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/executePipeline",
-        params = Some(ExecutePipelineParams(
-          uri = "file:///test.cst",
-          inputs = Map.empty // Missing required input
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/executePipeline",
+          params = Some(
+            ExecutePipelineParams(
+              uri = "file:///test.cst",
+              inputs = Map.empty // Missing required input
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -716,38 +903,53 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle step-through execution workflow" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///step.cst", "constellation", 1, "in text: String\nresult = Uppercase(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///step.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = Uppercase(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
       // Start step execution
-      startResponse <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStart",
-        params = Some(StepStartParams(
-          uri = "file:///step.cst",
-          inputs = Map("text" -> Json.fromString("test"))
-        ).asJson)
-      ))
+      startResponse <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStart",
+          params = Some(
+            StepStartParams(
+              uri = "file:///step.cst",
+              inputs = Map("text" -> Json.fromString("test"))
+            ).asJson
+          )
+        )
+      )
 
       // Extract session ID
       sessionIdOpt = for {
-        result <- startResponse.result
-        obj <- result.asObject
+        result    <- startResponse.result
+        obj       <- result.asObject
         sessionId <- obj("sessionId").flatMap(_.asString)
       } yield sessionId
 
       // Step next (if we have a session)
       nextResponse <- sessionIdOpt match {
         case Some(sessionId) =>
-          server.handleRequest(Request(
-            id = StringId("2"),
-            method = "constellation/stepNext",
-            params = Some(StepNextParams(sessionId).asJson)
-          ))
+          server.handleRequest(
+            Request(
+              id = StringId("2"),
+              method = "constellation/stepNext",
+              params = Some(StepNextParams(sessionId).asJson)
+            )
+          )
         case None =>
           IO.pure(Response(id = StringId("2"), result = None))
       }
@@ -755,11 +957,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
       // Continue to end (if we have a session)
       continueResponse <- sessionIdOpt match {
         case Some(sessionId) =>
-          server.handleRequest(Request(
-            id = StringId("3"),
-            method = "constellation/stepContinue",
-            params = Some(StepContinueParams(sessionId).asJson)
-          ))
+          server.handleRequest(
+            Request(
+              id = StringId("3"),
+              method = "constellation/stepContinue",
+              params = Some(StepContinueParams(sessionId).asJson)
+            )
+          )
         case None =>
           IO.pure(Response(id = StringId("3"), result = None))
       }
@@ -767,11 +971,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
       // Stop session (if we have one)
       stopResponse <- sessionIdOpt match {
         case Some(sessionId) =>
-          server.handleRequest(Request(
-            id = StringId("4"),
-            method = "constellation/stepStop",
-            params = Some(StepStopParams(sessionId).asJson)
-          ))
+          server.handleRequest(
+            Request(
+              id = StringId("4"),
+              method = "constellation/stepStop",
+              params = Some(StepStopParams(sessionId).asJson)
+            )
+          )
         case None =>
           IO.pure(Response(id = StringId("4"), result = None))
       }
@@ -784,10 +990,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didChange with invalid params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didChange",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didChange",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -797,11 +1005,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getDagStructure with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getDagStructure",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getDagStructure",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -812,11 +1022,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle executePipeline with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/executePipeline",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/executePipeline",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -827,11 +1039,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStart with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStart",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStart",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -842,11 +1056,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepContinue with invalid session" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepContinue",
-        params = Some(StepContinueParams("non-existent-session").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepContinue",
+          params = Some(StepContinueParams("non-existent-session").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -858,11 +1074,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle request with numeric ID" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = NumberId(12345),
-        method = "shutdown",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = NumberId(12345),
+          method = "shutdown",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -875,18 +1093,24 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with Int type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in count: Int\nout count")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem("file:///types.cst", "constellation", 1, "in count: Int\nout count")
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -897,18 +1121,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with Float type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in value: Float\nout value")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///types.cst",
+                "constellation",
+                1,
+                "in value: Float\nout value"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -918,18 +1153,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with Boolean type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in flag: Boolean\nout flag")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///types.cst",
+                "constellation",
+                1,
+                "in flag: Boolean\nout flag"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -939,18 +1185,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with List type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in items: List<String>\nout items")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///types.cst",
+                "constellation",
+                1,
+                "in items: List<String>\nout items"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -960,18 +1217,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with Map type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in mapping: Map<String, Int>\nout mapping")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///types.cst",
+                "constellation",
+                1,
+                "in mapping: Map<String, Int>\nout mapping"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -981,18 +1249,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with record type" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///types.cst", "constellation", 1, "in person: { name: String, age: Int }\nout person")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///types.cst",
+                "constellation",
+                1,
+                "in person: { name: String, age: Int }\nout person"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///types.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///types.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1002,27 +1281,33 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema for document not found" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///notfound.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///notfound.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
     response.result shouldBe defined
     (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
-    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain("Document not found")
+    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain(
+      "Document not found"
+    )
   }
 
   it should "handle getInputSchema with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1035,20 +1320,26 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle executePipeline for document not found" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/executePipeline",
-        params = Some(ExecutePipelineParams(
-          uri = "file:///notfound.cst",
-          inputs = Map("text" -> Json.fromString("test"))
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/executePipeline",
+          params = Some(
+            ExecutePipelineParams(
+              uri = "file:///notfound.cst",
+              inputs = Map("text" -> Json.fromString("test"))
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
     response.result shouldBe defined
     (response.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
-    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain("Document not found")
+    (response.result.get \\ "error").headOption.flatMap(_.asString) should contain(
+      "Document not found"
+    )
   }
 
   // ========== getDagStructure Error Cases ==========
@@ -1056,11 +1347,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getDagStructure with missing params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getDagStructure",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getDagStructure",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1071,18 +1364,29 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getDagStructure with compile error" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///error.cst", "constellation", 1, "in text: String\nresult = UnknownModule(text)\nout result")
-        ).asJson)
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///error.cst",
+                "constellation",
+                1,
+                "in text: String\nresult = UnknownModule(text)\nout result"
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getDagStructure",
-        params = Some(GetDagStructureParams("file:///error.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getDagStructure",
+          params = Some(GetDagStructureParams("file:///error.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1095,11 +1399,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStart with missing params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStart",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStart",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1110,14 +1416,18 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStart for document not found" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStart",
-        params = Some(StepStartParams(
-          uri = "file:///notfound.cst",
-          inputs = Map("text" -> Json.fromString("test"))
-        ).asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStart",
+          params = Some(
+            StepStartParams(
+              uri = "file:///notfound.cst",
+              inputs = Map("text" -> Json.fromString("test"))
+            ).asJson
+          )
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1128,11 +1438,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepNext with missing params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepNext",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepNext",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1143,11 +1455,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepNext with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepNext",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepNext",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1158,11 +1472,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepContinue with missing params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepContinue",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepContinue",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1173,11 +1489,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepContinue with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepContinue",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepContinue",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1188,11 +1506,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStop with missing params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStop",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStop",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1203,11 +1523,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle stepStop with malformed params" in {
     val result = for {
       server <- createTestServer()
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/stepStop",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/stepStop",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1220,10 +1542,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didOpen with malformed params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -1233,10 +1557,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didClose with malformed params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didClose",
-        params = Some(Json.obj("invalid" -> Json.fromString("params")))
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didClose",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -1246,10 +1572,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didOpen with missing params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -1259,10 +1587,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didChange with missing params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didChange",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didChange",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -1272,10 +1602,12 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle didClose with missing params" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didClose",
-        params = None
-      ))
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didClose",
+          params = None
+        )
+      )
     } yield ()
 
     // Should complete without throwing
@@ -1287,23 +1619,33 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "handle getInputSchema with multiple inputs of different types" in {
     val result = for {
       server <- createTestServer()
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///multi.cst", "constellation", 1,
-            """in name: String
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///multi.cst",
+                "constellation",
+                1,
+                """in name: String
               |in count: Int
               |in factor: Float
               |in enabled: Boolean
-              |out name""".stripMargin)
-        ).asJson)
-      ))
+              |out name""".stripMargin
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("1"),
-        method = "constellation/getInputSchema",
-        params = Some(GetInputSchemaParams("file:///multi.cst").asJson)
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("1"),
+          method = "constellation/getInputSchema",
+          params = Some(GetInputSchemaParams("file:///multi.cst").asJson)
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1316,11 +1658,13 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
   it should "return cachingEnabled=false for non-caching compiler" in {
     val result = for {
       server <- createTestServer() // Uses non-caching compiler
-      response <- server.handleRequest(Request(
-        id = StringId("cache-1"),
-        method = "constellation/getCacheStats",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("cache-1"),
+          method = "constellation/getCacheStats",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()
@@ -1341,7 +1685,7 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
 
     val result = for {
       constellation <- ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
+      _             <- constellation.setModule(uppercaseModule)
 
       // Create a caching compiler
       baseCompiler = LangCompiler.builder
@@ -1362,21 +1706,31 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
       )
 
       // Do a compilation to populate cache stats
-      _ <- server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(DidOpenTextDocumentParams(
-          TextDocumentItem("file:///cache.cst", "constellation", 1,
-            """in text: String
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            DidOpenTextDocumentParams(
+              TextDocumentItem(
+                "file:///cache.cst",
+                "constellation",
+                1,
+                """in text: String
               |result = Uppercase(text)
-              |out result""".stripMargin)
-        ).asJson)
-      ))
+              |out result""".stripMargin
+              )
+            ).asJson
+          )
+        )
+      )
 
-      response <- server.handleRequest(Request(
-        id = StringId("cache-2"),
-        method = "constellation/getCacheStats",
-        params = None
-      ))
+      response <- server.handleRequest(
+        Request(
+          id = StringId("cache-2"),
+          method = "constellation/getCacheStats",
+          params = None
+        )
+      )
     } yield response
 
     val response = result.unsafeRunSync()

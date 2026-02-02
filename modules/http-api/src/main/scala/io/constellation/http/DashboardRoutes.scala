@@ -2,16 +2,16 @@ package io.constellation.http
 
 import cats.data.EitherT
 import cats.effect.IO
-import cats.implicits._
+import cats.implicits.*
 import org.http4s.{HttpRoutes, Response, StaticFile, Status, Uri}
-import org.http4s.dsl.io._
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.dsl.io.*
+import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.headers.`Content-Type`
 import org.http4s.MediaType
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 import io.constellation.{CValue, Constellation}
-import io.constellation.http.DashboardModels._
+import io.constellation.http.DashboardModels.*
 import io.constellation.http.ApiModels.ErrorResponse
 import io.constellation.errors.{ApiError, ErrorHandling}
 import io.constellation.lang.LangCompiler
@@ -19,15 +19,15 @@ import io.constellation.lang.viz.DagVizCompiler
 
 import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 /** HTTP routes for the Constellation Dashboard.
   *
   * Provides:
-  * - Dashboard HTML/static file serving
-  * - File browser API for .cst files
-  * - Execution API with history storage
+  *   - Dashboard HTML/static file serving
+  *   - File browser API for .cst files
+  *   - Execution API with history storage
   */
 class DashboardRoutes(
     constellation: Constellation,
@@ -37,7 +37,7 @@ class DashboardRoutes(
 ) {
 
   /** Object for query parameter extraction */
-  object LimitQueryParam extends OptionalQueryParamDecoderMatcher[Int]("limit")
+  object LimitQueryParam  extends OptionalQueryParamDecoderMatcher[Int]("limit")
   object OffsetQueryParam extends OptionalQueryParamDecoderMatcher[Int]("offset")
   object ScriptQueryParam extends OptionalQueryParamDecoderMatcher[String]("script")
 
@@ -91,10 +91,10 @@ class DashboardRoutes(
     case req @ POST -> Root / "api" / "v1" / "preview" =>
       (for {
         previewReq <- req.as[PreviewRequest]
-        result <- compileForPreview(previewReq.source).value
+        result     <- compileForPreview(previewReq.source).value
         response <- result match {
           case Right(dagVizIR) => Ok(PreviewResponse(success = true, dagVizIR = Some(dagVizIR)))
-          case Left(errors) => BadRequest(PreviewResponse(success = false, errors = errors))
+          case Left(errors)    => BadRequest(PreviewResponse(success = false, errors = errors))
         }
       } yield response).handleErrorWith { error =>
         InternalServerError(PreviewResponse(success = false, errors = List(error.getMessage)))
@@ -124,7 +124,9 @@ class DashboardRoutes(
       }
 
     // List executions with optional filtering
-    case GET -> Root / "api" / "v1" / "executions" :? LimitQueryParam(limitOpt) +& OffsetQueryParam(offsetOpt) +& ScriptQueryParam(scriptOpt) =>
+    case GET -> Root / "api" / "v1" / "executions" :? LimitQueryParam(limitOpt) +& OffsetQueryParam(
+          offsetOpt
+        ) +& ScriptQueryParam(scriptOpt) =>
       val limit  = limitOpt.getOrElse(50).min(100)
       val offset = offsetOpt.getOrElse(0)
       for {
@@ -142,7 +144,7 @@ class DashboardRoutes(
         execOpt <- storage.get(executionId)
         response <- execOpt match {
           case Some(exec) => Ok(exec.asJson)
-          case None => NotFound(DashboardError.notFound("Execution", executionId))
+          case None       => NotFound(DashboardError.notFound("Execution", executionId))
         }
       } yield response
 
@@ -154,7 +156,10 @@ class DashboardRoutes(
           case Some(exec) =>
             exec.dagVizIR match {
               case Some(dag) => Ok(dag.asJson)
-              case None      => NotFound(DashboardError("no_dag", "DAG visualization not available for this execution"))
+              case None =>
+                NotFound(
+                  DashboardError("no_dag", "DAG visualization not available for this execution")
+                )
             }
           case None => NotFound(DashboardError.notFound("Execution", executionId))
         }
@@ -163,9 +168,10 @@ class DashboardRoutes(
     // Delete an execution
     case DELETE -> Root / "api" / "v1" / "executions" / executionId =>
       for {
-        deleted  <- storage.delete(executionId)
-        response <- if deleted then Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
-                    else NotFound(DashboardError.notFound("Execution", executionId))
+        deleted <- storage.delete(executionId)
+        response <-
+          if deleted then Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
+          else NotFound(DashboardError.notFound("Execution", executionId))
       } yield response
 
     // ========================================
@@ -175,14 +181,16 @@ class DashboardRoutes(
     // Get dashboard status
     case GET -> Root / "api" / "v1" / "status" =>
       for {
-        stats    <- storage.stats
-        response <- Ok(DashboardStatus(
-          enabled = config.enableDashboard,
-          cstDirectory = config.getCstDirectory.toString,
-          sampleRate = config.defaultSampleRate,
-          maxExecutions = config.maxStoredExecutions,
-          storageStats = stats
-        ))
+        stats <- storage.stats
+        response <- Ok(
+          DashboardStatus(
+            enabled = config.enableDashboard,
+            cstDirectory = config.getCstDirectory.toString,
+            sampleRate = config.defaultSampleRate,
+            maxExecutions = config.maxStoredExecutions,
+            storageStats = stats
+          )
+        )
       } yield response
   }
 
@@ -200,16 +208,21 @@ class DashboardRoutes(
   }
 
   /** Compile source code and return DagVizIR for visualization preview */
-  private def compileForPreview(source: String): EitherT[IO, List[String], io.constellation.lang.viz.DagVizIR] = {
+  private def compileForPreview(
+      source: String
+  ): EitherT[IO, List[String], io.constellation.lang.viz.DagVizIR] =
     EitherT.fromEither[IO] {
       for {
         // First compile to IR
-        irProgram <- compiler.compileToIR(source, "preview").leftMap(errors => errors.map(_.message))
+        irProgram <- compiler
+          .compileToIR(source, "preview")
+          .leftMap(errors => errors.map(_.message))
         // Then generate visualization
-        dagVizIR <- Try(DagVizCompiler.compile(irProgram, Some("preview"))).toEither.leftMap(e => List(e.getMessage))
+        dagVizIR <- Try(DagVizCompiler.compile(irProgram, Some("preview"))).toEither.leftMap(e =>
+          List(e.getMessage)
+        )
       } yield dagVizIR
     }
-  }
 
   /** Build a file tree from a directory, only including directories that contain .cst files */
   private def buildFileTree(root: Path): List[FileNode] =
@@ -217,8 +230,20 @@ class DashboardRoutes(
 
   /** Directories excluded from the file browser (development/tooling dirs, not user scripts) */
   private val excludedDirs = Set(
-    "node_modules", "dashboard-tests", "vscode-extension", ".git", "target", "out",
-    ".bsp", ".idea", ".vscode", "project", ".github", "agents", "scripts", "brand"
+    "node_modules",
+    "dashboard-tests",
+    "vscode-extension",
+    ".git",
+    "target",
+    "out",
+    ".bsp",
+    ".idea",
+    ".vscode",
+    "project",
+    ".github",
+    "agents",
+    "scripts",
+    "brand"
   )
 
   /** Recursive helper that tracks the base root for relative path computation */
@@ -226,33 +251,40 @@ class DashboardRoutes(
     if !Files.exists(currentDir) || !Files.isDirectory(currentDir) then return List.empty
 
     Try {
-      Files.list(currentDir).iterator().asScala.toList
+      Files
+        .list(currentDir)
+        .iterator()
+        .asScala
+        .toList
         .filter(p => Files.isDirectory(p) || p.toString.endsWith(".cst"))
         .filterNot(p => Files.isDirectory(p) && excludedDirs.contains(p.getFileName.toString))
         .flatMap { path =>
-          val name = path.getFileName.toString
-          val isDir = Files.isDirectory(path)
+          val name         = path.getFileName.toString
+          val isDir        = Files.isDirectory(path)
           val relativePath = baseRoot.relativize(path).toString.replace("\\", "/")
           if isDir then
             val children = buildFileTreeRec(baseRoot, path)
             // Only include directories that have .cst files (directly or in subdirectories)
             if children.nonEmpty then
-              Some(FileNode(
+              Some(
+                FileNode(
+                  name = name,
+                  path = relativePath,
+                  fileType = FileType.Directory,
+                  children = Some(children)
+                )
+              )
+            else None
+          else
+            Some(
+              FileNode(
                 name = name,
                 path = relativePath,
-                fileType = FileType.Directory,
-                children = Some(children)
-              ))
-            else
-              None
-          else
-            Some(FileNode(
-              name = name,
-              path = relativePath,
-              fileType = FileType.File,
-              size = Some(Files.size(path)),
-              modifiedTime = Some(Files.getLastModifiedTime(path).toMillis)
-            ))
+                fileType = FileType.File,
+                size = Some(Files.size(path)),
+                modifiedTime = Some(Files.getLastModifiedTime(path).toMillis)
+              )
+            )
         }
         .sortBy(node => (node.fileType != FileType.Directory, node.name.toLowerCase))
     }.getOrElse(List.empty)
@@ -262,16 +294,15 @@ class DashboardRoutes(
   private def getFileContent(relativePath: String): IO[Response[IO]] = {
     val fullPath = config.getCstDirectory.resolve(relativePath.replace("/", java.io.File.separator))
 
-    if !Files.exists(fullPath) then
-      return NotFound(DashboardError.notFound("File", relativePath))
+    if !Files.exists(fullPath) then return NotFound(DashboardError.notFound("File", relativePath))
 
     if !fullPath.toString.endsWith(".cst") then
       return BadRequest(DashboardError.invalidRequest("Only .cst files are supported"))
 
     IO {
-      val content = Files.readString(fullPath)
+      val content      = Files.readString(fullPath)
       val lastModified = Files.getLastModifiedTime(fullPath).toMillis
-      val fileName = fullPath.getFileName.toString
+      val fileName     = fullPath.getFileName.toString
 
       // Parse the script to extract inputs and outputs
       val (inputs, outputs) = parseScriptMetadata(content)
@@ -300,49 +331,73 @@ class DashboardRoutes(
     // Type pattern: starts with letter/underscore, includes word chars and angle brackets for generics
     // but stops at newline or end of identifier
     val typePattern = """[A-Za-z_][\w]*(?:<[^>]+>)?"""
-    val exampleInputPattern = s"""(?m)@example\\(([^)]+)\\)\\s*\\n\\s*in\\s+(\\w+)\\s*:\\s*($typePattern)""".r
+    val exampleInputPattern =
+      s"""(?m)@example\\(([^)]+)\\)\\s*\\n\\s*in\\s+(\\w+)\\s*:\\s*($typePattern)""".r
     val simpleInputPattern = s"""(?m)^\\s*in\\s+(\\w+)\\s*:\\s*($typePattern)""".r
-    val outputPattern = """(?m)^\s*out\s+(\w+)(?:\s*:\s*(\S+))?""".r
+    val outputPattern      = """(?m)^\s*out\s+(\w+)(?:\s*:\s*(\S+))?""".r
 
     // First, extract inputs with examples
-    val inputsWithExamples = exampleInputPattern.findAllMatchIn(normalizedSource).map { m =>
-      val exampleRaw = m.group(1).trim
-      val name = m.group(2)
-      val paramType = m.group(3).trim
+    val inputsWithExamples = exampleInputPattern
+      .findAllMatchIn(normalizedSource)
+      .map { m =>
+        val exampleRaw = m.group(1).trim
+        val name       = m.group(2)
+        val paramType  = m.group(3).trim
 
-      // Parse the example value - remove quotes if string
-      val exampleValue = parseExampleValue(exampleRaw, paramType)
+        // Parse the example value - remove quotes if string
+        val exampleValue = parseExampleValue(exampleRaw, paramType)
 
-      InputParam(
-        name = name,
-        paramType = paramType,
-        required = true,
-        defaultValue = Some(exampleValue)
-      )
-    }.toList
+        InputParam(
+          name = name,
+          paramType = paramType,
+          required = true,
+          defaultValue = Some(exampleValue)
+        )
+      }
+      .toList
 
     val inputNamesWithExamples = inputsWithExamples.map(_.name).toSet
 
     // Then extract inputs without examples (that weren't already captured)
-    val inputsWithoutExamples = simpleInputPattern.findAllMatchIn(normalizedSource).map { m =>
-      InputParam(
-        name = m.group(1),
-        paramType = m.group(2).trim,
-        required = true
-      )
-    }.filterNot(i => inputNamesWithExamples.contains(i.name)).toList
+    val inputsWithoutExamples = simpleInputPattern
+      .findAllMatchIn(normalizedSource)
+      .map { m =>
+        InputParam(
+          name = m.group(1),
+          paramType = m.group(2).trim,
+          required = true
+        )
+      }
+      .filterNot(i => inputNamesWithExamples.contains(i.name))
+      .toList
 
     // Filter out any invalid inputs (e.g., where name looks like a type)
-    val primitiveTypes = Set("Int", "String", "Boolean", "Float", "Double", "Long", "Any", "Unit", "List", "Map", "Set", "Option")
+    val primitiveTypes = Set(
+      "Int",
+      "String",
+      "Boolean",
+      "Float",
+      "Double",
+      "Long",
+      "Any",
+      "Unit",
+      "List",
+      "Map",
+      "Set",
+      "Option"
+    )
     val allInputs = (inputsWithExamples ++ inputsWithoutExamples)
       .filter(i => i.name.nonEmpty && !primitiveTypes.contains(i.name) && i.name.head.isLower)
 
-    val outputs = outputPattern.findAllMatchIn(normalizedSource).map { m =>
-      OutputParam(
-        name = m.group(1),
-        paramType = Option(m.group(2)).getOrElse("Any")
-      )
-    }.toList
+    val outputs = outputPattern
+      .findAllMatchIn(normalizedSource)
+      .map { m =>
+        OutputParam(
+          name = m.group(1),
+          paramType = Option(m.group(2)).getOrElse("Any")
+        )
+      }
+      .toList
 
     (allInputs, outputs)
   }
@@ -355,30 +410,28 @@ class DashboardRoutes(
     if trimmed.startsWith("\"") && trimmed.endsWith("\"") then
       Json.fromString(trimmed.substring(1, trimmed.length - 1))
     // Handle numbers
-    else if trimmed.matches("-?\\d+\\.\\d+") then
-      Json.fromDoubleOrNull(trimmed.toDouble)
+    else if trimmed.matches("-?\\d+\\.\\d+") then Json.fromDoubleOrNull(trimmed.toDouble)
     else if trimmed.matches("-?\\d+") then
       paramType.toLowerCase match {
-        case "int" | "integer" => Json.fromInt(trimmed.toInt)
-        case "long" => Json.fromLong(trimmed.toLong)
+        case "int" | "integer"  => Json.fromInt(trimmed.toInt)
+        case "long"             => Json.fromLong(trimmed.toLong)
         case "double" | "float" => Json.fromDoubleOrNull(trimmed.toDouble)
-        case _ => Json.fromInt(trimmed.toInt)
+        case _                  => Json.fromInt(trimmed.toInt)
       }
     // Handle booleans
-    else if trimmed == "true" || trimmed == "false" then
-      Json.fromBoolean(trimmed.toBoolean)
+    else if trimmed == "true" || trimmed == "false" then Json.fromBoolean(trimmed.toBoolean)
     // Default to string
-    else
-      Json.fromString(trimmed)
+    else Json.fromString(trimmed)
   }
 
   /** Execute a script and store the result */
   private def executeScript(
       req: DashboardExecuteRequest
   ): EitherT[IO, ApiError, DashboardExecuteResponse] = {
-    val source = determineSource(req.source)
+    val source     = determineSource(req.source)
     val sampleRate = req.sampleRate.getOrElse(config.defaultSampleRate)
-    val shouldStore = ExecutionStorage.shouldSample(source, req.sampleRate, config.defaultSampleRate)
+    val shouldStore =
+      ExecutionStorage.shouldSample(source, req.sampleRate, config.defaultSampleRate)
 
     for {
       // Read the script file
@@ -386,32 +439,42 @@ class DashboardRoutes(
 
       // Compile the script
       compiled <- EitherT(
-        compiler.compileIO(content, "dashboard_exec").map(_.leftMap { errors =>
-          ApiError.CompilationError(errors.map(_.message))
-        })
+        compiler
+          .compileIO(content, "dashboard_exec")
+          .map(_.leftMap { errors =>
+            ApiError.CompilationError(errors.map(_.message))
+          })
       )
 
       // Also compile to IR for DAG visualization (best effort)
       irProgram = compiler.compileToIR(content, "dashboard_exec").toOption
 
       // Create execution record
-      startTime = System.currentTimeMillis()
+      startTime   = System.currentTimeMillis()
       executionId = UUID.randomUUID().toString
 
       // Optionally compile the DAG visualization
-      dagVizIR = irProgram.flatMap(ir => Try(DagVizCompiler.compile(ir, Some(compiled.program.image.dagSpec.metadata.name))).toOption)
+      dagVizIR = irProgram.flatMap(ir =>
+        Try(DagVizCompiler.compile(ir, Some(compiled.program.image.dagSpec.metadata.name))).toOption
+      )
 
       // Create initial execution record if sampling
-      _ <- if shouldStore then
-        EitherT.liftF(storage.store(ExecutionStorage.createExecution(
-          dagName = compiled.program.image.dagSpec.metadata.name,
-          scriptPath = Some(req.scriptPath),
-          inputs = req.inputs,
-          source = source,
-          sampleRate = sampleRate
-        ).copy(executionId = executionId, dagVizIR = dagVizIR)))
-      else
-        EitherT.pure[IO, ApiError](())
+      _ <-
+        if shouldStore then
+          EitherT.liftF(
+            storage.store(
+              ExecutionStorage
+                .createExecution(
+                  dagName = compiled.program.image.dagSpec.metadata.name,
+                  scriptPath = Some(req.scriptPath),
+                  inputs = req.inputs,
+                  source = source,
+                  sampleRate = sampleRate
+                )
+                .copy(executionId = executionId, dagVizIR = dagVizIR)
+            )
+          )
+        else EitherT.pure[IO, ApiError](())
 
       // Convert inputs
       inputs <- convertInputs(req.inputs, compiled.program.image.dagSpec)
@@ -426,20 +489,20 @@ class DashboardRoutes(
         k -> io.constellation.JsonCValueConverter.cValueToJson(v)
       }
 
-      endTime = System.currentTimeMillis()
+      endTime    = System.currentTimeMillis()
       durationMs = endTime - startTime
 
       // Update execution record with results
-      _ <- if shouldStore then
-        EitherT.liftF(storage.update(executionId) { exec =>
-          exec.copy(
-            endTime = Some(endTime),
-            outputs = Some(outputs),
-            status = ExecutionStatus.Completed
-          )
-        })
-      else
-        EitherT.pure[IO, ApiError](None)
+      _ <-
+        if shouldStore then
+          EitherT.liftF(storage.update(executionId) { exec =>
+            exec.copy(
+              endTime = Some(endTime),
+              outputs = Some(outputs),
+              status = ExecutionStatus.Completed
+            )
+          })
+        else EitherT.pure[IO, ApiError](None)
 
     } yield DashboardExecuteResponse(
       success = true,
@@ -454,17 +517,15 @@ class DashboardRoutes(
   private def determineSource(source: Option[String]): ExecutionSource =
     source.map(_.toLowerCase) match {
       case Some("vscode") | Some("vscode-extension") => ExecutionSource.VSCodeExtension
-      case Some("dashboard")                          => ExecutionSource.Dashboard
-      case _                                          => ExecutionSource.API
+      case Some("dashboard")                         => ExecutionSource.Dashboard
+      case _                                         => ExecutionSource.API
     }
 
   /** Read a script file */
   private def readScriptFile(scriptPath: String): IO[Either[ApiError, String]] = IO {
     val fullPath = config.getCstDirectory.resolve(scriptPath.replace("/", java.io.File.separator))
-    if !Files.exists(fullPath) then
-      Left(ApiError.NotFoundError("Script", scriptPath))
-    else
-      Right(Files.readString(fullPath))
+    if !Files.exists(fullPath) then Left(ApiError.NotFoundError("Script", scriptPath))
+    else Right(Files.readString(fullPath))
   }
 
   /** Convert JSON inputs to CValue */
@@ -508,8 +569,10 @@ object DashboardRoutes {
       compiler: LangCompiler,
       config: DashboardConfig
   ): IO[DashboardRoutes] = for {
-    storage <- ExecutionStorage.inMemory(ExecutionStorage.Config(
-      maxExecutions = config.maxStoredExecutions
-    ))
+    storage <- ExecutionStorage.inMemory(
+      ExecutionStorage.Config(
+        maxExecutions = config.maxStoredExecutions
+      )
+    )
   } yield new DashboardRoutes(constellation, compiler, storage, config)
 }

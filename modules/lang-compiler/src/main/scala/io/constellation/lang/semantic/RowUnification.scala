@@ -1,12 +1,11 @@
 package io.constellation.lang.semantic
 
-import io.constellation.lang.semantic.SemanticType._
+import io.constellation.lang.semantic.SemanticType.*
 
 /** Row unification for row polymorphism.
   *
-  * Row unification allows closed records to be passed to functions expecting
-  * open records. The extra fields in the closed record are captured by the
-  * row variable.
+  * Row unification allows closed records to be passed to functions expecting open records. The
+  * extra fields in the closed record are captured by the row variable.
   *
   * Example:
   * {{{
@@ -29,18 +28,21 @@ object RowUnification {
     def message: String = s"Missing required field(s): ${fields.mkString(", ")}"
   }
 
-  case class FieldTypeMismatch(field: String, expected: SemanticType, actual: SemanticType) extends UnificationError {
-    def message: String = s"Field '$field' has type ${actual.prettyPrint} but expected ${expected.prettyPrint}"
+  case class FieldTypeMismatch(field: String, expected: SemanticType, actual: SemanticType)
+      extends UnificationError {
+    def message: String =
+      s"Field '$field' has type ${actual.prettyPrint} but expected ${expected.prettyPrint}"
   }
 
-  case class IncompatibleTypes(expected: SemanticType, actual: SemanticType) extends UnificationError {
+  case class IncompatibleTypes(expected: SemanticType, actual: SemanticType)
+      extends UnificationError {
     def message: String = s"Expected ${expected.prettyPrint} but got ${actual.prettyPrint}"
   }
 
   /** Substitution mapping row variables to their resolved field sets.
     *
-    * When a closed record unifies with an open record, the row variable
-    * is bound to the "extra" fields from the closed record.
+    * When a closed record unifies with an open record, the row variable is bound to the "extra"
+    * fields from the closed record.
     */
   case class Substitution(rowSubst: Map[RowVar, Map[String, SemanticType]] = Map.empty) {
 
@@ -69,32 +71,36 @@ object RowUnification {
 
   /** Unify a closed record with an open record.
     *
-    * Checks that the closed record has all fields required by the open record,
-    * and that those field types are subtypes of the expected types.
-    * The row variable captures any extra fields from the closed record.
+    * Checks that the closed record has all fields required by the open record, and that those field
+    * types are subtypes of the expected types. The row variable captures any extra fields from the
+    * closed record.
     *
-    * @param closed The concrete closed record type (the actual argument)
-    * @param open The open record type with row variable (the expected parameter)
-    * @return Either an error or a substitution binding the row variable to extra fields
+    * @param closed
+    *   The concrete closed record type (the actual argument)
+    * @param open
+    *   The open record type with row variable (the expected parameter)
+    * @return
+    *   Either an error or a substitution binding the row variable to extra fields
     */
   def unifyClosedWithOpen(
-    closed: SRecord,
-    open: SOpenRecord
+      closed: SRecord,
+      open: SOpenRecord
   ): Either[UnificationError, Substitution] = {
     // Check that closed record has all required fields
     val missingFields = open.fields.keySet.diff(closed.fields.keySet)
-    if (missingFields.nonEmpty) {
+    if missingFields.nonEmpty then {
       Left(MissingFields(missingFields))
     } else {
       // Check that field types are compatible (using subtyping)
       val fieldMismatch = open.fields.collectFirst {
-        case (fieldName, expectedType) if !Subtyping.isSubtype(closed.fields(fieldName), expectedType) =>
+        case (fieldName, expectedType)
+            if !Subtyping.isSubtype(closed.fields(fieldName), expectedType) =>
           FieldTypeMismatch(fieldName, expectedType, closed.fields(fieldName))
       }
 
       fieldMismatch match {
         case Some(error) => Left(error)
-        case None =>
+        case None        =>
           // Row variable captures extra fields
           val extraFields = closed.fields.view.filterKeys(k => !open.fields.contains(k)).toMap
           Right(Substitution.empty.withRowVar(open.rowVar, extraFields))
@@ -104,36 +110,42 @@ object RowUnification {
 
   /** Unify two open records.
     *
-    * This is more complex than closed-to-open unification because both
-    * records have row variables that need to be related.
+    * This is more complex than closed-to-open unification because both records have row variables
+    * that need to be related.
     *
-    * @param actual The actual open record type
-    * @param expected The expected open record type
-    * @param subst Existing substitutions to extend
-    * @return Either an error or an updated substitution
+    * @param actual
+    *   The actual open record type
+    * @param expected
+    *   The expected open record type
+    * @param subst
+    *   Existing substitutions to extend
+    * @return
+    *   Either an error or an updated substitution
     */
   def unifyOpenWithOpen(
-    actual: SOpenRecord,
-    expected: SOpenRecord,
-    subst: Substitution
+      actual: SOpenRecord,
+      expected: SOpenRecord,
+      subst: Substitution
   ): Either[UnificationError, Substitution] = {
     // Check that actual has all fields required by expected
     val missingFields = expected.fields.keySet.diff(actual.fields.keySet)
-    if (missingFields.nonEmpty) {
+    if missingFields.nonEmpty then {
       Left(MissingFields(missingFields))
     } else {
       // Check field type compatibility
       val fieldMismatch = expected.fields.collectFirst {
-        case (fieldName, expectedType) if !Subtyping.isSubtype(actual.fields(fieldName), expectedType) =>
+        case (fieldName, expectedType)
+            if !Subtyping.isSubtype(actual.fields(fieldName), expectedType) =>
           FieldTypeMismatch(fieldName, expectedType, actual.fields(fieldName))
       }
 
       fieldMismatch match {
         case Some(error) => Left(error)
-        case None =>
+        case None        =>
           // The actual record's extra fields plus its row variable should unify
           // with the expected record's row variable
-          val actualExtraFields = actual.fields.view.filterKeys(k => !expected.fields.contains(k)).toMap
+          val actualExtraFields =
+            actual.fields.view.filterKeys(k => !expected.fields.contains(k)).toMap
 
           // For now, we bind the expected row variable to the actual extra fields
           // (This is a simplification - full row unification would relate the row variables)
@@ -142,10 +154,10 @@ object RowUnification {
     }
   }
 
-  /** Apply substitution to a type, replacing open records with closed records
-    * when their row variables are fully resolved.
+  /** Apply substitution to a type, replacing open records with closed records when their row
+    * variables are fully resolved.
     */
-  def applySubstitution(typ: SemanticType, subst: Substitution): SemanticType = {
+  def applySubstitution(typ: SemanticType, subst: Substitution): SemanticType =
     typ match {
       case SOpenRecord(fields, rowVar) =>
         subst(rowVar) match {
@@ -172,5 +184,4 @@ object RowUnification {
         SUnion(members.map(applySubstitution(_, subst)))
       case other => other
     }
-  }
 }

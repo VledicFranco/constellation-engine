@@ -6,7 +6,10 @@ import org.scalatest.matchers.should.Matchers
 
 class CompletionTrieTest extends AnyFlatSpec with Matchers {
 
-  private def item(label: String, kind: CompletionItemKind = CompletionItemKind.Function): CompletionItem = {
+  private def item(
+      label: String,
+      kind: CompletionItemKind = CompletionItemKind.Function
+  ): CompletionItem =
     CompletionItem(
       label = label,
       kind = Some(kind),
@@ -16,7 +19,6 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
       filterText = Some(label),
       sortText = Some(label)
     )
-  }
 
   // ========== Basic Operations ==========
 
@@ -30,11 +32,13 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
   }
 
   it should "find items by exact prefix" in {
-    val trie = CompletionTrie(List(
-      item("Uppercase"),
-      item("Lowercase"),
-      item("UpperLimit")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("Uppercase"),
+        item("Lowercase"),
+        item("UpperLimit")
+      )
+    )
 
     val results = trie.findByPrefix("Upper")
     results.map(_.label) should contain theSameElementsAs List("Uppercase", "UpperLimit")
@@ -56,31 +60,39 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
 
   it should "return all items for empty prefix" in {
     val items = List(item("Alpha"), item("Beta"), item("Gamma"))
-    val trie = CompletionTrie(items)
+    val trie  = CompletionTrie(items)
 
-    trie.findByPrefix("").map(_.label) should contain theSameElementsAs List("Alpha", "Beta", "Gamma")
+    trie.findByPrefix("").map(_.label) should contain theSameElementsAs List(
+      "Alpha",
+      "Beta",
+      "Gamma"
+    )
   }
 
   // ========== Single Character Prefix ==========
 
   it should "handle single character prefix" in {
-    val trie = CompletionTrie(List(
-      item("Add"),
-      item("Average"),
-      item("Abs"),
-      item("Multiply")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("Add"),
+        item("Average"),
+        item("Abs"),
+        item("Multiply")
+      )
+    )
 
     val results = trie.findByPrefix("A")
     results.map(_.label) should contain theSameElementsAs List("Add", "Average", "Abs")
   }
 
   it should "handle single character items" in {
-    val trie = CompletionTrie(List(
-      item("A"),
-      item("B"),
-      item("AB")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("A"),
+        item("B"),
+        item("AB")
+      )
+    )
 
     trie.findByPrefix("A").map(_.label) should contain theSameElementsAs List("A", "AB")
     trie.findByPrefix("B").map(_.label) should contain only "B"
@@ -89,12 +101,14 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
   // ========== Common Prefixes ==========
 
   it should "handle items with common prefixes" in {
-    val trie = CompletionTrie(List(
-      item("List"),
-      item("ListLength"),
-      item("ListFirst"),
-      item("ListLast")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("List"),
+        item("ListLength"),
+        item("ListFirst"),
+        item("ListLast")
+      )
+    )
 
     trie.findByPrefix("List").size shouldBe 4
     trie.findByPrefix("ListL").size shouldBe 2
@@ -102,12 +116,14 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle items where one is prefix of another" in {
-    val trie = CompletionTrie(List(
-      item("Get"),
-      item("GetAll"),
-      item("GetAllUsers"),
-      item("GetUser")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("Get"),
+        item("GetAll"),
+        item("GetAllUsers"),
+        item("GetUser")
+      )
+    )
 
     trie.findByPrefix("Get").size shouldBe 4
     trie.findByPrefix("GetA").size shouldBe 2
@@ -144,33 +160,39 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
   // ========== Special Characters ==========
 
   it should "handle special characters in labels" in {
-    val trie = CompletionTrie(List(
-      item("eq-int"),
-      item("eq-string"),
-      item("list-length")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("eq-int"),
+        item("eq-string"),
+        item("list-length")
+      )
+    )
 
     trie.findByPrefix("eq-").map(_.label) should contain theSameElementsAs
       List("eq-int", "eq-string")
   }
 
   it should "handle underscores in labels" in {
-    val trie = CompletionTrie(List(
-      item("get_user"),
-      item("get_all_users"),
-      item("set_user")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("get_user"),
+        item("get_all_users"),
+        item("set_user")
+      )
+    )
 
     trie.findByPrefix("get_").map(_.label) should contain theSameElementsAs
       List("get_user", "get_all_users")
   }
 
   it should "handle numbers in labels" in {
-    val trie = CompletionTrie(List(
-      item("int32"),
-      item("int64"),
-      item("float32")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("int32"),
+        item("int64"),
+        item("float32")
+      )
+    )
 
     trie.findByPrefix("int").map(_.label) should contain theSameElementsAs
       List("int32", "int64")
@@ -212,7 +234,7 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
 
   it should "handle very long labels" in {
     val longLabel = "A" * 1000
-    val trie = CompletionTrie(List(item(longLabel)))
+    val trie      = CompletionTrie(List(item(longLabel)))
 
     trie.findByPrefix("A" * 500) should have length 1
     trie.findByPrefix("A" * 1000) should have length 1
@@ -220,10 +242,12 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle unicode characters" in {
-    val trie = CompletionTrie(List(
-      item("Hello"),
-      item("Helloworld")
-    ))
+    val trie = CompletionTrie(
+      List(
+        item("Hello"),
+        item("Helloworld")
+      )
+    )
 
     trie.findByPrefix("Hello").map(_.label) should contain theSameElementsAs
       List("Hello", "Helloworld")
@@ -262,7 +286,7 @@ class CompletionTrieTest extends AnyFlatSpec with Matchers {
 
   "CompletionTrie.apply" should "create a populated trie" in {
     val items = List(item("A"), item("B"), item("C"))
-    val trie = CompletionTrie(items)
+    val trie  = CompletionTrie(items)
 
     trie.size shouldBe 3
     trie.findByPrefix("").size shouldBe 3

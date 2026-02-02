@@ -214,7 +214,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have correct types for new string functions" in {
     StdLib.joinSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SString),
+      "list"      -> SemanticType.SList(SemanticType.SString),
       "separator" -> SemanticType.SString
     )
     StdLib.joinSignature.returns shouldBe SemanticType.SString
@@ -227,8 +227,8 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     StdLib.trimSignature.returns shouldBe SemanticType.SString
 
     StdLib.replaceSignature.params shouldBe List(
-      "value" -> SemanticType.SString,
-      "target" -> SemanticType.SString,
+      "value"       -> SemanticType.SString,
+      "target"      -> SemanticType.SString,
       "replacement" -> SemanticType.SString
     )
     StdLib.replaceSignature.returns shouldBe SemanticType.SString
@@ -256,12 +256,14 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     StdLib.listConcatSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
 
     StdLib.listContainsSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt),
+      "list"  -> SemanticType.SList(SemanticType.SInt),
       "value" -> SemanticType.SInt
     )
     StdLib.listContainsSignature.returns shouldBe SemanticType.SBoolean
 
-    StdLib.listReverseSignature.params shouldBe List("list" -> SemanticType.SList(SemanticType.SInt))
+    StdLib.listReverseSignature.params shouldBe List(
+      "list" -> SemanticType.SList(SemanticType.SInt)
+    )
     StdLib.listReverseSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
   }
 
@@ -458,7 +460,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   "HOF signatures" should "have correct types for filter" in {
     StdLib.filterIntSignature.params shouldBe List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
     StdLib.filterIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
@@ -467,7 +469,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have correct types for map" in {
     StdLib.mapIntIntSignature.params shouldBe List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
     )
     StdLib.mapIntIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
@@ -476,7 +478,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have correct types for all" in {
     StdLib.allIntSignature.params shouldBe List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
     StdLib.allIntSignature.returns shouldBe SemanticType.SBoolean
@@ -485,7 +487,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have correct types for any" in {
     StdLib.anyIntSignature.params shouldBe List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
     StdLib.anyIntSignature.returns shouldBe SemanticType.SBoolean
@@ -507,7 +509,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "filter-dag")
     result match {
       case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
-      case Right(_) => succeed
+      case Right(_)     => succeed
     }
   }
 
@@ -526,7 +528,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "map-dag")
     result match {
       case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
-      case Right(_) => succeed
+      case Right(_)     => succeed
     }
   }
 
@@ -544,7 +546,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "all-dag")
     result match {
       case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
-      case Right(_) => succeed
+      case Right(_)     => succeed
     }
   }
 
@@ -562,7 +564,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "any-dag")
     result match {
       case Left(errors) => fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
-      case Right(_) => succeed
+      case Right(_)     => succeed
     }
   }
 

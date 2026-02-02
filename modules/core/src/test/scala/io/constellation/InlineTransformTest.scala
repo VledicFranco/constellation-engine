@@ -14,10 +14,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("b" -> CType.CString))
     )
 
-    val result = transform(Map(
-      "left" -> Map("a" -> 1),
-      "right" -> Map("b" -> "hello")
-    ))
+    val result = transform(
+      Map(
+        "left"  -> Map("a" -> 1),
+        "right" -> Map("b" -> "hello")
+      )
+    )
 
     result shouldBe Map("a" -> 1, "b" -> "hello")
   }
@@ -28,10 +30,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("x" -> CType.CInt))
     )
 
-    val result = transform(Map(
-      "left" -> Map("x" -> 1, "y" -> 2),
-      "right" -> Map("x" -> 10, "z" -> 3)
-    ))
+    val result = transform(
+      Map(
+        "left"  -> Map("x" -> 1, "y" -> 2),
+        "right" -> Map("x" -> 10, "z" -> 3)
+      )
+    )
 
     result shouldBe Map("x" -> 10, "y" -> 2, "z" -> 3)
   }
@@ -42,10 +46,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(CType.CProduct(Map("b" -> CType.CString)))
     )
 
-    val result = transform(Map(
-      "left" -> List(Map("a" -> 1), Map("a" -> 2)),
-      "right" -> List(Map("b" -> "x"), Map("b" -> "y"))
-    ))
+    val result = transform(
+      Map(
+        "left"  -> List(Map("a" -> 1), Map("a" -> 2)),
+        "right" -> List(Map("b" -> "x"), Map("b" -> "y"))
+      )
+    )
 
     result shouldBe List(
       Map("a" -> 1, "b" -> "x"),
@@ -60,10 +66,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
     )
 
     val exception = intercept[IllegalArgumentException] {
-      transform(Map(
-        "left" -> List(Map("a" -> 1), Map("a" -> 2)),
-        "right" -> List(Map("b" -> 10)) // Different length
-      ))
+      transform(
+        Map(
+          "left"  -> List(Map("a" -> 1), Map("a" -> 2)),
+          "right" -> List(Map("b" -> 10)) // Different length
+        )
+      )
     }
     exception.getMessage should include("different lengths")
   }
@@ -74,10 +82,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("b" -> CType.CString))
     )
 
-    val result = transform(Map(
-      "left" -> List(Map("a" -> 1), Map("a" -> 2), Map("a" -> 3)),
-      "right" -> Map("b" -> "shared")
-    ))
+    val result = transform(
+      Map(
+        "left"  -> List(Map("a" -> 1), Map("a" -> 2), Map("a" -> 3)),
+        "right" -> Map("b" -> "shared")
+      )
+    )
 
     result shouldBe List(
       Map("a" -> 1, "b" -> "shared"),
@@ -92,10 +102,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(CType.CProduct(Map("value" -> CType.CInt)))
     )
 
-    val result = transform(Map(
-      "left" -> Map("prefix" -> "item"),
-      "right" -> List(Map("value" -> 1), Map("value" -> 2))
-    ))
+    val result = transform(
+      Map(
+        "left"  -> Map("prefix" -> "item"),
+        "right" -> List(Map("value" -> 1), Map("value" -> 2))
+      )
+    )
 
     result shouldBe List(
       Map("prefix" -> "item", "value" -> 1),
@@ -106,10 +118,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   it should "return right for incompatible types (fallback)" in {
     val transform = MergeTransform(CType.CInt, CType.CString)
 
-    val result = transform(Map(
-      "left" -> 42,
-      "right" -> "hello"
-    ))
+    val result = transform(
+      Map(
+        "left"  -> 42,
+        "right" -> "hello"
+      )
+    )
 
     result shouldBe "hello"
   }
@@ -122,9 +136,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt, "email" -> CType.CString))
     )
 
-    val result = transform(Map(
-      "source" -> Map("name" -> "Alice", "age" -> 30, "email" -> "alice@test.com")
-    ))
+    val result = transform(
+      Map(
+        "source" -> Map("name" -> "Alice", "age" -> 30, "email" -> "alice@test.com")
+      )
+    )
 
     result shouldBe Map("name" -> "Alice", "age" -> 30)
   }
@@ -135,9 +151,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("name" -> CType.CString))
     )
 
-    val result = transform(Map(
-      "source" -> Map("name" -> "Bob")
-    ))
+    val result = transform(
+      Map(
+        "source" -> Map("name" -> "Bob")
+      )
+    )
 
     result shouldBe Map("name" -> "Bob")
   }
@@ -148,9 +166,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CInt)))
     )
 
-    val result = transform(Map(
-      "source" -> List(Map("x" -> 1, "y" -> 2), Map("x" -> 10, "y" -> 20))
-    ))
+    val result = transform(
+      Map(
+        "source" -> List(Map("x" -> 1, "y" -> 2), Map("x" -> 10, "y" -> 20))
+      )
+    )
 
     result shouldBe List(Map("x" -> 1), Map("x" -> 10))
   }
@@ -171,9 +191,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
     )
 
-    val result = transform(Map(
-      "source" -> Map("name" -> "Charlie", "age" -> 25)
-    ))
+    val result = transform(
+      Map(
+        "source" -> Map("name" -> "Charlie", "age" -> 25)
+      )
+    )
 
     result shouldBe "Charlie"
   }
@@ -196,9 +218,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(CType.CProduct(Map("score" -> CType.CInt)))
     )
 
-    val result = transform(Map(
-      "source" -> List(Map("score" -> 100), Map("score" -> 85), Map("score" -> 92))
-    ))
+    val result = transform(
+      Map(
+        "source" -> List(Map("score" -> 100), Map("score" -> 85), Map("score" -> 92))
+      )
+    )
 
     result shouldBe List(100, 85, 92)
   }
@@ -215,31 +239,37 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== ConditionalTransform Tests ==========
 
   "ConditionalTransform" should "return thenBr when condition is true" in {
-    val result = ConditionalTransform(Map(
-      "cond" -> true,
-      "thenBr" -> "yes",
-      "elseBr" -> "no"
-    ))
+    val result = ConditionalTransform(
+      Map(
+        "cond"   -> true,
+        "thenBr" -> "yes",
+        "elseBr" -> "no"
+      )
+    )
 
     result shouldBe "yes"
   }
 
   it should "return elseBr when condition is false" in {
-    val result = ConditionalTransform(Map(
-      "cond" -> false,
-      "thenBr" -> 42,
-      "elseBr" -> 0
-    ))
+    val result = ConditionalTransform(
+      Map(
+        "cond"   -> false,
+        "thenBr" -> 42,
+        "elseBr" -> 0
+      )
+    )
 
     result shouldBe 0
   }
 
   it should "work with complex branch values" in {
-    val result = ConditionalTransform(Map(
-      "cond" -> true,
-      "thenBr" -> Map("a" -> 1, "b" -> 2),
-      "elseBr" -> Map("x" -> 10)
-    ))
+    val result = ConditionalTransform(
+      Map(
+        "cond"   -> true,
+        "thenBr" -> Map("a" -> 1, "b" -> 2),
+        "elseBr" -> Map("x" -> 10)
+      )
+    )
 
     result shouldBe Map("a" -> 1, "b" -> 2)
   }
@@ -247,19 +277,23 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== GuardTransform Tests ==========
 
   "GuardTransform" should "return Some(expr) when condition is true" in {
-    val result = GuardTransform(Map(
-      "cond" -> true,
-      "expr" -> "value"
-    ))
+    val result = GuardTransform(
+      Map(
+        "cond" -> true,
+        "expr" -> "value"
+      )
+    )
 
     result shouldBe Some("value")
   }
 
   it should "return None when condition is false" in {
-    val result = GuardTransform(Map(
-      "cond" -> false,
-      "expr" -> "value"
-    ))
+    val result = GuardTransform(
+      Map(
+        "cond" -> false,
+        "expr" -> "value"
+      )
+    )
 
     result shouldBe None
   }
@@ -267,28 +301,34 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== CoalesceTransform Tests ==========
 
   "CoalesceTransform" should "unwrap Some value" in {
-    val result = CoalesceTransform(Map(
-      "left" -> Some("inner"),
-      "right" -> "fallback"
-    ))
+    val result = CoalesceTransform(
+      Map(
+        "left"  -> Some("inner"),
+        "right" -> "fallback"
+      )
+    )
 
     result shouldBe "inner"
   }
 
   it should "return fallback for None" in {
-    val result = CoalesceTransform(Map(
-      "left" -> None,
-      "right" -> "fallback"
-    ))
+    val result = CoalesceTransform(
+      Map(
+        "left"  -> None,
+        "right" -> "fallback"
+      )
+    )
 
     result shouldBe "fallback"
   }
 
   it should "work with complex types" in {
-    val result = CoalesceTransform(Map(
-      "left" -> Some(List(1, 2, 3)),
-      "right" -> List.empty
-    ))
+    val result = CoalesceTransform(
+      Map(
+        "left"  -> Some(List(1, 2, 3)),
+        "right" -> List.empty
+      )
+    )
 
     result shouldBe List(1, 2, 3)
   }
@@ -354,28 +394,28 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
 
   "LiteralTransform" should "produce constant string value" in {
     val transform = LiteralTransform("constant")
-    val result = transform(Map.empty) // Ignores inputs
+    val result    = transform(Map.empty) // Ignores inputs
 
     result shouldBe "constant"
   }
 
   it should "produce constant numeric value" in {
     val transform = LiteralTransform(42)
-    val result = transform(Map("ignored" -> "input"))
+    val result    = transform(Map("ignored" -> "input"))
 
     result shouldBe 42
   }
 
   it should "produce constant complex value" in {
     val transform = LiteralTransform(List(1, 2, 3))
-    val result = transform(Map.empty)
+    val result    = transform(Map.empty)
 
     result shouldBe List(1, 2, 3)
   }
 
   it should "produce null value" in {
     val transform = LiteralTransform(null)
-    val result = transform(Map.empty)
+    val result    = transform(Map.empty)
 
     (result == null) shouldBe true
   }
@@ -384,67 +424,69 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
 
   "StringInterpolationTransform" should "interpolate single expression" in {
     val transform = StringInterpolationTransform(List("Hello, ", "!"))
-    val result = transform(Map("expr0" -> "World"))
+    val result    = transform(Map("expr0" -> "World"))
 
     result shouldBe "Hello, World!"
   }
 
   it should "interpolate multiple expressions" in {
     val transform = StringInterpolationTransform(List("", " + ", " = ", ""))
-    val result = transform(Map(
-      "expr0" -> 2,
-      "expr1" -> 3,
-      "expr2" -> 5
-    ))
+    val result = transform(
+      Map(
+        "expr0" -> 2,
+        "expr1" -> 3,
+        "expr2" -> 5
+      )
+    )
 
     result shouldBe "2 + 3 = 5"
   }
 
   it should "handle empty parts" in {
     val transform = StringInterpolationTransform(List("", "", ""))
-    val result = transform(Map("expr0" -> "A", "expr1" -> "B"))
+    val result    = transform(Map("expr0" -> "A", "expr1" -> "B"))
 
     result shouldBe "AB"
   }
 
   it should "stringify numbers" in {
     val transform = StringInterpolationTransform(List("Value: ", ""))
-    val result = transform(Map("expr0" -> 3.14))
+    val result    = transform(Map("expr0" -> 3.14))
 
     result shouldBe "Value: 3.14"
   }
 
   it should "stringify booleans" in {
     val transform = StringInterpolationTransform(List("Is active: ", ""))
-    val result = transform(Map("expr0" -> true))
+    val result    = transform(Map("expr0" -> true))
 
     result shouldBe "Is active: true"
   }
 
   it should "stringify None as empty string" in {
     val transform = StringInterpolationTransform(List("Value: ", " end"))
-    val result = transform(Map("expr0" -> None))
+    val result    = transform(Map("expr0" -> None))
 
     result shouldBe "Value:  end"
   }
 
   it should "stringify Some by unwrapping" in {
     val transform = StringInterpolationTransform(List("Value: ", ""))
-    val result = transform(Map("expr0" -> Some("inner")))
+    val result    = transform(Map("expr0" -> Some("inner")))
 
     result shouldBe "Value: inner"
   }
 
   it should "stringify lists" in {
     val transform = StringInterpolationTransform(List("Items: ", ""))
-    val result = transform(Map("expr0" -> List(1, 2, 3)))
+    val result    = transform(Map("expr0" -> List(1, 2, 3)))
 
     result shouldBe "Items: [1, 2, 3]"
   }
 
   it should "stringify maps" in {
     val transform = StringInterpolationTransform(List("Data: ", ""))
-    val result = transform(Map("expr0" -> Map("a" -> 1)))
+    val result    = transform(Map("expr0" -> Map("a" -> 1)))
 
     result shouldBe "Data: {a: 1}"
   }
@@ -452,9 +494,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== FilterTransform Tests ==========
 
   "FilterTransform" should "filter list with predicate" in {
-    val transform = FilterTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 5
-    )
+    val transform = FilterTransform((elem: Any) => elem.asInstanceOf[Int] > 5)
 
     val result = transform(Map("source" -> List(1, 10, 3, 8, 2, 7)))
 
@@ -462,9 +502,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return empty list when no elements match" in {
-    val transform = FilterTransform(
-      (elem: Any) => elem.asInstanceOf[Int] < 0
-    )
+    val transform = FilterTransform((elem: Any) => elem.asInstanceOf[Int] < 0)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -472,9 +510,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return all elements when all match" in {
-    val transform = FilterTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 0
-    )
+    val transform = FilterTransform((elem: Any) => elem.asInstanceOf[Int] > 0)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -482,9 +518,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty source list" in {
-    val transform = FilterTransform(
-      (elem: Any) => true
-    )
+    val transform = FilterTransform((elem: Any) => true)
 
     val result = transform(Map("source" -> List.empty))
 
@@ -494,9 +528,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== MapTransform Tests ==========
 
   "MapTransform" should "transform each element" in {
-    val transform = MapTransform(
-      (elem: Any) => elem.asInstanceOf[Int] * 2
-    )
+    val transform = MapTransform((elem: Any) => elem.asInstanceOf[Int] * 2)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -504,9 +536,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle type conversion" in {
-    val transform = MapTransform(
-      (elem: Any) => elem.toString
-    )
+    val transform = MapTransform((elem: Any) => elem.toString)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -514,9 +544,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty source list" in {
-    val transform = MapTransform(
-      (elem: Any) => elem.asInstanceOf[Int] * 2
-    )
+    val transform = MapTransform((elem: Any) => elem.asInstanceOf[Int] * 2)
 
     val result = transform(Map("source" -> List.empty))
 
@@ -524,16 +552,16 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "support complex transformations" in {
-    val transform = MapTransform(
-      (elem: Any) => {
-        val m = elem.asInstanceOf[Map[String, Any]]
-        m("value").asInstanceOf[Int] + 10
-      }
-    )
+    val transform = MapTransform { (elem: Any) =>
+      val m = elem.asInstanceOf[Map[String, Any]]
+      m("value").asInstanceOf[Int] + 10
+    }
 
-    val result = transform(Map(
-      "source" -> List(Map("value" -> 1), Map("value" -> 2))
-    ))
+    val result = transform(
+      Map(
+        "source" -> List(Map("value" -> 1), Map("value" -> 2))
+      )
+    )
 
     result shouldBe List(11, 12)
   }
@@ -541,9 +569,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== AllTransform Tests ==========
 
   "AllTransform" should "return true when all elements match" in {
-    val transform = AllTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 0
-    )
+    val transform = AllTransform((elem: Any) => elem.asInstanceOf[Int] > 0)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -551,9 +577,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return false when any element doesn't match" in {
-    val transform = AllTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 0
-    )
+    val transform = AllTransform((elem: Any) => elem.asInstanceOf[Int] > 0)
 
     val result = transform(Map("source" -> List(1, -1, 3)))
 
@@ -561,9 +585,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return true for empty list" in {
-    val transform = AllTransform(
-      (elem: Any) => false
-    )
+    val transform = AllTransform((elem: Any) => false)
 
     val result = transform(Map("source" -> List.empty))
 
@@ -573,9 +595,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   // ========== AnyTransform Tests ==========
 
   "AnyTransform" should "return true when any element matches" in {
-    val transform = AnyTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 10
-    )
+    val transform = AnyTransform((elem: Any) => elem.asInstanceOf[Int] > 10)
 
     val result = transform(Map("source" -> List(1, 2, 15, 3)))
 
@@ -583,9 +603,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return false when no element matches" in {
-    val transform = AnyTransform(
-      (elem: Any) => elem.asInstanceOf[Int] > 100
-    )
+    val transform = AnyTransform((elem: Any) => elem.asInstanceOf[Int] > 100)
 
     val result = transform(Map("source" -> List(1, 2, 3)))
 
@@ -593,9 +611,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return false for empty list" in {
-    val transform = AnyTransform(
-      (elem: Any) => true
-    )
+    val transform = AnyTransform((elem: Any) => true)
 
     val result = transform(Map("source" -> List.empty))
 
@@ -610,10 +626,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(CType.CList(CType.CProduct(Map("y" -> CType.CInt))))
     )
 
-    val result = transform(Map(
-      "left" -> List(List(Map("x" -> 1)), List(Map("x" -> 2))),
-      "right" -> List(List(Map("y" -> 10)), List(Map("y" -> 20)))
-    ))
+    val result = transform(
+      Map(
+        "left"  -> List(List(Map("x" -> 1)), List(Map("x" -> 2))),
+        "right" -> List(List(Map("y" -> 10)), List(Map("y" -> 20)))
+      )
+    )
 
     result shouldBe List(
       List(Map("x" -> 1, "y" -> 10)),
@@ -628,12 +646,14 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       CType.CList(innerType)
     )
 
-    val result = transform(Map(
-      "source" -> List(
-        Map("data" -> Map("value" -> 1)),
-        Map("data" -> Map("value" -> 2))
+    val result = transform(
+      Map(
+        "source" -> List(
+          Map("data" -> Map("value" -> 1)),
+          Map("data" -> Map("value" -> 2))
+        )
       )
-    ))
+    )
 
     result shouldBe List(Map("value" -> 1), Map("value" -> 2))
   }

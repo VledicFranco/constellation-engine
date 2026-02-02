@@ -40,9 +40,9 @@ object SemanticType {
   /** List<T> - collection type with element-wise operations for records.
     *
     * When the element type is a record, List supports:
-    * - Element-wise merge: `list + record` adds fields to each element
-    * - Element-wise projection: `list[field1, field2]` selects fields from each element
-    * - Element-wise field access: `list.field` extracts a field from each element
+    *   - Element-wise merge: `list + record` adds fields to each element
+    *   - Element-wise projection: `list[field1, field2]` selects fields from each element
+    *   - Element-wise field access: `list.field` extracts a field from each element
     *
     * Note: "Candidates" is a legacy alias for List and resolves to SList.
     */
@@ -60,11 +60,11 @@ object SemanticType {
     def prettyPrint: String = s"Optional<${inner.prettyPrint}>"
   }
 
-  /** Function type: (A, B) => C
-    * Used for lambda expressions and higher-order function parameters.
+  /** Function type: (A, B) => C Used for lambda expressions and higher-order function parameters.
     * Function types exist only at compile-time and have no runtime CType representation.
     */
-  final case class SFunction(paramTypes: List[SemanticType], returnType: SemanticType) extends SemanticType {
+  final case class SFunction(paramTypes: List[SemanticType], returnType: SemanticType)
+      extends SemanticType {
     def prettyPrint: String = {
       val params = paramTypes.map(_.prettyPrint).mkString(", ")
       s"($params) => ${returnType.prettyPrint}"
@@ -76,50 +76,56 @@ object SemanticType {
     def prettyPrint: String = members.map(_.prettyPrint).toList.sorted.mkString(" | ")
   }
 
-  /** Row variable - represents unknown additional fields in open records.
-    * Used for row polymorphism: { name: String | ρ } means "a record with at least name".
+  /** Row variable - represents unknown additional fields in open records. Used for row
+    * polymorphism: { name: String | ρ } means "a record with at least name".
     */
   final case class RowVar(id: Int) extends SemanticType {
     def prettyPrint: String = s"ρ$id"
   }
 
-  /** Open record type - has specific fields plus a row variable for "rest".
-    * Enables row polymorphism where functions accept records with "at least" certain fields.
+  /** Open record type - has specific fields plus a row variable for "rest". Enables row
+    * polymorphism where functions accept records with "at least" certain fields.
     *
-    * Example: SOpenRecord(Map("name" -> SString), RowVar(1)) represents { name: String | ρ1 }
-    * This matches any record with at least a "name" field of type String.
+    * Example: SOpenRecord(Map("name" -> SString), RowVar(1)) represents { name: String | ρ1 } This
+    * matches any record with at least a "name" field of type String.
     */
   final case class SOpenRecord(
-    fields: Map[String, SemanticType],
-    rowVar: RowVar
+      fields: Map[String, SemanticType],
+      rowVar: RowVar
   ) extends SemanticType {
     def prettyPrint: String = {
       val fieldStr = fields.map { case (k, v) => s"$k: ${v.prettyPrint}" }.mkString(", ")
-      if (fieldStr.isEmpty) s"{ | ${rowVar.prettyPrint} }"
+      if fieldStr.isEmpty then s"{ | ${rowVar.prettyPrint} }"
       else s"{ $fieldStr | ${rowVar.prettyPrint} }"
     }
   }
 
   /** Convert SemanticType to Constellation CType */
   def toCType(st: SemanticType): CType = st match {
-    case SString           => CType.CString
-    case SInt              => CType.CInt
-    case SFloat            => CType.CFloat
-    case SBoolean          => CType.CBoolean
-    case SNothing          => CType.CString // Bottom type - use String as default for runtime
-    case SRecord(fields)   => CType.CProduct(fields.view.mapValues(toCType).toMap)
-    case SList(elem)       => CType.CList(toCType(elem))
-    case SMap(k, v)        => CType.CMap(toCType(k), toCType(v))
-    case SOptional(inner)  => CType.COptional(toCType(inner))
-    case SFunction(_, _)   =>
-      throw new IllegalArgumentException("Function types cannot be converted to CType - they exist only at compile time")
-    case SUnion(members)   =>
+    case SString          => CType.CString
+    case SInt             => CType.CInt
+    case SFloat           => CType.CFloat
+    case SBoolean         => CType.CBoolean
+    case SNothing         => CType.CString // Bottom type - use String as default for runtime
+    case SRecord(fields)  => CType.CProduct(fields.view.mapValues(toCType).toMap)
+    case SList(elem)      => CType.CList(toCType(elem))
+    case SMap(k, v)       => CType.CMap(toCType(k), toCType(v))
+    case SOptional(inner) => CType.COptional(toCType(inner))
+    case SFunction(_, _) =>
+      throw new IllegalArgumentException(
+        "Function types cannot be converted to CType - they exist only at compile time"
+      )
+    case SUnion(members) =>
       // Use prettyPrint as tag name for each member type
       CType.CUnion(members.map(m => m.prettyPrint -> toCType(m)).toMap)
-    case RowVar(_)         =>
-      throw new IllegalArgumentException("Row variables cannot be converted to CType - they must be resolved during type checking")
+    case RowVar(_) =>
+      throw new IllegalArgumentException(
+        "Row variables cannot be converted to CType - they must be resolved during type checking"
+      )
     case SOpenRecord(_, _) =>
-      throw new IllegalArgumentException("Open record types cannot be converted to CType - they must be closed during type checking")
+      throw new IllegalArgumentException(
+        "Open record types cannot be converted to CType - they must be closed during type checking"
+      )
   }
 
   /** Convert Constellation CType to SemanticType */
@@ -138,12 +144,12 @@ object SemanticType {
 
 /** Function signature for registered modules */
 final case class FunctionSignature(
-    name: String,                                        // Language name: "ide-ranker-v2"
-    params: List[(String, SemanticType)],                // Parameter names and types
-    returns: SemanticType,                               // Return type
-    moduleName: String,                                  // Constellation module name
-    namespace: Option[String] = None,                    // Optional namespace: "stdlib.math"
-    rowVars: List[SemanticType.RowVar] = Nil             // Row variables this signature quantifies over
+    name: String,                            // Language name: "ide-ranker-v2"
+    params: List[(String, SemanticType)],    // Parameter names and types
+    returns: SemanticType,                   // Return type
+    moduleName: String,                      // Constellation module name
+    namespace: Option[String] = None,        // Optional namespace: "stdlib.math"
+    rowVars: List[SemanticType.RowVar] = Nil // Row variables this signature quantifies over
 ) {
 
   /** Fully qualified name (namespace.name or just name if no namespace) */
@@ -154,16 +160,17 @@ final case class FunctionSignature(
 
   def prettyPrint: String = {
     val paramStr = params.map { case (n, t) => s"$n: ${t.prettyPrint}" }.mkString(", ")
-    val rowVarStr = if (rowVars.isEmpty) "" else s"∀${rowVars.map(_.prettyPrint).mkString(", ")}. "
+    val rowVarStr =
+      if rowVars.isEmpty then "" else s"∀${rowVars.map(_.prettyPrint).mkString(", ")}. "
     s"$rowVarStr$qualifiedName($paramStr) -> ${returns.prettyPrint}"
   }
 
-  /** Create a fresh instantiation of this signature with new row variables.
-    * Each call to a row-polymorphic function gets fresh row variables to avoid
-    * interference between different call sites.
+  /** Create a fresh instantiation of this signature with new row variables. Each call to a
+    * row-polymorphic function gets fresh row variables to avoid interference between different call
+    * sites.
     */
-  def instantiate(freshVarGen: () => SemanticType.RowVar): FunctionSignature = {
-    if (!isRowPolymorphic) this
+  def instantiate(freshVarGen: () => SemanticType.RowVar): FunctionSignature =
+    if !isRowPolymorphic then this
     else {
       val mapping = rowVars.map(rv => rv -> freshVarGen()).toMap
       copy(
@@ -172,13 +179,18 @@ final case class FunctionSignature(
         rowVars = mapping.values.toList
       )
     }
-  }
 
-  private def substituteRowVars(t: SemanticType, mapping: Map[SemanticType.RowVar, SemanticType.RowVar]): SemanticType = {
-    import SemanticType._
+  private def substituteRowVars(
+      t: SemanticType,
+      mapping: Map[SemanticType.RowVar, SemanticType.RowVar]
+  ): SemanticType = {
+    import SemanticType.*
     t match {
       case SOpenRecord(fields, rv) =>
-        SOpenRecord(fields.view.mapValues(substituteRowVars(_, mapping)).toMap, mapping.getOrElse(rv, rv))
+        SOpenRecord(
+          fields.view.mapValues(substituteRowVars(_, mapping)).toMap,
+          mapping.getOrElse(rv, rv)
+        )
       case SRecord(fields) =>
         SRecord(fields.view.mapValues(substituteRowVars(_, mapping)).toMap)
       case SList(elem) =>

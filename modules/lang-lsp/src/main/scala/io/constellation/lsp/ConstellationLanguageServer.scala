@@ -5,11 +5,35 @@ import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 import io.circe.*
 import io.circe.syntax.*
-import io.constellation.{CValue, Constellation, ExecutionTracker, ExecutionTrace, NodeExecutionResult, NodeStatus, Module, SteppedExecution}
-import io.constellation.lang.{ast, CachingLangCompiler, CacheStats, LangCompiler}
-import io.constellation.lang.viz.{DagVizCompiler, SugiyamaLayout, LayoutConfig}
-import io.constellation.lang.ast.{Annotation, CompileError, CompileWarning, Declaration, Expression, SourceFile, Span, TypeExpr}
-import io.constellation.lang.compiler.{ErrorCode, ErrorCodes => CompilerErrorCodes, ErrorFormatter, SuggestionContext, Suggestions}
+import io.constellation.{
+  CValue,
+  Constellation,
+  ExecutionTrace,
+  ExecutionTracker,
+  Module,
+  NodeExecutionResult,
+  NodeStatus,
+  SteppedExecution
+}
+import io.constellation.lang.{ast, CacheStats, CachingLangCompiler, LangCompiler}
+import io.constellation.lang.viz.{DagVizCompiler, LayoutConfig, SugiyamaLayout}
+import io.constellation.lang.ast.{
+  Annotation,
+  CompileError,
+  CompileWarning,
+  Declaration,
+  Expression,
+  SourceFile,
+  Span,
+  TypeExpr
+}
+import io.constellation.lang.compiler.{
+  ErrorCode,
+  ErrorCodes as CompilerErrorCodes,
+  ErrorFormatter,
+  SuggestionContext,
+  Suggestions
+}
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.protocol.JsonRpc.*
@@ -18,7 +42,7 @@ import io.constellation.lsp.protocol.LspMessages.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
@@ -34,8 +58,8 @@ class ConstellationLanguageServer(
     Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
 
   // Cached completion tries for efficient prefix-based lookups
-  private var moduleCompletionTrie: CompletionTrie = CompletionTrie.empty
-  private var lastModuleNames: Set[String] = Set.empty
+  private var moduleCompletionTrie: CompletionTrie  = CompletionTrie.empty
+  private var lastModuleNames: Set[String]          = Set.empty
   private val keywordCompletionTrie: CompletionTrie = buildKeywordTrie()
 
   // Semantic token provider for syntax highlighting
@@ -46,7 +70,7 @@ class ConstellationLanguageServer(
     val startTime = System.currentTimeMillis()
     handleRequestInternal(request).flatTap { _ =>
       val elapsed = System.currentTimeMillis() - startTime
-      if (elapsed > 50) { // Only log slow requests (>50ms)
+      if elapsed > 50 then { // Only log slow requests (>50ms)
         logger.info(s"[TIMING] Request ${request.method} took ${elapsed}ms")
       } else {
         IO.unit
@@ -118,7 +142,7 @@ class ConstellationLanguageServer(
     val startTime = System.currentTimeMillis()
     handleNotificationInternal(notification).flatTap { _ =>
       val elapsed = System.currentTimeMillis() - startTime
-      if (elapsed > 10) { // Only log notifications taking >10ms
+      if elapsed > 10 then { // Only log notifications taking >10ms
         logger.info(s"[TIMING] Notification ${notification.method} took ${elapsed}ms")
       } else {
         IO.unit
@@ -247,8 +271,8 @@ class ConstellationLanguageServer(
                 // Skip semantic tokens for large files to prevent OOM in VS Code extension
                 // Large files generate thousands of tokens which can overwhelm the client
                 val MaxLinesForSemanticTokens = 150
-                val lineCount = document.text.count(_ == '\n') + 1
-                if (lineCount > MaxLinesForSemanticTokens) {
+                val lineCount                 = document.text.count(_ == '\n') + 1
+                if lineCount > MaxLinesForSemanticTokens then {
                   // Return empty tokens for large files
                   Response(id = request.id, result = Some(SemanticTokens(data = List.empty).asJson))
                 } else {
@@ -427,27 +451,25 @@ class ConstellationLanguageServer(
         )
     }
 
-  /** Convert an example expression to JSON for LSP transport.
-    * Supports literal values only (strings, numbers, booleans, lists of literals).
-    * Complex expressions (function calls, references) return None.
+  /** Convert an example expression to JSON for LSP transport. Supports literal values only
+    * (strings, numbers, booleans, lists of literals). Complex expressions (function calls,
+    * references) return None.
     */
   private def evaluateExampleToJson(expr: Expression): Option[Json] =
-    try {
+    try
       expr match {
-        case Expression.StringLit(value) => Some(Json.fromString(value))
-        case Expression.IntLit(value)    => Some(Json.fromLong(value))
-        case Expression.FloatLit(value)  => Some(Json.fromDoubleOrNull(value))
-        case Expression.BoolLit(value)   => Some(Json.fromBoolean(value))
+        case Expression.StringLit(value)  => Some(Json.fromString(value))
+        case Expression.IntLit(value)     => Some(Json.fromLong(value))
+        case Expression.FloatLit(value)   => Some(Json.fromDoubleOrNull(value))
+        case Expression.BoolLit(value)    => Some(Json.fromBoolean(value))
         case Expression.ListLit(elements) =>
           // Recursively convert each element; if any fails, the whole list fails
           val convertedElements = elements.map(loc => evaluateExampleToJson(loc.value))
-          if convertedElements.forall(_.isDefined) then
-            Some(Json.arr(convertedElements.flatten*))
-          else
-            None
+          if convertedElements.forall(_.isDefined) then Some(Json.arr(convertedElements.flatten*))
+          else None
         case _ => None // Complex expressions not supported
       }
-    } catch {
+    catch {
       case _: Exception => None // Fail gracefully
     }
 
@@ -562,7 +584,8 @@ class ConstellationLanguageServer(
             IO.pure(
               Response(
                 id = request.id,
-                error = Some(ResponseError(code = ErrorCodes.InvalidParams, message = error.getMessage))
+                error =
+                  Some(ResponseError(code = ErrorCodes.InvalidParams, message = error.getMessage))
               )
             )
           case Right(params) =>
@@ -593,7 +616,7 @@ class ConstellationLanguageServer(
       params: GetDagVisualizationParams
   ): IO[GetDagVisualizationResult] = {
     val totalStart = System.currentTimeMillis()
-    val dagName = s"lsp-dag-${document.uri.hashCode.abs}"
+    val dagName    = s"lsp-dag-${document.uri.hashCode.abs}"
 
     val irStart = System.currentTimeMillis()
     compiler.compileToIR(document.text, dagName) match {
@@ -602,49 +625,55 @@ class ConstellationLanguageServer(
 
         // Compile IR to visualization IR
         val vizStart = System.currentTimeMillis()
-        val vizIR = DagVizCompiler.compile(irProgram, title = Some(dagName))
-        val vizTime = System.currentTimeMillis() - vizStart
+        val vizIR    = DagVizCompiler.compile(irProgram, title = Some(dagName))
+        val vizTime  = System.currentTimeMillis() - vizStart
 
         // Apply layout
-        val layoutStart = System.currentTimeMillis()
-        val direction = params.direction.getOrElse("TB")
-        val layoutConfig = LayoutConfig(direction = direction)
+        val layoutStart   = System.currentTimeMillis()
+        val direction     = params.direction.getOrElse("TB")
+        val layoutConfig  = LayoutConfig(direction = direction)
         val layoutedVizIR = SugiyamaLayout.layout(vizIR, layoutConfig)
-        val layoutTime = System.currentTimeMillis() - layoutStart
+        val layoutTime    = System.currentTimeMillis() - layoutStart
 
-        logger.info(s"[TIMING] getDagVisualization: IR=${irTime}ms, vizCompile=${vizTime}ms, layout=${layoutTime}ms").unsafeRunSync()
+        logger
+          .info(
+            s"[TIMING] getDagVisualization: IR=${irTime}ms, vizCompile=${vizTime}ms, layout=${layoutTime}ms"
+          )
+          .unsafeRunSync()
 
         // Get execution trace if executionId provided and tracker available
         val executionTraceIO: IO[Option[ExecutionTrace]] =
           (params.executionId, executionTracker) match {
             case (Some(execId), Some(tracker)) => tracker.getTrace(execId)
-            case _                              => IO.pure(None)
+            case _                             => IO.pure(None)
           }
 
         executionTraceIO.map { traceOpt =>
           // Convert to LSP message types, enriching with execution state if available
           val nodes = layoutedVizIR.nodes.map { n =>
             // Look up execution state from trace by node ID
-            val execState: Option[DagVizExecutionState] = traceOpt.flatMap { trace =>
-              trace.nodeResults.get(n.id).map { result =>
-                DagVizExecutionState(
-                  status = result.status.toString,
-                  value = result.value,
-                  durationMs = result.durationMs,
-                  error = result.error
+            val execState: Option[DagVizExecutionState] = traceOpt
+              .flatMap { trace =>
+                trace.nodeResults.get(n.id).map { result =>
+                  DagVizExecutionState(
+                    status = result.status.toString,
+                    value = result.value,
+                    durationMs = result.durationMs,
+                    error = result.error
+                  )
+                }
+              }
+              .orElse {
+                // Fall back to any execution state already in the node
+                n.executionState.map(es =>
+                  DagVizExecutionState(
+                    status = es.status.toString,
+                    value = es.value,
+                    durationMs = es.durationMs,
+                    error = es.error
+                  )
                 )
               }
-            }.orElse {
-              // Fall back to any execution state already in the node
-              n.executionState.map(es =>
-                DagVizExecutionState(
-                  status = es.status.toString,
-                  value = es.value,
-                  durationMs = es.durationMs,
-                  error = es.error
-                )
-              )
-            }
 
             DagVizNode(
               id = n.id,
@@ -678,9 +707,8 @@ class ConstellationLanguageServer(
           val metadata = DagVizMetadata(
             title = layoutedVizIR.metadata.title,
             layoutDirection = layoutedVizIR.metadata.layoutDirection,
-            bounds = layoutedVizIR.metadata.bounds.map(b =>
-              DagVizBounds(b.minX, b.minY, b.maxX, b.maxY)
-            )
+            bounds =
+              layoutedVizIR.metadata.bounds.map(b => DagVizBounds(b.minX, b.minY, b.maxX, b.maxY))
           )
 
           GetDagVisualizationResult(
@@ -691,11 +719,13 @@ class ConstellationLanguageServer(
         }
 
       case Left(errors) =>
-        IO.pure(GetDagVisualizationResult(
-          success = false,
-          dag = None,
-          error = Some(errors.map(_.message).mkString("; "))
-        ))
+        IO.pure(
+          GetDagVisualizationResult(
+            success = false,
+            dag = None,
+            error = Some(errors.map(_.message).mkString("; "))
+          )
+        )
     }
   }
 
@@ -893,29 +923,29 @@ class ConstellationLanguageServer(
 
   /** Handle constellation/getCacheStats request
     *
-    * Returns cache statistics if using CachingLangCompiler, otherwise returns
-    * cachingEnabled: false.
+    * Returns cache statistics if using CachingLangCompiler, otherwise returns cachingEnabled:
+    * false.
     */
   private def handleGetCacheStats(request: Request): IO[Response] = {
     val result = compiler match {
       case cachingCompiler: CachingLangCompiler =>
         val stats = cachingCompiler.cacheStats
         Json.obj(
-          "success" -> Json.fromBoolean(true),
+          "success"        -> Json.fromBoolean(true),
           "cachingEnabled" -> Json.fromBoolean(true),
           "stats" -> Json.obj(
-            "hits" -> Json.fromLong(stats.hits),
-            "misses" -> Json.fromLong(stats.misses),
-            "hitRate" -> Json.fromDoubleOrNull(stats.hitRate),
+            "hits"      -> Json.fromLong(stats.hits),
+            "misses"    -> Json.fromLong(stats.misses),
+            "hitRate"   -> Json.fromDoubleOrNull(stats.hitRate),
             "evictions" -> Json.fromLong(stats.evictions),
-            "entries" -> Json.fromInt(stats.entries)
+            "entries"   -> Json.fromInt(stats.entries)
           )
         )
       case _ =>
         Json.obj(
-          "success" -> Json.fromBoolean(true),
+          "success"        -> Json.fromBoolean(true),
           "cachingEnabled" -> Json.fromBoolean(false),
-          "stats" -> Json.Null
+          "stats"          -> Json.Null
         )
     }
     IO.pure(Response(id = request.id, result = Some(result)))
@@ -1264,7 +1294,7 @@ class ConstellationLanguageServer(
         // Use trie-based prefix lookup for O(k) instead of O(n) filtering
         // where k = prefix length and n = number of items
         val keywordMatches = keywordCompletionTrie.findByPrefix(wordAtCursor)
-        val moduleMatches = moduleCompletionTrie.findByPrefix(wordAtCursor)
+        val moduleMatches  = moduleCompletionTrie.findByPrefix(wordAtCursor)
         keywordMatches ++ moduleMatches
       }
 
@@ -1275,36 +1305,106 @@ class ConstellationLanguageServer(
     }
   }
 
-  /**
-   * Build a trie containing all keyword completions.
-   * This is called once at initialization since keywords are static.
-   */
+  /** Build a trie containing all keyword completions. This is called once at initialization since
+    * keywords are static.
+    */
   private def buildKeywordTrie(): CompletionTrie = {
     val keywords = List(
-      CompletionItem("in", Some(CompletionItemKind.Keyword), Some("Input declaration"), None, None, None, None),
-      CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output declaration"), None, None, None, None),
-      CompletionItem("use", Some(CompletionItemKind.Keyword), Some("Import namespace"), None, Some("use "), None, None),
-      CompletionItem("as", Some(CompletionItemKind.Keyword), Some("Alias for import"), None, None, None, None),
-      CompletionItem("type", Some(CompletionItemKind.Keyword), Some("Type definition"), None, None, None, None),
-      CompletionItem("if", Some(CompletionItemKind.Keyword), Some("Conditional expression"), None, None, None, None),
-      CompletionItem("else", Some(CompletionItemKind.Keyword), Some("Else branch"), None, None, None, None),
-      CompletionItem("true", Some(CompletionItemKind.Keyword), Some("Boolean true"), None, None, None, None),
-      CompletionItem("false", Some(CompletionItemKind.Keyword), Some("Boolean false"), None, None, None, None)
+      CompletionItem(
+        "in",
+        Some(CompletionItemKind.Keyword),
+        Some("Input declaration"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "out",
+        Some(CompletionItemKind.Keyword),
+        Some("Output declaration"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "use",
+        Some(CompletionItemKind.Keyword),
+        Some("Import namespace"),
+        None,
+        Some("use "),
+        None,
+        None
+      ),
+      CompletionItem(
+        "as",
+        Some(CompletionItemKind.Keyword),
+        Some("Alias for import"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "type",
+        Some(CompletionItemKind.Keyword),
+        Some("Type definition"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "if",
+        Some(CompletionItemKind.Keyword),
+        Some("Conditional expression"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "else",
+        Some(CompletionItemKind.Keyword),
+        Some("Else branch"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "true",
+        Some(CompletionItemKind.Keyword),
+        Some("Boolean true"),
+        None,
+        None,
+        None,
+        None
+      ),
+      CompletionItem(
+        "false",
+        Some(CompletionItemKind.Keyword),
+        Some("Boolean false"),
+        None,
+        None,
+        None,
+        None
+      )
     )
     CompletionTrie(keywords)
   }
 
-  /**
-   * Update the module completion trie if modules have changed.
-   * Uses a simple cache invalidation based on module names.
-   */
+  /** Update the module completion trie if modules have changed. Uses a simple cache invalidation
+    * based on module names.
+    */
   private def updateModuleCompletionTrie(modules: List[io.constellation.ModuleNodeSpec]): Unit = {
     val currentNames = modules.map(_.name).toSet
-    if (currentNames != lastModuleNames) {
+    if currentNames != lastModuleNames then {
       val moduleItems = modules.map { module =>
         val signature = TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
         val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
-          val paramsDoc = TypeFormatter.formatParameters(module.consumes)
+          val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
           val returnsDoc = TypeFormatter.formatReturns(module.produces)
           s"""${module.metadata.description}
              |
@@ -1332,8 +1432,8 @@ class ConstellationLanguageServer(
   }
 
   private def getHover(document: DocumentState, position: Position): IO[Option[Hover]] = {
-    val wordAtCursor = document.getWordAtPosition(position).getOrElse("")
-    val lineText = document.getLine(position.line).getOrElse("")
+    val wordAtCursor     = document.getWordAtPosition(position).getOrElse("")
+    val lineText         = document.getLine(position.line).getOrElse("")
     val textBeforeCursor = lineText.take(position.character)
 
     // Check for option/strategy hover first (higher priority in with clause context)
@@ -1341,7 +1441,7 @@ class ConstellationLanguageServer(
       case Some(hover) =>
         return IO.pure(Some(hover))
       case None =>
-        // Fall through to module hover
+      // Fall through to module hover
     }
 
     for {
@@ -1417,10 +1517,14 @@ class ConstellationLanguageServer(
   private def validateDocument(uri: String): IO[Unit] =
     documentManager.getDocument(uri).flatMap {
       case Some(document) =>
-        val startTime = System.currentTimeMillis()
-        val result = compiler.compile(document.text, "validation")
+        val startTime   = System.currentTimeMillis()
+        val result      = compiler.compile(document.text, "validation")
         val compileTime = System.currentTimeMillis() - startTime
-        logger.info(s"[TIMING] validateDocument compile took ${compileTime}ms for ${uri.split('/').lastOption.getOrElse(uri)}").unsafeRunSync()
+        logger
+          .info(
+            s"[TIMING] validateDocument compile took ${compileTime}ms for ${uri.split('/').lastOption.getOrElse(uri)}"
+          )
+          .unsafeRunSync()
         result match {
           case Right(compileResult) =>
             // Convert warnings to diagnostics
@@ -1509,8 +1613,7 @@ class ConstellationLanguageServer(
       "",
       errorCode.explanation
     ) ++ (
-      if (suggestions.nonEmpty)
-        List("", suggestions.mkString("\n"))
+      if suggestions.nonEmpty then List("", suggestions.mkString("\n"))
       else Nil
     )
     parts.mkString("\n")
@@ -1627,12 +1730,12 @@ class ConstellationLanguageServer(
   /** Convert CompileError to structured ErrorInfo for the extension */
   private def compileErrorToErrorInfo(error: CompileError, sourceFile: SourceFile): ErrorInfo = {
     // Use the new error code system
-    val errorCode       = CompilerErrorCodes.fromCompileError(error)
-    val context         = buildSuggestionContext()
-    val suggestions     = Suggestions.forError(error, context)
+    val errorCode   = CompilerErrorCodes.fromCompileError(error)
+    val context     = buildSuggestionContext()
+    val suggestions = Suggestions.forError(error, context)
 
     // Map compiler ErrorCategory to LSP ErrorCategory
-    import io.constellation.lang.compiler.{ErrorCategory => CompilerCategory}
+    import io.constellation.lang.compiler.ErrorCategory as CompilerCategory
     val category = errorCode.category match {
       case CompilerCategory.Syntax    => ErrorCategory.Syntax
       case CompilerCategory.Type      => ErrorCategory.Type
@@ -1714,12 +1817,12 @@ class ConstellationLanguageServer(
 }
 
 object ConstellationLanguageServer {
+
   /** Default debounce delay for document validation */
   val DefaultDebounceDelay: FiniteDuration = Debouncer.DefaultDelay
 
-  /**
-   * Create a new ConstellationLanguageServer with default debounce settings.
-   */
+  /** Create a new ConstellationLanguageServer with default debounce settings.
+    */
   def create(
       constellation: Constellation,
       compiler: LangCompiler,
@@ -1727,13 +1830,12 @@ object ConstellationLanguageServer {
   ): IO[ConstellationLanguageServer] =
     create(constellation, compiler, publishDiagnostics, DefaultDebounceDelay, None)
 
-  /**
-   * Create a new ConstellationLanguageServer with custom debounce delay.
-   *
-   * @param debounceDelay How long to wait after the last document change before validating.
-   *                      Shorter delays give faster feedback but use more CPU.
-   *                      Recommended range: 100ms - 300ms.
-   */
+  /** Create a new ConstellationLanguageServer with custom debounce delay.
+    *
+    * @param debounceDelay
+    *   How long to wait after the last document change before validating. Shorter delays give
+    *   faster feedback but use more CPU. Recommended range: 100ms - 300ms.
+    */
   def create(
       constellation: Constellation,
       compiler: LangCompiler,
@@ -1742,12 +1844,13 @@ object ConstellationLanguageServer {
   ): IO[ConstellationLanguageServer] =
     create(constellation, compiler, publishDiagnostics, debounceDelay, None)
 
-  /**
-   * Create a new ConstellationLanguageServer with execution tracking support.
-   *
-   * @param debounceDelay How long to wait after the last document change before validating.
-   * @param executionTracker Optional execution tracker for enriching visualization with execution state.
-   */
+  /** Create a new ConstellationLanguageServer with execution tracking support.
+    *
+    * @param debounceDelay
+    *   How long to wait after the last document change before validating.
+    * @param executionTracker
+    *   Optional execution tracker for enriching visualization with execution state.
+    */
   def create(
       constellation: Constellation,
       compiler: LangCompiler,

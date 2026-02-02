@@ -169,7 +169,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   "RawValueConverter" should "convert CUnion with Int value to RUnion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val unionCV = CValue.CUnion(CValue.CInt(42), structure, "Int")
+    val unionCV   = CValue.CUnion(CValue.CInt(42), structure, "Int")
 
     val raw = RawValueConverter.fromCValue(unionCV)
     raw shouldBe a[RawValue.RUnion]
@@ -181,7 +181,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert CUnion with String value to RUnion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val unionCV = CValue.CUnion(CValue.CString("hello"), structure, "String")
+    val unionCV   = CValue.CUnion(CValue.CString("hello"), structure, "String")
 
     val raw = RawValueConverter.fromCValue(unionCV)
     raw shouldBe a[RawValue.RUnion]
@@ -193,7 +193,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert CUnion with Boolean value to RUnion" in {
     val structure = Map("Boolean" -> CType.CBoolean, "Int" -> CType.CInt)
-    val unionCV = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
+    val unionCV   = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
 
     val raw = RawValueConverter.fromCValue(unionCV)
     raw shouldBe a[RawValue.RUnion]
@@ -205,7 +205,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert CUnion with Float value to RUnion" in {
     val structure = Map("Float" -> CType.CFloat, "Int" -> CType.CInt)
-    val unionCV = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
+    val unionCV   = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
 
     val raw = RawValueConverter.fromCValue(unionCV)
     raw shouldBe a[RawValue.RUnion]
@@ -217,8 +217,8 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert CUnion with record value to RUnion" in {
     val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val recordType = CType.CProduct(recordStructure)
-    val structure = Map("Person" -> recordType, "Error" -> CType.CString)
+    val recordType      = CType.CProduct(recordStructure)
+    val structure       = Map("Person" -> recordType, "Error" -> CType.CString)
 
     val recordValue = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
@@ -235,7 +235,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CUnion with list value to RUnion" in {
-    val listType = CType.CList(CType.CInt)
+    val listType  = CType.CList(CType.CInt)
     val structure = Map("Numbers" -> listType, "Text" -> CType.CString)
 
     val listValue = CValue.CList(
@@ -253,11 +253,11 @@ class RawValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CUnion with Optional value to RUnion" in {
-    val optType = CType.COptional(CType.CInt)
+    val optType   = CType.COptional(CType.CInt)
     val structure = Map("MaybeInt" -> optType, "String" -> CType.CString)
 
     val someValue = CValue.CSome(CValue.CInt(42), CType.CInt)
-    val unionCV = CValue.CUnion(someValue, structure, "MaybeInt")
+    val unionCV   = CValue.CUnion(someValue, structure, "MaybeInt")
 
     val raw = RawValueConverter.fromCValue(unionCV)
     raw shouldBe a[RawValue.RUnion]
@@ -269,7 +269,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor" should "convert RUnion back to CUnion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CUnion(structure))
+    val accessor  = TypedValueAccessor(CType.CUnion(structure))
 
     val rUnion = RawValue.RUnion("Int", RawValue.RInt(42))
     val cValue = accessor.toCValue(rUnion)
@@ -283,7 +283,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert RUnion with String back to CUnion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CUnion(structure))
+    val accessor  = TypedValueAccessor(CType.CUnion(structure))
 
     val rUnion = RawValue.RUnion("String", RawValue.RString("hello"))
     val cValue = accessor.toCValue(rUnion)
@@ -296,16 +296,21 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "convert RUnion with record back to CUnion" in {
     val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val recordType = CType.CProduct(recordStructure)
-    val unionStructure = Map("Person" -> recordType, "Error" -> CType.CString)
+    val recordType      = CType.CProduct(recordStructure)
+    val unionStructure  = Map("Person" -> recordType, "Error" -> CType.CString)
 
     val accessor = TypedValueAccessor(CType.CUnion(unionStructure))
 
     // Fields sorted alphabetically: age, name
-    val rUnion = RawValue.RUnion("Person", RawValue.RProduct(Array(
-      RawValue.RInt(30),
-      RawValue.RString("Alice")
-    )))
+    val rUnion = RawValue.RUnion(
+      "Person",
+      RawValue.RProduct(
+        Array(
+          RawValue.RInt(30),
+          RawValue.RString("Alice")
+        )
+      )
+    )
     val cValue = accessor.toCValue(rUnion)
 
     cValue shouldBe a[CValue.CUnion]
@@ -320,9 +325,9 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   "RUnion roundtrip" should "preserve union values through conversion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val original = CValue.CUnion(CValue.CInt(42), structure, "Int")
+    val original  = CValue.CUnion(CValue.CInt(42), structure, "Int")
 
-    val raw = RawValueConverter.fromCValue(original)
+    val raw      = RawValueConverter.fromCValue(original)
     val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
 
     restored shouldBe original
@@ -330,9 +335,9 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "preserve union with String value through conversion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val original = CValue.CUnion(CValue.CString("hello"), structure, "String")
+    val original  = CValue.CUnion(CValue.CString("hello"), structure, "String")
 
-    val raw = RawValueConverter.fromCValue(original)
+    val raw      = RawValueConverter.fromCValue(original)
     val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
 
     restored shouldBe original
@@ -340,8 +345,8 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "preserve union with record value through conversion" in {
     val recordStructure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val recordType = CType.CProduct(recordStructure)
-    val unionStructure = Map("Person" -> recordType, "Error" -> CType.CString)
+    val recordType      = CType.CProduct(recordStructure)
+    val unionStructure  = Map("Person" -> recordType, "Error" -> CType.CString)
 
     val recordValue = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
@@ -349,14 +354,14 @@ class RawValueTest extends AnyFlatSpec with Matchers {
     )
     val original = CValue.CUnion(recordValue, unionStructure, "Person")
 
-    val raw = RawValueConverter.fromCValue(original)
+    val raw      = RawValueConverter.fromCValue(original)
     val restored = RawValueConverter.toCValue(raw, CType.CUnion(unionStructure))
 
     restored shouldBe original
   }
 
   it should "preserve union with list value through conversion" in {
-    val listType = CType.CList(CType.CInt)
+    val listType  = CType.CList(CType.CInt)
     val structure = Map("Numbers" -> listType, "Text" -> CType.CString)
 
     val listValue = CValue.CList(
@@ -365,7 +370,7 @@ class RawValueTest extends AnyFlatSpec with Matchers {
     )
     val original = CValue.CUnion(listValue, structure, "Numbers")
 
-    val raw = RawValueConverter.fromCValue(original)
+    val raw      = RawValueConverter.fromCValue(original)
     val restored = RawValueConverter.toCValue(raw, CType.CUnion(structure))
 
     restored shouldBe original
@@ -373,23 +378,35 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   it should "preserve multi-type union through conversion" in {
     val structure = Map(
-      "Int" -> CType.CInt,
-      "String" -> CType.CString,
+      "Int"     -> CType.CInt,
+      "String"  -> CType.CString,
       "Boolean" -> CType.CBoolean,
-      "Float" -> CType.CFloat
+      "Float"   -> CType.CFloat
     )
 
     // Test each variant
-    val intOriginal = CValue.CUnion(CValue.CInt(42), structure, "Int")
+    val intOriginal    = CValue.CUnion(CValue.CInt(42), structure, "Int")
     val stringOriginal = CValue.CUnion(CValue.CString("test"), structure, "String")
-    val boolOriginal = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
-    val floatOriginal = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
+    val boolOriginal   = CValue.CUnion(CValue.CBoolean(true), structure, "Boolean")
+    val floatOriginal  = CValue.CUnion(CValue.CFloat(3.14), structure, "Float")
 
     val cType = CType.CUnion(structure)
 
-    RawValueConverter.toCValue(RawValueConverter.fromCValue(intOriginal), cType) shouldBe intOriginal
-    RawValueConverter.toCValue(RawValueConverter.fromCValue(stringOriginal), cType) shouldBe stringOriginal
-    RawValueConverter.toCValue(RawValueConverter.fromCValue(boolOriginal), cType) shouldBe boolOriginal
-    RawValueConverter.toCValue(RawValueConverter.fromCValue(floatOriginal), cType) shouldBe floatOriginal
+    RawValueConverter.toCValue(
+      RawValueConverter.fromCValue(intOriginal),
+      cType
+    ) shouldBe intOriginal
+    RawValueConverter.toCValue(
+      RawValueConverter.fromCValue(stringOriginal),
+      cType
+    ) shouldBe stringOriginal
+    RawValueConverter.toCValue(
+      RawValueConverter.fromCValue(boolOriginal),
+      cType
+    ) shouldBe boolOriginal
+    RawValueConverter.toCValue(
+      RawValueConverter.fromCValue(floatOriginal),
+      cType
+    ) shouldBe floatOriginal
   }
 }

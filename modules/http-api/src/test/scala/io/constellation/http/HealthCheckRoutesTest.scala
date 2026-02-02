@@ -16,7 +16,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
   "HealthCheckRoutes /health/live" should "always return 200 with alive status" in {
     val routes = HealthCheckRoutes.routes(HealthCheckConfig.default)
 
-    val request = Request[IO](Method.GET, uri"/health/live")
+    val request  = Request[IO](Method.GET, uri"/health/live")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -29,7 +29,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
   "/health/ready" should "return 200 when no lifecycle is configured" in {
     val routes = HealthCheckRoutes.routes(HealthCheckConfig.default)
 
-    val request = Request[IO](Method.GET, uri"/health/ready")
+    val request  = Request[IO](Method.GET, uri"/health/ready")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -48,7 +48,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
     )
     val routes = HealthCheckRoutes.routes(config)
 
-    val request = Request[IO](Method.GET, uri"/health/ready")
+    val request  = Request[IO](Method.GET, uri"/health/ready")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -63,7 +63,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
     )
     val routes = HealthCheckRoutes.routes(config)
 
-    val request = Request[IO](Method.GET, uri"/health/ready")
+    val request  = Request[IO](Method.GET, uri"/health/ready")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.ServiceUnavailable
@@ -74,7 +74,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
   "/health/detail" should "return 404 when detail endpoint is disabled" in {
     val routes = HealthCheckRoutes.routes(HealthCheckConfig(enableDetailEndpoint = false))
 
-    val request = Request[IO](Method.GET, uri"/health/detail")
+    val request  = Request[IO](Method.GET, uri"/health/detail")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
@@ -86,7 +86,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
     val config = HealthCheckConfig(enableDetailEndpoint = true)
     val routes = HealthCheckRoutes.routes(config)
 
-    val request = Request[IO](Method.GET, uri"/health/detail")
+    val request  = Request[IO](Method.GET, uri"/health/detail")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -105,7 +105,7 @@ class HealthCheckRoutesTest extends AnyFlatSpec with Matchers {
     )
     val routes = HealthCheckRoutes.routes(config)
 
-    val request = Request[IO](Method.GET, uri"/health/detail")
+    val request  = Request[IO](Method.GET, uri"/health/detail")
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok

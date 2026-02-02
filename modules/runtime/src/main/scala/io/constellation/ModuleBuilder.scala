@@ -85,11 +85,16 @@ object ModuleBuilder {
 
   /** Entry point for building a module. Returns a [[ModuleBuilderInit]] for further configuration.
     *
-    * @param name Module name — must exactly match usage in constellation-lang (case-sensitive)
-    * @param description Human-readable description of the module's purpose
-    * @param majorVersion Major semantic version
-    * @param minorVersion Minor semantic version
-    * @param tags Optional classification tags
+    * @param name
+    *   Module name — must exactly match usage in constellation-lang (case-sensitive)
+    * @param description
+    *   Human-readable description of the module's purpose
+    * @param majorVersion
+    *   Major semantic version
+    * @param minorVersion
+    *   Minor semantic version
+    * @param tags
+    *   Optional classification tags
     */
   def metadata(
       name: String,
@@ -110,8 +115,8 @@ object ModuleBuilder {
 
 /** Initial builder state before an implementation function is defined.
   *
-  * Call [[implementation]], [[implementationPure]], or [[implementationWithContext]]
-  * to transition to a typed [[ModuleBuilder]] with input/output types fixed.
+  * Call [[implementation]], [[implementationPure]], or [[implementationWithContext]] to transition
+  * to a typed [[ModuleBuilder]] with input/output types fixed.
   */
 final case class ModuleBuilderInit(
     _metadata: ComponentMetadata,
@@ -144,9 +149,12 @@ final case class ModuleBuilderInit(
     *
     * Use this for operations with side effects such as HTTP calls, database queries, or file I/O.
     *
-    * @tparam I Input case class type
-    * @tparam O Output case class type
-    * @param newRun Function from input to `IO[output]`
+    * @tparam I
+    *   Input case class type
+    * @tparam O
+    *   Output case class type
+    * @param newRun
+    *   Function from input to `IO[output]`
     */
   def implementation[I <: Product, O <: Product](newRun: I => IO[O]): ModuleBuilder[I, O] =
     ModuleBuilder(
@@ -160,18 +168,24 @@ final case class ModuleBuilderInit(
     *
     * Use this for deterministic transformations that don't perform I/O.
     *
-    * @tparam I Input case class type
-    * @tparam O Output case class type
-    * @param newRun Pure function from input to output
+    * @tparam I
+    *   Input case class type
+    * @tparam O
+    *   Output case class type
+    * @param newRun
+    *   Pure function from input to output
     */
   def implementationPure[I <: Product, O <: Product](newRun: I => O): ModuleBuilder[I, O] =
     implementation((input: I) => IO.pure(newRun(input)))
 
   /** Set an implementation that returns [[Module.Produces]] with execution context metadata.
     *
-    * @tparam I Input case class type
-    * @tparam O Output case class type
-    * @param newRun Function returning `IO[Module.Produces[O]]` with output data and context
+    * @tparam I
+    *   Input case class type
+    * @tparam O
+    *   Output case class type
+    * @param newRun
+    *   Function returning `IO[Module.Produces[O]]` with output data and context
     */
   def implementationWithContext[I <: Product, O <: Product](
       newRun: I => IO[Module.Produces[O]]
@@ -186,11 +200,13 @@ final case class ModuleBuilderInit(
 
 /** Typed builder state with input/output types and implementation function defined.
   *
-  * Supports functional transformations (`map`, `contraMap`, `biMap`) and
-  * finalization via `build` (multi-field case classes) or `buildSimple` (single-field wrappers).
+  * Supports functional transformations (`map`, `contraMap`, `biMap`) and finalization via `build`
+  * (multi-field case classes) or `buildSimple` (single-field wrappers).
   *
-  * @tparam I Input case class type
-  * @tparam O Output case class type
+  * @tparam I
+  *   Input case class type
+  * @tparam O
+  *   Output case class type
   */
 final case class ModuleBuilder[I <: Product, O <: Product](
     _metadata: ComponentMetadata,
@@ -236,7 +252,8 @@ final case class ModuleBuilder[I <: Product, O <: Product](
     *
     * Input/output type signatures are derived at compile time from the case class mirrors.
     *
-    * @return An uninitialized module ready for registration via [[Constellation.setModule]]
+    * @return
+    *   An uninitialized module ready for registration via [[Constellation.setModule]]
     */
   inline def build(using mi: Mirror.ProductOf[I], mo: Mirror.ProductOf[O]): Module.Uninitialized = {
     val spec = ModuleNodeSpec(metadata = _metadata, config = _config, definitionContext = _context)

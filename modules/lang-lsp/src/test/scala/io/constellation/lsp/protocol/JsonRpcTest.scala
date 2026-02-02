@@ -34,15 +34,15 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
 
   "RequestId" should "round-trip through JSON for StringId" in {
     val original = StringId("abc-xyz")
-    val json = original.asJson
-    val parsed = json.as[RequestId]
+    val json     = original.asJson
+    val parsed   = json.as[RequestId]
     parsed shouldBe Right(original)
   }
 
   it should "round-trip through JSON for NumberId" in {
     val original = NumberId(999)
-    val json = original.asJson
-    val parsed = json.as[RequestId]
+    val json     = original.asJson
+    val parsed   = json.as[RequestId]
     parsed shouldBe Right(original)
   }
 
@@ -58,26 +58,26 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original: RequestId = NullId
-    val json = original.asJson
-    val parsed = json.as[RequestId]
+    val json                = original.asJson
+    val parsed              = json.as[RequestId]
     parsed shouldBe Right(original)
   }
 
   "RequestId decoding" should "fail for boolean values" in {
-    val json = Json.fromBoolean(true)
+    val json   = Json.fromBoolean(true)
     val result = json.as[RequestId]
     result.isLeft shouldBe true
     result.left.toOption.get.message should include("must be string, number, or null")
   }
 
   it should "fail for object values" in {
-    val json = Json.obj("id" -> Json.fromInt(1))
+    val json   = Json.obj("id" -> Json.fromInt(1))
     val result = json.as[RequestId]
     result.isLeft shouldBe true
   }
 
   it should "fail for array values" in {
-    val json = Json.arr(Json.fromInt(1), Json.fromInt(2))
+    val json   = Json.arr(Json.fromInt(1), Json.fromInt(2))
     val result = json.as[RequestId]
     result.isLeft shouldBe true
   }
@@ -94,13 +94,13 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
 
   it should "handle very long string IDs" in {
     val longId = "x" * 10000
-    val json = Json.fromString(longId)
+    val json   = Json.fromString(longId)
     json.as[RequestId] shouldBe Right(StringId(longId))
   }
 
   it should "handle large number IDs" in {
     val largeNumber = Long.MaxValue
-    val json = Json.fromLong(largeNumber)
+    val json        = Json.fromLong(largeNumber)
     json.as[RequestId] shouldBe Right(NumberId(largeNumber))
   }
 
@@ -137,7 +137,8 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize from JSON" in {
-    val jsonStr = """{"jsonrpc":"2.0","id":"test","method":"initialize","params":{"rootUri":"file:///project"}}"""
+    val jsonStr =
+      """{"jsonrpc":"2.0","id":"test","method":"initialize","params":{"rootUri":"file:///project"}}"""
     val parsed = decode[Request](jsonStr)
 
     parsed match {
@@ -154,13 +155,15 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
     val original = Request(
       id = NumberId(42),
       method = "textDocument/hover",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj("uri" -> Json.fromString("file:///test.cst")),
-        "position" -> Json.obj("line" -> Json.fromInt(10), "character" -> Json.fromInt(5))
-      ))
+      params = Some(
+        Json.obj(
+          "textDocument" -> Json.obj("uri" -> Json.fromString("file:///test.cst")),
+          "position"     -> Json.obj("line" -> Json.fromInt(10), "character" -> Json.fromInt(5))
+        )
+      )
     )
 
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Request]
 
     parsed match {
@@ -192,10 +195,12 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
   it should "serialize with error" in {
     val response = Response(
       id = StringId("1"),
-      error = Some(ResponseError(
-        code = ErrorCodes.InvalidParams,
-        message = "Missing required parameter"
-      ))
+      error = Some(
+        ResponseError(
+          code = ErrorCodes.InvalidParams,
+          message = "Missing required parameter"
+        )
+      )
     )
 
     val json = response.asJson.noSpaces
@@ -219,7 +224,7 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON with result" in {
     val jsonStr = """{"jsonrpc":"2.0","id":"test","result":{"success":true}}"""
-    val parsed = decode[Response](jsonStr)
+    val parsed  = decode[Response](jsonStr)
 
     parsed match {
       case Right(response) =>
@@ -232,7 +237,8 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize from JSON with error" in {
-    val jsonStr = """{"jsonrpc":"2.0","id":"test","error":{"code":-32600,"message":"Invalid Request"}}"""
+    val jsonStr =
+      """{"jsonrpc":"2.0","id":"test","error":{"code":-32600,"message":"Invalid Request"}}"""
     val parsed = decode[Response](jsonStr)
 
     parsed match {
@@ -252,12 +258,14 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
   "Notification" should "serialize with params" in {
     val notification = Notification(
       method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri" -> Json.fromString("file:///test.cst"),
-          "text" -> Json.fromString("in x: Int")
+      params = Some(
+        Json.obj(
+          "textDocument" -> Json.obj(
+            "uri"  -> Json.fromString("file:///test.cst"),
+            "text" -> Json.fromString("in x: Int")
+          )
         )
-      ))
+      )
     )
 
     val json = notification.asJson.noSpaces
@@ -284,7 +292,7 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"jsonrpc":"2.0","method":"exit"}"""
-    val parsed = decode[Notification](jsonStr)
+    val parsed  = decode[Notification](jsonStr)
 
     parsed match {
       case Right(notification) =>
@@ -301,7 +309,7 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
       params = Some(Json.obj("uri" -> Json.fromString("file:///test.cst")))
     )
 
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Notification]
 
     parsed match {
@@ -403,19 +411,21 @@ class JsonRpcTest extends AnyFlatSpec with Matchers {
   "Notification with complex params" should "serialize correctly" in {
     val notification = Notification(
       method = "textDocument/publishDiagnostics",
-      params = Some(Json.obj(
-        "uri" -> Json.fromString("file:///test.cst"),
-        "diagnostics" -> Json.arr(
-          Json.obj(
-            "range" -> Json.obj(
-              "start" -> Json.obj("line" -> Json.fromInt(0), "character" -> Json.fromInt(0)),
-              "end" -> Json.obj("line" -> Json.fromInt(0), "character" -> Json.fromInt(10))
-            ),
-            "message" -> Json.fromString("Error message"),
-            "severity" -> Json.fromInt(1)
+      params = Some(
+        Json.obj(
+          "uri" -> Json.fromString("file:///test.cst"),
+          "diagnostics" -> Json.arr(
+            Json.obj(
+              "range" -> Json.obj(
+                "start" -> Json.obj("line" -> Json.fromInt(0), "character" -> Json.fromInt(0)),
+                "end"   -> Json.obj("line" -> Json.fromInt(0), "character" -> Json.fromInt(10))
+              ),
+              "message"  -> Json.fromString("Error message"),
+              "severity" -> Json.fromInt(1)
+            )
           )
         )
-      ))
+      )
     )
 
     val json = notification.asJson.noSpaces

@@ -12,13 +12,13 @@ package io.constellation
   *
   *   - All inline transforms receive inputs from the compiled DAG
   *   - The DagCompiler type-checks all expressions before generating transforms
-  *   - Boolean operations (And, Or, Not, Conditional, Guard) only receive Boolean inputs
-  *     because the type checker verifies operand types during compilation
-  *   - List operations (Filter, Map, All, Any) only receive List inputs because the
-  *     type checker verifies the source expression has a List type
+  *   - Boolean operations (And, Or, Not, Conditional, Guard) only receive Boolean inputs because
+  *     the type checker verifies operand types during compilation
+  *   - List operations (Filter, Map, All, Any) only receive List inputs because the type checker
+  *     verifies the source expression has a List type
   *
-  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for
-  * development and debugging purposes. See [[io.constellation.DebugMode]].
+  * Runtime type validation can be enabled by setting `CONSTELLATION_DEBUG=true` for development and
+  * debugging purposes. See [[io.constellation.DebugMode]].
   *
   * @see
   *   docs/dev/optimizations/04-inline-synthetic-modules.md
@@ -220,17 +220,18 @@ object InlineTransform {
     override def apply(inputs: Map[String, Any]): Any = value
   }
 
-  /** String interpolation transform - combines static parts with evaluated expressions.
-    * Converts expression values to strings and interleaves them with the static parts.
+  /** String interpolation transform - combines static parts with evaluated expressions. Converts
+    * expression values to strings and interleaves them with the static parts.
     *
-    * @param parts The static string parts (parts.length == numExpressions + 1)
+    * @param parts
+    *   The static string parts (parts.length == numExpressions + 1)
     */
   final case class StringInterpolationTransform(parts: List[String]) extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any = {
       val numExprs = parts.length - 1
-      val sb = new StringBuilder
+      val sb       = new StringBuilder
 
-      for (i <- 0 until numExprs) {
+      for i <- 0 until numExprs do {
         sb.append(parts(i))
         val exprValue = inputs(s"expr$i")
         sb.append(stringify(exprValue))
@@ -241,21 +242,23 @@ object InlineTransform {
     }
 
     private def stringify(value: Any): String = value match {
-      case s: String => s
-      case n: Number => n.toString
-      case b: Boolean => b.toString
-      case None => ""
-      case Some(v) => stringify(v)
+      case s: String     => s
+      case n: Number     => n.toString
+      case b: Boolean    => b.toString
+      case None          => ""
+      case Some(v)       => stringify(v)
       case list: List[?] => list.map(stringify).mkString("[", ", ", "]")
-      case map: Map[?, ?] @unchecked => map.map { case (k, v) => s"$k: ${stringify(v)}" }.mkString("{", ", ", "}")
+      case map: Map[?, ?] @unchecked =>
+        map.map { case (k, v) => s"$k: ${stringify(v)}" }.mkString("{", ", ", "}")
       case other => other.toString
     }
   }
 
-  /** Filter transform - filters a list based on a predicate.
-    * The predicate function is evaluated for each element.
+  /** Filter transform - filters a list based on a predicate. The predicate function is evaluated
+    * for each element.
     *
-    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    * @param predicateEvaluator
+    *   A function that takes an element and returns a Boolean
     */
   final case class FilterTransform(
       predicateEvaluator: Any => Boolean
@@ -266,10 +269,11 @@ object InlineTransform {
     }
   }
 
-  /** Map transform - transforms each element of a list.
-    * The transform function is evaluated for each element.
+  /** Map transform - transforms each element of a list. The transform function is evaluated for
+    * each element.
     *
-    * @param transformEvaluator A function that takes an element and returns the transformed value
+    * @param transformEvaluator
+    *   A function that takes an element and returns the transformed value
     */
   final case class MapTransform(
       transformEvaluator: Any => Any
@@ -282,7 +286,8 @@ object InlineTransform {
 
   /** All transform - checks if all elements satisfy a predicate.
     *
-    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    * @param predicateEvaluator
+    *   A function that takes an element and returns a Boolean
     */
   final case class AllTransform(
       predicateEvaluator: Any => Boolean
@@ -295,7 +300,8 @@ object InlineTransform {
 
   /** Any transform - checks if any element satisfies a predicate.
     *
-    * @param predicateEvaluator A function that takes an element and returns a Boolean
+    * @param predicateEvaluator
+    *   A function that takes an element and returns a Boolean
     */
   final case class AnyTransform(
       predicateEvaluator: Any => Boolean
@@ -306,12 +312,11 @@ object InlineTransform {
     }
   }
 
-  /** List literal transform - assembles multiple values into a list.
-    * Input names are "elem0", "elem1", etc.
+  /** List literal transform - assembles multiple values into a list. Input names are "elem0",
+    * "elem1", etc.
     */
   final case class ListLiteralTransform(numElements: Int) extends InlineTransform {
-    override def apply(inputs: Map[String, Any]): Any = {
+    override def apply(inputs: Map[String, Any]): Any =
       (0 until numElements).map(i => inputs(s"elem$i")).toList
-    }
   }
 }

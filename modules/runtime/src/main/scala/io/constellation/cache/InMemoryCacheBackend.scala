@@ -5,19 +5,19 @@ import cats.effect.{IO, Ref}
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** In-memory cache backend using ConcurrentHashMap.
   *
-  * Suitable for single-instance deployments and development.
-  * For distributed systems, use Redis or Memcached backends.
+  * Suitable for single-instance deployments and development. For distributed systems, use Redis or
+  * Memcached backends.
   *
   * ==Features==
   *
-  * - Thread-safe concurrent access
-  * - TTL-based expiration (lazy cleanup)
-  * - Optional max size with LRU eviction
-  * - Statistics tracking
+  *   - Thread-safe concurrent access
+  *   - TTL-based expiration (lazy cleanup)
+  *   - Optional max size with LRU eviction
+  *   - Statistics tracking
   *
   * ==Usage==
   *
@@ -41,8 +41,8 @@ class InMemoryCacheBackend(
   private val storage = new ConcurrentHashMap[String, CacheEntry[Any]]()
 
   // Statistics counters
-  private val hitCount = new AtomicLong(0)
-  private val missCount = new AtomicLong(0)
+  private val hitCount      = new AtomicLong(0)
+  private val missCount     = new AtomicLong(0)
   private val evictionCount = new AtomicLong(0)
 
   // Access timestamps for LRU eviction
@@ -50,7 +50,7 @@ class InMemoryCacheBackend(
 
   // Cached stats with TTL (5 seconds) to avoid O(n) cleanup on every stats() call
   @volatile private var cachedStats: Option[(CacheStats, Long)] = None
-  private val statsCacheTTL: Long = 5000 // milliseconds
+  private val statsCacheTTL: Long                               = 5000 // milliseconds
 
   override def get[A](key: String): IO[Option[CacheEntry[A]]] = IO {
     Option(storage.get(key)) match {
@@ -77,9 +77,7 @@ class InMemoryCacheBackend(
     // Use synchronized block to prevent race conditions between size check and eviction
     maxSize.foreach { max =>
       this.synchronized {
-        while (storage.size() >= max) {
-          evictLRU()
-        }
+        while storage.size() >= max do evictLRU()
       }
     }
 
@@ -129,12 +127,15 @@ class InMemoryCacheBackend(
     }
   }
 
-  /** Evict the least recently used entry.
-    * Must be called from within a synchronized block to prevent races.
+  /** Evict the least recently used entry. Must be called from within a synchronized block to
+    * prevent races.
     */
   private def evictLRU(): Unit = {
     // Convert to list first to avoid ConcurrentModificationException
-    val oldest = accessTimes.entrySet().asScala.toList
+    val oldest = accessTimes
+      .entrySet()
+      .asScala
+      .toList
       .minByOption(_.getValue)
       .map(_.getKey)
 
@@ -150,15 +151,14 @@ class InMemoryCacheBackend(
     val now = System.currentTimeMillis()
     // Convert to list first to avoid ConcurrentModificationException
     storage.entrySet().asScala.toList.foreach { entry =>
-      if (entry.getValue.expiresAt < now) {
+      if entry.getValue.expiresAt < now then {
         storage.remove(entry.getKey)
         accessTimes.remove(entry.getKey)
       }
     }
   }
 
-  /** Force cleanup of all expired entries.
-    * Useful for testing or manual maintenance.
+  /** Force cleanup of all expired entries. Useful for testing or manual maintenance.
     */
   def forceCleanup: IO[Int] = IO {
     val sizeBefore = storage.size()
@@ -167,8 +167,7 @@ class InMemoryCacheBackend(
     sizeBefore - storage.size()
   }
 
-  /** Reset all statistics counters.
-    * Useful for testing or metrics reset.
+  /** Reset all statistics counters. Useful for testing or metrics reset.
     */
   def resetStats: IO[Unit] = IO {
     hitCount.set(0)
@@ -186,8 +185,7 @@ object InMemoryCacheBackend {
   def withMaxSize(maxSize: Int): InMemoryCacheBackend =
     new InMemoryCacheBackend(maxSize = Some(maxSize))
 
-  /** Default global cache instance.
-    * Use with caution - prefer dependency injection.
+  /** Default global cache instance. Use with caution - prefer dependency injection.
     */
   lazy val default: InMemoryCacheBackend = apply()
 }

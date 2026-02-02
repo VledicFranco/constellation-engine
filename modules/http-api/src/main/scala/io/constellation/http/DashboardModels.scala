@@ -1,7 +1,7 @@
 package io.constellation.http
 
 import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto._
+import io.circe.generic.semiauto.*
 
 /** API request and response models for the Dashboard endpoints */
 object DashboardModels {
@@ -188,7 +188,11 @@ object DashboardModels {
       DashboardError("invalid_request", message)
 
     def executionFailed(message: String, executionId: String): DashboardError =
-      DashboardError("execution_failed", message, details = Some(Json.obj("executionId" -> Json.fromString(executionId))))
+      DashboardError(
+        "execution_failed",
+        message,
+        details = Some(Json.obj("executionId" -> Json.fromString(executionId)))
+      )
 
     def serverError(message: String): DashboardError =
       DashboardError("server_error", message)

@@ -16,8 +16,8 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   // Create test instances
   val constellation = ConstellationImpl.init.unsafeRunSync()
-  val compiler = LangCompiler.empty
-  val handler = LspWebSocketHandler(constellation, compiler)
+  val compiler      = LangCompiler.empty
+  val handler       = LspWebSocketHandler(constellation, compiler)
 
   // ========== Route Existence Tests ==========
 
@@ -60,14 +60,16 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
   "LSP Notification format" should "serialize correctly" in {
     val notification = Notification(
       method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri" -> Json.fromString("file:///test.cst"),
-          "languageId" -> Json.fromString("constellation"),
-          "version" -> Json.fromInt(1),
-          "text" -> Json.fromString("in x: Int")
+      params = Some(
+        Json.obj(
+          "textDocument" -> Json.obj(
+            "uri"        -> Json.fromString("file:///test.cst"),
+            "languageId" -> Json.fromString("constellation"),
+            "version"    -> Json.fromInt(1),
+            "text"       -> Json.fromString("in x: Int")
+          )
         )
-      ))
+      )
     )
 
     val json = notification.asJson.noSpaces
@@ -93,10 +95,12 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
   it should "serialize error correctly" in {
     val response = Response(
       id = StringId("1"),
-      error = Some(ResponseError(
-        code = ErrorCodes.MethodNotFound,
-        message = "Unknown method"
-      ))
+      error = Some(
+        ResponseError(
+          code = ErrorCodes.MethodNotFound,
+          message = "Unknown method"
+        )
+      )
     )
 
     val json = response.asJson.noSpaces
@@ -110,7 +114,7 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   "Request/Notification distinction" should "identify request by presence of id field" in {
     val requestJson = """{"jsonrpc":"2.0","id":"test","method":"initialize","params":{}}"""
-    val parsed = parse(requestJson).flatMap(_.as[Request])
+    val parsed      = parse(requestJson).flatMap(_.as[Request])
 
     parsed match {
       case Right(request) =>
@@ -123,7 +127,7 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   it should "identify notification by absence of id field" in {
     val notificationJson = """{"jsonrpc":"2.0","method":"exit"}"""
-    val parsed = parse(notificationJson).flatMap(_.as[Notification])
+    val parsed           = parse(notificationJson).flatMap(_.as[Notification])
 
     parsed match {
       case Right(notification) =>
@@ -136,9 +140,9 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
   // ========== Content-Length Header Tests ==========
 
   "LSP message with Content-Length header" should "be valid format" in {
-    val json = """{"jsonrpc":"2.0","id":"1","method":"test"}"""
+    val json          = """{"jsonrpc":"2.0","id":"1","method":"test"}"""
     val contentLength = json.getBytes("UTF-8").length
-    val message = s"Content-Length: $contentLength\r\n\r\n$json"
+    val message       = s"Content-Length: $contentLength\r\n\r\n$json"
 
     // Verify the format
     message should startWith("Content-Length:")
@@ -148,7 +152,7 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   it should "have correct byte length calculation" in {
     // Unicode characters affect byte length
-    val json = """{"text":"héllo wörld"}"""
+    val json       = """{"text":"héllo wörld"}"""
     val byteLength = json.getBytes("UTF-8").length
 
     // "héllo wörld" has multi-byte characters
@@ -158,7 +162,8 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
   // ========== Initialize Request Tests ==========
 
   "Initialize request" should "be parseable" in {
-    val initRequest = """{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"processId":1234,"rootUri":"file:///workspace","capabilities":{}}}"""
+    val initRequest =
+      """{"jsonrpc":"2.0","id":"1","method":"initialize","params":{"processId":1234,"rootUri":"file:///workspace","capabilities":{}}}"""
     val parsed = parse(initRequest).flatMap(_.as[Request])
 
     parsed match {
@@ -194,7 +199,9 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
         notification.method shouldBe "textDocument/didOpen"
         notification.params shouldBe defined
         val params = notification.params.get
-        params.hcursor.downField("textDocument").downField("uri").as[String] shouldBe Right("file:///test.cst")
+        params.hcursor.downField("textDocument").downField("uri").as[String] shouldBe Right(
+          "file:///test.cst"
+        )
       case Left(error) =>
         fail(s"Failed to parse: ${error.getMessage}")
     }
@@ -344,16 +351,16 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip string ID through JSON" in {
     val original = StringId("test-id")
-    val json = original.asJson
-    val parsed = json.as[RequestId]
+    val json     = original.asJson
+    val parsed   = json.as[RequestId]
 
     parsed shouldBe Right(original)
   }
 
   it should "round-trip numeric ID through JSON" in {
     val original = NumberId(999)
-    val json = original.asJson
-    val parsed = json.as[RequestId]
+    val json     = original.asJson
+    val parsed   = json.as[RequestId]
 
     parsed shouldBe Right(original)
   }
@@ -362,7 +369,7 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
 
   "Empty params" should "be handled in request" in {
     val requestWithNullParams = """{"jsonrpc":"2.0","id":"1","method":"test","params":null}"""
-    val parsed = parse(requestWithNullParams).flatMap(_.as[Request])
+    val parsed                = parse(requestWithNullParams).flatMap(_.as[Request])
 
     parsed match {
       case Right(request) =>
@@ -375,7 +382,7 @@ class LspWebSocketHandlerTest extends AnyFlatSpec with Matchers {
   "Missing optional fields" should "parse correctly" in {
     // Request without params
     val minimalRequest = """{"jsonrpc":"2.0","id":"1","method":"shutdown"}"""
-    val parsed = parse(minimalRequest).flatMap(_.as[Request])
+    val parsed         = parse(minimalRequest).flatMap(_.as[Request])
 
     parsed match {
       case Right(request) =>

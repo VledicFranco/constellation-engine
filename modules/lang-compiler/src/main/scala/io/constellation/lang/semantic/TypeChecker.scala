@@ -69,7 +69,9 @@ object TypedExpression {
       signature: FunctionSignature,
       args: List[TypedExpression],
       options: ModuleCallOptions,
-      typedFallback: Option[TypedExpression],  // Typed fallback expression (if options.fallback is set)
+      typedFallback: Option[
+        TypedExpression
+      ], // Typed fallback expression (if options.fallback is set)
       span: Span
   ) extends TypedExpression {
     def semanticType: SemanticType = signature.returns
@@ -107,8 +109,7 @@ object TypedExpression {
   final case class Literal(value: Any, semanticType: SemanticType, span: Span)
       extends TypedExpression
 
-  /** List literal: [1, 2, 3] or ["a", "b", "c"]
-    * Contains typed element expressions.
+  /** List literal: [1, 2, 3] or ["a", "b", "c"] Contains typed element expressions.
     */
   final case class ListLiteral(
       elements: List[TypedExpression],
@@ -118,8 +119,8 @@ object TypedExpression {
     def semanticType: SemanticType = SemanticType.SList(elementType)
   }
 
-  /** String interpolation: "Hello, ${name}!"
-    * Contains N+1 string parts for N interpolated expressions.
+  /** String interpolation: "Hello, ${name}!" Contains N+1 string parts for N interpolated
+    * expressions.
     */
   final case class StringInterpolation(
       parts: List[String],
@@ -182,26 +183,25 @@ object TypedExpression {
       span: Span
   ) extends TypedExpression
 
-  /** Lambda expression: (x, y) => x + y
-    * A function literal with typed parameters and a body.
+  /** Lambda expression: (x, y) => x + y A function literal with typed parameters and a body.
     */
   final case class Lambda(
-    params: List[(String, SemanticType)],  // parameter name -> type
-    body: TypedExpression,
-    semanticType: SemanticType.SFunction,
-    span: Span
+      params: List[(String, SemanticType)], // parameter name -> type
+      body: TypedExpression,
+      semanticType: SemanticType.SFunction,
+      span: Span
   ) extends TypedExpression
 }
 
 /** Type checker for constellation-lang.
   *
-  * This object provides the main entry point for type checking. It delegates
-  * to `BidirectionalTypeChecker` which implements bidirectional type inference.
+  * This object provides the main entry point for type checking. It delegates to
+  * `BidirectionalTypeChecker` which implements bidirectional type inference.
   *
   * Bidirectional type checking enables:
-  * - Lambda parameter type inference from context
-  * - Empty list typing from expected type
-  * - Better error messages with contextual information
+  *   - Lambda parameter type inference from context
+  *   - Empty list typing from expected type
+  *   - Better error messages with contextual information
   */
 object TypeChecker {
 
@@ -209,17 +209,19 @@ object TypeChecker {
 
   /** Type check a program using bidirectional type inference.
     *
-    * @param program The parsed program to type check
-    * @param functions Registry of available function signatures
-    * @return Either a list of type errors, or a fully typed program
+    * @param program
+    *   The parsed program to type check
+    * @param functions
+    *   Registry of available function signatures
+    * @return
+    *   Either a list of type errors, or a fully typed program
     */
   def check(
       program: Program,
       functions: FunctionRegistry
-  ): Either[List[CompileError], TypedProgram] = {
+  ): Either[List[CompileError], TypedProgram] =
     // Delegate to bidirectional type checker
     BidirectionalTypeChecker(functions).check(program)
-  }
 
   private def checkDeclaration(
       decl: Declaration,
@@ -239,14 +241,15 @@ object TypeChecker {
         val annotationValidation: TypeResult[Unit] = annotations.traverse {
           case Annotation.Example(exprLoc) =>
             checkExpression(exprLoc.value, exprLoc.span, env).andThen { typedExpr =>
-              if (isAssignable(typedExpr.semanticType, semType))
-                ().validNel
+              if isAssignable(typedExpr.semanticType, semType) then ().validNel
               else
-                CompileError.TypeMismatch(
-                  semType.prettyPrint,
-                  typedExpr.semanticType.prettyPrint,
-                  Some(exprLoc.span)
-                ).invalidNel
+                CompileError
+                  .TypeMismatch(
+                    semType.prettyPrint,
+                    typedExpr.semanticType.prettyPrint,
+                    Some(exprLoc.span)
+                  )
+                  .invalidNel
             }
         }.void
 
@@ -419,28 +422,39 @@ object TypeChecker {
               )
               .invalidNel
           } else {
-            args.zip(sig.params).traverse { case (argExpr, (paramName, paramType)) =>
-              // Check if argument is a lambda and parameter expects a function type
-              (argExpr.value, paramType) match {
-                case (lambda: Expression.Lambda, funcType: SemanticType.SFunction) =>
-                  // Use type-directed inference for lambda
-                  checkLambdaWithExpected(lambda, funcType, argExpr.span, env)
-                case _ =>
-                  // Regular expression type checking
-                  checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
-                    if (isAssignable(typedArg.semanticType, paramType))
-                      typedArg.validNel
-                    else
-                      CompileError.TypeMismatch(
-                        paramType.prettyPrint,
-                        typedArg.semanticType.prettyPrint,
-                        Some(argExpr.span)
-                      ).invalidNel
-                  }
+            args
+              .zip(sig.params)
+              .traverse { case (argExpr, (paramName, paramType)) =>
+                // Check if argument is a lambda and parameter expects a function type
+                (argExpr.value, paramType) match {
+                  case (lambda: Expression.Lambda, funcType: SemanticType.SFunction) =>
+                    // Use type-directed inference for lambda
+                    checkLambdaWithExpected(lambda, funcType, argExpr.span, env)
+                  case _ =>
+                    // Regular expression type checking
+                    checkExpression(argExpr.value, argExpr.span, env).andThen { typedArg =>
+                      if isAssignable(typedArg.semanticType, paramType) then typedArg.validNel
+                      else
+                        CompileError
+                          .TypeMismatch(
+                            paramType.prettyPrint,
+                            typedArg.semanticType.prettyPrint,
+                            Some(argExpr.span)
+                          )
+                          .invalidNel
+                    }
+                }
               }
-            }.map { typedArgs =>
-              TypedExpression.FunctionCall(name.fullName, sig, typedArgs, ModuleCallOptions.empty, None, span)
-            }
+              .map { typedArgs =>
+                TypedExpression.FunctionCall(
+                  name.fullName,
+                  sig,
+                  typedArgs,
+                  ModuleCallOptions.empty,
+                  None,
+                  span
+                )
+              }
           }
         case Left(error) =>
           error.invalidNel
@@ -554,11 +568,13 @@ object TypeChecker {
     case Expression.StringInterpolation(parts, expressions) =>
       // Type check all interpolated expressions
       // Any type is allowed in interpolations - they'll be converted to strings at runtime
-      expressions.traverse { locExpr =>
-        checkExpression(locExpr.value, locExpr.span, env)
-      }.map { typedExprs =>
-        TypedExpression.StringInterpolation(parts, typedExprs, span)
-      }
+      expressions
+        .traverse { locExpr =>
+          checkExpression(locExpr.value, locExpr.span, env)
+        }
+        .map { typedExprs =>
+          TypedExpression.StringInterpolation(parts, typedExprs, span)
+        }
 
     case Expression.IntLit(v) =>
       TypedExpression.Literal(v, SemanticType.SInt, span).validNel
@@ -575,10 +591,11 @@ object TypeChecker {
         TypedExpression.ListLiteral(Nil, SemanticType.SNothing, span).validNel
       else
         // Type check each element
-        elements.traverse(elem => checkExpression(elem.value, elem.span, env)).andThen { typedElements =>
-          // Find common type for all elements using LUB
-          val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
-          TypedExpression.ListLiteral(typedElements, elementType, span).validNel
+        elements.traverse(elem => checkExpression(elem.value, elem.span, env)).andThen {
+          typedElements =>
+            // Find common type for all elements using LUB
+            val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
+            TypedExpression.ListLiteral(typedElements, elementType, span).validNel
         }
 
     case Expression.Compare(left, op, right) =>
@@ -695,7 +712,7 @@ object TypeChecker {
       (casesResult, otherwiseResult)
         .mapN { (typedCases, typedOtherwise) =>
           // Find common type for all branch results using LUB
-          val allExprs = typedCases.map(_._2) :+ typedOtherwise
+          val allExprs   = typedCases.map(_._2) :+ typedOtherwise
           val resultType = Subtyping.commonType(allExprs.map(_.semanticType))
           TypedExpression.Branch(typedCases, typedOtherwise, resultType, span).validNel
         }
@@ -711,10 +728,12 @@ object TypeChecker {
           case Some(typeExpr) =>
             resolveTypeExpr(typeExpr.value, typeExpr.span, env).map(t => param.name.value -> t)
           case None =>
-            CompileError.TypeError(
-              s"Lambda parameter '${param.name.value}' requires a type annotation in this context",
-              Some(param.name.span)
-            ).invalidNel
+            CompileError
+              .TypeError(
+                s"Lambda parameter '${param.name.value}' requires a type annotation in this context",
+                Some(param.name.span)
+              )
+              .invalidNel
         }
       }
 
@@ -733,43 +752,48 @@ object TypeChecker {
 
   /** Type check a lambda expression with expected type context for type inference */
   private def checkLambdaWithExpected(
-    lambda: Expression.Lambda,
-    expectedType: SemanticType.SFunction,
-    span: Span,
-    env: TypeEnvironment
+      lambda: Expression.Lambda,
+      expectedType: SemanticType.SFunction,
+      span: Span,
+      env: TypeEnvironment
   ): TypeResult[TypedExpression.Lambda] = {
     val params = lambda.params
-    val body = lambda.body
+    val body   = lambda.body
 
     // Validate parameter count
-    if (params.size != expectedType.paramTypes.size) {
-      return CompileError.TypeError(
-        s"Lambda has ${params.size} parameters but expected ${expectedType.paramTypes.size}",
-        Some(span)
-      ).invalidNel
+    if params.size != expectedType.paramTypes.size then {
+      return CompileError
+        .TypeError(
+          s"Lambda has ${params.size} parameters but expected ${expectedType.paramTypes.size}",
+          Some(span)
+        )
+        .invalidNel
     }
 
     // Infer parameter types from expected type, or use explicit annotations
-    val paramTypesResult = params.zip(expectedType.paramTypes).traverse { case (param, expectedParamType) =>
-      param.typeAnnotation match {
-        case Some(typeExpr) =>
-          // Explicit type annotation - validate it's compatible with expected
-          // For parameters, expected must be subtype of annotated (contravariance)
-          resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { annotatedType =>
-            if (Subtyping.isSubtype(expectedParamType, annotatedType))
-              (param.name.value -> annotatedType).validNel
-            else
-              CompileError.TypeMismatch(
-                expectedParamType.prettyPrint,
-                annotatedType.prettyPrint,
-                Some(typeExpr.span)
-              ).invalidNel
-          }
-        case None =>
-          // Infer from expected type
-          (param.name.value -> expectedParamType).validNel
+    val paramTypesResult =
+      params.zip(expectedType.paramTypes).traverse { case (param, expectedParamType) =>
+        param.typeAnnotation match {
+          case Some(typeExpr) =>
+            // Explicit type annotation - validate it's compatible with expected
+            // For parameters, expected must be subtype of annotated (contravariance)
+            resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { annotatedType =>
+              if Subtyping.isSubtype(expectedParamType, annotatedType) then
+                (param.name.value -> annotatedType).validNel
+              else
+                CompileError
+                  .TypeMismatch(
+                    expectedParamType.prettyPrint,
+                    annotatedType.prettyPrint,
+                    Some(typeExpr.span)
+                  )
+                  .invalidNel
+            }
+          case None =>
+            // Infer from expected type
+            (param.name.value -> expectedParamType).validNel
+        }
       }
-    }
 
     paramTypesResult.andThen { paramTypes =>
       // Create environment with lambda parameters bound
@@ -779,15 +803,17 @@ object TypeChecker {
       // Type check the body
       checkExpression(body.value, body.span, lambdaEnv).andThen { typedBody =>
         // Validate return type is subtype of expected
-        if (Subtyping.isSubtype(typedBody.semanticType, expectedType.returnType)) {
+        if Subtyping.isSubtype(typedBody.semanticType, expectedType.returnType) then {
           val funcType = SemanticType.SFunction(paramTypes.map(_._2), typedBody.semanticType)
           TypedExpression.Lambda(paramTypes, typedBody, funcType, span).validNel
         } else {
-          CompileError.TypeMismatch(
-            expectedType.returnType.prettyPrint,
-            typedBody.semanticType.prettyPrint,
-            Some(body.span)
-          ).invalidNel
+          CompileError
+            .TypeMismatch(
+              expectedType.returnType.prettyPrint,
+              typedBody.semanticType.prettyPrint,
+              Some(body.span)
+            )
+            .invalidNel
         }
       }
     }
@@ -876,7 +902,14 @@ object TypeChecker {
         Some(span)
       ) match {
         case Right(sig) =>
-          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
+          val funcCall = TypedExpression.FunctionCall(
+            funcName,
+            sig,
+            List(left, right),
+            ModuleCallOptions.empty,
+            None,
+            span
+          )
 
           // For NotEq, wrap in not()
           if op == CompareOp.NotEq then {
@@ -886,7 +919,9 @@ object TypeChecker {
               Some(span)
             ) match {
               case Right(notSig) =>
-                TypedExpression.FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span).validNel
+                TypedExpression
+                  .FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span)
+                  .validNel
               case Left(err) =>
                 err.invalidNel
             }
@@ -924,10 +959,10 @@ object TypeChecker {
 
     // Check if a type is mergeable (record-like: Record, List<Record>)
     def isMergeable(t: SemanticType): Boolean = t match {
-      case _: SemanticType.SRecord                       => true
-      case SemanticType.SList(_: SemanticType.SRecord)   => true
-      case SemanticType.SList(_) => false // List of non-record not mergeable
-      case _                     => false
+      case _: SemanticType.SRecord                     => true
+      case SemanticType.SList(_: SemanticType.SRecord) => true
+      case SemanticType.SList(_)                       => false // List of non-record not mergeable
+      case _                                           => false
     }
 
     // For Add with mergeable types (records or List<Record>), treat as merge
@@ -964,7 +999,9 @@ object TypeChecker {
       Some(span)
     ) match {
       case Right(sig) =>
-        TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span).validNel
+        TypedExpression
+          .FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
+          .validNel
       case Left(err) =>
         err.invalidNel
     }

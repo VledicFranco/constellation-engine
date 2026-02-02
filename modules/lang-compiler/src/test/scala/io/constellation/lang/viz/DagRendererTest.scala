@@ -63,7 +63,7 @@ class DagRendererTest extends AnyFunSuite with Matchers {
 
       // Should be able to render an empty DAG
       val emptyDag = DagVizIR(List.empty, List.empty)
-      val result = renderer.render(emptyDag)
+      val result   = renderer.render(emptyDag)
       result should not be empty
     }
   }
@@ -80,9 +80,9 @@ class DagRendererTest extends AnyFunSuite with Matchers {
     )
 
     val mermaidOutput = MermaidRenderer.render(dag)
-    val dotOutput = DOTRenderer.render(dag)
-    val asciiOutput = ASCIIRenderer.render(dag)
-    val svgOutput = SVGRenderer.render(dag)
+    val dotOutput     = DOTRenderer.render(dag)
+    val asciiOutput   = ASCIIRenderer.render(dag)
+    val svgOutput     = SVGRenderer.render(dag)
 
     // All outputs should be different
     mermaidOutput should not equal dotOutput

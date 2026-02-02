@@ -9,13 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger
 /** Bidirectional type checker for constellation-lang.
   *
   * Implements the bidirectional typing algorithm where types flow both:
-  * - Bottom-up (inference/synthesis mode ⇑): type derived from expression structure
-  * - Top-down (checking mode ⇓): expected type pushed into expression
+  *   - Bottom-up (inference/synthesis mode ⇑): type derived from expression structure
+  *   - Top-down (checking mode ⇓): expected type pushed into expression
   *
   * Key benefits:
-  * - Lambda parameters can be inferred from function context
-  * - Empty lists can be typed from expected context
-  * - Better error messages with contextual information
+  *   - Lambda parameters can be inferred from function context
+  *   - Empty lists can be typed from expected context
+  *   - Better error messages with contextual information
   *
   * The core rules are:
   * {{{
@@ -46,20 +46,19 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
   // Thread-local warnings collection
   // Each thread gets its own mutable buffer, avoiding concurrent modification issues
-  private val collectedWarnings = new ThreadLocal[scala.collection.mutable.ListBuffer[CompileWarning]] {
-    override def initialValue(): scala.collection.mutable.ListBuffer[CompileWarning] =
-      scala.collection.mutable.ListBuffer.empty
-  }
+  private val collectedWarnings =
+    new ThreadLocal[scala.collection.mutable.ListBuffer[CompileWarning]] {
+      override def initialValue(): scala.collection.mutable.ListBuffer[CompileWarning] =
+        scala.collection.mutable.ListBuffer.empty
+    }
 
   /** Generate a fresh row variable for row polymorphism instantiation */
-  private def freshRowVar(): RowVar = {
+  private def freshRowVar(): RowVar =
     RowVar(rowVarCounter.incrementAndGet())
-  }
 
   /** Add a warning to the collection */
-  private def addWarning(warning: CompileWarning): Unit = {
+  private def addWarning(warning: CompileWarning): Unit =
     collectedWarnings.get() += warning
-  }
 
   /** Type check a program */
   def check(program: Program): Either[List[CompileError], TypedProgram] = {
@@ -107,15 +106,17 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         // Validate @example annotations
         val annotationValidation: TypeResult[Unit] = annotations.traverse {
           case Annotation.Example(exprLoc) =>
-            checkExpr(exprLoc.value, exprLoc.span, env, Check(semType), TopLevel).andThen { typedExpr =>
-              if (Subtyping.isSubtype(typedExpr.semanticType, semType))
-                ().validNel
-              else
-                CompileError.TypeMismatch(
-                  semType.prettyPrint,
-                  typedExpr.semanticType.prettyPrint,
-                  Some(exprLoc.span)
-                ).invalidNel
+            checkExpr(exprLoc.value, exprLoc.span, env, Check(semType), TopLevel).andThen {
+              typedExpr =>
+                if Subtyping.isSubtype(typedExpr.semanticType, semType) then ().validNel
+                else
+                  CompileError
+                    .TypeMismatch(
+                      semType.prettyPrint,
+                      typedExpr.semanticType.prettyPrint,
+                      Some(exprLoc.span)
+                    )
+                    .invalidNel
             }
         }.void
 
@@ -151,7 +152,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         sig.qualifiedName.startsWith(namespace + ".")
       }
 
-      if (!namespaceExists && !hasPrefix) {
+      if !namespaceExists && !hasPrefix then {
         CompileError.UndefinedNamespace(namespace, Some(path.span)).invalidNel
       } else {
         val newEnv = aliasOpt match {
@@ -175,7 +176,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       mode: Mode,
       context: TypeContext
   ): TypeResult[TypedExpression] = mode match {
-    case Infer          => inferExpr(expr, span, env, context)
+    case Infer           => inferExpr(expr, span, env, context)
     case Check(expected) => checkAgainst(expr, span, env, expected, context)
   }
 
@@ -188,7 +189,8 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
   ): TypeResult[TypedExpression] = expr match {
 
     case Expression.VarRef(name) =>
-      env.lookupVariable(name)
+      env
+        .lookupVariable(name)
         .toValidNel(CompileError.UndefinedVariable(name, Some(span)))
         .map(TypedExpression.VarRef(name, _, span))
 
@@ -196,7 +198,10 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       inferFunctionCall(name, args, options, span, env, context)
 
     case Expression.Merge(left, right) =>
-      (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
+      (
+        inferExpr(left.value, left.span, env, context),
+        inferExpr(right.value, right.span, env, context)
+      )
         .mapN { (l, r) =>
           mergeTypes(l.semanticType, r.semanticType, span).map { merged =>
             TypedExpression.Merge(l, r, merged, span)
@@ -220,8 +225,10 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         inferExpr(thenBr.value, thenBr.span, env, ConditionalBranch("then")),
         inferExpr(elseBr.value, elseBr.span, env, ConditionalBranch("else"))
       ).mapN { (c, t, e) =>
-        if (c.semanticType != SBoolean)
-          CompileError.TypeMismatch("Boolean", c.semanticType.prettyPrint, Some(cond.span)).invalidNel
+        if c.semanticType != SBoolean then
+          CompileError
+            .TypeMismatch("Boolean", c.semanticType.prettyPrint, Some(cond.span))
+            .invalidNel
         else {
           val resultType = Subtyping.lub(t.semanticType, e.semanticType)
           TypedExpression.Conditional(c, t, e, resultType, span).validNel
@@ -232,11 +239,13 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       TypedExpression.Literal(v, SString, span).validNel
 
     case Expression.StringInterpolation(parts, expressions) =>
-      expressions.traverse { locExpr =>
-        inferExpr(locExpr.value, locExpr.span, env, context)
-      }.map { typedExprs =>
-        TypedExpression.StringInterpolation(parts, typedExprs, span)
-      }
+      expressions
+        .traverse { locExpr =>
+          inferExpr(locExpr.value, locExpr.span, env, context)
+        }
+        .map { typedExprs =>
+          TypedExpression.StringInterpolation(parts, typedExprs, span)
+        }
 
     case Expression.IntLit(v) =>
       TypedExpression.Literal(v, SInt, span).validNel
@@ -248,45 +257,64 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       TypedExpression.Literal(v, SBoolean, span).validNel
 
     case Expression.ListLit(elements) =>
-      if (elements.isEmpty) {
+      if elements.isEmpty then {
         // Empty list in inference mode - use SNothing as element type
         // This is compatible with any List<T> via subtyping
         TypedExpression.ListLiteral(Nil, SNothing, span).validNel
       } else {
-        elements.traverse(elem => inferExpr(elem.value, elem.span, env, context)).map { typedElements =>
-          val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
-          TypedExpression.ListLiteral(typedElements, elementType, span)
+        elements.traverse(elem => inferExpr(elem.value, elem.span, env, context)).map {
+          typedElements =>
+            val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
+            TypedExpression.ListLiteral(typedElements, elementType, span)
         }
       }
 
     case Expression.Compare(left, op, right) =>
-      (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
-        .mapN { (l, r) => desugarComparison(l, op, r, span, env) }
+      (
+        inferExpr(left.value, left.span, env, context),
+        inferExpr(right.value, right.span, env, context)
+      )
+        .mapN((l, r) => desugarComparison(l, op, r, span, env))
         .andThen(identity)
 
     case Expression.Arithmetic(left, op, right) =>
-      (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
-        .mapN { (l, r) => desugarArithmetic(l, op, r, span, env) }
+      (
+        inferExpr(left.value, left.span, env, context),
+        inferExpr(right.value, right.span, env, context)
+      )
+        .mapN((l, r) => desugarArithmetic(l, op, r, span, env))
         .andThen(identity)
 
     case Expression.BoolBinary(left, op, right) =>
-      (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
+      (
+        inferExpr(left.value, left.span, env, context),
+        inferExpr(right.value, right.span, env, context)
+      )
         .mapN { (l, r) =>
           val errors = List(
-            if (l.semanticType != SBoolean) Some(CompileError.TypeMismatch("Boolean", l.semanticType.prettyPrint, Some(left.span))) else None,
-            if (r.semanticType != SBoolean) Some(CompileError.TypeMismatch("Boolean", r.semanticType.prettyPrint, Some(right.span))) else None
+            if l.semanticType != SBoolean then
+              Some(
+                CompileError.TypeMismatch("Boolean", l.semanticType.prettyPrint, Some(left.span))
+              )
+            else None,
+            if r.semanticType != SBoolean then
+              Some(
+                CompileError.TypeMismatch("Boolean", r.semanticType.prettyPrint, Some(right.span))
+              )
+            else None
           ).flatten
-          if (errors.nonEmpty) errors.head.invalidNel
+          if errors.nonEmpty then errors.head.invalidNel
           else TypedExpression.BoolBinary(l, op, r, span).validNel
         }
         .andThen(identity)
 
     case Expression.Not(operand) =>
       inferExpr(operand.value, operand.span, env, context).andThen { typedOperand =>
-        if (typedOperand.semanticType != SBoolean)
-          CompileError.TypeMismatch("Boolean", typedOperand.semanticType.prettyPrint, Some(operand.span)).invalidNel
-        else
-          TypedExpression.Not(typedOperand, span).validNel
+        if typedOperand.semanticType != SBoolean then
+          CompileError
+            .TypeMismatch("Boolean", typedOperand.semanticType.prettyPrint, Some(operand.span))
+            .invalidNel
+        else TypedExpression.Not(typedOperand, span).validNel
       }
 
     case Expression.Guard(expr, condition) =>
@@ -294,14 +322,18 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         inferExpr(expr.value, expr.span, env, context),
         inferExpr(condition.value, condition.span, env, context)
       ).mapN { (typedExpr, typedCondition) =>
-        if (typedCondition.semanticType != SBoolean)
-          CompileError.TypeMismatch("Boolean", typedCondition.semanticType.prettyPrint, Some(condition.span)).invalidNel
-        else
-          TypedExpression.Guard(typedExpr, typedCondition, span).validNel
+        if typedCondition.semanticType != SBoolean then
+          CompileError
+            .TypeMismatch("Boolean", typedCondition.semanticType.prettyPrint, Some(condition.span))
+            .invalidNel
+        else TypedExpression.Guard(typedExpr, typedCondition, span).validNel
       }.andThen(identity)
 
     case Expression.Coalesce(left, right) =>
-      (inferExpr(left.value, left.span, env, context), inferExpr(right.value, right.span, env, context))
+      (
+        inferExpr(left.value, left.span, env, context),
+        inferExpr(right.value, right.span, env, context)
+      )
         .mapN { (typedLeft, typedRight) =>
           checkCoalesce(typedLeft, typedRight, left.span, right.span, span)
         }
@@ -313,20 +345,23 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           inferExpr(cond.value, cond.span, env, context),
           inferExpr(expr.value, expr.span, env, context)
         ).mapN { (typedCond, typedExpr) =>
-          if (typedCond.semanticType != SBoolean)
-            CompileError.TypeMismatch("Boolean", typedCond.semanticType.prettyPrint, Some(cond.span)).invalidNel
-          else
-            (typedCond, typedExpr).validNel
+          if typedCond.semanticType != SBoolean then
+            CompileError
+              .TypeMismatch("Boolean", typedCond.semanticType.prettyPrint, Some(cond.span))
+              .invalidNel
+          else (typedCond, typedExpr).validNel
         }.andThen(identity)
       }
 
       val otherwiseResult = inferExpr(otherwise.value, otherwise.span, env, context)
 
-      (casesResult, otherwiseResult).mapN { (typedCases, typedOtherwise) =>
-        val allExprs = typedCases.map(_._2) :+ typedOtherwise
-        val resultType = Subtyping.commonType(allExprs.map(_.semanticType))
-        TypedExpression.Branch(typedCases, typedOtherwise, resultType, span).validNel
-      }.andThen(identity)
+      (casesResult, otherwiseResult)
+        .mapN { (typedCases, typedOtherwise) =>
+          val allExprs   = typedCases.map(_._2) :+ typedOtherwise
+          val resultType = Subtyping.commonType(allExprs.map(_.semanticType))
+          TypedExpression.Branch(typedCases, typedOtherwise, resultType, span).validNel
+        }
+        .andThen(identity)
 
     case Expression.Lambda(params, body) =>
       // In inference mode, all parameters must have type annotations
@@ -353,25 +388,28 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     // Non-empty list: infer element types then check list subtyping
     // This preserves backwards-compatible error messages like "expected List<Int>, got List<String>"
     case (Expression.ListLit(elements), expected @ SList(expectedElem)) =>
-      elements.traverse(elem => inferExpr(elem.value, elem.span, env, context)).andThen { typedElements =>
-        val inferredElemType = Subtyping.commonType(typedElements.map(_.semanticType))
-        val inferredListType = SList(inferredElemType)
-        if (Subtyping.isSubtype(inferredListType, expected)) {
-          // Use expected element type for the result (bidirectional propagation)
-          TypedExpression.ListLiteral(typedElements, expectedElem, span).validNel
-        } else {
-          CompileError.TypeMismatch(
-            expected.prettyPrint,
-            inferredListType.prettyPrint,
-            Some(span)
-          ).invalidNel
-        }
+      elements.traverse(elem => inferExpr(elem.value, elem.span, env, context)).andThen {
+        typedElements =>
+          val inferredElemType = Subtyping.commonType(typedElements.map(_.semanticType))
+          val inferredListType = SList(inferredElemType)
+          if Subtyping.isSubtype(inferredListType, expected) then {
+            // Use expected element type for the result (bidirectional propagation)
+            TypedExpression.ListLiteral(typedElements, expectedElem, span).validNel
+          } else {
+            CompileError
+              .TypeMismatch(
+                expected.prettyPrint,
+                inferredListType.prettyPrint,
+                Some(span)
+              )
+              .invalidNel
+          }
       }
 
     // Default: infer then check subtyping (subsumption rule)
     case _ =>
       inferExpr(expr, span, env, context).andThen { typed =>
-        if (Subtyping.isSubtype(typed.semanticType, expected)) {
+        if Subtyping.isSubtype(typed.semanticType, expected) then {
           typed.validNel
         } else {
           // Enhanced error message with context
@@ -379,11 +417,13 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
             case TopLevel => ""
             case ctx      => s" ${ctx.describe}"
           }
-          CompileError.TypeMismatch(
-            expected.prettyPrint,
-            typed.semanticType.prettyPrint,
-            Some(span)
-          ).invalidNel
+          CompileError
+            .TypeMismatch(
+              expected.prettyPrint,
+              typed.semanticType.prettyPrint,
+              Some(span)
+            )
+            .invalidNel
         }
       }
   }
@@ -405,12 +445,14 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         case Some(typeExpr) =>
           resolveTypeExpr(typeExpr.value, typeExpr.span, env).map(t => param.name.value -> t)
         case None =>
-          CompileError.TypeError(
-            s"Lambda parameter '${param.name.value}' requires a type annotation. " +
-            s"Hint: Either add a type annotation like (${param.name.value}: SomeType) => ..., " +
-            s"or use this lambda in a context where the type can be inferred (e.g., as an argument to Filter or Map).",
-            Some(param.name.span)
-          ).invalidNel
+          CompileError
+            .TypeError(
+              s"Lambda parameter '${param.name.value}' requires a type annotation. " +
+                s"Hint: Either add a type annotation like (${param.name.value}: SomeType) => ..., " +
+                s"or use this lambda in a context where the type can be inferred (e.g., as an argument to Filter or Map).",
+              Some(param.name.span)
+            )
+            .invalidNel
       }
     }
 
@@ -436,11 +478,13 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       context: TypeContext
   ): TypeResult[TypedExpression.Lambda] = {
     // Validate parameter count
-    if (params.length != expectedParams.length) {
-      return CompileError.TypeError(
-        s"Lambda has ${params.length} parameter(s) but expected ${expectedParams.length}",
-        Some(span)
-      ).invalidNel
+    if params.length != expectedParams.length then {
+      return CompileError
+        .TypeError(
+          s"Lambda has ${params.length} parameter(s) but expected ${expectedParams.length}",
+          Some(span)
+        )
+        .invalidNel
     }
 
     // Infer parameter types from expected type, or use explicit annotations
@@ -449,14 +493,16 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         case Some(typeExpr) =>
           // Explicit annotation - validate compatibility (contravariance for params)
           resolveTypeExpr(typeExpr.value, typeExpr.span, env).andThen { annotatedType =>
-            if (Subtyping.isSubtype(expectedParamType, annotatedType)) {
+            if Subtyping.isSubtype(expectedParamType, annotatedType) then {
               (param.name.value -> annotatedType).validNel
             } else {
-              CompileError.TypeMismatch(
-                expectedParamType.prettyPrint,
-                annotatedType.prettyPrint,
-                Some(typeExpr.span)
-              ).invalidNel
+              CompileError
+                .TypeMismatch(
+                  expectedParamType.prettyPrint,
+                  annotatedType.prettyPrint,
+                  Some(typeExpr.span)
+                )
+                .invalidNel
             }
           }
         case None =>
@@ -490,38 +536,47 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       span: Span,
       env: TypeEnvironment,
       context: TypeContext
-  ): TypeResult[TypedExpression] = {
+  ): TypeResult[TypedExpression] =
     functions.lookupInScope(name, env.namespaceScope, Some(span)) match {
       case Right(sig) =>
-        if (args.size != sig.params.size) {
-          CompileError.TypeError(
-            s"Function ${name.fullName} expects ${sig.params.size} argument(s), got ${args.size}",
-            Some(span)
-          ).invalidNel
-        } else if (sig.isRowPolymorphic) {
+        if args.size != sig.params.size then {
+          CompileError
+            .TypeError(
+              s"Function ${name.fullName} expects ${sig.params.size} argument(s), got ${args.size}",
+              Some(span)
+            )
+            .invalidNel
+        } else if sig.isRowPolymorphic then {
           // Row-polymorphic function: instantiate fresh row variables and use unification
           inferRowPolymorphicCall(name, sig, args, options, span, env, context)
         } else {
           // Standard function: check each argument against expected parameter type
-          val argsResult = args.zip(sig.params).zipWithIndex.traverse { case ((argExpr, (paramName, paramType)), idx) =>
-            val argContext = FunctionArgument(name.fullName, idx, paramName)
-            checkExpr(argExpr.value, argExpr.span, env, Check(paramType), argContext)
+          val argsResult = args.zip(sig.params).zipWithIndex.traverse {
+            case ((argExpr, (paramName, paramType)), idx) =>
+              val argContext = FunctionArgument(name.fullName, idx, paramName)
+              checkExpr(argExpr.value, argExpr.span, env, Check(paramType), argContext)
           }
 
           // Validate module call options if present and get typed fallback
           val optionsValidation: TypeResult[Option[TypedExpression]] =
-            if (options.isEmpty) None.validNel
+            if options.isEmpty then None.validNel
             else validateModuleCallOptions(options, sig.returns, span, env, context)
 
           // Combine args and options validation
           (argsResult, optionsValidation).mapN { (typedArgs, typedFallback) =>
-            TypedExpression.FunctionCall(name.fullName, sig, typedArgs, options, typedFallback, span)
+            TypedExpression.FunctionCall(
+              name.fullName,
+              sig,
+              typedArgs,
+              options,
+              typedFallback,
+              span
+            )
           }
         }
       case Left(error) =>
         error.invalidNel
     }
-  }
 
   /** Handle row-polymorphic function call with row unification */
   private def inferRowPolymorphicCall(
@@ -565,13 +620,20 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
     // Validate module call options if present and get typed fallback
     val optionsValidation: TypeResult[Option[TypedExpression]] =
-      if (options.isEmpty) None.validNel
+      if options.isEmpty then None.validNel
       else validateModuleCallOptions(options, originalSig.returns, span, env, context)
 
     (typedArgsResult, optionsValidation).mapN { (typedArgs, typedFallback) =>
       // Apply substitution to the return type
       val resultType = RowUnification.applySubstitution(instantiatedSig.returns, subst)
-      TypedExpression.FunctionCall(name.fullName, originalSig, typedArgs, options, typedFallback, span)
+      TypedExpression.FunctionCall(
+        name.fullName,
+        originalSig,
+        typedArgs,
+        options,
+        typedFallback,
+        span
+      )
     }
   }
 
@@ -583,7 +645,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       argIndex: Int,
       funcName: String,
       subst: RowUnification.Substitution
-  ): Either[CompileError, (TypedExpression, RowUnification.Substitution)] = {
+  ): Either[CompileError, (TypedExpression, RowUnification.Substitution)] =
     (typedArg.semanticType, expectedType) match {
       // Closed record passed to open record parameter - use row unification
       case (actual: SRecord, expected: SOpenRecord) =>
@@ -591,10 +653,12 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case Right(newSubst) =>
             Right((typedArg, subst.merge(newSubst)))
           case Left(err) =>
-            Left(CompileError.TypeError(
-              s"Argument ${argIndex + 1} to $funcName: ${err.message}",
-              Some(span)
-            ))
+            Left(
+              CompileError.TypeError(
+                s"Argument ${argIndex + 1} to $funcName: ${err.message}",
+                Some(span)
+              )
+            )
         }
 
       // Open record passed to open record parameter
@@ -603,41 +667,44 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case Right(newSubst) =>
             Right((typedArg, newSubst))
           case Left(err) =>
-            Left(CompileError.TypeError(
-              s"Argument ${argIndex + 1} to $funcName: ${err.message}",
-              Some(span)
-            ))
+            Left(
+              CompileError.TypeError(
+                s"Argument ${argIndex + 1} to $funcName: ${err.message}",
+                Some(span)
+              )
+            )
         }
 
       // Standard subtyping check
       case (actual, expected) =>
-        if (Subtyping.isSubtype(actual, expected)) {
+        if Subtyping.isSubtype(actual, expected) then {
           Right((typedArg, subst))
         } else {
-          Left(CompileError.TypeMismatch(
-            expected.prettyPrint,
-            actual.prettyPrint,
-            Some(span)
-          ))
+          Left(
+            CompileError.TypeMismatch(
+              expected.prettyPrint,
+              actual.prettyPrint,
+              Some(span)
+            )
+          )
         }
     }
-  }
 
   // ============================================================================
   // Module Call Options Validation
   // ============================================================================
 
-  /** Validate module call options and return any errors.
-    * Warnings are collected via addWarning().
+  /** Validate module call options and return any errors. Warnings are collected via addWarning().
     *
     * Validates:
-    * - Fallback type compatibility with module return type
-    * - Value ranges (retry >= 0, concurrency > 0, etc.)
-    * - Option dependencies (warns if delay without retry, etc.)
+    *   - Fallback type compatibility with module return type
+    *   - Value ranges (retry >= 0, concurrency > 0, etc.)
+    *   - Option dependencies (warns if delay without retry, etc.)
     */
   /** Validates module call options and returns the typed fallback expression if present.
     *
-    * @return The typed fallback expression (if present and valid), or None
+    * @return
+    *   The typed fallback expression (if present and valid), or None
     */
   private def validateModuleCallOptions(
       options: ModuleCallOptions,
@@ -656,7 +723,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       // Type check the fallback expression
       inferExpr(fallbackExpr.value, fallbackExpr.span, env, context) match {
         case Validated.Valid(typedFallback) =>
-          if (!Subtyping.isSubtype(typedFallback.semanticType, moduleReturnType)) {
+          if !Subtyping.isSubtype(typedFallback.semanticType, moduleReturnType) then {
             errors += CompileError.FallbackTypeMismatch(
               moduleReturnType.prettyPrint,
               typedFallback.semanticType.prettyPrint,
@@ -674,7 +741,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
     // 2. Validate value ranges
     options.retry.foreach { value =>
-      if (value < 0) {
+      if value < 0 then {
         errors += CompileError.InvalidOptionValue(
           "retry",
           value.toString,
@@ -685,7 +752,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     options.concurrency.foreach { value =>
-      if (value <= 0) {
+      if value <= 0 then {
         errors += CompileError.InvalidOptionValue(
           "concurrency",
           value.toString,
@@ -696,7 +763,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     options.throttle.foreach { rate =>
-      if (rate.count <= 0) {
+      if rate.count <= 0 then {
         errors += CompileError.InvalidOptionValue(
           "throttle",
           s"${rate.count}/${rate.per.value}${rate.per.unit}",
@@ -707,7 +774,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     options.timeout.foreach { duration =>
-      if (duration.value <= 0) {
+      if duration.value <= 0 then {
         errors += CompileError.InvalidOptionValue(
           "timeout",
           s"${duration.value}${durationUnitString(duration.unit)}",
@@ -718,7 +785,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     options.delay.foreach { duration =>
-      if (duration.value <= 0) {
+      if duration.value <= 0 then {
         errors += CompileError.InvalidOptionValue(
           "delay",
           s"${duration.value}${durationUnitString(duration.unit)}",
@@ -729,7 +796,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     options.cache.foreach { duration =>
-      if (duration.value <= 0) {
+      if duration.value <= 0 then {
         errors += CompileError.InvalidOptionValue(
           "cache",
           s"${duration.value}${durationUnitString(duration.unit)}",
@@ -740,31 +807,31 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     // 3. Validate option dependencies (warnings, not errors)
-    if (options.delay.isDefined && options.retry.isEmpty) {
+    if options.delay.isDefined && options.retry.isEmpty then {
       addWarning(CompileWarning.OptionDependency("delay", "retry", Some(span)))
     }
 
-    if (options.backoff.isDefined && options.delay.isEmpty) {
+    if options.backoff.isDefined && options.delay.isEmpty then {
       addWarning(CompileWarning.OptionDependency("backoff", "delay", Some(span)))
     }
 
-    if (options.backoff.isDefined && options.retry.isEmpty) {
+    if options.backoff.isDefined && options.retry.isEmpty then {
       addWarning(CompileWarning.OptionDependency("backoff", "retry", Some(span)))
     }
 
-    if (options.cacheBackend.isDefined && options.cache.isEmpty) {
+    if options.cacheBackend.isDefined && options.cache.isEmpty then {
       addWarning(CompileWarning.OptionDependency("cache_backend", "cache", Some(span)))
     }
 
     // Warn about high retry count
     options.retry.foreach { retryCount =>
-      if (retryCount > 10) {
+      if retryCount > 10 then {
         addWarning(CompileWarning.HighRetryCount(retryCount, Some(span)))
       }
     }
 
     // Return errors or typed fallback
-    if (errors.nonEmpty) {
+    if errors.nonEmpty then {
       errors.head.invalidNel
     } else {
       typedFallbackOpt.validNel
@@ -802,9 +869,11 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       env.lookupType(name).toValidNel(CompileError.UndefinedType(name, Some(span)))
 
     case TypeExpr.Record(fields) =>
-      fields.traverse { case (name, typ) =>
-        resolveTypeExpr(typ, span, env).map(name -> _)
-      }.map(fs => SRecord(fs.toMap))
+      fields
+        .traverse { case (name, typ) =>
+          resolveTypeExpr(typ, span, env).map(name -> _)
+        }
+        .map(fs => SRecord(fs.toMap))
 
     case TypeExpr.Parameterized(name, params) =>
       name match {
@@ -833,12 +902,16 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case SUnion(innerMembers) => innerMembers.toList
           case other                => List(other)
         }.toSet
-        if (flattened.size == 1) flattened.head
+        if flattened.size == 1 then flattened.head
         else SUnion(flattened)
       }
   }
 
-  private def mergeTypes(left: SemanticType, right: SemanticType, span: Span): TypeResult[SemanticType] =
+  private def mergeTypes(
+      left: SemanticType,
+      right: SemanticType,
+      span: Span
+  ): TypeResult[SemanticType] =
     (left, right) match {
       case (SRecord(lFields), SRecord(rFields)) =>
         SRecord(lFields ++ rFields).validNel
@@ -859,7 +932,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       typedSource: TypedExpression,
       fields: List[String],
       span: Span
-  ): TypeResult[TypedExpression] = {
+  ): TypeResult[TypedExpression] =
     typedSource.semanticType match {
       case SRecord(availableFields) =>
         validateProjection(fields, availableFields, span).map { projectedFields =>
@@ -871,37 +944,43 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           TypedExpression.Projection(typedSource, fields, SList(SRecord(projectedFields)), span)
         }
       case other =>
-        CompileError.TypeError(
-          s"Projection requires a record type, got ${other.prettyPrint}",
-          Some(span)
-        ).invalidNel
+        CompileError
+          .TypeError(
+            s"Projection requires a record type, got ${other.prettyPrint}",
+            Some(span)
+          )
+          .invalidNel
     }
-  }
 
   private def validateProjection(
       requested: List[String],
       available: Map[String, SemanticType],
       span: Span
   ): TypeResult[Map[String, SemanticType]] =
-    requested.traverse { field =>
-      available.get(field)
-        .toValidNel(CompileError.InvalidProjection(field, available.keys.toList, Some(span)))
-        .map(field -> _)
-    }.map(_.toMap)
+    requested
+      .traverse { field =>
+        available
+          .get(field)
+          .toValidNel(CompileError.InvalidProjection(field, available.keys.toList, Some(span)))
+          .map(field -> _)
+      }
+      .map(_.toMap)
 
   private def checkFieldAccess(
       typedSource: TypedExpression,
       field: String,
       fieldSpan: Span,
       span: Span
-  ): TypeResult[TypedExpression] = {
+  ): TypeResult[TypedExpression] =
     typedSource.semanticType match {
       case SRecord(availableFields) =>
         availableFields.get(field) match {
           case Some(fieldType) =>
             TypedExpression.FieldAccess(typedSource, field, fieldType, span).validNel
           case None =>
-            CompileError.InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan)).invalidNel
+            CompileError
+              .InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan))
+              .invalidNel
         }
       // List<Record> field access: extract field from each element
       case SList(SRecord(availableFields)) =>
@@ -909,15 +988,18 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case Some(fieldType) =>
             TypedExpression.FieldAccess(typedSource, field, SList(fieldType), span).validNel
           case None =>
-            CompileError.InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan)).invalidNel
+            CompileError
+              .InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan))
+              .invalidNel
         }
       case other =>
-        CompileError.TypeError(
-          s"Field access requires a record type, got ${other.prettyPrint}",
-          Some(span)
-        ).invalidNel
+        CompileError
+          .TypeError(
+            s"Field access requires a record type, got ${other.prettyPrint}",
+            Some(span)
+          )
+          .invalidNel
     }
-  }
 
   private def checkCoalesce(
       typedLeft: TypedExpression,
@@ -925,27 +1007,30 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       leftSpan: Span,
       rightSpan: Span,
       span: Span
-  ): TypeResult[TypedExpression] = {
+  ): TypeResult[TypedExpression] =
     typedLeft.semanticType match {
       case SOptional(innerType) =>
         val rightType = typedRight.semanticType
-        if (innerType == rightType) {
+        if innerType == rightType then {
           TypedExpression.Coalesce(typedLeft, typedRight, span, rightType).validNel
         } else {
           rightType match {
             case SOptional(rightInner) if innerType == rightInner =>
               TypedExpression.Coalesce(typedLeft, typedRight, span, SOptional(innerType)).validNel
             case _ =>
-              CompileError.TypeMismatch(innerType.prettyPrint, rightType.prettyPrint, Some(rightSpan)).invalidNel
+              CompileError
+                .TypeMismatch(innerType.prettyPrint, rightType.prettyPrint, Some(rightSpan))
+                .invalidNel
           }
         }
       case other =>
-        CompileError.TypeError(
-          s"Left side of ?? must be Optional, got ${other.prettyPrint}",
-          Some(leftSpan)
-        ).invalidNel
+        CompileError
+          .TypeError(
+            s"Left side of ?? must be Optional, got ${other.prettyPrint}",
+            Some(leftSpan)
+          )
+          .invalidNel
     }
-  }
 
   // ============================================================================
   // Operator Desugaring
@@ -967,37 +1052,61 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       case CompareOp.GtEq  => ">="
     }
 
-    if (left.semanticType != right.semanticType) {
-      return CompileError.TypeMismatch(
-        left.semanticType.prettyPrint,
-        right.semanticType.prettyPrint,
-        Some(span)
-      ).invalidNel
+    if left.semanticType != right.semanticType then {
+      return CompileError
+        .TypeMismatch(
+          left.semanticType.prettyPrint,
+          right.semanticType.prettyPrint,
+          Some(span)
+        )
+        .invalidNel
     }
 
     val funcNameResult: TypeResult[String] = (op, left.semanticType) match {
-      case (CompareOp.Eq, SInt)      => "eq-int".validNel
-      case (CompareOp.Eq, SString)   => "eq-string".validNel
-      case (CompareOp.Lt, SInt)      => "lt".validNel
-      case (CompareOp.Gt, SInt)      => "gt".validNel
-      case (CompareOp.LtEq, SInt)    => "lte".validNel
-      case (CompareOp.GtEq, SInt)    => "gte".validNel
-      case (CompareOp.NotEq, SInt)   => "eq-int".validNel
+      case (CompareOp.Eq, SInt)       => "eq-int".validNel
+      case (CompareOp.Eq, SString)    => "eq-string".validNel
+      case (CompareOp.Lt, SInt)       => "lt".validNel
+      case (CompareOp.Gt, SInt)       => "gt".validNel
+      case (CompareOp.LtEq, SInt)     => "lte".validNel
+      case (CompareOp.GtEq, SInt)     => "gte".validNel
+      case (CompareOp.NotEq, SInt)    => "eq-int".validNel
       case (CompareOp.NotEq, SString) => "eq-string".validNel
       case _ =>
-        CompileError.UnsupportedComparison(
-          opString(op), left.semanticType.prettyPrint, right.semanticType.prettyPrint, Some(span)
-        ).invalidNel
+        CompileError
+          .UnsupportedComparison(
+            opString(op),
+            left.semanticType.prettyPrint,
+            right.semanticType.prettyPrint,
+            Some(span)
+          )
+          .invalidNel
     }
 
     funcNameResult.andThen { funcName =>
-      functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
+      functions.lookupInScope(
+        QualifiedName.simple(funcName),
+        env.namespaceScope,
+        Some(span)
+      ) match {
         case Right(sig) =>
-          val funcCall = TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
-          if (op == CompareOp.NotEq) {
-            functions.lookupInScope(QualifiedName.simple("not"), env.namespaceScope, Some(span)) match {
+          val funcCall = TypedExpression.FunctionCall(
+            funcName,
+            sig,
+            List(left, right),
+            ModuleCallOptions.empty,
+            None,
+            span
+          )
+          if op == CompareOp.NotEq then {
+            functions.lookupInScope(
+              QualifiedName.simple("not"),
+              env.namespaceScope,
+              Some(span)
+            ) match {
               case Right(notSig) =>
-                TypedExpression.FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span).validNel
+                TypedExpression
+                  .FunctionCall("not", notSig, List(funcCall), ModuleCallOptions.empty, None, span)
+                  .validNel
               case Left(err) => err.invalidNel
             }
           } else {
@@ -1028,21 +1137,26 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     }
 
     def isMergeable(t: SemanticType): Boolean = t match {
-      case _: SRecord               => true
-      case SList(_: SRecord)        => true
-      case _                        => false
+      case _: SRecord        => true
+      case SList(_: SRecord) => true
+      case _                 => false
     }
 
-    if (op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType)) {
+    if op == ArithOp.Add && isMergeable(left.semanticType) && isMergeable(right.semanticType) then {
       return mergeTypes(left.semanticType, right.semanticType, span).map { merged =>
         TypedExpression.Merge(left, right, merged, span)
       }
     }
 
-    if (!isNumeric(left.semanticType) || !isNumeric(right.semanticType)) {
-      return CompileError.UnsupportedArithmetic(
-        opString(op), left.semanticType.prettyPrint, right.semanticType.prettyPrint, Some(span)
-      ).invalidNel
+    if !isNumeric(left.semanticType) || !isNumeric(right.semanticType) then {
+      return CompileError
+        .UnsupportedArithmetic(
+          opString(op),
+          left.semanticType.prettyPrint,
+          right.semanticType.prettyPrint,
+          Some(span)
+        )
+        .invalidNel
     }
 
     val funcName = op match {
@@ -1054,7 +1168,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
     functions.lookupInScope(QualifiedName.simple(funcName), env.namespaceScope, Some(span)) match {
       case Right(sig) =>
-        TypedExpression.FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span).validNel
+        TypedExpression
+          .FunctionCall(funcName, sig, List(left, right), ModuleCallOptions.empty, None, span)
+          .validNel
       case Left(err) => err.invalidNel
     }
   }

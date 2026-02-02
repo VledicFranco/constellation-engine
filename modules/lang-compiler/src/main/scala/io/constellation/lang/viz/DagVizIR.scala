@@ -5,21 +5,21 @@ import io.circe.generic.semiauto.*
 
 /** Node kinds for DAG visualization */
 enum NodeKind:
-  case Input         // External data entering the DAG
-  case Output        // Declared output of the DAG
-  case Operation     // Module call / function invocation
-  case Literal       // Literal value (string, int, etc.)
-  case Merge         // Record merge operation (+)
-  case Project       // Field projection ([field1, field2])
-  case FieldAccess   // Single field access (.field)
-  case Conditional   // If/else expression
-  case Guard         // Guard expression (expr when cond)
-  case Branch        // Multi-way branch expression
-  case Coalesce      // Null coalescing (??)
-  case HigherOrder   // Higher-order operations (map, filter, etc.)
-  case ListLiteral   // List literal expression
-  case BooleanOp     // AND, OR, NOT operations
-  case StringInterp  // String interpolation
+  case Input        // External data entering the DAG
+  case Output       // Declared output of the DAG
+  case Operation    // Module call / function invocation
+  case Literal      // Literal value (string, int, etc.)
+  case Merge        // Record merge operation (+)
+  case Project      // Field projection ([field1, field2])
+  case FieldAccess  // Single field access (.field)
+  case Conditional  // If/else expression
+  case Guard        // Guard expression (expr when cond)
+  case Branch       // Multi-way branch expression
+  case Coalesce     // Null coalescing (??)
+  case HigherOrder  // Higher-order operations (map, filter, etc.)
+  case ListLiteral  // List literal expression
+  case BooleanOp    // AND, OR, NOT operations
+  case StringInterp // String interpolation
 
 object NodeKind:
   given Encoder[NodeKind] = Encoder.encodeString.contramap(_.toString)
@@ -75,9 +75,9 @@ object ExecutionState:
 case class VizNode(
     id: String,
     kind: NodeKind,
-    label: String,                            // Display name (e.g., "FetchCustomer", "order")
-    typeSignature: String,                    // Human-readable type (e.g., "{ id: String, name: String }")
-    position: Option[Position] = None,        // Computed by layout engine
+    label: String,                     // Display name (e.g., "FetchCustomer", "order")
+    typeSignature: String,             // Human-readable type (e.g., "{ id: String, name: String }")
+    position: Option[Position] = None, // Computed by layout engine
     executionState: Option[ExecutionState] = None
 )
 
@@ -88,8 +88,8 @@ object VizNode:
 /** An edge connecting two nodes */
 case class VizEdge(
     id: String,
-    source: String, // Source node ID
-    target: String, // Target node ID
+    source: String,               // Source node ID
+    target: String,               // Target node ID
     label: Option[String] = None, // Parameter name for module inputs
     kind: EdgeKind = EdgeKind.Data
 )

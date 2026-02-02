@@ -7,14 +7,13 @@ import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/**
- * Integration tests for verifying module call options flow through the full
- * compilation pipeline from source to CompilationOutput.
- */
+/** Integration tests for verifying module call options flow through the full compilation pipeline
+  * from source to CompilationOutput.
+  */
 class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
   // Create a compiler with a test function registered
-  private def compilerWithFunction(name: String): LangCompiler = {
+  private def compilerWithFunction(name: String): LangCompiler =
     LangCompiler.builder
       .withFunction(
         FunctionSignature(
@@ -25,16 +24,17 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
         )
       )
       .build
-  }
 
-  private def compileWithModule(source: String, moduleName: String): Either[Any, CompilationOutput] = {
+  private def compileWithModule(
+      source: String,
+      moduleName: String
+  ): Either[Any, CompilationOutput] = {
     val compiler = compilerWithFunction(moduleName)
     compiler.compile(source, "test-dag")
   }
 
-  private def getModuleOptions(result: CompilationOutput): Option[ModuleCallOptions] = {
+  private def getModuleOptions(result: CompilationOutput): Option[ModuleCallOptions] =
     result.program.image.moduleOptions.values.headOption
-  }
 
   // ============================================================================
   // Basic Pipeline Tests
@@ -50,7 +50,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val options = getModuleOptions(compiled)
+    val options  = getModuleOptions(compiled)
     options shouldBe defined
     options.get.retry shouldBe Some(3)
   }
@@ -316,7 +316,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     // Fallback is resolved at IR level (not in ModuleCallOptions)
     // Verify compilation succeeds and options are present
     val compiled = result.toOption.get
-    val options = getModuleOptions(compiled)
+    val options  = getModuleOptions(compiled)
     options shouldBe defined
   }
 
@@ -365,7 +365,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
       ("timeout: 1d", 86400000L)
     )
 
-    for ((optionStr, expectedMs) <- testCases) {
+    for (optionStr, expectedMs) <- testCases do {
       val source = s"""
         in x: Int
         result = TestModule(x) with $optionStr
@@ -391,7 +391,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
       ("on_error: wrap", "wrap")
     )
 
-    for ((optionStr, expectedStrategy) <- testCases) {
+    for (optionStr, expectedStrategy) <- testCases do {
       val source = s"""
         in x: Int
         result = TestModule(x) with $optionStr
@@ -416,7 +416,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
       ("backoff: exponential", "exponential")
     )
 
-    for ((optionStr, expectedStrategy) <- testCases) {
+    for (optionStr, expectedStrategy) <- testCases do {
       val source = s"""
         in x: Int
         result = TestModule(x) with $optionStr
@@ -469,9 +469,9 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
     compiled.program.image.moduleOptions.size shouldBe 2
 
     // Verify different options for each
-    val allOptions = compiled.program.image.moduleOptions.values.toList
+    val allOptions    = compiled.program.image.moduleOptions.values.toList
     val retriesOption = allOptions.find(_.retry.isDefined)
-    val cacheOption = allOptions.find(_.cacheMs.isDefined)
+    val cacheOption   = allOptions.find(_.cacheMs.isDefined)
 
     retriesOption shouldBe defined
     retriesOption.get.retry shouldBe Some(3)

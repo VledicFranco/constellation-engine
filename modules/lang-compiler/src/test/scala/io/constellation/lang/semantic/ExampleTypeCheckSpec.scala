@@ -8,14 +8,14 @@ import org.scalatest.matchers.should.Matchers
 /** Comprehensive tests for @example annotation type checking.
   *
   * Tests cover:
-  * - Valid type combinations (String, Int, Float, Bool)
-  * - Type mismatches with clear error messages
-  * - Expression-based examples (variable refs, function calls)
-  * - Error message quality (source location, context)
+  *   - Valid type combinations (String, Int, Float, Bool)
+  *   - Type mismatches with clear error messages
+  *   - Expression-based examples (variable refs, function calls)
+  *   - Error message quality (source location, context)
   *
-  * Note: The parser supports any valid expression as @example value.
-  * Record and list literals are not supported in expressions, so examples
-  * must use literals, variable references, or function calls.
+  * Note: The parser supports any valid expression as @example value. Record and list literals are
+  * not supported in expressions, so examples must use literals, variable references, or function
+  * calls.
   *
   * See Issue #109: https://github.com/VledicFranco/constellation-engine/issues/109
   */
@@ -434,7 +434,12 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     // Arithmetic expressions require stdlib functions (add, subtract, etc.)
     val registry = FunctionRegistry.empty
     registry.register(
-      FunctionSignature("add", List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt), SemanticType.SInt, "add")
+      FunctionSignature(
+        "add",
+        List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        SemanticType.SInt,
+        "add"
+      )
     )
 
     val source = """
@@ -472,7 +477,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
   // which is not supported by the parser. Use function calls to test field access.
   it should "accept field access on function call result with matching type" in {
     val recordType = SemanticType.SRecord(Map("name" -> SemanticType.SString))
-    val registry = FunctionRegistry.empty
+    val registry   = FunctionRegistry.empty
     registry.register(
       FunctionSignature("createConfig", List(), recordType, "createConfig")
     )
@@ -488,7 +493,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
 
   it should "reject field access with mismatched type" in {
     val recordType = SemanticType.SRecord(Map("count" -> SemanticType.SInt))
-    val registry = FunctionRegistry.empty
+    val registry   = FunctionRegistry.empty
     registry.register(
       FunctionSignature("createConfig", List(), recordType, "createConfig")
     )
@@ -510,7 +515,8 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
   // We use function calls to test record type validation.
 
   it should "accept function call returning record type for record input" in {
-    val userType = SemanticType.SRecord(Map("name" -> SemanticType.SString, "age" -> SemanticType.SInt))
+    val userType =
+      SemanticType.SRecord(Map("name" -> SemanticType.SString, "age" -> SemanticType.SInt))
     val registry = FunctionRegistry.empty
     registry.register(
       FunctionSignature("createUser", List(), userType, "createUser")
@@ -528,7 +534,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
 
   it should "reject function returning wrong record type for record input" in {
     val wrongType = SemanticType.SRecord(Map("x" -> SemanticType.SInt, "y" -> SemanticType.SInt))
-    val registry = FunctionRegistry.empty
+    val registry  = FunctionRegistry.empty
     registry.register(
       FunctionSignature("createPoint", List(), wrongType, "createPoint")
     )
@@ -568,7 +574,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
 
   it should "reject function returning wrong List element type" in {
     val wrongListType = SemanticType.SList(SemanticType.SString)
-    val registry = FunctionRegistry.empty
+    val registry      = FunctionRegistry.empty
     registry.register(
       FunctionSignature("createStrings", List(), wrongListType, "createStrings")
     )

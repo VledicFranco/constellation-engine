@@ -4,9 +4,9 @@ import io.constellation.lang.semantic.*
 
 /** Higher-order functions for list processing in the standard library.
   *
-  * These functions accept lambda expressions and are processed specially by the compiler.
-  * The runtime execution is handled via InlineTransform (FilterTransform, MapTransform, etc.)
-  * rather than traditional Module implementations.
+  * These functions accept lambda expressions and are processed specially by the compiler. The
+  * runtime execution is handled via InlineTransform (FilterTransform, MapTransform, etc.) rather
+  * than traditional Module implementations.
   *
   * Usage in constellation-lang:
   * {{{
@@ -28,13 +28,12 @@ trait HigherOrderFunctions {
 
   // Signatures for higher-order functions
 
-  /** filter: (List<Int>, (Int) => Boolean) => List<Int>
-    * Keep elements that satisfy the predicate.
+  /** filter: (List<Int>, (Int) => Boolean) => List<Int> Keep elements that satisfy the predicate.
     */
   val filterIntSignature: FunctionSignature = FunctionSignature(
     name = "filter",
     params = List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
     returns = SemanticType.SList(SemanticType.SInt),
@@ -42,13 +41,13 @@ trait HigherOrderFunctions {
     namespace = Some("stdlib.collection")
   )
 
-  /** map: (List<Int>, (Int) => Int) => List<Int>
-    * Transform each element using the transform function.
+  /** map: (List<Int>, (Int) => Int) => List<Int> Transform each element using the transform
+    * function.
     */
   val mapIntIntSignature: FunctionSignature = FunctionSignature(
     name = "map",
     params = List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
     ),
     returns = SemanticType.SList(SemanticType.SInt),
@@ -56,13 +55,13 @@ trait HigherOrderFunctions {
     namespace = Some("stdlib.collection")
   )
 
-  /** all: (List<Int>, (Int) => Boolean) => Boolean
-    * Returns true if all elements satisfy the predicate.
+  /** all: (List<Int>, (Int) => Boolean) => Boolean Returns true if all elements satisfy the
+    * predicate.
     */
   val allIntSignature: FunctionSignature = FunctionSignature(
     name = "all",
     params = List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
     returns = SemanticType.SBoolean,
@@ -70,13 +69,13 @@ trait HigherOrderFunctions {
     namespace = Some("stdlib.collection")
   )
 
-  /** any: (List<Int>, (Int) => Boolean) => Boolean
-    * Returns true if any element satisfies the predicate.
+  /** any: (List<Int>, (Int) => Boolean) => Boolean Returns true if any element satisfies the
+    * predicate.
     */
   val anyIntSignature: FunctionSignature = FunctionSignature(
     name = "any",
     params = List(
-      "items" -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SList(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
     returns = SemanticType.SBoolean,

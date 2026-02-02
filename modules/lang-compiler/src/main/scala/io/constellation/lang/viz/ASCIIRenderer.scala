@@ -4,12 +4,12 @@ import scala.collection.mutable
 
 /** Renders a DagVizIR as ASCII art.
   *
-  * This renderer produces text-based visualizations suitable for terminal output,
-  * logs, and environments without graphics support.
+  * This renderer produces text-based visualizations suitable for terminal output, logs, and
+  * environments without graphics support.
   *
-  * The output uses Unicode box-drawing characters for better visual appearance.
-  * If the DAG has been laid out (nodes have positions), the renderer will organize
-  * nodes by layer. Otherwise, it will perform a simple topological sort.
+  * The output uses Unicode box-drawing characters for better visual appearance. If the DAG has been
+  * laid out (nodes have positions), the renderer will organize nodes by layer. Otherwise, it will
+  * perform a simple topological sort.
   */
 object ASCIIRenderer extends DagRenderer {
 
@@ -67,7 +67,7 @@ object ASCIIRenderer extends DagRenderer {
   }
 
   def render(dag: DagVizIR): String = {
-    if (dag.nodes.isEmpty) return "(empty DAG)"
+    if dag.nodes.isEmpty then return "(empty DAG)"
 
     val sb = new StringBuilder
 
@@ -85,7 +85,7 @@ object ASCIIRenderer extends DagRenderer {
       renderLayer(sb, layerNodes, dag)
 
       // Draw connections to next layer (if not last)
-      if (layerIdx < layers.length - 1) {
+      if layerIdx < layers.length - 1 then {
         renderConnections(sb, layerNodes, layers(layerIdx + 1), dag)
       }
     }
@@ -102,15 +102,17 @@ object ASCIIRenderer extends DagRenderer {
     // Check if nodes have positions (from layout)
     val hasPositions = dag.nodes.exists(_.position.isDefined)
 
-    if (hasPositions) {
+    if hasPositions then {
       // Group by Y position (for TB layout) or X position (for LR layout)
-      val isLR   = dag.metadata.layoutDirection == "LR"
+      val isLR = dag.metadata.layoutDirection == "LR"
       val groups = dag.nodes.groupBy { node =>
-        node.position.map(p => if (isLR) p.x else p.y).getOrElse(0.0)
+        node.position.map(p => if isLR then p.x else p.y).getOrElse(0.0)
       }
-      groups.toList.sortBy(_._1).map(_._2.sortBy { node =>
-        node.position.map(p => if (isLR) p.y else p.x).getOrElse(0.0)
-      })
+      groups.toList
+        .sortBy(_._1)
+        .map(_._2.sortBy { node =>
+          node.position.map(p => if isLR then p.y else p.x).getOrElse(0.0)
+        })
     } else {
       // Compute layers using topological sort
       topologicalLayers(dag)
@@ -119,22 +121,22 @@ object ASCIIRenderer extends DagRenderer {
 
   /** Compute layers using Kahn's algorithm (topological sort) */
   private def topologicalLayers(dag: DagVizIR): List[List[VizNode]] = {
-    val nodeMap   = dag.nodes.map(n => n.id -> n).toMap
-    val outEdges  = dag.edges.groupBy(_.source).map { case (k, v) => k -> v.map(_.target) }
-    val inDegree  = mutable.Map[String, Int]().withDefaultValue(0)
+    val nodeMap  = dag.nodes.map(n => n.id -> n).toMap
+    val outEdges = dag.edges.groupBy(_.source).map { case (k, v) => k -> v.map(_.target) }
+    val inDegree = mutable.Map[String, Int]().withDefaultValue(0)
 
     dag.edges.foreach(e => inDegree(e.target) += 1)
 
-    val layers = mutable.ListBuffer[List[VizNode]]()
+    val layers  = mutable.ListBuffer[List[VizNode]]()
     var current = dag.nodes.filter(n => inDegree(n.id) == 0)
 
-    while (current.nonEmpty) {
+    while current.nonEmpty do {
       layers += current
       val next = mutable.ListBuffer[VizNode]()
       current.foreach { node =>
         outEdges.getOrElse(node.id, List.empty).foreach { targetId =>
           inDegree(targetId) -= 1
-          if (inDegree(targetId) == 0) {
+          if inDegree(targetId) == 0 then {
             nodeMap.get(targetId).foreach(next += _)
           }
         }
@@ -147,7 +149,7 @@ object ASCIIRenderer extends DagRenderer {
 
   /** Render a layer of nodes */
   private def renderLayer(sb: StringBuilder, nodes: List[VizNode], dag: DagVizIR): Unit = {
-    val boxes = nodes.map(renderNodeBox)
+    val boxes    = nodes.map(renderNodeBox)
     val maxLines = boxes.map(_.length).maxOption.getOrElse(0)
 
     // Pad boxes to same height
@@ -157,7 +159,7 @@ object ASCIIRenderer extends DagRenderer {
     }
 
     // Render line by line across all boxes
-    for (lineIdx <- 0 until maxLines) {
+    for lineIdx <- 0 until maxLines do {
       val line = paddedBoxes.map(_(lineIdx)).mkString("  ")
       sb.append(line).append("\n")
     }
@@ -165,10 +167,10 @@ object ASCIIRenderer extends DagRenderer {
 
   /** Render a single node as a box */
   private def renderNodeBox(node: VizNode): List[String] = {
-    val lines   = mutable.ListBuffer[String]()
-    val bc      = BoxChars
-    val width   = BoxWidth
-    val inner   = width - 2
+    val lines = mutable.ListBuffer[String]()
+    val bc    = BoxChars
+    val width = BoxWidth
+    val inner = width - 2
 
     // Kind indicator
     val kindChar = node.kind match {
@@ -191,7 +193,7 @@ object ASCIIRenderer extends DagRenderer {
     // Build the box
     lines += s"${bc.topLeft}${bc.horizontal.toString * inner}${bc.topRight}"
     lines += s"${bc.vertical}${kindChar}${padRight(label, inner - kindChar.length)}${bc.vertical}"
-    if (typeStr.nonEmpty && typeStr != "Unit") {
+    if typeStr.nonEmpty && typeStr != "Unit" then {
       lines += s"${bc.vertical}${padRight(typeStr, inner)}${bc.vertical}"
     }
 
@@ -226,31 +228,35 @@ object ASCIIRenderer extends DagRenderer {
       currentIds.contains(e.source) && nextIds.contains(e.target)
     }
 
-    if (relevantEdges.nonEmpty) {
+    if relevantEdges.nonEmpty then {
       // Simple connector line
       val spacing = "  " // Space between boxes
-      val connectorLine = currentLayer.indices.map { idx =>
-        val nodeId = currentLayer(idx).id
-        val hasEdge = relevantEdges.exists(_.source == nodeId)
-        if (hasEdge) {
-          " " * (boxCenter - 1) + BoxChars.vertical.toString + " " * (BoxWidth - boxCenter)
-        } else {
-          " " * BoxWidth
+      val connectorLine = currentLayer.indices
+        .map { idx =>
+          val nodeId  = currentLayer(idx).id
+          val hasEdge = relevantEdges.exists(_.source == nodeId)
+          if hasEdge then {
+            " " * (boxCenter - 1) + BoxChars.vertical.toString + " " * (BoxWidth - boxCenter)
+          } else {
+            " " * BoxWidth
+          }
         }
-      }.mkString(spacing)
+        .mkString(spacing)
 
       sb.append(connectorLine).append("\n")
 
       // Arrow line
-      val arrowLine = currentLayer.indices.map { idx =>
-        val nodeId = currentLayer(idx).id
-        val hasEdge = relevantEdges.exists(_.source == nodeId)
-        if (hasEdge) {
-          " " * (boxCenter - 1) + BoxChars.downArrow.toString + " " * (BoxWidth - boxCenter)
-        } else {
-          " " * BoxWidth
+      val arrowLine = currentLayer.indices
+        .map { idx =>
+          val nodeId  = currentLayer(idx).id
+          val hasEdge = relevantEdges.exists(_.source == nodeId)
+          if hasEdge then {
+            " " * (boxCenter - 1) + BoxChars.downArrow.toString + " " * (BoxWidth - boxCenter)
+          } else {
+            " " * BoxWidth
+          }
         }
-      }.mkString(spacing)
+        .mkString(spacing)
 
       sb.append(arrowLine).append("\n")
     }
@@ -272,22 +278,19 @@ object ASCIIRenderer extends DagRenderer {
   private def emptyLine: String = " " * BoxWidth
 
   /** Truncate text to fit width */
-  private def truncate(text: String, maxLen: Int): String = {
-    if (text.length <= maxLen) text
+  private def truncate(text: String, maxLen: Int): String =
+    if text.length <= maxLen then text
     else text.take(maxLen - 3) + "..."
-  }
 
   /** Pad string to the right */
-  private def padRight(text: String, width: Int): String = {
-    if (text.length >= width) text.take(width)
+  private def padRight(text: String, width: Int): String =
+    if text.length >= width then text.take(width)
     else text + " " * (width - text.length)
-  }
 
   /** Abbreviate type signatures */
-  private def abbreviateType(typeSignature: String): String = {
-    if (typeSignature.length <= 20) typeSignature
+  private def abbreviateType(typeSignature: String): String =
+    if typeSignature.length <= 20 then typeSignature
     else typeSignature.take(17) + "..."
-  }
 
   def fileExtension: String = "txt"
   def mimeType: String      = "text/plain"

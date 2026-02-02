@@ -5,10 +5,10 @@ import java.nio.file.{Path, Paths}
 /** Configuration for the Constellation Dashboard.
   *
   * Environment variables:
-  * - CONSTELLATION_CST_DIR: Directory containing .cst files to browse
-  * - CONSTELLATION_SAMPLE_RATE: Default sampling rate (0.0-1.0)
-  * - CONSTELLATION_MAX_EXECUTIONS: Maximum stored executions
-  * - CONSTELLATION_DASHBOARD_ENABLED: Enable/disable dashboard
+  *   - CONSTELLATION_CST_DIR: Directory containing .cst files to browse
+  *   - CONSTELLATION_SAMPLE_RATE: Default sampling rate (0.0-1.0)
+  *   - CONSTELLATION_MAX_EXECUTIONS: Maximum stored executions
+  *   - CONSTELLATION_DASHBOARD_ENABLED: Enable/disable dashboard
   *
   * @param cstDirectory
   *   Root directory for browsing .cst files
@@ -30,13 +30,12 @@ case class DashboardConfig(
   def getCstDirectory: Path = cstDirectory.getOrElse(Paths.get("."))
 
   /** Validate configuration values. */
-  def validate: Either[String, DashboardConfig] = {
+  def validate: Either[String, DashboardConfig] =
     if defaultSampleRate < 0.0 || defaultSampleRate > 1.0 then
       Left(s"Sample rate must be between 0.0 and 1.0, got: $defaultSampleRate")
     else if maxStoredExecutions <= 0 then
       Left(s"Max stored executions must be positive, got: $maxStoredExecutions")
     else Right(this)
-  }
 }
 
 object DashboardConfig {

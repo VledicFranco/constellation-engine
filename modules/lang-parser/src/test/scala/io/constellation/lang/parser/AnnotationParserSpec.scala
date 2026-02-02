@@ -7,14 +7,14 @@ import org.scalatest.matchers.should.Matchers
 /** Comprehensive tests for @example annotation parsing.
   *
   * Tests cover:
-  * - Basic annotation parsing (string, int, float, boolean literals)
-  * - Expression-based examples (variable refs, function calls)
-  * - Edge cases (inputs without annotations, multiple inputs, source locations)
-  * - Error cases (malformed annotations, unclosed annotations, unknown annotations)
+  *   - Basic annotation parsing (string, int, float, boolean literals)
+  *   - Expression-based examples (variable refs, function calls)
+  *   - Edge cases (inputs without annotations, multiple inputs, source locations)
+  *   - Error cases (malformed annotations, unclosed annotations, unknown annotations)
   *
-  * Note: @example supports any valid expression. The parser does not currently
-  * support record literals or list literals as expressions, so examples must
-  * use literals, variable references, or function calls.
+  * Note: @example supports any valid expression. The parser does not currently support record
+  * literals or list literals as expressions, so examples must use literals, variable references, or
+  * function calls.
   *
   * See Issue #108: https://github.com/VledicFranco/constellation-engine/issues/108
   */
@@ -347,16 +347,16 @@ class AnnotationParserSpec extends AnyFlatSpec with Matchers {
 
     program.declarations should have size 5
 
-    val textDecl    = program.declarations(0).asInstanceOf[Declaration.InputDecl]
-    val textAnnot   = textDecl.annotations.head.asInstanceOf[Annotation.Example]
+    val textDecl  = program.declarations(0).asInstanceOf[Declaration.InputDecl]
+    val textAnnot = textDecl.annotations.head.asInstanceOf[Annotation.Example]
     textAnnot.value.value shouldBe Expression.StringLit("hello")
 
-    val countDecl   = program.declarations(1).asInstanceOf[Declaration.InputDecl]
-    val countAnnot  = countDecl.annotations.head.asInstanceOf[Annotation.Example]
+    val countDecl  = program.declarations(1).asInstanceOf[Declaration.InputDecl]
+    val countAnnot = countDecl.annotations.head.asInstanceOf[Annotation.Example]
     countAnnot.value.value shouldBe Expression.IntLit(42)
 
-    val ratioDecl   = program.declarations(2).asInstanceOf[Declaration.InputDecl]
-    val ratioAnnot  = ratioDecl.annotations.head.asInstanceOf[Annotation.Example]
+    val ratioDecl  = program.declarations(2).asInstanceOf[Declaration.InputDecl]
+    val ratioAnnot = ratioDecl.annotations.head.asInstanceOf[Annotation.Example]
     ratioAnnot.value.value shouldBe Expression.FloatLit(3.14)
 
     val enabledDecl = program.declarations(3).asInstanceOf[Declaration.InputDecl]

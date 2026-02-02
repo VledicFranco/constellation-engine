@@ -1,14 +1,14 @@
 package io.constellation.cache
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 
 /** Registry for managing multiple cache backends.
   *
   * Allows configuring different backends for different use cases:
-  * - `memory` - In-process cache for development
-  * - `caffeine` - Caffeine-based cache for production single instance
-  * - `redis` - Distributed cache for multi-instance deployments
+  *   - `memory` - In-process cache for development
+  *   - `caffeine` - Caffeine-based cache for production single instance
+  *   - `redis` - Distributed cache for multi-instance deployments
   *
   * ==Usage==
   *
@@ -34,8 +34,8 @@ trait CacheRegistry {
   /** Get a cache backend by name. */
   def get(name: String): IO[Option[CacheBackend]]
 
-  /** Get the default cache backend.
-    * Returns the first registered backend, or InMemoryCacheBackend if none.
+  /** Get the default cache backend. Returns the first registered backend, or InMemoryCacheBackend
+    * if none.
     */
   def default: IO[CacheBackend]
 
@@ -79,7 +79,7 @@ private[cache] class CacheRegistryImpl(
   override def default: IO[CacheBackend] =
     for {
       defaultName <- defaultNameRef.get
-      backends <- backendsRef.get
+      backends    <- backendsRef.get
       result = defaultName
         .flatMap(backends.get)
         .getOrElse(fallbackBackend)
@@ -89,7 +89,7 @@ private[cache] class CacheRegistryImpl(
     for {
       backends <- backendsRef.get
       exists = backends.contains(name)
-      _ <- if (exists) defaultNameRef.set(Some(name)) else IO.unit
+      _ <- if exists then defaultNameRef.set(Some(name)) else IO.unit
     } yield exists
 
   override def list: IO[List[String]] =
@@ -106,7 +106,7 @@ private[cache] class CacheRegistryImpl(
   override def clearAll: IO[Unit] =
     for {
       backends <- backendsRef.get
-      _ <- backends.values.toList.traverse_(_.clear)
+      _        <- backends.values.toList.traverse_(_.clear)
     } yield ()
 
   override def unregister(name: String): IO[Boolean] =
@@ -122,7 +122,7 @@ object CacheRegistry {
   def create: IO[CacheRegistry] =
     for {
       backendsRef <- Ref.of[IO, Map[String, CacheBackend]](Map.empty)
-      defaultRef <- Ref.of[IO, Option[String]](None)
+      defaultRef  <- Ref.of[IO, Option[String]](None)
     } yield new CacheRegistryImpl(backendsRef, defaultRef)
 
   /** Create a registry with pre-configured backends. */

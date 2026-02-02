@@ -2,7 +2,7 @@ package io.constellation
 
 import java.util.UUID
 import io.circe.{Encoder, Json}
-import io.circe.syntax._
+import io.circe.syntax.*
 
 /** Constellation Error Hierarchy
   *
@@ -76,7 +76,7 @@ sealed trait ConstellationError extends Exception {
 
   override def getMessage: String = {
     val contextStr =
-      if (context.isEmpty) ""
+      if context.isEmpty then ""
       else context.map { case (k, v) => s"$k=$v" }.mkString(" [", ", ", "]")
     s"[$errorCode] $message$contextStr"
   }
@@ -126,11 +126,19 @@ final case class TypeMismatchError(
 object TypeMismatchError {
 
   /** Create a TypeMismatchError from CType values */
-  def fromTypes(expected: CType, actual: CType, ctx: Map[String, String] = Map.empty): TypeMismatchError =
+  def fromTypes(
+      expected: CType,
+      actual: CType,
+      ctx: Map[String, String] = Map.empty
+  ): TypeMismatchError =
     TypeMismatchError(expected.toString, actual.toString, ctx)
 
   /** Create a TypeMismatchError from CValue */
-  def fromValue(expected: String, actual: CValue, ctx: Map[String, String] = Map.empty): TypeMismatchError =
+  def fromValue(
+      expected: String,
+      actual: CValue,
+      ctx: Map[String, String] = Map.empty
+  ): TypeMismatchError =
     TypeMismatchError(expected, s"${actual.getClass.getSimpleName}(${actual.ctype})", ctx)
 }
 
@@ -224,10 +232,9 @@ final case class CycleDetectedError(
     context: Map[String, String] = Map.empty
 ) extends CompilerError {
   override def errorCode: String = "CYCLE_DETECTED"
-  override def message: String = {
-    if (nodeIds.isEmpty) "Cycle detected in DAG"
+  override def message: String =
+    if nodeIds.isEmpty then "Cycle detected in DAG"
     else s"Cycle detected in DAG involving nodes: ${nodeIds.mkString(", ")}"
-  }
 }
 
 /** Error when an unsupported operation is encountered.

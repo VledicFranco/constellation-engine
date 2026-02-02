@@ -19,10 +19,13 @@ trait LangCompiler {
 
   /** Async variant of compile that avoids blocking threads.
     *
-    * Override in subclasses that use IO-based caching. The default
-    * implementation wraps the synchronous `compile` in IO.
+    * Override in subclasses that use IO-based caching. The default implementation wraps the
+    * synchronous `compile` in IO.
     */
-  def compileIO(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]] =
+  def compileIO(
+      source: String,
+      dagName: String
+  ): IO[Either[List[CompileError], CompilationOutput]] =
     IO(compile(source, dagName))
 
   /** Compile to IR only (for visualization) */
@@ -36,8 +39,8 @@ object LangCompiler {
 
   /** Create a new LangCompiler with the given function registry and module map.
     *
-    * Note: Optimization is disabled by default for backward compatibility.
-    * Use the builder with `.withOptimization()` to enable IR optimization.
+    * Note: Optimization is disabled by default for backward compatibility. Use the builder with
+    * `.withOptimization()` to enable IR optimization.
     */
   def apply(
       registry: FunctionRegistry,
@@ -95,7 +98,9 @@ final case class LangCompilerBuilder(
     copy(modules = modules ++ newModules)
 
   /** Enable compilation caching with the given configuration */
-  def withCaching(config: CompilationCache.Config = CompilationCache.Config()): LangCompilerBuilder =
+  def withCaching(
+      config: CompilationCache.Config = CompilationCache.Config()
+  ): LangCompilerBuilder =
     copy(cacheConfig = Some(config))
 
   /** Disable compilation caching */
@@ -103,7 +108,9 @@ final case class LangCompilerBuilder(
     copy(cacheConfig = None)
 
   /** Enable IR optimization with the given configuration */
-  def withOptimization(config: OptimizationConfig = OptimizationConfig.default): LangCompilerBuilder =
+  def withOptimization(
+      config: OptimizationConfig = OptimizationConfig.default
+  ): LangCompilerBuilder =
     copy(optimizationConfig = config)
 
   /** Disable IR optimization */
@@ -149,7 +156,7 @@ private class LangCompilerImpl(
       }
     } yield {
       // Build CompilationOutput from DagCompileOutput
-      val sourceHash = ContentHash.computeSHA256(source.getBytes("UTF-8"))
+      val sourceHash     = ContentHash.computeSHA256(source.getBytes("UTF-8"))
       val structuralHash = ProgramImage.computeStructuralHash(result.dagSpec)
       val moduleOptions = result.moduleOptions.map { case (uuid, irOpts) =>
         uuid -> irOpts.toModuleCallOptions

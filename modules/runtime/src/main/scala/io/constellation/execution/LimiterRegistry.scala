@@ -1,15 +1,15 @@
 package io.constellation.execution
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** Registry for managing rate limiters and concurrency limiters.
   *
-  * Limiters are shared per-name (typically module name) to ensure
-  * consistent rate limiting across all calls to the same module.
+  * Limiters are shared per-name (typically module name) to ensure consistent rate limiting across
+  * all calls to the same module.
   *
   * ==Usage==
   *
@@ -37,17 +37,20 @@ class LimiterRegistry private (
 
   /** Get or create a rate limiter for the given name.
     *
-    * If a limiter already exists for this name, it is returned.
-    * Otherwise, a new limiter is created with the specified rate.
+    * If a limiter already exists for this name, it is returned. Otherwise, a new limiter is created
+    * with the specified rate.
     *
-    * Note: If a limiter exists but with a different rate, the existing
-    * limiter is returned (first-registered rate wins).
+    * Note: If a limiter exists but with a different rate, the existing limiter is returned
+    * (first-registered rate wins).
     *
-    * @param name The limiter name (typically module name)
-    * @param rate The rate limit to apply
-    * @return The rate limiter for this name
+    * @param name
+    *   The limiter name (typically module name)
+    * @param rate
+    *   The rate limit to apply
+    * @return
+    *   The rate limiter for this name
     */
-  def getRateLimiter(name: String, rate: RateLimit): IO[TokenBucketRateLimiter] = {
+  def getRateLimiter(name: String, rate: RateLimit): IO[TokenBucketRateLimiter] =
     rateLimitersRef.get.flatMap { limiters =>
       limiters.get(name) match {
         case Some(limiter) => IO.pure(limiter)
@@ -56,24 +59,26 @@ class LimiterRegistry private (
             rateLimitersRef.modify { current =>
               current.get(name) match {
                 case Some(existing) => (current, existing)
-                case None => (current + (name -> newLimiter), newLimiter)
+                case None           => (current + (name -> newLimiter), newLimiter)
               }
             }
           }
       }
     }
-  }
 
   /** Get or create a concurrency limiter for the given name.
     *
-    * If a limiter already exists for this name, it is returned.
-    * Otherwise, a new limiter is created with the specified max concurrency.
+    * If a limiter already exists for this name, it is returned. Otherwise, a new limiter is created
+    * with the specified max concurrency.
     *
-    * @param name The limiter name (typically module name)
-    * @param maxConcurrent Maximum concurrent executions
-    * @return The concurrency limiter for this name
+    * @param name
+    *   The limiter name (typically module name)
+    * @param maxConcurrent
+    *   Maximum concurrent executions
+    * @return
+    *   The concurrency limiter for this name
     */
-  def getConcurrencyLimiter(name: String, maxConcurrent: Int): IO[ConcurrencyLimiter] = {
+  def getConcurrencyLimiter(name: String, maxConcurrent: Int): IO[ConcurrencyLimiter] =
     concurrencyLimitersRef.get.flatMap { limiters =>
       limiters.get(name) match {
         case Some(limiter) => IO.pure(limiter)
@@ -82,13 +87,12 @@ class LimiterRegistry private (
             concurrencyLimitersRef.modify { current =>
               current.get(name) match {
                 case Some(existing) => (current, existing)
-                case None => (current + (name -> newLimiter), newLimiter)
+                case None           => (current + (name -> newLimiter), newLimiter)
               }
             }
           }
       }
     }
-  }
 
   /** Check if a rate limiter exists for the given name. */
   def hasRateLimiter(name: String): IO[Boolean] =
@@ -107,71 +111,69 @@ class LimiterRegistry private (
     concurrencyLimitersRef.get.map(_.keys.toList.sorted)
 
   /** Get statistics for all rate limiters. */
-  def allRateLimiterStats: IO[Map[String, RateLimiterStats]] = {
+  def allRateLimiterStats: IO[Map[String, RateLimiterStats]] =
     for {
       limiters <- rateLimitersRef.get
       stats <- limiters.toList.traverse { case (name, limiter) =>
         limiter.stats.map(name -> _)
       }
     } yield stats.toMap
-  }
 
   /** Get statistics for all concurrency limiters. */
-  def allConcurrencyStats: IO[Map[String, ConcurrencyStats]] = {
+  def allConcurrencyStats: IO[Map[String, ConcurrencyStats]] =
     for {
       limiters <- concurrencyLimitersRef.get
       stats <- limiters.toList.traverse { case (name, limiter) =>
         limiter.stats.map(name -> _)
       }
     } yield stats.toMap
-  }
 
   /** Remove a rate limiter by name.
     *
-    * @return true if a limiter was removed, false if not found
+    * @return
+    *   true if a limiter was removed, false if not found
     */
-  def removeRateLimiter(name: String): IO[Boolean] = {
+  def removeRateLimiter(name: String): IO[Boolean] =
     rateLimitersRef.modify { limiters =>
       val exists = limiters.contains(name)
       (limiters - name, exists)
     }
-  }
 
   /** Remove a concurrency limiter by name.
     *
-    * @return true if a limiter was removed, false if not found
+    * @return
+    *   true if a limiter was removed, false if not found
     */
-  def removeConcurrencyLimiter(name: String): IO[Boolean] = {
+  def removeConcurrencyLimiter(name: String): IO[Boolean] =
     concurrencyLimitersRef.modify { limiters =>
       val exists = limiters.contains(name)
       (limiters - name, exists)
     }
-  }
 
   /** Clear all limiters.
     *
     * Use with caution - this will reset all rate limiting state.
     */
-  def clear: IO[Unit] = {
+  def clear: IO[Unit] =
     rateLimitersRef.set(Map.empty) >> concurrencyLimitersRef.set(Map.empty)
-  }
 }
 
 object LimiterRegistry {
 
   /** Create an empty limiter registry. */
-  def create: IO[LimiterRegistry] = {
+  def create: IO[LimiterRegistry] =
     for {
-      rateLimitersRef <- Ref.of[IO, Map[String, TokenBucketRateLimiter]](Map.empty)
+      rateLimitersRef        <- Ref.of[IO, Map[String, TokenBucketRateLimiter]](Map.empty)
       concurrencyLimitersRef <- Ref.of[IO, Map[String, ConcurrencyLimiter]](Map.empty)
     } yield new LimiterRegistry(rateLimitersRef, concurrencyLimitersRef)
-  }
 }
 
 /** Combined rate control options.
   *
-  * @param throttle Rate limit to apply (operations per time period)
-  * @param concurrency Maximum concurrent executions
+  * @param throttle
+  *   Rate limit to apply (operations per time period)
+  * @param concurrency
+  *   Maximum concurrent executions
   */
 final case class RateControlOptions(
     throttle: Option[RateLimit] = None,
@@ -195,15 +197,18 @@ object RateControlExecutor {
   /** Execute an operation with rate control.
     *
     * Applies throttle (rate limiting) and concurrency limiting in order:
-    * 1. Wait for rate limit permit
-    * 2. Wait for concurrency permit
-    * 3. Execute operation
+    *   1. Wait for rate limit permit 2. Wait for concurrency permit 3. Execute operation
     *
-    * @param operation The operation to execute
-    * @param moduleName Name for limiter lookup
-    * @param options Rate control options
-    * @param registry The limiter registry
-    * @return The result of the operation
+    * @param operation
+    *   The operation to execute
+    * @param moduleName
+    *   Name for limiter lookup
+    * @param options
+    *   Rate control options
+    * @param registry
+    *   The limiter registry
+    * @return
+    *   The result of the operation
     */
   def executeWithRateControl[A](
       operation: IO[A],

@@ -14,7 +14,8 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   "OptionsDiagnostics.diagnose" should "return empty list for valid options" in {
     val options = ModuleCallOptions(
       retry = Some(3),
-      delay = Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
+      delay =
+        Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
       backoff = Some(BackoffStrategy.Exponential)
     )
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
@@ -23,7 +24,8 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
 
   it should "warn about delay without retry" in {
     val options = ModuleCallOptions(
-      delay = Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds))
+      delay =
+        Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds))
     )
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
     diagnostics should have size 1
@@ -49,7 +51,7 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "warn about high retry count" in {
-    val options = ModuleCallOptions(retry = Some(15))
+    val options     = ModuleCallOptions(retry = Some(15))
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
     diagnostics should have size 1
     diagnostics.head.severity shouldBe Some(DiagnosticSeverity.Warning)
@@ -59,7 +61,7 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "error on negative retry" in {
-    val options = ModuleCallOptions(retry = Some(-1))
+    val options     = ModuleCallOptions(retry = Some(-1))
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
     diagnostics should have size 1
     diagnostics.head.severity shouldBe Some(DiagnosticSeverity.Error)
@@ -68,7 +70,7 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "error on zero concurrency" in {
-    val options = ModuleCallOptions(concurrency = Some(0))
+    val options     = ModuleCallOptions(concurrency = Some(0))
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
     diagnostics should have size 1
     diagnostics.head.severity shouldBe Some(DiagnosticSeverity.Error)
@@ -79,7 +81,8 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
 
   it should "warn about backoff without retry" in {
     val options = ModuleCallOptions(
-      delay = Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
+      delay =
+        Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
       backoff = Some(BackoffStrategy.Exponential)
     )
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
@@ -88,7 +91,7 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "warn about cache_backend without cache" in {
-    val options = ModuleCallOptions(cacheBackend = Some("redis"))
+    val options     = ModuleCallOptions(cacheBackend = Some("redis"))
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
     diagnostics should have size 1
     diagnostics.head.severity shouldBe Some(DiagnosticSeverity.Warning)
@@ -101,7 +104,8 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   it should "detect multiple issues" in {
     val options = ModuleCallOptions(
       retry = Some(-1),
-      delay = Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
+      delay =
+        Some(io.constellation.lang.ast.Duration(1, io.constellation.lang.ast.DurationUnit.Seconds)),
       concurrency = Some(0)
     )
     val diagnostics = OptionsDiagnostics.diagnose(options, testRange)
@@ -126,7 +130,8 @@ class OptionsDiagnosticsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return hover for backoff strategies" in {
-    val hover = OptionsDiagnostics.getHover("exponential", "result = MyModule(input) with backoff: ")
+    val hover =
+      OptionsDiagnostics.getHover("exponential", "result = MyModule(input) with backoff: ")
     hover shouldBe defined
     hover.get.contents.value should include("exponential")
     hover.get.contents.value should include("Backoff Strategy")

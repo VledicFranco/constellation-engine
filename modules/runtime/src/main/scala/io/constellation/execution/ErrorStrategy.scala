@@ -9,16 +9,17 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
   *
   * These strategies determine what happens when a module fails:
   *
-  * | Strategy | Behavior |
-  * |----------|----------|
-  * | Propagate | Re-throw the error (default) |
-  * | Skip | Return zero value for type, continue |
-  * | Log | Log error and return zero value |
-  * | Wrap | Wrap result in Either[ModuleError, A] |
+  * | Strategy  | Behavior                              |
+  * |:----------|:--------------------------------------|
+  * | Propagate | Re-throw the error (default)          |
+  * | Skip      | Return zero value for type, continue  |
+  * | Log       | Log error and return zero value       |
+  * | Wrap      | Wrap result in Either[ModuleError, A] |
   */
 sealed trait ErrorStrategy
 
 object ErrorStrategy {
+
   /** Re-throw the error (default behavior). */
   case object Propagate extends ErrorStrategy
 
@@ -47,7 +48,7 @@ final case class ModuleError(
     error: Throwable,
     timestamp: Long = System.currentTimeMillis()
 ) {
-  def message: String = error.getMessage
+  def message: String   = error.getMessage
   def errorType: String = error.getClass.getSimpleName
 
   override def toString: String =
@@ -56,22 +57,28 @@ final case class ModuleError(
 
 /** Executor for error handling strategies. */
 object ErrorStrategyExecutor {
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.ErrorStrategyExecutor")
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName[IO]("io.constellation.execution.ErrorStrategyExecutor")
 
   /** Execute an operation with the specified error strategy.
     *
-    * @param operation The IO operation to execute
-    * @param strategy The error handling strategy
-    * @param outputType The expected output type (for zero value)
-    * @param moduleName The module name (for logging/wrapping)
-    * @return The result according to the strategy
+    * @param operation
+    *   The IO operation to execute
+    * @param strategy
+    *   The error handling strategy
+    * @param outputType
+    *   The expected output type (for zero value)
+    * @param moduleName
+    *   The module name (for logging/wrapping)
+    * @return
+    *   The result according to the strategy
     */
   def execute[A](
       operation: IO[A],
       strategy: ErrorStrategy,
       outputType: CType,
       moduleName: String
-  ): IO[Any] = {
+  ): IO[Any] =
     strategy match {
       case ErrorStrategy.Propagate =>
         operation
@@ -83,7 +90,9 @@ object ErrorStrategyExecutor {
 
       case ErrorStrategy.Log =>
         operation.handleErrorWith { error =>
-          logger.warn(error)(s"[$moduleName] failed: ${error.getMessage}. Skipping with zero value.") >>
+          logger.warn(error)(
+            s"[$moduleName] failed: ${error.getMessage}. Skipping with zero value."
+          ) >>
             IO.pure(zeroValue(outputType).asInstanceOf[A])
         }
 
@@ -93,7 +102,6 @@ object ErrorStrategyExecutor {
           case Left(error)  => Left(ModuleError(moduleName, error))
         }
     }
-  }
 
   /** Execute and return typed result for non-Wrap strategies.
     *
@@ -112,14 +120,14 @@ object ErrorStrategyExecutor {
   /** Get the zero/default value for a CType.
     *
     * Zero values are type-appropriate defaults:
-    * - String: ""
-    * - Int: 0
-    * - Float: 0.0
-    * - Boolean: false
-    * - List: empty list
-    * - Optional: None
-    * - Product: product with zero values
-    * - Other: None
+    *   - String: ""
+    *   - Int: 0
+    *   - Float: 0.0
+    *   - Boolean: false
+    *   - List: empty list
+    *   - Optional: None
+    *   - Product: product with zero values
+    *   - Other: None
     */
   def zeroValue(ctype: CType): CValue = ctype match {
     case CType.CString =>
@@ -167,7 +175,7 @@ object ErrorStrategyExecutor {
     case CType.CString | CType.CInt | CType.CFloat | CType.CBoolean => true
     case CType.CList(_) | CType.CMap(_, _) | CType.COptional(_)     => true
     case CType.CProduct(structure) => structure.values.forall(hasZeroValue)
-    case CType.CUnion(variants) => variants.values.exists(hasZeroValue)
-    case _                      => false
+    case CType.CUnion(variants)    => variants.values.exists(hasZeroValue)
+    case _                         => false
   }
 }

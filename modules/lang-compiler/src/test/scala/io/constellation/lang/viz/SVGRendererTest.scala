@@ -5,10 +5,20 @@ import org.scalatest.matchers.should.Matchers
 
 class SVGRendererTest extends AnyFunSuite with Matchers {
 
-  private def makeNode(id: String, kind: NodeKind = NodeKind.Operation, label: String = ""): VizNode =
-    VizNode(id, kind, if (label.isEmpty) s"Node$id" else label, "String", None, None)
+  private def makeNode(
+      id: String,
+      kind: NodeKind = NodeKind.Operation,
+      label: String = ""
+  ): VizNode =
+    VizNode(id, kind, if label.isEmpty then s"Node$id" else label, "String", None, None)
 
-  private def makeNodeWithPosition(id: String, kind: NodeKind, label: String, x: Double, y: Double): VizNode =
+  private def makeNodeWithPosition(
+      id: String,
+      kind: NodeKind,
+      label: String,
+      x: Double,
+      y: Double
+  ): VizNode =
     VizNode(id, kind, label, "String", Some(Position(x, y)), None)
 
   private def makeEdge(source: String, target: String, kind: EdgeKind = EdgeKind.Data): VizEdge =
@@ -28,7 +38,7 @@ class SVGRendererTest extends AnyFunSuite with Matchers {
   }
 
   test("render empty dag") {
-    val dag = DagVizIR(nodes = List.empty, edges = List.empty)
+    val dag    = DagVizIR(nodes = List.empty, edges = List.empty)
     val result = SVGRenderer.render(dag)
 
     result should include("<svg")
@@ -259,7 +269,7 @@ class SVGRendererTest extends AnyFunSuite with Matchers {
 
     val result = SVGRenderer.render(dag)
 
-    result should include("List&lt;String&gt;")  // XML escaped
+    result should include("List&lt;String&gt;") // XML escaped
     result should include("class=\"type-sig\"")
   }
 
@@ -361,17 +371,17 @@ class SVGRendererTest extends AnyFunSuite with Matchers {
       makeNodeWithPosition("hof", NodeKind.HigherOrder, "map", 100, 350)
     )
 
-    val dag = DagVizIR(nodes = nodes, edges = List.empty)
+    val dag    = DagVizIR(nodes = nodes, edges = List.empty)
     val result = SVGRenderer.render(dag)
 
     // Check that different colors are present
-    result should include("#dcfce7")  // Input fill (green)
-    result should include("#dbeafe")  // Output fill (blue)
-    result should include("#f3f4f6")  // Operation fill (gray)
-    result should include("#fef3c7")  // Literal fill (amber)
-    result should include("#f3e8ff")  // Merge fill (purple)
-    result should include("#fef9c3")  // Guard fill (yellow)
-    result should include("#cffafe")  // HigherOrder fill (cyan)
+    result should include("#dcfce7") // Input fill (green)
+    result should include("#dbeafe") // Output fill (blue)
+    result should include("#f3f4f6") // Operation fill (gray)
+    result should include("#fef3c7") // Literal fill (amber)
+    result should include("#f3e8ff") // Merge fill (purple)
+    result should include("#fef9c3") // Guard fill (yellow)
+    result should include("#cffafe") // HigherOrder fill (cyan)
   }
 
   test("use metadata bounds if provided") {

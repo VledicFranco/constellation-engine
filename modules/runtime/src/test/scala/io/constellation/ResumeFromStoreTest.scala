@@ -24,8 +24,8 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
     .implementationPure[TextIn, TextOut](in => TextOut(in.text.toUpperCase))
     .build
 
-  private val moduleId = UUID.randomUUID()
-  private val inputDataId = UUID.randomUUID()
+  private val moduleId     = UUID.randomUUID()
+  private val inputDataId  = UUID.randomUUID()
   private val outputDataId = UUID.randomUUID()
 
   private val dag = DagSpec(
@@ -38,7 +38,11 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputDataId -> DataNodeSpec("text", Map(inputDataId -> "text", moduleId -> "text"), CType.CString),
+      inputDataId -> DataNodeSpec(
+        "text",
+        Map(inputDataId -> "text", moduleId -> "text"),
+        CType.CString
+      ),
       outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
     ),
     inEdges = Set((inputDataId, moduleId)),
@@ -74,7 +78,8 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
   "resumeFromStore" should "complete a suspended pipeline after saving and reloading" in {
     val result = (for {
       suspensionStore <- InMemorySuspensionStore.init
-      constellation <- ConstellationImpl.builder()
+      constellation <- ConstellationImpl
+        .builder()
         .withSuspensionStore(suspensionStore)
         .build()
       _ <- constellation.setModule(uppercaseModule)
@@ -103,7 +108,7 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
     val error = intercept[IllegalStateException] {
       (for {
         constellation <- ConstellationImpl.init
-        _ <- constellation.resumeFromStore(SuspensionHandle("any"))
+        _             <- constellation.resumeFromStore(SuspensionHandle("any"))
       } yield ()).unsafeRunSync()
     }
 
@@ -118,7 +123,8 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
     val error = intercept[NoSuchElementException] {
       (for {
         suspensionStore <- InMemorySuspensionStore.init
-        constellation <- ConstellationImpl.builder()
+        constellation <- ConstellationImpl
+          .builder()
           .withSuspensionStore(suspensionStore)
           .build()
         _ <- constellation.resumeFromStore(SuspensionHandle("nonexistent"))
@@ -150,8 +156,8 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
   it should "list the saved suspension with correct summary" in {
     val result = (for {
       suspensionStore <- InMemorySuspensionStore.init
-      _ <- suspensionStore.save(mkSuspended)
-      summaries <- suspensionStore.list()
+      _               <- suspensionStore.save(mkSuspended)
+      summaries       <- suspensionStore.list()
     } yield summaries).unsafeRunSync()
 
     result should have size 1
@@ -168,7 +174,8 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
   it should "include metadata when flags are set during resumeFromStore" in {
     val result = (for {
       suspensionStore <- InMemorySuspensionStore.init
-      constellation <- ConstellationImpl.builder()
+      constellation <- ConstellationImpl
+        .builder()
         .withSuspensionStore(suspensionStore)
         .build()
       _ <- constellation.setModule(uppercaseModule)

@@ -5,21 +5,20 @@ import scala.util.Using
 
 /** Test fixtures for benchmark programs
   *
-  * NOTE: These programs use ONLY built-in language features that work with
-  * LangCompiler.empty (no external module calls, no arithmetic, no comparisons).
+  * NOTE: These programs use ONLY built-in language features that work with LangCompiler.empty (no
+  * external module calls, no arithmetic, no comparisons).
   *
   * Supported features:
-  * - Boolean operators: and, or, not
-  * - Record types and field access
-  * - Conditionals with boolean conditions (if/else)
-  * - Guard expressions (when)
-  * - Coalesce (??)
+  *   - Boolean operators: and, or, not
+  *   - Record types and field access
+  *   - Conditionals with boolean conditions (if/else)
+  *   - Guard expressions (when)
+  *   - Coalesce (??)
   */
 object TestFixtures {
 
-  /** Small program: ~10 lines, basic inputs and outputs
-    * Uses: inputs, outputs, field access, boolean ops, guard, coalesce
-    * Expected to parse and compile in <5ms
+  /** Small program: ~10 lines, basic inputs and outputs Uses: inputs, outputs, field access,
+    * boolean ops, guard, coalesce Expected to parse and compile in <5ms
     */
   val smallProgram: String =
     """# Small benchmark program
@@ -39,9 +38,9 @@ object TestFixtures {
       |out final
       |""".stripMargin
 
-  /** Medium program: ~50 lines, multiple inputs, conditionals, field access
-    * Uses: record types, field access, conditionals, boolean ops, guards, coalesce
-    * Expected to parse and compile in <50ms
+  /** Medium program: ~50 lines, multiple inputs, conditionals, field access Uses: record types,
+    * field access, conditionals, boolean ops, guards, coalesce Expected to parse and compile in
+    * <50ms
     */
   val mediumProgram: String =
     """# Medium benchmark program - Flag Processing
@@ -126,9 +125,9 @@ object TestFixtures {
       |out fallbackResult
       |""".stripMargin
 
-  /** Large program: Complex Flag Processing Pipeline (no external modules)
-    * Uses: record types, field access, boolean ops, conditionals, guards, coalesce
-    * Expected to parse and compile in <200ms
+  /** Large program: Complex Flag Processing Pipeline (no external modules) Uses: record types,
+    * field access, boolean ops, conditionals, guards, coalesce Expected to parse and compile in
+    * <200ms
     */
   val largeProgram: String =
     """# Large Benchmark - Complex Flag Processing Pipeline
@@ -324,8 +323,10 @@ object TestFixtures {
 
   /** Generate stress test program with chained boolean ops (no external modules)
     *
-    * @param chainLength Number of chained operations
-    * @return Generated program source
+    * @param chainLength
+    *   Number of chained operations
+    * @return
+    *   Generated program source
     */
   def generateStressProgram(chainLength: Int): String = {
     val sb = new StringBuilder
@@ -340,7 +341,7 @@ object TestFixtures {
 
     // Generate chain of boolean operations
     sb.append("b0 = baseFlag\n")
-    for (i <- 1 to chainLength) {
+    for i <- 1 to chainLength do {
       val prev = s"b${i - 1}"
       val op = i % 4 match {
         case 0 => s"$prev and baseFlag"
@@ -380,8 +381,8 @@ object TestFixtures {
   /** Stress program with 1000 chained operations */
   lazy val stressProgram1000: String = generateStressProgram(1000)
 
-  /** Load the actual lead-scoring-pipeline.cst from examples
-    * NOTE: This requires a full FunctionRegistry, not LangCompiler.empty
+  /** Load the actual lead-scoring-pipeline.cst from examples NOTE: This requires a full
+    * FunctionRegistry, not LangCompiler.empty
     */
   def loadLeadScoringPipeline: Option[String] = {
     val path = "modules/example-app/examples/lead-scoring-pipeline.cst"

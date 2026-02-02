@@ -161,7 +161,7 @@ object SteppedExecution {
   /** Initialize the runtime for stepping (called before first step).
     */
   def initializeRuntime(session: SessionState): IO[SessionState] = {
-    val dag     = session.dagSpec
+    val dag = session.dagSpec
     // Combine compiled modules with synthetic modules (branch, inline transforms, etc.)
     val allModules = session.compiledModules ++ session.syntheticModules
 

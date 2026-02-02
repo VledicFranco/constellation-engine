@@ -148,7 +148,9 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
   it should "reject invalid hex hash formats" in {
     val executeRequest = ExecuteRequest(
-      ref = Some("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"), // 64 chars but not hex
+      ref = Some(
+        "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+      ), // 64 chars but not hex
       inputs = Map.empty
     )
 
@@ -544,8 +546,12 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     body.hcursor.downField("cache").focus shouldBe Some(Json.Null)
 
     // Check server stats are present
-    body.hcursor.downField("server").downField("uptime_seconds").as[Long] should be a Symbol("right")
-    body.hcursor.downField("server").downField("requests_total").as[Long] should be a Symbol("right")
+    body.hcursor.downField("server").downField("uptime_seconds").as[Long] should be a Symbol(
+      "right"
+    )
+    body.hcursor.downField("server").downField("requests_total").as[Long] should be a Symbol(
+      "right"
+    )
   }
 
   it should "return cache statistics with caching compiler" in {
@@ -553,7 +559,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     // Create routes with a caching compiler
     val cachingCompiler = LangCompiler.builder.withCaching().build
-    val cachingRoutes   = ConstellationRoutes(constellation, cachingCompiler, functionRegistry).routes
+    val cachingRoutes = ConstellationRoutes(constellation, cachingCompiler, functionRegistry).routes
 
     // First make a compile request to populate cache stats
     val compileRequest = CompileRequest(
@@ -580,15 +586,29 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "increment request count on each call" in {
-    val request1 = Request[IO](Method.GET, uri"/metrics")
+    val request1  = Request[IO](Method.GET, uri"/metrics")
     val response1 = routes.orNotFound.run(request1).unsafeRunSync()
-    val count1 = response1.as[Json].unsafeRunSync()
-      .hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+    val count1 = response1
+      .as[Json]
+      .unsafeRunSync()
+      .hcursor
+      .downField("server")
+      .downField("requests_total")
+      .as[Long]
+      .toOption
+      .get
 
-    val request2 = Request[IO](Method.GET, uri"/metrics")
+    val request2  = Request[IO](Method.GET, uri"/metrics")
     val response2 = routes.orNotFound.run(request2).unsafeRunSync()
-    val count2 = response2.as[Json].unsafeRunSync()
-      .hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+    val count2 = response2
+      .as[Json]
+      .unsafeRunSync()
+      .hcursor
+      .downField("server")
+      .downField("requests_total")
+      .as[Long]
+      .toOption
+      .get
 
     count2 should be > count1
   }

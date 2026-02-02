@@ -7,8 +7,8 @@ import scala.collection.mutable
 
 /** Dead Code Elimination optimization pass.
   *
-  * Removes nodes that are not reachable from any output.
-  * Uses backward DFS traversal from output nodes to mark reachable nodes.
+  * Removes nodes that are not reachable from any output. Uses backward DFS traversal from output
+  * nodes to mark reachable nodes.
   */
 object DeadCodeElimination extends OptimizationPass {
 
@@ -21,7 +21,7 @@ object DeadCodeElimination extends OptimizationPass {
     }
 
     // If no outputs declared, nothing to eliminate
-    if (outputNodeIds.isEmpty) {
+    if outputNodeIds.isEmpty then {
       return ir
     }
 
@@ -53,8 +53,8 @@ object DeadCodeElimination extends OptimizationPass {
   private def computeReachable(outputNodeIds: List[UUID], ir: IRProgram): Set[UUID] = {
     val visited = mutable.Set[UUID]()
 
-    def visit(id: UUID): Unit = {
-      if (!visited.contains(id)) {
+    def visit(id: UUID): Unit =
+      if !visited.contains(id) then {
         visited += id
         // Get dependencies for this node and visit them
         ir.dependencies(id).foreach(visit)
@@ -69,7 +69,6 @@ object DeadCodeElimination extends OptimizationPass {
           case _ => ()
         }
       }
-    }
 
     outputNodeIds.foreach(visit)
     visited.toSet

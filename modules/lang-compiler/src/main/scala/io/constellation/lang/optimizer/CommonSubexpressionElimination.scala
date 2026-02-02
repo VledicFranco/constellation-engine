@@ -7,9 +7,8 @@ import scala.collection.mutable
 
 /** Common Subexpression Elimination optimization pass.
   *
-  * Deduplicates identical computations by detecting nodes with the same
-  * semantic signature and replacing duplicates with references to a single
-  * canonical node.
+  * Deduplicates identical computations by detecting nodes with the same semantic signature and
+  * replacing duplicates with references to a single canonical node.
   */
 object CommonSubexpressionElimination extends OptimizationPass {
 
@@ -29,15 +28,13 @@ object CommonSubexpressionElimination extends OptimizationPass {
 
     // For each group, keep the first (canonical) node and mark others for replacement
     val replacements = mutable.Map[UUID, UUID]()
-    for ((_, nodeIds) <- groups) {
-      val sorted = nodeIds.toList.sortBy(_._1.toString) // Deterministic ordering
+    for (_, nodeIds) <- groups do {
+      val sorted    = nodeIds.toList.sortBy(_._1.toString) // Deterministic ordering
       val canonical = sorted.head._1
-      for ((id, _) <- sorted.tail) {
-        replacements(id) = canonical
-      }
+      for (id, _) <- sorted.tail do replacements(id) = canonical
     }
 
-    if (replacements.isEmpty) {
+    if replacements.isEmpty then {
       // No duplicates found
       return ir
     }
@@ -55,9 +52,8 @@ object CommonSubexpressionElimination extends OptimizationPass {
 
   /** Compute a semantic signature for a node.
     *
-    * Two nodes with the same signature compute the same value.
-    * Returns empty string for nodes that should not be deduplicated
-    * (inputs, literals with unique values, etc.)
+    * Two nodes with the same signature compute the same value. Returns empty string for nodes that
+    * should not be deduplicated (inputs, literals with unique values, etc.)
     */
   private def computeSignature(node: IRNode): String = node match {
     // Inputs are unique by name

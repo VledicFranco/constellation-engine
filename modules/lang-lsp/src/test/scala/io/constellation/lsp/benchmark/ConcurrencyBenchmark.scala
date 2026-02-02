@@ -22,18 +22,18 @@ import scala.concurrent.duration.*
 /** Concurrency benchmarks for LSP operations
   *
   * Tests LSP server behavior under concurrent request load to verify:
-  * - No deadlocks under parallel requests
-  * - Reasonable throughput with concurrent load
-  * - Thread safety of shared state
+  *   - No deadlocks under parallel requests
+  *   - Reasonable throughput with concurrent load
+  *   - Thread safety of shared state
   *
   * Run with: sbt "langLsp/testOnly *ConcurrencyBenchmark"
   */
 class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
   // Test configuration
-  val ParallelRequests = 10
+  val ParallelRequests   = 10
   val StressTestRequests = 100
-  val TimeoutSeconds = 30
+  val TimeoutSeconds     = 30
 
   // Test source
   val testSource: String =
@@ -59,12 +59,22 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
     for {
       constellation <- ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
-      _ <- constellation.setModule(lowercaseModule)
+      _             <- constellation.setModule(uppercaseModule)
+      _             <- constellation.setModule(lowercaseModule)
 
       compiler = LangCompiler.builder
-        .withModule("Uppercase", uppercaseModule, List("text" -> SemanticType.SString), SemanticType.SString)
-        .withModule("Lowercase", lowercaseModule, List("text" -> SemanticType.SString), SemanticType.SString)
+        .withModule(
+          "Uppercase",
+          uppercaseModule,
+          List("text" -> SemanticType.SString),
+          SemanticType.SString
+        )
+        .withModule(
+          "Lowercase",
+          lowercaseModule,
+          List("text" -> SemanticType.SString),
+          SemanticType.SString
+        )
         .withCaching()
         .build
 
@@ -76,40 +86,74 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
     } yield server
   }
 
-  private def openDocument(server: ConstellationLanguageServer, uri: String, source: String): IO[Unit] =
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(DidOpenTextDocumentParams(
-        TextDocumentItem(uri, "constellation", 1, source)
-      ).asJson)
-    ))
+  private def openDocument(
+      server: ConstellationLanguageServer,
+      uri: String,
+      source: String
+  ): IO[Unit] =
+    server.handleNotification(
+      Notification(
+        method = "textDocument/didOpen",
+        params = Some(
+          DidOpenTextDocumentParams(
+            TextDocumentItem(uri, "constellation", 1, source)
+          ).asJson
+        )
+      )
+    )
 
-  private def completionRequest(server: ConstellationLanguageServer, uri: String, line: Int, char: Int, id: String): IO[Response] =
-    server.handleRequest(Request(
-      id = StringId(id),
-      method = "textDocument/completion",
-      params = Some(CompletionParams(
-        textDocument = TextDocumentIdentifier(uri),
-        position = Position(line, char)
-      ).asJson)
-    ))
+  private def completionRequest(
+      server: ConstellationLanguageServer,
+      uri: String,
+      line: Int,
+      char: Int,
+      id: String
+  ): IO[Response] =
+    server.handleRequest(
+      Request(
+        id = StringId(id),
+        method = "textDocument/completion",
+        params = Some(
+          CompletionParams(
+            textDocument = TextDocumentIdentifier(uri),
+            position = Position(line, char)
+          ).asJson
+        )
+      )
+    )
 
-  private def hoverRequest(server: ConstellationLanguageServer, uri: String, line: Int, char: Int, id: String): IO[Response] =
-    server.handleRequest(Request(
-      id = StringId(id),
-      method = "textDocument/hover",
-      params = Some(HoverParams(
-        textDocument = TextDocumentIdentifier(uri),
-        position = Position(line, char)
-      ).asJson)
-    ))
+  private def hoverRequest(
+      server: ConstellationLanguageServer,
+      uri: String,
+      line: Int,
+      char: Int,
+      id: String
+  ): IO[Response] =
+    server.handleRequest(
+      Request(
+        id = StringId(id),
+        method = "textDocument/hover",
+        params = Some(
+          HoverParams(
+            textDocument = TextDocumentIdentifier(uri),
+            position = Position(line, char)
+          ).asJson
+        )
+      )
+    )
 
-  private def dagRequest(server: ConstellationLanguageServer, uri: String, id: String): IO[Response] =
-    server.handleRequest(Request(
-      id = StringId(id),
-      method = "constellation/getDagVisualization",
-      params = Some(Json.obj("uri" -> Json.fromString(uri)))
-    ))
+  private def dagRequest(
+      server: ConstellationLanguageServer,
+      uri: String,
+      id: String
+  ): IO[Response] =
+    server.handleRequest(
+      Request(
+        id = StringId(id),
+        method = "constellation/getDagVisualization",
+        params = Some(Json.obj("uri" -> Json.fromString(uri)))
+      )
+    )
 
   // -----------------------------------------------------------------
   // Parallel Completion Requests
@@ -129,7 +173,7 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
       // Execute all in parallel
       startTime = System.nanoTime()
       responses <- requests.parSequence
-      endTime = System.nanoTime()
+      endTime   = System.nanoTime()
       elapsedMs = (endTime - startTime) / 1e6
     } yield (responses, elapsedMs)).unsafeRunSync()
 
@@ -143,7 +187,9 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
     }
 
     // Print timing
-    println(f"[CONCURRENCY] 10 parallel completions: $elapsedMs%.2fms total, ${elapsedMs / ParallelRequests}%.2fms avg")
+    println(
+      f"[CONCURRENCY] 10 parallel completions: $elapsedMs%.2fms total, ${elapsedMs / ParallelRequests}%.2fms avg"
+    )
 
     // Target: <1000ms total for 10 requests (allows for CI variability)
     elapsedMs should be < 1000.0
@@ -170,7 +216,7 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
       startTime = System.nanoTime()
       responses <- requests.parSequence
-      endTime = System.nanoTime()
+      endTime   = System.nanoTime()
       elapsedMs = (endTime - startTime) / 1e6
     } yield (responses, elapsedMs)).unsafeRunSync()
 
@@ -206,16 +252,18 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
       startTime = System.nanoTime()
       // Use parSequence with a timeout to detect deadlocks
-      responses <- IO.race(
-        requests.parSequence,
-        IO.sleep(TimeoutSeconds.seconds) *> IO.raiseError[List[Response]](
-          new RuntimeException("Timeout - possible deadlock detected")
+      responses <- IO
+        .race(
+          requests.parSequence,
+          IO.sleep(TimeoutSeconds.seconds) *> IO.raiseError[List[Response]](
+            new RuntimeException("Timeout - possible deadlock detected")
+          )
         )
-      ).flatMap {
-        case Left(results) => IO.pure(results)
-        case Right(_) => IO.raiseError(new RuntimeException("Timeout"))
-      }
-      endTime = System.nanoTime()
+        .flatMap {
+          case Left(results) => IO.pure(results)
+          case Right(_)      => IO.raiseError(new RuntimeException("Timeout"))
+        }
+      endTime   = System.nanoTime()
       elapsedMs = (endTime - startTime) / 1e6
     } yield (responses, elapsedMs)).unsafeRunSync()
 
@@ -225,7 +273,9 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
     responses.size shouldBe StressTestRequests
     val errorCount = responses.count(_.error.isDefined)
 
-    println(f"[CONCURRENCY] 100 stress requests: $elapsedMs%.2fms total, ${elapsedMs / StressTestRequests}%.2fms avg, $errorCount errors")
+    println(
+      f"[CONCURRENCY] 100 stress requests: $elapsedMs%.2fms total, ${elapsedMs / StressTestRequests}%.2fms avg, $errorCount errors"
+    )
 
     // No more than 5% errors allowed (some may fail due to racing)
     errorCount should be <= 5
@@ -250,7 +300,7 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
       startTime = System.nanoTime()
       responses <- requests.parSequence
-      endTime = System.nanoTime()
+      endTime   = System.nanoTime()
       elapsedMs = (endTime - startTime) / 1e6
     } yield (responses, elapsedMs)).unsafeRunSync()
 
@@ -288,7 +338,7 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
 
       startTime = System.nanoTime()
       responses <- requests.parSequence
-      endTime = System.nanoTime()
+      endTime   = System.nanoTime()
       elapsedMs = (endTime - startTime) / 1e6
     } yield (responses, elapsedMs)).unsafeRunSync()
 
@@ -299,7 +349,9 @@ class ConcurrencyBenchmark extends AnyFlatSpec with Matchers {
       response.error shouldBe None
     }
 
-    println(f"[CONCURRENCY] 20 parallel cached requests: $elapsedMs%.2fms total, ${elapsedMs / 20}%.2fms avg")
+    println(
+      f"[CONCURRENCY] 20 parallel cached requests: $elapsedMs%.2fms total, ${elapsedMs / 20}%.2fms avg"
+    )
 
     // With caching, should be fast (allows for CI variability)
     elapsedMs should be < 500.0

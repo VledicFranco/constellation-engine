@@ -20,10 +20,10 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
   }
 
   "RateLimitMiddleware" should "allow requests under the limit" in {
-    val config = RateLimitConfig(requestsPerMinute = 100, burst = 10)
+    val config            = RateLimitConfig(requestsPerMinute = 100, burst = 10)
     val rateLimitedRoutes = RateLimitMiddleware(config)(testRoutes).unsafeRunSync()
 
-    val request = Request[IO](Method.GET, uri"/data")
+    val request  = Request[IO](Method.GET, uri"/data")
     val response = rateLimitedRoutes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -31,7 +31,7 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
 
   it should "return 429 when rate limit exceeded" in {
     // Very low limit: 1 request per minute, burst of 1
-    val config = RateLimitConfig(requestsPerMinute = 1, burst = 1)
+    val config            = RateLimitConfig(requestsPerMinute = 1, burst = 1)
     val rateLimitedRoutes = RateLimitMiddleware(config)(testRoutes).unsafeRunSync()
 
     val request = Request[IO](Method.GET, uri"/data")
@@ -46,7 +46,7 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
   }
 
   it should "include Retry-After header in 429 response" in {
-    val config = RateLimitConfig(requestsPerMinute = 1, burst = 1)
+    val config            = RateLimitConfig(requestsPerMinute = 1, burst = 1)
     val rateLimitedRoutes = RateLimitMiddleware(config)(testRoutes).unsafeRunSync()
 
     val request = Request[IO](Method.GET, uri"/data")
@@ -61,7 +61,7 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
   }
 
   it should "exempt health check paths" in {
-    val config = RateLimitConfig(requestsPerMinute = 1, burst = 1)
+    val config            = RateLimitConfig(requestsPerMinute = 1, burst = 1)
     val rateLimitedRoutes = RateLimitMiddleware(config)(testRoutes).unsafeRunSync()
 
     // Exhaust limit with /data
@@ -70,12 +70,12 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
 
     // /health should still work (exempt)
     val healthReq = Request[IO](Method.GET, uri"/health")
-    val response = rateLimitedRoutes.orNotFound.run(healthReq).unsafeRunSync()
+    val response  = rateLimitedRoutes.orNotFound.run(healthReq).unsafeRunSync()
     response.status shouldBe Status.Ok
   }
 
   it should "exempt /metrics path" in {
-    val config = RateLimitConfig(requestsPerMinute = 1, burst = 1)
+    val config            = RateLimitConfig(requestsPerMinute = 1, burst = 1)
     val rateLimitedRoutes = RateLimitMiddleware(config)(testRoutes).unsafeRunSync()
 
     // Exhaust limit
@@ -84,7 +84,7 @@ class RateLimitMiddlewareTest extends AnyFlatSpec with Matchers {
 
     // /metrics should still work (exempt)
     val metricsReq = Request[IO](Method.GET, uri"/metrics")
-    val response = rateLimitedRoutes.orNotFound.run(metricsReq).unsafeRunSync()
+    val response   = rateLimitedRoutes.orNotFound.run(metricsReq).unsafeRunSync()
     response.status shouldBe Status.Ok
   }
 

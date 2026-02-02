@@ -2,16 +2,16 @@ package io.constellation.lang.viz
 
 /** Renders a DagVizIR as Mermaid diagram syntax.
   *
-  * Mermaid is a markdown-based diagramming tool that renders in GitHub, GitLab,
-  * and many documentation platforms. This is the preferred format for README files
-  * and GitHub issues.
+  * Mermaid is a markdown-based diagramming tool that renders in GitHub, GitLab, and many
+  * documentation platforms. This is the preferred format for README files and GitHub issues.
   *
-  * @see https://mermaid.js.org/
+  * @see
+  *   https://mermaid.js.org/
   */
 object MermaidRenderer extends DagRenderer {
 
   def render(dag: DagVizIR): String = {
-    if (dag.nodes.isEmpty) return "graph TD\n    %% Empty DAG"
+    if dag.nodes.isEmpty then return "graph TD\n    %% Empty DAG"
 
     val sb = new StringBuilder
 
@@ -61,34 +61,34 @@ object MermaidRenderer extends DagRenderer {
 
   /** Get Mermaid shape delimiters for a node kind */
   private def nodeShape(kind: NodeKind): (String, String) = kind match {
-    case NodeKind.Input       => ("([", "])")   // Stadium shape (rounded ends)
-    case NodeKind.Output      => ("[[", "]]")   // Subroutine shape
-    case NodeKind.Operation   => ("[", "]")     // Rectangle
-    case NodeKind.Literal     => ("(", ")")     // Rounded rectangle
-    case NodeKind.Merge       => ("((", "))")   // Circle
-    case NodeKind.Project     => ("[/", "/]")   // Parallelogram
-    case NodeKind.FieldAccess => ("[", "]")     // Rectangle
-    case NodeKind.Conditional => ("{", "}")     // Diamond
-    case NodeKind.Guard       => ("{{", "}}")   // Hexagon
-    case NodeKind.Branch      => ("{", "}")     // Diamond
-    case NodeKind.Coalesce    => ("([", "])")   // Stadium
-    case NodeKind.HigherOrder => ("[[", "]]")   // Subroutine
-    case NodeKind.ListLiteral => ("(", ")")     // Rounded rectangle
-    case NodeKind.BooleanOp   => ("{", "}")     // Diamond
+    case NodeKind.Input        => ("([", "])") // Stadium shape (rounded ends)
+    case NodeKind.Output       => ("[[", "]]") // Subroutine shape
+    case NodeKind.Operation    => ("[", "]")   // Rectangle
+    case NodeKind.Literal      => ("(", ")")   // Rounded rectangle
+    case NodeKind.Merge        => ("((", "))") // Circle
+    case NodeKind.Project      => ("[/", "/]") // Parallelogram
+    case NodeKind.FieldAccess  => ("[", "]")   // Rectangle
+    case NodeKind.Conditional  => ("{", "}")   // Diamond
+    case NodeKind.Guard        => ("{{", "}}") // Hexagon
+    case NodeKind.Branch       => ("{", "}")   // Diamond
+    case NodeKind.Coalesce     => ("([", "])") // Stadium
+    case NodeKind.HigherOrder  => ("[[", "]]") // Subroutine
+    case NodeKind.ListLiteral  => ("(", ")")   // Rounded rectangle
+    case NodeKind.BooleanOp    => ("{", "}")   // Diamond
     case NodeKind.StringInterp => ("[", "]")   // Rectangle
   }
 
   /** Get Mermaid arrow style for an edge kind */
   private def edgeArrow(kind: EdgeKind): String = kind match {
-    case EdgeKind.Data     => "-->"    // Solid arrow
-    case EdgeKind.Optional => "-.->"   // Dashed arrow
-    case EdgeKind.Control  => "==>"    // Thick arrow
+    case EdgeKind.Data     => "-->"  // Solid arrow
+    case EdgeKind.Optional => "-.->" // Dashed arrow
+    case EdgeKind.Control  => "==>"  // Thick arrow
   }
 
   /** Format a node's label for display */
   private def formatNodeLabel(node: VizNode): String = {
     val typeAbbrev = abbreviateType(node.typeSignature)
-    if (typeAbbrev.isEmpty || typeAbbrev == "Unit") {
+    if typeAbbrev.isEmpty || typeAbbrev == "Unit" then {
       node.label
     } else {
       s"${node.label}<br/><small>${typeAbbrev}</small>"
@@ -96,10 +96,9 @@ object MermaidRenderer extends DagRenderer {
   }
 
   /** Abbreviate long type signatures */
-  private def abbreviateType(typeSignature: String): String = {
-    if (typeSignature.length <= 30) typeSignature
+  private def abbreviateType(typeSignature: String): String =
+    if typeSignature.length <= 30 then typeSignature
     else typeSignature.take(27) + "..."
-  }
 
   /** Escape special characters for Mermaid labels */
   private def escapeLabel(text: String): String = {
@@ -123,7 +122,7 @@ object MermaidRenderer extends DagRenderer {
     // Replace non-alphanumeric characters with underscores
     // Prefix with 'n' if starts with a digit
     val sanitized = id.replaceAll("[^a-zA-Z0-9_]", "_")
-    if (sanitized.headOption.exists(_.isDigit)) s"n$sanitized"
+    if sanitized.headOption.exists(_.isDigit) then s"n$sanitized"
     else sanitized
   }
 
@@ -147,7 +146,7 @@ object MermaidRenderer extends DagRenderer {
     // Apply styles to nodes
     kindStyles.foreach { case (kind, style) =>
       nodesByKind.get(kind).foreach { nodes =>
-        if (nodes.nonEmpty) {
+        if nodes.nonEmpty then {
           val nodeIds = nodes.map(n => sanitizeId(n.id)).mkString(",")
           sb.append(s"    style $nodeIds $style\n")
         }

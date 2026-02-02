@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
@@ -51,7 +51,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return None on cache miss" in {
-    val cache = CompilationCache.createUnsafe()
+    val cache     = CompilationCache.createUnsafe()
     val retrieved = cache.get("test", "hash123", "hash456").unsafeRunSync()
 
     retrieved shouldBe None
@@ -72,7 +72,8 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     val result = mockCompileResult()
 
     cache.put("test", "hash123", "hash456", result).unsafeRunSync()
-    val retrieved = cache.get("test", "hash123", "hash999").unsafeRunSync() // Different registry hash
+    val retrieved =
+      cache.get("test", "hash123", "hash999").unsafeRunSync() // Different registry hash
 
     retrieved shouldBe None
   }
@@ -84,9 +85,9 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     cache.put("a", "hash1", "hash1", mockCompileResult("a")).unsafeRunSync()
     Thread.sleep(5) // Ensure different timestamps
     cache.put("b", "hash2", "hash2", mockCompileResult("b")).unsafeRunSync()
-    Thread.sleep(5) // Ensure different timestamps
+    Thread.sleep(5)                                  // Ensure different timestamps
     cache.get("a", "hash1", "hash1").unsafeRunSync() // Access 'a' to make it more recent than 'b'
-    Thread.sleep(5) // Ensure different timestamps
+    Thread.sleep(5)                                  // Ensure different timestamps
     cache.put("c", "hash3", "hash3", mockCompileResult("c")).unsafeRunSync() // Should evict 'b'
 
     cache.get("a", "hash1", "hash1").unsafeRunSync() should not be empty
@@ -195,7 +196,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -217,7 +221,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -238,7 +245,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -259,7 +269,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Left(List(io.constellation.lang.ast.CompileError.InternalError("test error")))
       }
@@ -281,7 +294,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -306,7 +322,10 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
 
     val underlying = new LangCompiler {
       def functionRegistry: FunctionRegistry = FunctionRegistry.empty
-      def compile(source: String, dagName: String): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
+      def compile(
+          source: String,
+          dagName: String
+      ): Either[List[io.constellation.lang.ast.CompileError], CompilationOutput] = {
         compileCount += 1
         Right(mockCompileResult(dagName))
       }
@@ -374,7 +393,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
       }
     }
 
-    import cats.syntax.all._
+    import cats.syntax.all.*
     operations.toList.parSequence.unsafeRunSync()
 
     // Should have completed without errors

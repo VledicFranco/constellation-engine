@@ -8,16 +8,15 @@ import java.util.UUID
 
 /** Module call options at IR level.
   *
-  * These are the resolved options from the AST, with fallback expressions
-  * compiled into IR nodes. Options like retry, timeout, etc. are passed
-  * through to the runtime for execution.
+  * These are the resolved options from the AST, with fallback expressions compiled into IR nodes.
+  * Options like retry, timeout, etc. are passed through to the runtime for execution.
   */
 final case class IRModuleCallOptions(
     retry: Option[Int] = None,
     timeoutMs: Option[Long] = None,
     delayMs: Option[Long] = None,
     backoff: Option[BackoffStrategy] = None,
-    fallback: Option[UUID] = None,       // IR node ID for fallback expression
+    fallback: Option[UUID] = None, // IR node ID for fallback expression
     cacheMs: Option[Long] = None,
     cacheBackend: Option[String] = None,
     throttleCount: Option[Int] = None,
@@ -25,13 +24,13 @@ final case class IRModuleCallOptions(
     concurrency: Option[Int] = None,
     onError: Option[ErrorStrategy] = None,
     lazyEval: Option[Boolean] = None,
-    priority: Option[Int] = None         // Normalized to Int (critical=100, high=80, etc.)
+    priority: Option[Int] = None // Normalized to Int (critical=100, high=80, etc.)
 ) {
   def isEmpty: Boolean =
     retry.isEmpty && timeoutMs.isEmpty && delayMs.isEmpty && backoff.isEmpty &&
-    fallback.isEmpty && cacheMs.isEmpty && cacheBackend.isEmpty &&
-    throttleCount.isEmpty && throttlePerMs.isEmpty && concurrency.isEmpty &&
-    onError.isEmpty && lazyEval.isEmpty && priority.isEmpty
+      fallback.isEmpty && cacheMs.isEmpty && cacheBackend.isEmpty &&
+      throttleCount.isEmpty && throttlePerMs.isEmpty && concurrency.isEmpty &&
+      onError.isEmpty && lazyEval.isEmpty && priority.isEmpty
 
   /** Convert to runtime-level [[ModuleCallOptions]] (drops IR-specific `fallback`). */
   def toModuleCallOptions: ModuleCallOptions = ModuleCallOptions(
@@ -212,10 +211,9 @@ object IRNode {
     def outputType: SemanticType = resultType
   }
 
-  /** String interpolation node.
-    * Combines static string parts with evaluated expressions.
-    * parts.length == expressions.length + 1
-    * Example: "Hello, ${name}!" has parts ["Hello, ", "!"] and one expression
+  /** String interpolation node. Combines static string parts with evaluated expressions.
+    * parts.length == expressions.length + 1 Example: "Hello, ${name}!" has parts ["Hello, ", "!"]
+    * and one expression
     */
   final case class StringInterpolationNode(
       id: UUID,
@@ -226,14 +224,14 @@ object IRNode {
     def outputType: SemanticType = SemanticType.SString
   }
 
-  /** Higher-order function operation (filter, map, all, any, etc.)
-    * Applies a lambda expression to each element of a collection.
+  /** Higher-order function operation (filter, map, all, any, etc.) Applies a lambda expression to
+    * each element of a collection.
     */
   final case class HigherOrderNode(
       id: UUID,
       operation: HigherOrderOp,
-      source: UUID,               // Source collection node ID
-      lambda: TypedLambda,        // The lambda to apply
+      source: UUID,        // Source collection node ID
+      lambda: TypedLambda, // The lambda to apply
       outputType: SemanticType,
       debugSpan: Option[Span] = None
   ) extends IRNode
@@ -251,22 +249,21 @@ object IRNode {
 
 /** Higher-order operation types */
 enum HigherOrderOp:
-  case Filter  // Filter elements by predicate
-  case Map     // Transform each element
-  case All     // Check if all elements satisfy predicate
-  case Any     // Check if any element satisfies predicate
-  case SortBy  // Sort by key extractor
+  case Filter // Filter elements by predicate
+  case Map    // Transform each element
+  case All    // Check if all elements satisfy predicate
+  case Any    // Check if any element satisfies predicate
+  case SortBy // Sort by key extractor
 
-/** Typed lambda representation for IR (independent of TypedExpression)
-  * Contains IR nodes representing the lambda body that can be evaluated
-  * per element during collection operations.
+/** Typed lambda representation for IR (independent of TypedExpression) Contains IR nodes
+  * representing the lambda body that can be evaluated per element during collection operations.
   */
 final case class TypedLambda(
-  paramNames: List[String],
-  paramTypes: List[SemanticType],
-  bodyNodes: Map[UUID, IRNode],   // IR nodes for lambda body
-  bodyOutputId: UUID,             // Output node ID of the body
-  returnType: SemanticType
+    paramNames: List[String],
+    paramTypes: List[SemanticType],
+    bodyNodes: Map[UUID, IRNode], // IR nodes for lambda body
+    bodyOutputId: UUID,           // Output node ID of the body
+    returnType: SemanticType
 )
 
 /** The complete IR program representing a constellation-lang program */
@@ -279,8 +276,8 @@ final case class IRProgram(
 
   /** Get all dependencies for a given node */
   def dependencies(nodeId: UUID): Set[UUID] = nodes.get(nodeId) match {
-    case Some(IRNode.Input(_, _, _, _))                              => Set.empty
-    case Some(IRNode.ModuleCall(_, _, _, inputs, _, options, _))     =>
+    case Some(IRNode.Input(_, _, _, _)) => Set.empty
+    case Some(IRNode.ModuleCall(_, _, _, inputs, _, options, _)) =>
       inputs.values.toSet ++ options.fallback.toSet
     case Some(IRNode.MergeNode(_, left, right, _, _))                => Set(left, right)
     case Some(IRNode.ProjectNode(_, source, _, _, _))                => Set(source)
@@ -320,12 +317,12 @@ final case class IRProgram(
 
   /** Compute topological layers for parallel processing.
     *
-    * Nodes in the same layer have no dependencies on each other
-    * and can be processed in parallel. Layer 0 contains nodes
-    * with no dependencies, Layer N contains nodes whose dependencies
-    * are all in layers 0..N-1.
+    * Nodes in the same layer have no dependencies on each other and can be processed in parallel.
+    * Layer 0 contains nodes with no dependencies, Layer N contains nodes whose dependencies are all
+    * in layers 0..N-1.
     *
-    * @return List of layers, where each layer is a set of node IDs
+    * @return
+    *   List of layers, where each layer is a set of node IDs
     */
   def topologicalLayers: List[Set[UUID]] = {
     import scala.collection.mutable
@@ -340,21 +337,21 @@ final case class IRProgram(
       val deps = dependencies(nodeId)
       inDegree(nodeId) = deps.size
       deps.foreach { depId =>
-        if (!dependents.contains(depId)) {
+        if !dependents.contains(depId) then {
           dependents(depId) = mutable.Set.empty[UUID]
         }
         dependents(depId) += nodeId
       }
     }
 
-    val layers = mutable.ListBuffer[Set[UUID]]()
+    val layers    = mutable.ListBuffer[Set[UUID]]()
     var remaining = nodes.keySet
 
-    while (remaining.nonEmpty) {
+    while remaining.nonEmpty do {
       // Current layer: all nodes with in-degree 0
       val currentLayer = remaining.filter(n => inDegree(n) == 0)
 
-      if (currentLayer.isEmpty && remaining.nonEmpty) {
+      if currentLayer.isEmpty && remaining.nonEmpty then {
         // Cycle detected - fall back to processing remaining nodes as single layer
         layers += remaining
         remaining = Set.empty
@@ -380,7 +377,7 @@ final case class IRProgram(
   /** Get the maximum parallelism potential (size of largest layer) */
   def maxParallelism: Int = {
     val layers = topologicalLayers
-    if (layers.isEmpty) 0 else layers.map(_.size).max
+    if layers.isEmpty then 0 else layers.map(_.size).max
   }
 
   /** Get the critical path length (number of layers) */

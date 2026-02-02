@@ -99,7 +99,7 @@ class SuggestionsTest extends AnyFlatSpec with Matchers {
 
     val result = Suggestions.findSimilar("abcx", candidates, maxDistance = 3)
     // "abcd" should come before "abcdef" because it's closer
-    if (result.contains("abcd") && result.contains("abcdef")) {
+    if result.contains("abcd") && result.contains("abcdef") then {
       result.indexOf("abcd") should be < result.indexOf("abcdef")
     }
   }
@@ -155,7 +155,7 @@ class SuggestionsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return empty for errors without applicable suggestions" in {
-    val error = io.constellation.lang.ast.CompileError.InternalError("Something went wrong")
+    val error   = io.constellation.lang.ast.CompileError.InternalError("Something went wrong")
     val context = SuggestionContext.empty
 
     val suggestions = Suggestions.forError(error, context)

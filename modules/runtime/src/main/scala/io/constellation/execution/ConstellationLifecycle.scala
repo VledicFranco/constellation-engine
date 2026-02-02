@@ -1,10 +1,10 @@
 package io.constellation.execution
 
 import cats.effect.{Deferred, IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 
 import java.util.UUID
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** State of the Constellation lifecycle. */
 enum LifecycleState:
@@ -13,15 +13,15 @@ enum LifecycleState:
 /** Manages graceful shutdown of Constellation.
   *
   * Tracks in-flight executions and provides a shutdown method that:
-  * 1. Stops accepting new executions
-  * 2. Waits for in-flight executions to drain (up to timeout)
-  * 3. Cancels any remaining executions
+  *   1. Stops accepting new executions 2. Waits for in-flight executions to drain (up to timeout)
+  *      3. Cancels any remaining executions
   */
 trait ConstellationLifecycle {
 
   /** Initiate graceful shutdown.
     *
-    * @param drainTimeout Maximum time to wait for in-flight executions to complete
+    * @param drainTimeout
+    *   Maximum time to wait for in-flight executions to complete
     */
   def shutdown(drainTimeout: FiniteDuration = 30.seconds): IO[Unit]
 
@@ -33,7 +33,8 @@ trait ConstellationLifecycle {
 
   /** Register a new execution for lifecycle tracking.
     *
-    * @return true if registered (Running state), false if rejected (Draining/Stopped)
+    * @return
+    *   true if registered (Running state), false if rejected (Draining/Stopped)
     */
   def registerExecution(execId: UUID, handle: CancellableExecution): IO[Boolean]
 
@@ -49,7 +50,9 @@ object ConstellationLifecycle {
   /** Create a new lifecycle manager. */
   def create: IO[ConstellationLifecycle] =
     for {
-      stateRef   <- Ref.of[IO, (LifecycleState, Map[UUID, CancellableExecution])]((LifecycleState.Running, Map.empty))
+      stateRef <- Ref.of[IO, (LifecycleState, Map[UUID, CancellableExecution])](
+        (LifecycleState.Running, Map.empty)
+      )
       drainSignal <- Deferred[IO, Unit]
     } yield new ConstellationLifecycleImpl(stateRef, drainSignal)
 
@@ -69,11 +72,12 @@ object ConstellationLifecycle {
         }
 
         // If no in-flight executions, complete drain immediately
-        _ <- if (inflight.isEmpty) {
-          drainSignal.complete(()).attempt.void
-        } else {
-          IO.unit
-        }
+        _ <-
+          if inflight.isEmpty then {
+            drainSignal.complete(()).attempt.void
+          } else {
+            IO.unit
+          }
 
         // Wait for drain (with timeout)
         _ <- drainSignal.get.timeoutTo(
@@ -85,8 +89,8 @@ object ConstellationLifecycle {
         )
 
         // Transition to Stopped
-        _ <- stateRef.update {
-          case (_, executions) => (LifecycleState.Stopped, executions)
+        _ <- stateRef.update { case (_, executions) =>
+          (LifecycleState.Stopped, executions)
         }
       } yield ()
 
@@ -103,16 +107,17 @@ object ConstellationLifecycle {
       }
 
     def deregisterExecution(execId: UUID): IO[Unit] =
-      stateRef.modify {
-        case (st, executions) =>
+      stateRef
+        .modify { case (st, executions) =>
           val updated = executions - execId
           ((st, updated), (st, updated.isEmpty))
-      }.flatMap {
-        case (LifecycleState.Draining, true) =>
-          // Last execution drained — signal completion
-          drainSignal.complete(()).attempt.void
-        case _ =>
-          IO.unit
-      }
+        }
+        .flatMap {
+          case (LifecycleState.Draining, true) =>
+            // Last execution drained — signal completion
+            drainSignal.complete(()).attempt.void
+          case _ =>
+            IO.unit
+        }
   }
 }

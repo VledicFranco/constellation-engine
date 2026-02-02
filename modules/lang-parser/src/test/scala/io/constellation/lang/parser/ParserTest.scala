@@ -1755,7 +1755,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName.simple("filter")
     funcCall.args should have size 2
 
@@ -1779,8 +1779,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.params should have size 2
     lambda.params(0).name.value shouldBe "a"
@@ -1798,8 +1798,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.params should have size 1
     lambda.params.head.name.value shouldBe "x"
@@ -1818,8 +1818,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.params should have size 1
     lambda.params.head.name.value shouldBe "item"
@@ -1841,8 +1841,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.body.value shouldBe a[Expression.Compare]
     val compare = lambda.body.value.asInstanceOf[Expression.Compare]
@@ -1860,8 +1860,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.body.value shouldBe a[Expression.Arithmetic]
     val arith = lambda.body.value.asInstanceOf[Expression.Arithmetic]
@@ -1879,8 +1879,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.body.value shouldBe a[Expression.BoolBinary]
     val boolBinary = lambda.body.value.asInstanceOf[Expression.BoolBinary]
@@ -1898,8 +1898,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.params should have size 2
     lambda.params(0).typeAnnotation shouldBe defined
@@ -1917,8 +1917,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(0).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(0).value.asInstanceOf[Expression.Lambda]
 
     lambda.params should have size 0
     lambda.body.value shouldBe Expression.VarRef("x")
@@ -1935,8 +1935,8 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
-    val lambda = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val lambda     = funcCall.args(1).value.asInstanceOf[Expression.Lambda]
 
     lambda.body.value shouldBe a[Expression.Compare]
     val compare = lambda.body.value.asInstanceOf[Expression.Compare]
@@ -2065,7 +2065,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName.simple("Foo")
     funcCall.options.retry shouldBe Some(3)
   }
@@ -2081,7 +2081,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.retry shouldBe Some(3)
     funcCall.options.timeout shouldBe defined
     funcCall.options.timeout.get.value shouldBe 30
@@ -2099,7 +2099,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.timeout.get.value shouldBe 500
     funcCall.options.timeout.get.unit shouldBe DurationUnit.Milliseconds
   }
@@ -2115,7 +2115,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.timeout.get.value shouldBe 30
     funcCall.options.timeout.get.unit shouldBe DurationUnit.Seconds
   }
@@ -2131,7 +2131,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.cache.get.value shouldBe 5
     funcCall.options.cache.get.unit shouldBe DurationUnit.Minutes
   }
@@ -2147,7 +2147,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.cache.get.value shouldBe 1
     funcCall.options.cache.get.unit shouldBe DurationUnit.Hours
   }
@@ -2163,7 +2163,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.cache.get.value shouldBe 7
     funcCall.options.cache.get.unit shouldBe DurationUnit.Days
   }
@@ -2179,7 +2179,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.throttle shouldBe defined
     funcCall.options.throttle.get.count shouldBe 100
     funcCall.options.throttle.get.per.value shouldBe 1
@@ -2197,7 +2197,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.throttle.get.count shouldBe 10
     funcCall.options.throttle.get.per.value shouldBe 1
     funcCall.options.throttle.get.per.unit shouldBe DurationUnit.Seconds
@@ -2214,7 +2214,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.backoff shouldBe Some(BackoffStrategy.Exponential)
   }
 
@@ -2229,7 +2229,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.backoff shouldBe Some(BackoffStrategy.Linear)
   }
 
@@ -2244,7 +2244,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.backoff shouldBe Some(BackoffStrategy.Fixed)
   }
 
@@ -2259,7 +2259,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.onError shouldBe Some(ErrorStrategy.Propagate)
   }
 
@@ -2274,7 +2274,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.onError shouldBe Some(ErrorStrategy.Skip)
   }
 
@@ -2289,7 +2289,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.onError shouldBe Some(ErrorStrategy.Log)
   }
 
@@ -2304,7 +2304,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.onError shouldBe Some(ErrorStrategy.Wrap)
   }
 
@@ -2319,7 +2319,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.Critical))
   }
 
@@ -2334,7 +2334,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.High))
   }
 
@@ -2349,7 +2349,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.Normal))
   }
 
@@ -2364,7 +2364,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.Low))
   }
 
@@ -2379,7 +2379,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.Background))
   }
 
@@ -2394,7 +2394,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.priority shouldBe Some(Right(CustomPriority(10)))
   }
 
@@ -2410,7 +2410,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.fallback shouldBe defined
     funcCall.options.fallback.get.value shouldBe a[Expression.VarRef]
   }
@@ -2427,7 +2427,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.fallback shouldBe defined
     funcCall.options.fallback.get.value shouldBe a[Expression.FunctionCall]
   }
@@ -2443,7 +2443,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.fallback shouldBe defined
     funcCall.options.fallback.get.value shouldBe Expression.IntLit(0)
   }
@@ -2459,7 +2459,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.lazyEval shouldBe Some(true)
   }
 
@@ -2474,7 +2474,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.lazyEval shouldBe Some(true)
   }
 
@@ -2489,7 +2489,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.lazyEval shouldBe Some(false)
   }
 
@@ -2504,7 +2504,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.concurrency shouldBe Some(5)
   }
 
@@ -2519,7 +2519,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.delay shouldBe defined
     funcCall.options.delay.get.value shouldBe 1
     funcCall.options.delay.get.unit shouldBe DurationUnit.Seconds
@@ -2536,7 +2536,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.cacheBackend shouldBe Some("redis")
   }
 
@@ -2552,7 +2552,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.retry shouldBe Some(3)
     funcCall.options.timeout.get.value shouldBe 30
     funcCall.options.fallback shouldBe defined
@@ -2570,7 +2570,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.retry shouldBe Some(3)
     funcCall.options.delay.get.value shouldBe 1
     funcCall.options.backoff shouldBe Some(BackoffStrategy.Exponential)
@@ -2587,7 +2587,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.throttle.get.count shouldBe 100
     funcCall.options.concurrency shouldBe Some(5)
   }
@@ -2603,7 +2603,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.onError shouldBe Some(ErrorStrategy.Skip)
     funcCall.options.lazyEval shouldBe Some(true)
     funcCall.options.priority shouldBe Some(Left(PriorityLevel.High))
@@ -2621,7 +2621,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.retry shouldBe Some(3)
     funcCall.options.timeout.get.value shouldBe 30
     funcCall.options.delay.get.value shouldBe 1
@@ -2641,7 +2641,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.isEmpty shouldBe true
   }
 
@@ -2668,7 +2668,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.options.retry shouldBe Some(3)
     funcCall.options.timeout.get.value shouldBe 30
     funcCall.options.cache.get.value shouldBe 5
@@ -2685,7 +2685,7 @@ class ParserTest extends AnyFlatSpec with Matchers {
     val program = result.toOption.get
 
     val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
-    val funcCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     funcCall.name shouldBe QualifiedName(List("stdlib", "compute", "process"))
     funcCall.options.retry shouldBe Some(3)
   }

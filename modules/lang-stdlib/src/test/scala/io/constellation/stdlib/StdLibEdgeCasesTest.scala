@@ -82,7 +82,7 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
       result = add(a, b)
       out result
     """
-    val large = Long.MaxValue / 2
+    val large  = Long.MaxValue / 2
     val result = runProgram(
       source,
       Map("a" -> CValue.CInt(large), "b" -> CValue.CInt(1)),
@@ -597,8 +597,8 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "value" -> CValue.CString("hello world"),
-        "target" -> CValue.CString("world"),
+        "value"       -> CValue.CString("hello world"),
+        "target"      -> CValue.CString("world"),
         "replacement" -> CValue.CString("there")
       ),
       "result"
@@ -617,8 +617,8 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "value" -> CValue.CString("aaa"),
-        "target" -> CValue.CString("a"),
+        "value"       -> CValue.CString("aaa"),
+        "target"      -> CValue.CString("a"),
         "replacement" -> CValue.CString("b")
       ),
       "result"
@@ -637,8 +637,8 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "value" -> CValue.CString("hello"),
-        "target" -> CValue.CString("xyz"),
+        "value"       -> CValue.CString("hello"),
+        "target"      -> CValue.CString("xyz"),
         "replacement" -> CValue.CString("abc")
       ),
       "result"
@@ -1603,7 +1603,7 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "list" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+        "list"  -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
         "value" -> CValue.CInt(2)
       ),
       "result"
@@ -1621,7 +1621,7 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "list" -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
+        "list"  -> CValue.CList(Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt),
         "value" -> CValue.CInt(5)
       ),
       "result"
@@ -1639,7 +1639,7 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val result = runProgram(
       source,
       Map(
-        "list" -> CValue.CList(Vector.empty, CType.CInt),
+        "list"  -> CValue.CList(Vector.empty, CType.CInt),
         "value" -> CValue.CInt(1)
       ),
       "result"

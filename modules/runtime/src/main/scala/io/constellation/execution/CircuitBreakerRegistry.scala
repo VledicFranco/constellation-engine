@@ -1,12 +1,12 @@
 package io.constellation.execution
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 
 /** Registry of circuit breakers keyed by module name.
   *
-  * Provides get-or-create semantics so that the same circuit breaker instance
-  * is shared across all DAG executions for a given module.
+  * Provides get-or-create semantics so that the same circuit breaker instance is shared across all
+  * DAG executions for a given module.
   */
 trait CircuitBreakerRegistry {
 
@@ -37,7 +37,7 @@ object CircuitBreakerRegistry {
       breakers.get.flatMap { map =>
         map.get(moduleName) match {
           case Some(cb) => IO.pure(cb)
-          case None =>
+          case None     =>
             // Race-safe: use modify to ensure only one breaker per name
             CircuitBreaker.create(moduleName, defaultConfig).flatMap { newCb =>
               breakers.modify { current =>
@@ -55,9 +55,11 @@ object CircuitBreakerRegistry {
 
     def allStats: IO[Map[String, CircuitStats]] =
       breakers.get.flatMap { map =>
-        map.toList.traverse { case (name, cb) =>
-          cb.stats.map(name -> _)
-        }.map(_.toMap)
+        map.toList
+          .traverse { case (name, cb) =>
+            cb.stats.map(name -> _)
+          }
+          .map(_.toMap)
       }
   }
 }

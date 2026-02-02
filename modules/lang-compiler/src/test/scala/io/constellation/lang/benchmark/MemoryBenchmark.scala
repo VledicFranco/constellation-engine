@@ -1,6 +1,6 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang._
+import io.constellation.lang.*
 import io.constellation.lang.compiler.{DagCompiler, IRGenerator}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
@@ -32,20 +32,20 @@ case class MemoryResult(
 
 /** Memory profiling benchmarks for compilation phases
   *
-  * Measures heap memory consumption to establish baselines and identify
-  * memory-intensive operations.
+  * Measures heap memory consumption to establish baselines and identify memory-intensive
+  * operations.
   *
   * Run with: sbt "langCompiler/testOnly *MemoryBenchmark"
   *
-  * Note: JVM memory measurement is inherently noisy. Results show averages
-  * over multiple samples with min/max ranges.
+  * Note: JVM memory measurement is inherently noisy. Results show averages over multiple samples
+  * with min/max ranges.
   */
 class MemoryBenchmark extends AnyFlatSpec with Matchers {
 
   // Configuration
-  val Samples        = 10 // Number of measurement samples per test
-  val GcWaitMs       = 100 // Time to wait for GC to complete
-  val MemoryLimitMB  = 200.0 // Fail if any single operation exceeds this
+  val Samples       = 10    // Number of measurement samples per test
+  val GcWaitMs      = 100   // Time to wait for GC to complete
+  val MemoryLimitMB = 200.0 // Fail if any single operation exceeds this
 
   // Collect all results for final report
   private val allResults = ListBuffer[MemoryResult]()
@@ -55,8 +55,8 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
 
   /** Measure heap memory delta for an operation
     *
-    * Forces GC before and after to get accurate retained memory measurement.
-    * Returns the difference in used heap memory.
+    * Forces GC before and after to get accurate retained memory measurement. Returns the difference
+    * in used heap memory.
     */
   def measureHeapDelta[A](op: => A): Long = {
     // Force GC to get accurate baseline
@@ -351,9 +351,9 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
         println(f"  Stress100 -> Stress200: ${s200 / s100}%.1fx memory increase (2x nodes)")
         val scaling = (s200 / s100) / 2.0
         val scalingType =
-          if (scaling < 0.6) "sub-linear"
-          else if (scaling < 1.1) "linear"
-          else if (scaling < 1.5) "slightly super-linear"
+          if scaling < 0.6 then "sub-linear"
+          else if scaling < 1.1 then "linear"
+          else if scaling < 1.5 then "slightly super-linear"
           else "super-linear (warning!)"
         println(s"  Scaling characteristic: $scalingType ($scaling ratio)")
       case _ => ()
@@ -377,7 +377,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     println(f"\nMaximum observed memory: $maxObserved%.2f MB")
 
     // Calculate warning thresholds
-    val recommendedHeapMin = math.ceil(maxObserved * 2 / 10) * 10 // Round up to nearest 10
+    val recommendedHeapMin = math.ceil(maxObserved * 2 / 10) * 10   // Round up to nearest 10
     val recommendedHeapMax = math.ceil(maxObserved * 4 / 100) * 100 // Round up to nearest 100
 
     println(s"\nJVM Heap Recommendations:")

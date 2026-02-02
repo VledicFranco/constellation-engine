@@ -5,10 +5,9 @@ import io.constellation.lang.parser.ConstellationParser
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/**
- * Integration tests for parsing module call options (with clause).
- * Tests all 12 options across 4 phases of the RFC implementation.
- */
+/** Integration tests for parsing module call options (with clause). Tests all 12 options across 4
+  * phases of the RFC implementation.
+  */
 class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
 
   // ============================================================================
@@ -26,7 +25,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
 
     assignment.value.value match {
       case fc: Expression.FunctionCall => fc.options
-      case _ => fail("Expected a function call expression")
+      case _                           => fail("Expected a function call expression")
     }
   }
 
@@ -35,7 +34,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   "Parser" should "parse retry option with integer value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with retry: 3
       out result
@@ -53,7 +52,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
       ("timeout: 1d", Duration(1, DurationUnit.Days))
     )
 
-    for ((optionStr, expectedDuration) <- testCases) {
+    for (optionStr, expectedDuration) <- testCases do {
       val source = s"""
         in x: Int
         result = GetValue(x) with $optionStr
@@ -65,7 +64,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse fallback option with variable reference" in {
-    val source = """
+    val source  = """
       in x: Int
       in defaultValue: Int
       result = GetValue(x) with fallback: defaultValue
@@ -77,7 +76,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse fallback option with literal value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with fallback: 0
       out result
@@ -88,7 +87,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse cache option with duration" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with cache: 15min
       out result
@@ -98,7 +97,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse all Phase 1 options together" in {
-    val source = """
+    val source  = """
       in x: Int
       in defaultValue: Int
       result = GetValue(x) with retry: 3, timeout: 30s, fallback: defaultValue, cache: 5min
@@ -116,7 +115,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse delay option with duration" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with delay: 1s
       out result
@@ -132,7 +131,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
       ("backoff: exponential", BackoffStrategy.Exponential)
     )
 
-    for ((optionStr, expectedStrategy) <- strategies) {
+    for (optionStr, expectedStrategy) <- strategies do {
       val source = s"""
         in x: Int
         result = GetValue(x) with $optionStr
@@ -144,7 +143,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse all Phase 2 options together" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with retry: 3, delay: 1s, backoff: exponential
       out result
@@ -160,7 +159,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse throttle option with rate" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with throttle: 100/1min
       out result
@@ -178,7 +177,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
       ("throttle: 1000/1h", Rate(1000, Duration(1, DurationUnit.Hours)))
     )
 
-    for ((optionStr, expectedRate) <- testCases) {
+    for (optionStr, expectedRate) <- testCases do {
       val source = s"""
         in x: Int
         result = GetValue(x) with $optionStr
@@ -190,7 +189,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse concurrency option with integer value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with concurrency: 5
       out result
@@ -200,7 +199,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse all Phase 3 options together" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with throttle: 100/1min, concurrency: 5
       out result
@@ -222,7 +221,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
       ("on_error: wrap", ErrorStrategy.Wrap)
     )
 
-    for ((optionStr, expectedStrategy) <- strategies) {
+    for (optionStr, expectedStrategy) <- strategies do {
       val source = s"""
         in x: Int
         result = GetValue(x) with $optionStr
@@ -234,7 +233,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse lazy option as flag" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with lazy
       out result
@@ -244,7 +243,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse lazy option with explicit boolean" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with lazy: true
       out result
@@ -252,7 +251,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
     val options = parseAndGetOptions(source)
     options.lazyEval shouldBe Some(true)
 
-    val source2 = """
+    val source2  = """
       in x: Int
       result = GetValue(x) with lazy: false
       out result
@@ -270,7 +269,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
       ("priority: background", PriorityLevel.Background)
     )
 
-    for ((optionStr, expectedLevel) <- levels) {
+    for (optionStr, expectedLevel) <- levels do {
       val source = s"""
         in x: Int
         result = GetValue(x) with $optionStr
@@ -282,7 +281,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse priority option with numeric value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with priority: 75
       out result
@@ -292,7 +291,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse all Phase 4 options together" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with on_error: skip, lazy: true, priority: high
       out result
@@ -308,7 +307,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse cache_backend option with quoted string" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with cache: 5min, cache_backend: "redis"
       out result
@@ -323,7 +322,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse all 12 options together" in {
-    val source = """
+    val source  = """
       in x: Int
       in defaultValue: Int
       result = GetValue(x) with
@@ -359,7 +358,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse options on qualified function calls" in {
-    val source = """
+    val source  = """
       in x: Int
       result = stdlib.compute.process(x) with retry: 3, timeout: 10s
       out result
@@ -370,7 +369,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse options in multi-line format" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with
           retry: 5,
@@ -394,9 +393,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
     val program = result.toOption.get
 
-    val assignment = program.declarations
-      .collectFirst { case a: Declaration.Assignment => a }
-      .get
+    val assignment = program.declarations.collectFirst { case a: Declaration.Assignment => a }.get
 
     val fc = assignment.value.value.asInstanceOf[Expression.FunctionCall]
     fc.options.isEmpty shouldBe true
@@ -407,7 +404,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "handle large duration values" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with timeout: 3600s, cache: 1440min
       out result
@@ -418,7 +415,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle zero retry value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = GetValue(x) with retry: 0
       out result
@@ -428,7 +425,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse fallback with complex expression" in {
-    val source = """
+    val source  = """
       in x: Int
       in fallbackRecord: { value: Int, message: String }
       result = GetValue(x) with fallback: fallbackRecord
@@ -439,7 +436,7 @@ class OptionsParserIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse options after multi-argument function call" in {
-    val source = """
+    val source  = """
       in a: Int
       in b: Int
       in c: Int

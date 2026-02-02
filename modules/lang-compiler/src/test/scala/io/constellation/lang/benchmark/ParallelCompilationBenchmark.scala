@@ -1,7 +1,7 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang._
-import io.constellation.lang.compiler._
+import io.constellation.lang.*
+import io.constellation.lang.compiler.*
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.TypeChecker
 import org.scalatest.flatspec.AnyFlatSpec
@@ -10,12 +10,11 @@ import org.scalatest.matchers.should.Matchers
 /** Benchmark for analyzing parallel compilation potential
   *
   * This benchmark measures:
-  * 1. Current sequential compilation performance
-  * 2. IR structure analysis (layers, parallelism potential)
-  * 3. Overhead of layer computation
+  *   1. Current sequential compilation performance 2. IR structure analysis (layers, parallelism
+  *      potential) 3. Overhead of layer computation
   *
-  * The topological layers analysis shows how much potential parallelism
-  * exists in a program's dependency graph.
+  * The topological layers analysis shows how much potential parallelism exists in a program's
+  * dependency graph.
   */
 class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
 
@@ -23,12 +22,11 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
   val MeasureIterations = 20
 
   /** Compile to IR for analysis */
-  private def compileToIR(source: String): Either[List[_], IRProgram] = {
+  private def compileToIR(source: String): Either[List[_], IRProgram] =
     for {
       program <- ConstellationParser.parse(source).left.map(List(_))
       typed   <- TypeChecker.check(program, io.constellation.lang.semantic.FunctionRegistry.empty)
     } yield IRGenerator.generate(typed)
-  }
 
   "Topological layers" should "be computed efficiently" in {
     // First compile to IR
@@ -66,18 +64,17 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
         sequentialOverhead: Double // ratio of layers to nodes (lower = more parallel)
     )
 
-    def analyzeProgram(name: String, source: String): Option[ParallelismStats] = {
+    def analyzeProgram(name: String, source: String): Option[ParallelismStats] =
       compileToIR(source).toOption.map { ir =>
-        val layers          = ir.topologicalLayers
-        val nodeCount       = ir.nodes.size
-        val layerCount      = layers.size
-        val avgLayerSize    = if (layerCount > 0) nodeCount.toDouble / layerCount else 0.0
-        val maxParallelism  = ir.maxParallelism
-        val seqOverhead     = if (nodeCount > 0) layerCount.toDouble / nodeCount else 1.0
+        val layers         = ir.topologicalLayers
+        val nodeCount      = ir.nodes.size
+        val layerCount     = layers.size
+        val avgLayerSize   = if layerCount > 0 then nodeCount.toDouble / layerCount else 0.0
+        val maxParallelism = ir.maxParallelism
+        val seqOverhead    = if nodeCount > 0 then layerCount.toDouble / nodeCount else 1.0
 
         ParallelismStats(name, nodeCount, layerCount, maxParallelism, avgLayerSize, seqOverhead)
       }
-    }
 
     val stats = List(
       analyzeProgram("small", TestFixtures.smallProgram),
@@ -88,11 +85,15 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
     ).flatten
 
     println("\n=== Parallelism Analysis ===")
-    println(f"${"Program"}%-15s ${"Nodes"}%8s ${"Layers"}%8s ${"MaxPar"}%8s ${"AvgLayer"}%10s ${"SeqRatio"}%10s")
+    println(
+      f"${"Program"}%-15s ${"Nodes"}%8s ${"Layers"}%8s ${"MaxPar"}%8s ${"AvgLayer"}%10s ${"SeqRatio"}%10s"
+    )
     println("-" * 70)
 
     stats.foreach { s =>
-      println(f"${s.name}%-15s ${s.nodeCount}%8d ${s.layerCount}%8d ${s.maxParallelism}%8d ${s.avgLayerSize}%10.2f ${s.sequentialOverhead}%10.2f")
+      println(
+        f"${s.name}%-15s ${s.nodeCount}%8d ${s.layerCount}%8d ${s.maxParallelism}%8d ${s.avgLayerSize}%10.2f ${s.sequentialOverhead}%10.2f"
+      )
     }
 
     // Verify we have meaningful parallelism potential

@@ -9,7 +9,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   // ========== Error Code Mapping Tests ==========
 
   "ErrorCodes.fromCompileError" should "map UndefinedVariable to E001" in {
-    val error = CompileError.UndefinedVariable("x", None)
+    val error     = CompileError.UndefinedVariable("x", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E001"
@@ -18,7 +18,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map UndefinedFunction to E002" in {
-    val error = CompileError.UndefinedFunction("Foo", None)
+    val error     = CompileError.UndefinedFunction("Foo", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E002"
@@ -27,7 +27,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map UndefinedType to E003" in {
-    val error = CompileError.UndefinedType("Bar", None)
+    val error     = CompileError.UndefinedType("Bar", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E003"
@@ -36,7 +36,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map UndefinedNamespace to E004" in {
-    val error = CompileError.UndefinedNamespace("baz", None)
+    val error     = CompileError.UndefinedNamespace("baz", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E004"
@@ -54,7 +54,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map InvalidProjection to E006" in {
-    val error = CompileError.InvalidProjection("field", List("a", "b"), None)
+    val error     = CompileError.InvalidProjection("field", List("a", "b"), None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E006"
@@ -63,7 +63,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map InvalidFieldAccess to E007" in {
-    val error = CompileError.InvalidFieldAccess("field", List("a", "b"), None)
+    val error     = CompileError.InvalidFieldAccess("field", List("a", "b"), None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E007"
@@ -72,7 +72,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map TypeMismatch to E010" in {
-    val error = CompileError.TypeMismatch("String", "Int", None)
+    val error     = CompileError.TypeMismatch("String", "Int", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E010"
@@ -81,7 +81,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map IncompatibleMerge to E012" in {
-    val error = CompileError.IncompatibleMerge("String", "Int", None)
+    val error     = CompileError.IncompatibleMerge("String", "Int", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E012"
@@ -90,7 +90,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map UnsupportedComparison to E013" in {
-    val error = CompileError.UnsupportedComparison("==", "String", "Int", None)
+    val error     = CompileError.UnsupportedComparison("==", "String", "Int", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E013"
@@ -99,7 +99,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map UnsupportedArithmetic to E014" in {
-    val error = CompileError.UnsupportedArithmetic("+", "String", "Int", None)
+    val error     = CompileError.UnsupportedArithmetic("+", "String", "Int", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E014"
@@ -108,7 +108,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map TypeError to E015" in {
-    val error = CompileError.TypeError("Some type error", None)
+    val error     = CompileError.TypeError("Some type error", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E015"
@@ -117,7 +117,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map ParseError to E020" in {
-    val error = CompileError.ParseError("Unexpected token", None)
+    val error     = CompileError.ParseError("Unexpected token", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E020"
@@ -126,7 +126,7 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "map InternalError to E900" in {
-    val error = CompileError.InternalError("Something went wrong", None)
+    val error     = CompileError.InternalError("Something went wrong", None)
     val errorCode = ErrorCodes.fromCompileError(error)
 
     errorCode.code shouldBe "E900"
@@ -165,7 +165,9 @@ class ErrorCodesTest extends AnyFlatSpec with Matchers {
 
   "ErrorCode.docUrl" should "return full URL when docPath is defined" in {
     ErrorCodes.UndefinedVariable.docUrl shouldBe defined
-    ErrorCodes.UndefinedVariable.docUrl.get should startWith("https://constellation-engine.dev/docs/")
+    ErrorCodes.UndefinedVariable.docUrl.get should startWith(
+      "https://constellation-engine.dev/docs/"
+    )
   }
 
   it should "return None when docPath is None" in {

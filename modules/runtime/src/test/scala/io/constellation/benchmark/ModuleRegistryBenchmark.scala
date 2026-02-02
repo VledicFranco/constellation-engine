@@ -1,7 +1,7 @@
 package io.constellation.benchmark
 
 import cats.effect.unsafe.implicits.global
-import io.constellation._
+import io.constellation.*
 import io.constellation.impl.ModuleRegistryImpl
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,16 +11,16 @@ import scala.collection.mutable
 /** Benchmarks for ModuleRegistry lookup performance.
   *
   * Measures:
-  * - Exact name lookup
-  * - Short name lookup (without prefix)
-  * - Prefixed query lookup (query has prefix, module doesn't)
-  * - Batch registration performance
+  *   - Exact name lookup
+  *   - Short name lookup (without prefix)
+  *   - Prefixed query lookup (query has prefix, module doesn't)
+  *   - Batch registration performance
   *
   * Run with: sbt "runtime/testOnly *ModuleRegistryBenchmark"
   */
 class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
 
-  val WarmupIterations = 100
+  val WarmupIterations  = 100
   val MeasureIterations = 1000
 
   // -------------------------------------------------------------------------
@@ -42,7 +42,7 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
   def measureWithWarmup[A](name: String, warmup: Int, iterations: Int)(op: => A): TimingResult = {
     // Warmup
     var i = 0
-    while (i < warmup) {
+    while i < warmup do {
       op
       i += 1
     }
@@ -50,7 +50,7 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
     // Measure
     val timings = mutable.ArrayBuffer[Double]()
     i = 0
-    while (i < iterations) {
+    while i < iterations do {
       val start = System.nanoTime()
       op
       val end = System.nanoTime()
@@ -58,13 +58,13 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
       i += 1
     }
 
-    val sorted = timings.sorted
-    val avg = timings.sum / timings.length
-    val min = sorted.head
-    val max = sorted.last
-    val variance = timings.map(t => math.pow(t - avg, 2)).sum / timings.length
-    val stdDev = math.sqrt(variance)
-    val opsPerSec = if (avg > 0) 1e9 / avg else 0
+    val sorted    = timings.sorted
+    val avg       = timings.sum / timings.length
+    val min       = sorted.head
+    val max       = sorted.last
+    val variance  = timings.map(t => math.pow(t - avg, 2)).sum / timings.length
+    val stdDev    = math.sqrt(variance)
+    val opsPerSec = if avg > 0 then 1e9 / avg else 0
 
     TimingResult(name, avg, min, max, stdDev, opsPerSec)
   }
@@ -115,7 +115,7 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
     val modules = List(
       "Uppercase" -> createTestModule("Uppercase"),
       "Lowercase" -> createTestModule("Lowercase"),
-      "Trim" -> createTestModule("Trim")
+      "Trim"      -> createTestModule("Trim")
     )
     val registry = ModuleRegistryImpl.withModules(modules).unsafeRunSync()
 
@@ -129,7 +129,7 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
   }
 
   "Prefixed query lookup" should "find module by stripping prefix" in {
-    val modules = List("Uppercase" -> createTestModule("Uppercase"))
+    val modules  = List("Uppercase" -> createTestModule("Uppercase"))
     val registry = ModuleRegistryImpl.withModules(modules).unsafeRunSync()
 
     val result = measureWithWarmup("prefixed_query_lookup", WarmupIterations, MeasureIterations) {
@@ -148,7 +148,7 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
 
     val sizes = List(10, 100, 500, 1000)
     val results = sizes.map { size =>
-      val registry = createRegistryWithModules(size)
+      val registry   = createRegistryWithModules(size)
       val targetName = s"dag${size / 2}.Module${size / 2}"
 
       measureWithWarmup(s"lookup_${size}_modules", WarmupIterations / 2, MeasureIterations / 2) {
@@ -193,13 +193,13 @@ class ModuleRegistryBenchmark extends AnyFlatSpec with Matchers {
     println("=" * 70)
 
     val modules = List(
-      "Uppercase" -> createTestModule("Uppercase"),
+      "Uppercase"      -> createTestModule("Uppercase"),
       "dag1.Transform" -> createTestModule("dag1.Transform"),
       "dag2.Transform" -> createTestModule("dag2.Transform") // Conflict on "Transform"
     )
     val registry = ModuleRegistryImpl.withModules(modules).unsafeRunSync()
 
-    val size = registry.size.unsafeRunSync()
+    val size      = registry.size.unsafeRunSync()
     val indexSize = registry.indexSize.unsafeRunSync()
 
     println(s"Registered modules: $size")

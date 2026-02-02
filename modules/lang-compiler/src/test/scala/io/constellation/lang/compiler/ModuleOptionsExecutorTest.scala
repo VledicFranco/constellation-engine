@@ -2,17 +2,20 @@ package io.constellation.lang.compiler
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.syntax.all._
+import cats.syntax.all.*
 import io.constellation.CType
 import io.constellation.cache.CacheRegistry
 import io.constellation.execution.LimiterRegistry
-import io.constellation.lang.ast.{BackoffStrategy => ASTBackoffStrategy, ErrorStrategy => ASTErrorStrategy}
+import io.constellation.lang.ast.{
+  BackoffStrategy as ASTBackoffStrategy,
+  ErrorStrategy as ASTErrorStrategy
+}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
@@ -35,7 +38,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
     val counter = new AtomicInteger(0)
     val operation = IO {
       val count = counter.incrementAndGet()
-      if (count < 3) throw new RuntimeException(s"Attempt $count failed")
+      if count < 3 then throw new RuntimeException(s"Attempt $count failed")
       "success"
     }
 
@@ -57,13 +60,15 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
   it should "apply timeout" in {
     val result = (for {
       executor <- ModuleOptionsExecutor.create
-      result <- executor.executeWithOptions(
-        operation = IO.sleep(5.seconds) >> IO.pure("too slow"),
-        moduleId = UUID.randomUUID(),
-        moduleName = "TimeoutTest",
-        options = IRModuleCallOptions(timeoutMs = Some(100)),
-        outputType = CType.CString
-      ).attempt
+      result <- executor
+        .executeWithOptions(
+          operation = IO.sleep(5.seconds) >> IO.pure("too slow"),
+          moduleId = UUID.randomUUID(),
+          moduleName = "TimeoutTest",
+          options = IRModuleCallOptions(timeoutMs = Some(100)),
+          outputType = CType.CString
+        )
+        .attempt
     } yield result).unsafeRunSync()
 
     result.isLeft shouldBe true
@@ -87,14 +92,14 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "apply caching" in {
-    val counter = new AtomicInteger(0)
+    val counter  = new AtomicInteger(0)
     val moduleId = UUID.randomUUID()
 
     val result = (for {
       executor <- ModuleOptionsExecutor.create
       // First call
       result1 <- executor.executeWithOptions(
-        operation = IO { counter.incrementAndGet() },
+        operation = IO(counter.incrementAndGet()),
         moduleId = moduleId,
         moduleName = "CacheTest",
         options = IRModuleCallOptions(cacheMs = Some(60000)),
@@ -102,7 +107,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
       )
       // Second call should use cache
       result2 <- executor.executeWithOptions(
-        operation = IO { counter.incrementAndGet() },
+        operation = IO(counter.incrementAndGet()),
         moduleId = moduleId,
         moduleName = "CacheTest",
         options = IRModuleCallOptions(cacheMs = Some(60000)),
@@ -120,11 +125,11 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
     val result = (for {
       executor <- ModuleOptionsExecutor.create
-      start <- IO.realTime
+      start    <- IO.realTime
       // Execute 3 operations with throttle of 2 per 100ms
       _ <- (1 to 3).toList.traverse_ { _ =>
         executor.executeWithOptions(
-          operation = IO { counter.incrementAndGet() },
+          operation = IO(counter.incrementAndGet()),
           moduleId = UUID.randomUUID(),
           moduleName = "ThrottleTest",
           options = IRModuleCallOptions(throttleCount = Some(2), throttlePerMs = Some(100)),
@@ -134,12 +139,12 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
       end <- IO.realTime
     } yield (counter.get(), (end - start).toMillis)).unsafeRunSync()
 
-    result._1 shouldBe 3 // All executed
+    result._1 shouldBe 3       // All executed
     result._2 should be >= 20L // Should take some time due to throttle
   }
 
   it should "apply concurrency limiting" in {
-    val maxActive = new AtomicInteger(0)
+    val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)
 
     val result = (for {
@@ -149,7 +154,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
           operation = IO {
             val active = currentActive.incrementAndGet()
             maxActive.updateAndGet(m => math.max(m, active))
-          } >> IO.sleep(30.millis) >> IO { currentActive.decrementAndGet() },
+          } >> IO.sleep(30.millis) >> IO(currentActive.decrementAndGet()),
           moduleId = UUID.randomUUID(),
           moduleName = "ConcurrencyTest",
           options = IRModuleCallOptions(concurrency = Some(2)),
@@ -178,13 +183,13 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "apply backoff strategy" in {
-    val counter = new AtomicInteger(0)
+    val counter    = new AtomicInteger(0)
     val timestamps = new java.util.concurrent.ConcurrentLinkedQueue[Long]()
 
     val operation = IO {
       timestamps.add(System.currentTimeMillis())
       val count = counter.incrementAndGet()
-      if (count < 3) throw new RuntimeException(s"Attempt $count failed")
+      if count < 3 then throw new RuntimeException(s"Attempt $count failed")
       "success"
     }
 
@@ -208,7 +213,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
     // Check that delays are exponential
     val times = timestamps.toArray.map(_.asInstanceOf[Long])
-    if (times.length >= 3) {
+    if times.length >= 3 then {
       val gap1 = times(1) - times(0)
       val gap2 = times(2) - times(1)
       // Gap2 should show exponential growth trend (tolerant of scheduling noise)
@@ -243,7 +248,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
       result <- executor.executeWithOptions(
         operation = IO {
           val c = counter.incrementAndGet()
-          if (c < 2) throw new RuntimeException("first fail")
+          if c < 2 then throw new RuntimeException("first fail")
           "combined"
         },
         moduleId = UUID.randomUUID(),
@@ -269,10 +274,14 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
   "ModuleOptionsExecutor.withRegistries" should "use custom registries" in {
     val (executor, sameCache, sameLimiter) = (for {
-      cacheReg <- CacheRegistry.create
+      cacheReg   <- CacheRegistry.create
       limiterReg <- LimiterRegistry.create
       executor = ModuleOptionsExecutor.withRegistries(cacheReg, limiterReg)
-    } yield (executor, executor.getCacheRegistry eq cacheReg, executor.getLimiterRegistry eq limiterReg)).unsafeRunSync()
+    } yield (
+      executor,
+      executor.getCacheRegistry eq cacheReg,
+      executor.getLimiterRegistry eq limiterReg
+    )).unsafeRunSync()
 
     sameCache shouldBe true
     sameLimiter shouldBe true
@@ -281,7 +290,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
   it should "cache based on input values, not just module name" in {
     import io.constellation.CValue
 
-    val counter = new AtomicInteger(0)
+    val counter  = new AtomicInteger(0)
     val moduleId = UUID.randomUUID()
 
     val result = (for {
@@ -289,7 +298,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
       // First call with input "hello"
       result1 <- executor.executeWithOptions(
-        operation = IO { s"result-${counter.incrementAndGet()}" },
+        operation = IO(s"result-${counter.incrementAndGet()}"),
         moduleId = moduleId,
         moduleName = "InputSensitiveCache",
         options = IRModuleCallOptions(cacheMs = Some(60000)),
@@ -299,7 +308,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
       // Second call with same input "hello" - should hit cache
       result2 <- executor.executeWithOptions(
-        operation = IO { s"result-${counter.incrementAndGet()}" },
+        operation = IO(s"result-${counter.incrementAndGet()}"),
         moduleId = moduleId,
         moduleName = "InputSensitiveCache",
         options = IRModuleCallOptions(cacheMs = Some(60000)),
@@ -309,7 +318,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
       // Third call with different input "world" - should NOT hit cache
       result3 <- executor.executeWithOptions(
-        operation = IO { s"result-${counter.incrementAndGet()}" },
+        operation = IO(s"result-${counter.incrementAndGet()}"),
         moduleId = moduleId,
         moduleName = "InputSensitiveCache",
         options = IRModuleCallOptions(cacheMs = Some(60000)),
@@ -319,7 +328,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
 
       // Fourth call with "world" again - should hit cache
       result4 <- executor.executeWithOptions(
-        operation = IO { s"result-${counter.incrementAndGet()}" },
+        operation = IO(s"result-${counter.incrementAndGet()}"),
         moduleId = moduleId,
         moduleName = "InputSensitiveCache",
         options = IRModuleCallOptions(cacheMs = Some(60000)),

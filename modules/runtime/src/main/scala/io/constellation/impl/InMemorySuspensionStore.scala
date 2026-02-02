@@ -10,8 +10,10 @@ import java.util.UUID
   *
   * Suitable for development and testing. Stored suspensions are lost on JVM restart.
   *
-  * @param store   Concurrent map of handle ID -> stored entry
-  * @param codecOpt Optional codec for round-trip validation on save
+  * @param store
+  *   Concurrent map of handle ID -> stored entry
+  * @param codecOpt
+  *   Optional codec for round-trip validation on save
   */
 final class InMemorySuspensionStore private (
     store: Ref[IO, Map[String, InMemorySuspensionStore.StoredEntry]],
@@ -32,8 +34,8 @@ final class InMemorySuspensionStore private (
 
     validate *> {
       val handleId = UUID.randomUUID().toString
-      val now = Instant.now()
-      val entry = StoredEntry(suspended, createdAt = now, lastResumedAt = None)
+      val now      = Instant.now()
+      val entry    = StoredEntry(suspended, createdAt = now, lastResumedAt = None)
       store.update(_ + (handleId -> entry)).as(SuspensionHandle(handleId))
     }
   }
@@ -43,10 +45,8 @@ final class InMemorySuspensionStore private (
 
   def delete(handle: SuspensionHandle): IO[Boolean] =
     store.modify { entries =>
-      if (entries.contains(handle.id))
-        (entries - handle.id, true)
-      else
-        (entries, false)
+      if entries.contains(handle.id) then (entries - handle.id, true)
+      else (entries, false)
     }
 
   def list(filter: SuspensionFilter): IO[List[SuspensionSummary]] =
@@ -59,30 +59,34 @@ final class InMemorySuspensionStore private (
             filter.minResumptionCount.forall(suspended.resumptionCount >= _) &&
             filter.maxResumptionCount.forall(suspended.resumptionCount <= _)
 
-        if (matches) {
+        if matches then {
           val dagSpec = suspended.dagSpec
-          val expectedInputNames = dagSpec.userInputDataNodes.values.flatMap(_.nicknames.values).toSet
+          val expectedInputNames =
+            dagSpec.userInputDataNodes.values.flatMap(_.nicknames.values).toSet
           val providedInputNames = suspended.providedInputs.keySet
-          val missingInputNames = expectedInputNames -- providedInputNames
+          val missingInputNames  = expectedInputNames -- providedInputNames
 
           // Build missing inputs map: name -> CType
-          val inputNameToType: Map[String, CType] = dagSpec.userInputDataNodes.values.flatMap { spec =>
-            spec.nicknames.values.map(name => name -> spec.cType)
+          val inputNameToType: Map[String, CType] = dagSpec.userInputDataNodes.values.flatMap {
+            spec =>
+              spec.nicknames.values.map(name => name -> spec.cType)
           }.toMap
 
           val missingInputs = missingInputNames.flatMap { name =>
             inputNameToType.get(name).map(name -> _)
           }.toMap
 
-          Some(SuspensionSummary(
-            handle = SuspensionHandle(handleId),
-            executionId = suspended.executionId,
-            structuralHash = suspended.structuralHash,
-            resumptionCount = suspended.resumptionCount,
-            missingInputs = missingInputs,
-            createdAt = entry.createdAt,
-            lastResumedAt = entry.lastResumedAt
-          ))
+          Some(
+            SuspensionSummary(
+              handle = SuspensionHandle(handleId),
+              executionId = suspended.executionId,
+              structuralHash = suspended.structuralHash,
+              resumptionCount = suspended.resumptionCount,
+              missingInputs = missingInputs,
+              createdAt = entry.createdAt,
+              lastResumedAt = entry.lastResumedAt
+            )
+          )
         } else None
       }
     }
@@ -105,8 +109,8 @@ object InMemorySuspensionStore {
 
   /** Create a new empty in-memory suspension store with codec validation.
     *
-    * When a codec is provided, every `save` will round-trip the suspension
-    * through encode/decode to catch serialization bugs early.
+    * When a codec is provided, every `save` will round-trip the suspension through encode/decode to
+    * catch serialization bugs early.
     */
   def initWithCodecValidation(codec: SuspensionCodec): IO[SuspensionStore] =
     Ref.of[IO, Map[String, StoredEntry]](Map.empty).map { store =>

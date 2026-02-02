@@ -3,7 +3,7 @@ package io.constellation.lsp
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import io.constellation.lsp.protocol.LspTypes.{CompletionItem, CompletionItemKind}
-import io.constellation.lsp.WithClauseCompletions._
+import io.constellation.lsp.WithClauseCompletions.*
 
 class WithClauseCompletionsTest extends AnyFlatSpec with Matchers {
 
@@ -97,8 +97,8 @@ class WithClauseCompletionsTest extends AnyFlatSpec with Matchers {
 
   it should "exclude used options for AfterComma" in {
     val completions = getCompletions(AfterComma(Set("retry", "timeout")))
-    completions.map(_.label) should not contain ("retry")
-    completions.map(_.label) should not contain ("timeout")
+    completions.map(_.label) should not contain "retry"
+    completions.map(_.label) should not contain "timeout"
     completions.map(_.label) should contain("delay")
     completions.map(_.label) should contain("backoff")
   }
@@ -117,7 +117,9 @@ class WithClauseCompletionsTest extends AnyFlatSpec with Matchers {
 
   it should "return priority levels for AfterPriorityColon" in {
     val completions = getCompletions(AfterPriorityColon)
-    completions.map(_.label) should contain allOf ("critical", "high", "normal", "low", "background")
+    completions.map(
+      _.label
+    ) should contain allOf ("critical", "high", "normal", "low", "background")
     completions should have length 5
   }
 
@@ -178,7 +180,7 @@ class WithClauseCompletionsTest extends AnyFlatSpec with Matchers {
     val ctx3 = analyzeContext("result = Process(data) with retry: 3, ", "")
     ctx3 shouldBe a[AfterComma]
     val completions3 = getCompletions(ctx3)
-    completions3.map(_.label) should not contain ("retry")
+    completions3.map(_.label) should not contain "retry"
     completions3.map(_.label) should contain("timeout")
 
     // Step 4: After 'backoff:' - suggest strategies

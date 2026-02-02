@@ -4,12 +4,12 @@ import cats.effect.{IO, Ref}
 import cats.effect.std.Semaphore
 
 import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** Concurrency limiter using a semaphore.
   *
-  * Limits the number of concurrent executions of an operation.
-  * Uses Cats Effect Semaphore for efficient and fair permit management.
+  * Limits the number of concurrent executions of an operation. Uses Cats Effect Semaphore for
+  * efficient and fair permit management.
   *
   * ==Usage==
   *
@@ -26,11 +26,11 @@ import scala.concurrent.duration._
   *
   * ==Difference from Rate Limiting==
   *
-  * | Aspect | Concurrency | Rate Limiting |
-  * |--------|-------------|---------------|
-  * | Limits | Active executions | Operations per time |
-  * | Question | "How many at once?" | "How fast?" |
-  * | Use case | Connection pools | API quotas |
+  * | Aspect   | Concurrency         | Rate Limiting       |
+  * |:---------|:--------------------|:--------------------|
+  * | Limits   | Active executions   | Operations per time |
+  * | Question | "How many at once?" | "How fast?"         |
+  * | Use case | Connection pools    | API quotas          |
   */
 class ConcurrencyLimiter private (
     semaphore: Semaphore[IO],
@@ -43,22 +43,22 @@ class ConcurrencyLimiter private (
 
   /** Execute an operation with concurrency limiting.
     *
-    * Acquires a permit before executing and releases it after,
-    * even if the operation fails.
+    * Acquires a permit before executing and releases it after, even if the operation fails.
     *
-    * @param operation The operation to execute
-    * @return The result of the operation
+    * @param operation
+    *   The operation to execute
+    * @return
+    *   The result of the operation
     */
-  def withPermit[A](operation: IO[A]): IO[A] = {
+  def withPermit[A](operation: IO[A]): IO[A] =
     semaphore.permit.use { _ =>
       for {
-        _ <- activeRef.update(_ + 1)
-        _ <- totalRef.update(_ + 1)
-        _ <- updatePeak
+        _      <- activeRef.update(_ + 1)
+        _      <- totalRef.update(_ + 1)
+        _      <- updatePeak
         result <- operation.guarantee(activeRef.update(_ - 1))
       } yield result
     }
-  }
 
   /** Acquire a permit, waiting if necessary.
     *
@@ -67,7 +67,7 @@ class ConcurrencyLimiter private (
     * limiter.acquire >> operation.guarantee(limiter.release)
     * }}}
     */
-  def acquire: IO[Unit] = {
+  def acquire: IO[Unit] =
     for {
       _ <- waitingRef.update(_ + 1)
       _ <- semaphore.acquire
@@ -76,21 +76,20 @@ class ConcurrencyLimiter private (
       _ <- totalRef.update(_ + 1)
       _ <- updatePeak
     } yield ()
-  }
 
   /** Release a permit. */
-  def release: IO[Unit] = {
+  def release: IO[Unit] =
     for {
       _ <- activeRef.update(_ - 1)
       _ <- semaphore.release
     } yield ()
-  }
 
   /** Try to acquire a permit without waiting.
     *
-    * @return true if permit was acquired, false if limit reached
+    * @return
+    *   true if permit was acquired, false if limit reached
     */
-  def tryAcquire: IO[Boolean] = {
+  def tryAcquire: IO[Boolean] =
     semaphore.tryAcquire.flatMap {
       case true =>
         activeRef.update(_ + 1) >>
@@ -100,7 +99,6 @@ class ConcurrencyLimiter private (
       case false =>
         IO.pure(false)
     }
-  }
 
   /** Get the number of currently active executions. */
   def active: IO[Long] = activeRef.get
@@ -109,12 +107,12 @@ class ConcurrencyLimiter private (
   def available: IO[Long] = semaphore.available
 
   /** Get concurrency limiter statistics. */
-  def stats: IO[ConcurrencyStats] = {
+  def stats: IO[ConcurrencyStats] =
     for {
-      activeCount <- activeRef.get
-      peakCount <- peakRef.get
-      totalCount <- totalRef.get
-      waitingCount <- waitingRef.get
+      activeCount    <- activeRef.get
+      peakCount      <- peakRef.get
+      totalCount     <- totalRef.get
+      waitingCount   <- waitingRef.get
       availableCount <- semaphore.available
     } yield ConcurrencyStats(
       maxConcurrent = maxConcurrent,
@@ -124,40 +122,46 @@ class ConcurrencyLimiter private (
       currentWaiting = waitingCount,
       availablePermits = availableCount
     )
-  }
 
   /** Reset statistics (useful for testing). */
-  def resetStats: IO[Unit] = {
+  def resetStats: IO[Unit] =
     for {
       _ <- peakRef.set(0)
       _ <- totalRef.set(0)
     } yield ()
-  }
 
-  private def updatePeak: IO[Unit] = {
+  private def updatePeak: IO[Unit] =
     for {
       active <- activeRef.get
-      _ <- peakRef.update(peak => math.max(peak, active))
+      _      <- peakRef.update(peak => math.max(peak, active))
     } yield ()
-  }
 }
 
 object ConcurrencyLimiter {
 
   /** Create a new concurrency limiter.
     *
-    * @param maxConcurrent Maximum number of concurrent executions
-    * @return A new concurrency limiter
+    * @param maxConcurrent
+    *   Maximum number of concurrent executions
+    * @return
+    *   A new concurrency limiter
     */
   def apply(maxConcurrent: Int): IO[ConcurrencyLimiter] = {
     require(maxConcurrent > 0, "Max concurrent must be positive")
     for {
-      semaphore <- Semaphore[IO](maxConcurrent.toLong)
-      activeRef <- Ref.of[IO, Long](0L)
-      peakRef <- Ref.of[IO, Long](0L)
-      totalRef <- Ref.of[IO, Long](0L)
+      semaphore  <- Semaphore[IO](maxConcurrent.toLong)
+      activeRef  <- Ref.of[IO, Long](0L)
+      peakRef    <- Ref.of[IO, Long](0L)
+      totalRef   <- Ref.of[IO, Long](0L)
       waitingRef <- Ref.of[IO, Long](0L)
-    } yield new ConcurrencyLimiter(semaphore, maxConcurrent, activeRef, peakRef, totalRef, waitingRef)
+    } yield new ConcurrencyLimiter(
+      semaphore,
+      maxConcurrent,
+      activeRef,
+      peakRef,
+      totalRef,
+      waitingRef
+    )
   }
 
   /** Create a concurrency limiter with a single permit (mutex). */
@@ -173,6 +177,7 @@ final case class ConcurrencyStats(
     currentWaiting: Long,
     availablePermits: Long
 ) {
+
   /** Current utilization (0.0 to 1.0). */
   def utilization: Double = currentActive.toDouble / maxConcurrent
 

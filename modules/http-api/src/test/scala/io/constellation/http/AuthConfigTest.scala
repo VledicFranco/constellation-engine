@@ -141,8 +141,8 @@ class AuthConfigTest extends AnyFlatSpec with Matchers {
 
   it should "support multiple keys with different roles" in {
     val adminKey = "admin-key-24-chars-long"
-    val execKey = "exec-key-24-chars-longg"
-    val readKey = "read-key-24-chars-longg"
+    val execKey  = "exec-key-24-chars-longg"
+    val readKey  = "read-key-24-chars-longg"
 
     val config = AuthConfig(
       hashedKeys = List(
@@ -158,7 +158,7 @@ class AuthConfigTest extends AnyFlatSpec with Matchers {
   }
 
   "HashedApiKey.verify" should "use constant-time comparison" in {
-    val key = "test-key-24-chars-long!"
+    val key    = "test-key-24-chars-long!"
     val hashed = HashedApiKey(key, ApiRole.Admin)
 
     // Should verify correct key
@@ -172,7 +172,7 @@ class AuthConfigTest extends AnyFlatSpec with Matchers {
   }
 
   it should "hash keys deterministically" in {
-    val key = "test-key-24-chars-long!"
+    val key     = "test-key-24-chars-long!"
     val hashed1 = HashedApiKey(key, ApiRole.Admin)
     val hashed2 = HashedApiKey(key, ApiRole.Admin)
 

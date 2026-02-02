@@ -52,7 +52,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     ErrorCategory.values.foreach { category =>
-      val json = category.asJson
+      val json   = category.asJson
       val parsed = json.as[ErrorCategory]
       parsed shouldBe Right(category)
     }
@@ -100,7 +100,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     ExecutionState.values.foreach { state =>
-      val json = state.asJson
+      val json   = state.asJson
       val parsed = json.as[ExecutionState]
       parsed shouldBe Right(state)
     }
@@ -110,7 +110,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "TypeDescriptor.PrimitiveType" should "serialize correctly" in {
     val td: TypeDescriptor = TypeDescriptor.PrimitiveType("String")
-    val json = td.asJson.noSpaces
+    val json               = td.asJson.noSpaces
 
     json should include("\"kind\":\"primitive\"")
     json should include("\"name\":\"String\"")
@@ -118,22 +118,22 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize correctly" in {
     val jsonStr = """{"kind":"primitive","name":"Int"}"""
-    val parsed = decode[TypeDescriptor](jsonStr)
+    val parsed  = decode[TypeDescriptor](jsonStr)
 
     parsed shouldBe Right(TypeDescriptor.PrimitiveType("Int"))
   }
 
   it should "round-trip through JSON" in {
     val original: TypeDescriptor = TypeDescriptor.PrimitiveType("Boolean")
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor.ListType" should "serialize correctly" in {
     val td: TypeDescriptor = TypeDescriptor.ListType(TypeDescriptor.PrimitiveType("String"))
-    val json = td.asJson.noSpaces
+    val json               = td.asJson.noSpaces
 
     json should include("\"kind\":\"list\"")
     json should include("\"elementType\":")
@@ -141,24 +141,26 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize correctly" in {
     val jsonStr = """{"kind":"list","elementType":{"kind":"primitive","name":"Int"}}"""
-    val parsed = decode[TypeDescriptor](jsonStr)
+    val parsed  = decode[TypeDescriptor](jsonStr)
 
     parsed shouldBe Right(TypeDescriptor.ListType(TypeDescriptor.PrimitiveType("Int")))
   }
 
   it should "round-trip through JSON" in {
     val original: TypeDescriptor = TypeDescriptor.ListType(TypeDescriptor.PrimitiveType("Float"))
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor.RecordType" should "serialize correctly" in {
-    val td: TypeDescriptor = TypeDescriptor.RecordType(List(
-      RecordField("name", TypeDescriptor.PrimitiveType("String")),
-      RecordField("age", TypeDescriptor.PrimitiveType("Int"))
-    ))
+    val td: TypeDescriptor = TypeDescriptor.RecordType(
+      List(
+        RecordField("name", TypeDescriptor.PrimitiveType("String")),
+        RecordField("age", TypeDescriptor.PrimitiveType("Int"))
+      )
+    )
     val json = td.asJson.noSpaces
 
     json should include("\"kind\":\"record\"")
@@ -168,7 +170,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize correctly" in {
-    val jsonStr = """{"kind":"record","fields":[{"name":"value","type":{"kind":"primitive","name":"String"}}]}"""
+    val jsonStr =
+      """{"kind":"record","fields":[{"name":"value","type":{"kind":"primitive","name":"String"}}]}"""
     val parsed = decode[TypeDescriptor](jsonStr)
 
     parsed match {
@@ -181,11 +184,13 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip through JSON" in {
-    val original: TypeDescriptor = TypeDescriptor.RecordType(List(
-      RecordField("x", TypeDescriptor.PrimitiveType("Int")),
-      RecordField("y", TypeDescriptor.PrimitiveType("Int"))
-    ))
-    val json = original.asJson
+    val original: TypeDescriptor = TypeDescriptor.RecordType(
+      List(
+        RecordField("x", TypeDescriptor.PrimitiveType("Int")),
+        RecordField("y", TypeDescriptor.PrimitiveType("Int"))
+      )
+    )
+    val json   = original.asJson
     val parsed = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
@@ -193,8 +198,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty record" in {
     val original: TypeDescriptor = TypeDescriptor.RecordType(List.empty)
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
@@ -212,13 +217,16 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize correctly" in {
-    val jsonStr = """{"kind":"map","keyType":{"kind":"primitive","name":"String"},"valueType":{"kind":"primitive","name":"Int"}}"""
+    val jsonStr =
+      """{"kind":"map","keyType":{"kind":"primitive","name":"String"},"valueType":{"kind":"primitive","name":"Int"}}"""
     val parsed = decode[TypeDescriptor](jsonStr)
 
-    parsed shouldBe Right(TypeDescriptor.MapType(
-      TypeDescriptor.PrimitiveType("String"),
-      TypeDescriptor.PrimitiveType("Int")
-    ))
+    parsed shouldBe Right(
+      TypeDescriptor.MapType(
+        TypeDescriptor.PrimitiveType("String"),
+        TypeDescriptor.PrimitiveType("Int")
+      )
+    )
   }
 
   it should "round-trip through JSON" in {
@@ -226,16 +234,19 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       TypeDescriptor.PrimitiveType("String"),
       TypeDescriptor.ListType(TypeDescriptor.PrimitiveType("Int"))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor.ParameterizedType" should "serialize correctly" in {
-    val td: TypeDescriptor = TypeDescriptor.ParameterizedType("Optional", List(
-      TypeDescriptor.PrimitiveType("String")
-    ))
+    val td: TypeDescriptor = TypeDescriptor.ParameterizedType(
+      "Optional",
+      List(
+        TypeDescriptor.PrimitiveType("String")
+      )
+    )
     val json = td.asJson.noSpaces
 
     json should include("\"kind\":\"parameterized\"")
@@ -244,20 +255,29 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize correctly" in {
-    val jsonStr = """{"kind":"parameterized","name":"Future","params":[{"kind":"primitive","name":"Int"}]}"""
+    val jsonStr =
+      """{"kind":"parameterized","name":"Future","params":[{"kind":"primitive","name":"Int"}]}"""
     val parsed = decode[TypeDescriptor](jsonStr)
 
-    parsed shouldBe Right(TypeDescriptor.ParameterizedType("Future", List(
-      TypeDescriptor.PrimitiveType("Int")
-    )))
+    parsed shouldBe Right(
+      TypeDescriptor.ParameterizedType(
+        "Future",
+        List(
+          TypeDescriptor.PrimitiveType("Int")
+        )
+      )
+    )
   }
 
   it should "round-trip through JSON" in {
-    val original: TypeDescriptor = TypeDescriptor.ParameterizedType("Either", List(
-      TypeDescriptor.PrimitiveType("String"),
-      TypeDescriptor.PrimitiveType("Int")
-    ))
-    val json = original.asJson
+    val original: TypeDescriptor = TypeDescriptor.ParameterizedType(
+      "Either",
+      List(
+        TypeDescriptor.PrimitiveType("String"),
+        TypeDescriptor.PrimitiveType("Int")
+      )
+    )
+    val json   = original.asJson
     val parsed = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
@@ -265,15 +285,15 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty params" in {
     val original: TypeDescriptor = TypeDescriptor.ParameterizedType("Unit", List.empty)
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor.RefType" should "serialize correctly" in {
     val td: TypeDescriptor = TypeDescriptor.RefType("UserType")
-    val json = td.asJson.noSpaces
+    val json               = td.asJson.noSpaces
 
     json should include("\"kind\":\"ref\"")
     json should include("\"name\":\"UserType\"")
@@ -281,24 +301,26 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize correctly" in {
     val jsonStr = """{"kind":"ref","name":"CustomType"}"""
-    val parsed = decode[TypeDescriptor](jsonStr)
+    val parsed  = decode[TypeDescriptor](jsonStr)
 
     parsed shouldBe Right(TypeDescriptor.RefType("CustomType"))
   }
 
   it should "round-trip through JSON" in {
     val original: TypeDescriptor = TypeDescriptor.RefType("MyRecord")
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor.UnionType" should "serialize correctly" in {
-    val td: TypeDescriptor = TypeDescriptor.UnionType(List(
-      TypeDescriptor.PrimitiveType("String"),
-      TypeDescriptor.PrimitiveType("Int")
-    ))
+    val td: TypeDescriptor = TypeDescriptor.UnionType(
+      List(
+        TypeDescriptor.PrimitiveType("String"),
+        TypeDescriptor.PrimitiveType("Int")
+      )
+    )
     val json = td.asJson.noSpaces
 
     json should include("\"kind\":\"union\"")
@@ -306,21 +328,28 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize correctly" in {
-    val jsonStr = """{"kind":"union","members":[{"kind":"primitive","name":"String"},{"kind":"primitive","name":"Int"}]}"""
+    val jsonStr =
+      """{"kind":"union","members":[{"kind":"primitive","name":"String"},{"kind":"primitive","name":"Int"}]}"""
     val parsed = decode[TypeDescriptor](jsonStr)
 
-    parsed shouldBe Right(TypeDescriptor.UnionType(List(
-      TypeDescriptor.PrimitiveType("String"),
-      TypeDescriptor.PrimitiveType("Int")
-    )))
+    parsed shouldBe Right(
+      TypeDescriptor.UnionType(
+        List(
+          TypeDescriptor.PrimitiveType("String"),
+          TypeDescriptor.PrimitiveType("Int")
+        )
+      )
+    )
   }
 
   it should "round-trip through JSON" in {
-    val original: TypeDescriptor = TypeDescriptor.UnionType(List(
-      TypeDescriptor.PrimitiveType("String"),
-      TypeDescriptor.RefType("Custom")
-    ))
-    val json = original.asJson
+    val original: TypeDescriptor = TypeDescriptor.UnionType(
+      List(
+        TypeDescriptor.PrimitiveType("String"),
+        TypeDescriptor.RefType("Custom")
+      )
+    )
+    val json   = original.asJson
     val parsed = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
@@ -328,15 +357,15 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty union" in {
     val original: TypeDescriptor = TypeDescriptor.UnionType(List.empty)
-    val json = original.asJson
-    val parsed = json.as[TypeDescriptor]
+    val json                     = original.asJson
+    val parsed                   = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
   }
 
   "TypeDescriptor decoding" should "fail for unknown kind" in {
     val jsonStr = """{"kind":"unknown","name":"Test"}"""
-    val result = decode[TypeDescriptor](jsonStr)
+    val result  = decode[TypeDescriptor](jsonStr)
 
     result.isLeft shouldBe true
     result.left.toOption.get.getMessage should include("Unknown TypeDescriptor kind")
@@ -346,15 +375,22 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
     val original: TypeDescriptor = TypeDescriptor.ListType(
       TypeDescriptor.MapType(
         TypeDescriptor.PrimitiveType("String"),
-        TypeDescriptor.RecordType(List(
-          RecordField("value", TypeDescriptor.UnionType(List(
-            TypeDescriptor.PrimitiveType("Int"),
-            TypeDescriptor.PrimitiveType("String")
-          )))
-        ))
+        TypeDescriptor.RecordType(
+          List(
+            RecordField(
+              "value",
+              TypeDescriptor.UnionType(
+                List(
+                  TypeDescriptor.PrimitiveType("Int"),
+                  TypeDescriptor.PrimitiveType("String")
+                )
+              )
+            )
+          )
+        )
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[TypeDescriptor]
 
     parsed shouldBe Right(original)
@@ -403,7 +439,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       line = Some(5),
       column = Some(10)
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ErrorInfo]
 
     parsed shouldBe Right(original)
@@ -430,7 +466,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       `type` = TypeDescriptor.PrimitiveType("Int"),
       line = 5
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[InputField]
 
     parsed shouldBe Right(original)
@@ -440,7 +476,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "RecordField" should "serialize correctly" in {
     val field = RecordField("name", TypeDescriptor.PrimitiveType("String"))
-    val json = field.asJson.noSpaces
+    val json  = field.asJson.noSpaces
 
     json should include("\"name\":\"name\"")
     json should include("\"type\":")
@@ -448,8 +484,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = RecordField("age", TypeDescriptor.PrimitiveType("Int"))
-    val json = original.asJson
-    val parsed = json.as[RecordField]
+    val json     = original.asJson
+    val parsed   = json.as[RecordField]
 
     parsed shouldBe Right(original)
   }
@@ -494,7 +530,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       nodeId = "node-3",
       state = ExecutionState.Running
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DagExecutionUpdateParams]
 
     parsed shouldBe Right(original)
@@ -523,7 +559,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
         DagExecutionUpdateParams("file:///test.cst", "node-1", ExecutionState.Pending)
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DagExecutionBatchUpdateParams]
 
     parsed shouldBe Right(original)
@@ -534,7 +570,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       uri = "file:///test.cst",
       updates = List.empty
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DagExecutionBatchUpdateParams]
 
     parsed shouldBe Right(original)
@@ -569,7 +605,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       completedNodes = List.empty,
       pendingNodes = List("node-2")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[StepState]
 
     parsed shouldBe Right(original)
@@ -602,7 +638,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       valuePreview = "input value",
       durationMs = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletedNode]
 
     parsed shouldBe Right(original)
@@ -615,7 +651,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       uri = "file:///test.cst",
       inputs = Map("text" -> Json.fromString("hello"))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[StepStartParams]
 
     parsed shouldBe Right(original)
@@ -629,7 +665,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       initialState = Some(StepState(0, 3, List("node-1"), List.empty, List("node-2", "node-3"))),
       error = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[StepStartResult]
 
     parsed shouldBe Right(original)
@@ -637,8 +673,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "StepNextParams" should "round-trip through JSON" in {
     val original = StepNextParams("session-456")
-    val json = original.asJson
-    val parsed = json.as[StepNextParams]
+    val json     = original.asJson
+    val parsed   = json.as[StepNextParams]
 
     parsed shouldBe Right(original)
   }
@@ -650,7 +686,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       isComplete = false,
       error = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[StepNextResult]
 
     parsed shouldBe Right(original)
@@ -658,8 +694,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "StepContinueParams" should "round-trip through JSON" in {
     val original = StepContinueParams("session-789")
-    val json = original.asJson
-    val parsed = json.as[StepContinueParams]
+    val json     = original.asJson
+    val parsed   = json.as[StepContinueParams]
 
     parsed shouldBe Right(original)
   }
@@ -672,7 +708,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       executionTimeMs = Some(150L),
       error = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[StepContinueResult]
 
     parsed shouldBe Right(original)
@@ -680,16 +716,16 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "StepStopParams" should "round-trip through JSON" in {
     val original = StepStopParams("session-abc")
-    val json = original.asJson
-    val parsed = json.as[StepStopParams]
+    val json     = original.asJson
+    val parsed   = json.as[StepStopParams]
 
     parsed shouldBe Right(original)
   }
 
   "StepStopResult" should "round-trip through JSON" in {
     val original = StepStopResult(success = true)
-    val json = original.asJson
-    val parsed = json.as[StepStopResult]
+    val json     = original.asJson
+    val parsed   = json.as[StepStopResult]
 
     parsed shouldBe Right(original)
   }
@@ -701,13 +737,15 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       processId = Some(1234),
       rootUri = Some("file:///project"),
       capabilities = ClientCapabilities(
-        textDocument = Some(TextDocumentClientCapabilities(
-          completion = Some(CompletionClientCapabilities(dynamicRegistration = Some(true))),
-          hover = Some(HoverClientCapabilities(dynamicRegistration = Some(false)))
-        ))
+        textDocument = Some(
+          TextDocumentClientCapabilities(
+            completion = Some(CompletionClientCapabilities(dynamicRegistration = Some(true))),
+            hover = Some(HoverClientCapabilities(dynamicRegistration = Some(false)))
+          )
+        )
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[InitializeParams]
 
     parsed shouldBe Right(original)
@@ -717,16 +755,20 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
     val original = InitializeResult(
       capabilities = ServerCapabilities(
         textDocumentSync = Some(1),
-        completionProvider = Some(CompletionOptions(
-          triggerCharacters = Some(List(".", "("))
-        )),
+        completionProvider = Some(
+          CompletionOptions(
+            triggerCharacters = Some(List(".", "("))
+          )
+        ),
         hoverProvider = Some(true),
-        executeCommandProvider = Some(ExecuteCommandOptions(
-          commands = List("constellation.run", "constellation.debug")
-        ))
+        executeCommandProvider = Some(
+          ExecuteCommandOptions(
+            commands = List("constellation.run", "constellation.debug")
+          )
+        )
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[InitializeResult]
 
     parsed shouldBe Right(original)
@@ -738,11 +780,11 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
     val original = ExecutePipelineParams(
       uri = "file:///test.cst",
       inputs = Map(
-        "text" -> Json.fromString("hello"),
+        "text"  -> Json.fromString("hello"),
         "count" -> Json.fromInt(5)
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ExecutePipelineParams]
 
     parsed shouldBe Right(original)
@@ -756,7 +798,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       errors = None,
       executionTimeMs = Some(100L)
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ExecutePipelineResult]
 
     parsed shouldBe Right(original)
@@ -767,12 +809,14 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       success = false,
       outputs = None,
       error = Some("Execution failed"),
-      errors = Some(List(
-        ErrorInfo(ErrorCategory.Runtime, "Module threw exception", Some(5), Some(10))
-      )),
+      errors = Some(
+        List(
+          ErrorInfo(ErrorCategory.Runtime, "Module threw exception", Some(5), Some(10))
+        )
+      ),
       executionTimeMs = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ExecutePipelineResult]
 
     parsed shouldBe Right(original)
@@ -782,8 +826,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "GetInputSchemaParams" should "round-trip through JSON" in {
     val original = GetInputSchemaParams("file:///test.cst")
-    val json = original.asJson
-    val parsed = json.as[GetInputSchemaParams]
+    val json     = original.asJson
+    val parsed   = json.as[GetInputSchemaParams]
 
     parsed shouldBe Right(original)
   }
@@ -791,14 +835,16 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   "GetInputSchemaResult" should "round-trip through JSON" in {
     val original = GetInputSchemaResult(
       success = true,
-      inputs = Some(List(
-        InputField("text", TypeDescriptor.PrimitiveType("String"), 1),
-        InputField("count", TypeDescriptor.PrimitiveType("Int"), 2)
-      )),
+      inputs = Some(
+        List(
+          InputField("text", TypeDescriptor.PrimitiveType("String"), 1),
+          InputField("count", TypeDescriptor.PrimitiveType("Int"), 2)
+        )
+      ),
       error = None,
       errors = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[GetInputSchemaResult]
 
     parsed shouldBe Right(original)
@@ -808,8 +854,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "GetDagStructureParams" should "round-trip through JSON" in {
     val original = GetDagStructureParams("file:///test.cst")
-    val json = original.asJson
-    val parsed = json.as[GetDagStructureParams]
+    val json     = original.asJson
+    val parsed   = json.as[GetDagStructureParams]
 
     parsed shouldBe Right(original)
   }
@@ -817,16 +863,21 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   "GetDagStructureResult" should "round-trip through JSON" in {
     val original = GetDagStructureResult(
       success = true,
-      dag = Some(DagStructure(
-        modules = Map("mod-1" -> ModuleNode("Uppercase", Map("text" -> "String"), Map("result" -> "String"))),
-        data = Map("data-1" -> DataNode("text", "String"), "data-2" -> DataNode("result", "String")),
-        inEdges = List(("data-1", "mod-1")),
-        outEdges = List(("mod-1", "data-2")),
-        declaredOutputs = List("result")
-      )),
+      dag = Some(
+        DagStructure(
+          modules = Map(
+            "mod-1" -> ModuleNode("Uppercase", Map("text" -> "String"), Map("result" -> "String"))
+          ),
+          data =
+            Map("data-1" -> DataNode("text", "String"), "data-2" -> DataNode("result", "String")),
+          inEdges = List(("data-1", "mod-1")),
+          outEdges = List(("mod-1", "data-2")),
+          declaredOutputs = List("result")
+        )
+      ),
       error = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[GetDagStructureResult]
 
     parsed shouldBe Right(original)
@@ -847,7 +898,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
         )
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[PublishDiagnosticsParams]
 
     parsed shouldBe Right(original)
@@ -858,7 +909,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       uri = "file:///test.cst",
       diagnostics = List.empty
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[PublishDiagnosticsParams]
 
     parsed shouldBe Right(original)
@@ -871,7 +922,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       triggerKind = 1,
       triggerCharacter = Some(".")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionContext]
 
     parsed shouldBe Right(original)
@@ -883,7 +934,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       position = Position(5, 10),
       context = Some(CompletionContext(2, Some("(")))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionParams]
 
     parsed shouldBe Right(original)
@@ -895,7 +946,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
     val original = DidOpenTextDocumentParams(
       TextDocumentItem("file:///test.cst", "constellation", 1, "in x: Int\nout x")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DidOpenTextDocumentParams]
 
     parsed shouldBe Right(original)
@@ -912,7 +963,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
         )
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DidChangeTextDocumentParams]
 
     parsed shouldBe Right(original)
@@ -922,7 +973,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
     val original = DidCloseTextDocumentParams(
       TextDocumentIdentifier("file:///test.cst")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DidCloseTextDocumentParams]
 
     parsed shouldBe Right(original)
@@ -935,7 +986,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       textDocument = TextDocumentIdentifier("file:///test.cst"),
       position = Position(10, 15)
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[HoverParams]
 
     parsed shouldBe Right(original)
@@ -952,10 +1003,12 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "serialize with full textDocument capabilities" in {
     val caps = ClientCapabilities(
-      textDocument = Some(TextDocumentClientCapabilities(
-        completion = Some(CompletionClientCapabilities(dynamicRegistration = Some(true))),
-        hover = Some(HoverClientCapabilities(dynamicRegistration = Some(false)))
-      ))
+      textDocument = Some(
+        TextDocumentClientCapabilities(
+          completion = Some(CompletionClientCapabilities(dynamicRegistration = Some(true))),
+          hover = Some(HoverClientCapabilities(dynamicRegistration = Some(false)))
+        )
+      )
     )
     val json = caps.asJson.noSpaces
 
@@ -966,15 +1019,15 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON with empty textDocument" in {
     val jsonStr = """{"textDocument":null}"""
-    val parsed = decode[ClientCapabilities](jsonStr)
+    val parsed  = decode[ClientCapabilities](jsonStr)
 
     parsed shouldBe Right(ClientCapabilities(textDocument = None))
   }
 
   it should "round-trip minimal capabilities" in {
     val original = ClientCapabilities(textDocument = None)
-    val json = original.asJson
-    val parsed = json.as[ClientCapabilities]
+    val json     = original.asJson
+    val parsed   = json.as[ClientCapabilities]
 
     parsed shouldBe Right(original)
   }
@@ -1016,7 +1069,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       completion = Some(CompletionClientCapabilities(Some(true))),
       hover = Some(HoverClientCapabilities(Some(true)))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[TextDocumentClientCapabilities]
 
     parsed shouldBe Right(original)
@@ -1047,8 +1100,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = CompletionClientCapabilities(dynamicRegistration = Some(true))
-    val json = original.asJson
-    val parsed = json.as[CompletionClientCapabilities]
+    val json     = original.asJson
+    val parsed   = json.as[CompletionClientCapabilities]
 
     parsed shouldBe Right(original)
   }
@@ -1078,8 +1131,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = HoverClientCapabilities(dynamicRegistration = Some(false))
-    val json = original.asJson
-    val parsed = json.as[HoverClientCapabilities]
+    val json     = original.asJson
+    val parsed   = json.as[HoverClientCapabilities]
 
     parsed shouldBe Right(original)
   }
@@ -1096,9 +1149,11 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "serialize with custom completionProvider" in {
     val caps = ServerCapabilities(
-      completionProvider = Some(CompletionOptions(
-        triggerCharacters = Some(List(".", "(", "["))
-      ))
+      completionProvider = Some(
+        CompletionOptions(
+          triggerCharacters = Some(List(".", "(", "["))
+        )
+      )
     )
     val json = caps.asJson.noSpaces
 
@@ -1108,9 +1163,11 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "serialize with executeCommandProvider" in {
     val caps = ServerCapabilities(
-      executeCommandProvider = Some(ExecuteCommandOptions(
-        commands = List("command1", "command2")
-      ))
+      executeCommandProvider = Some(
+        ExecuteCommandOptions(
+          commands = List("command1", "command2")
+        )
+      )
     )
     val json = caps.asJson.noSpaces
 
@@ -1138,7 +1195,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       hoverProvider = Some(false),
       executeCommandProvider = Some(ExecuteCommandOptions(List("test")))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ServerCapabilities]
 
     parsed shouldBe Right(original)
@@ -1171,8 +1228,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = CompletionOptions(triggerCharacters = Some(List("@", "#")))
-    val json = original.asJson
-    val parsed = json.as[CompletionOptions]
+    val json     = original.asJson
+    val parsed   = json.as[CompletionOptions]
 
     parsed shouldBe Right(original)
   }
@@ -1198,8 +1255,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = ExecuteCommandOptions(commands = List("execute", "debug", "stop"))
-    val json = original.asJson
-    val parsed = json.as[ExecuteCommandOptions]
+    val json     = original.asJson
+    val parsed   = json.as[ExecuteCommandOptions]
 
     parsed shouldBe Right(original)
   }
@@ -1240,10 +1297,12 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       success = false,
       outputs = None,
       error = Some("Multiple errors"),
-      errors = Some(List(
-        ErrorInfo(ErrorCategory.Syntax, "Parse error", Some(1), Some(1)),
-        ErrorInfo(ErrorCategory.Type, "Type mismatch", Some(5), Some(10))
-      )),
+      errors = Some(
+        List(
+          ErrorInfo(ErrorCategory.Syntax, "Parse error", Some(1), Some(1)),
+          ErrorInfo(ErrorCategory.Type, "Type mismatch", Some(5), Some(10))
+        )
+      ),
       executionTimeMs = None
     )
     val json = result.asJson.noSpaces
@@ -1258,10 +1317,12 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   "GetInputSchemaResult" should "serialize success with inputs" in {
     val result = GetInputSchemaResult(
       success = true,
-      inputs = Some(List(
-        InputField("x", TypeDescriptor.PrimitiveType("Int"), 1),
-        InputField("name", TypeDescriptor.PrimitiveType("String"), 2)
-      )),
+      inputs = Some(
+        List(
+          InputField("x", TypeDescriptor.PrimitiveType("Int"), 1),
+          InputField("name", TypeDescriptor.PrimitiveType("String"), 2)
+        )
+      ),
       error = None,
       errors = None
     )
@@ -1276,9 +1337,11 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       success = false,
       inputs = None,
       error = Some("Failed to parse"),
-      errors = Some(List(
-        ErrorInfo(ErrorCategory.Syntax, "Unexpected token", Some(1), Some(5))
-      ))
+      errors = Some(
+        List(
+          ErrorInfo(ErrorCategory.Syntax, "Unexpected token", Some(1), Some(5))
+        )
+      )
     )
     val json = result.asJson.noSpaces
 
@@ -1319,7 +1382,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       consumes = Map("input1" -> "Int", "input2" -> "String"),
       produces = Map("output" -> "Boolean")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[ModuleNode]
 
     parsed shouldBe Right(original)
@@ -1335,8 +1398,8 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = DataNode(name = "count", cType = "Int")
-    val json = original.asJson
-    val parsed = json.as[DataNode]
+    val json     = original.asJson
+    val parsed   = json.as[DataNode]
 
     parsed shouldBe Right(original)
   }
@@ -1390,7 +1453,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
       outEdges = List(("m1", "d2"), ("m2", "d3")),
       declaredOutputs = List("z")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DagStructure]
 
     parsed shouldBe Right(original)
@@ -1399,21 +1462,21 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   // ========== CompletionContext Additional Tests ==========
 
   "CompletionContext" should "serialize with triggerKind only" in {
-    val ctx = CompletionContext(triggerKind = 1, triggerCharacter = None)
+    val ctx  = CompletionContext(triggerKind = 1, triggerCharacter = None)
     val json = ctx.asJson.noSpaces
 
     json should include("\"triggerKind\":1")
   }
 
   it should "serialize with invoked trigger kind" in {
-    val ctx = CompletionContext(triggerKind = 1, triggerCharacter = None)
+    val ctx  = CompletionContext(triggerKind = 1, triggerCharacter = None)
     val json = ctx.asJson.noSpaces
 
     json should include("\"triggerKind\":1")
   }
 
   it should "serialize with trigger character trigger kind" in {
-    val ctx = CompletionContext(triggerKind = 2, triggerCharacter = Some("."))
+    val ctx  = CompletionContext(triggerKind = 2, triggerCharacter = Some("."))
     val json = ctx.asJson.noSpaces
 
     json should include("\"triggerKind\":2")
@@ -1421,7 +1484,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "serialize with incomplete trigger kind" in {
-    val ctx = CompletionContext(triggerKind = 3, triggerCharacter = None)
+    val ctx  = CompletionContext(triggerKind = 3, triggerCharacter = None)
     val json = ctx.asJson.noSpaces
 
     json should include("\"triggerKind\":3")
@@ -1484,7 +1547,7 @@ class LspMessagesTest extends AnyFlatSpec with Matchers {
 
   "StepStopResult" should "serialize failure" in {
     val result = StepStopResult(success = false)
-    val json = result.asJson.noSpaces
+    val json   = result.asJson.noSpaces
 
     json should include("\"success\":false")
   }

@@ -14,7 +14,7 @@ class ASCIIRendererTest extends AnyFunSuite with Matchers {
     VizNode(
       id,
       kind,
-      if (label.isEmpty) s"Node$id" else label,
+      if label.isEmpty then s"Node$id" else label,
       "String",
       yPos.map(y => Position(0, y)),
       None
@@ -24,7 +24,7 @@ class ASCIIRendererTest extends AnyFunSuite with Matchers {
     VizEdge(s"e-$source-$target", source, target, None, EdgeKind.Data)
 
   test("render empty dag") {
-    val dag = DagVizIR(nodes = List.empty, edges = List.empty)
+    val dag    = DagVizIR(nodes = List.empty, edges = List.empty)
     val result = ASCIIRenderer.render(dag)
 
     result shouldBe "(empty DAG)"

@@ -30,7 +30,10 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       .build
 
   /** Helper to build a LoadedProgram from a hand-built DagSpec */
-  private def loadedFromDag(dag: DagSpec, syntheticModules: Map[UUID, Module.Uninitialized] = Map.empty): LoadedProgram = {
+  private def loadedFromDag(
+      dag: DagSpec,
+      syntheticModules: Map[UUID, Module.Uninitialized] = Map.empty
+  ): LoadedProgram = {
     val structuralHash = ProgramImage.computeStructuralHash(dag)
     val image = ProgramImage(
       structuralHash = structuralHash,
@@ -50,13 +53,13 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
   // Module operations
   "getModules" should "return empty list initially" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val modules = constellation.getModules.unsafeRunSync()
+    val modules       = constellation.getModules.unsafeRunSync()
     modules shouldBe empty
   }
 
   "setModule" should "register a module" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val module = createUppercaseModule()
+    val module        = createUppercaseModule()
 
     constellation.setModule(module).unsafeRunSync()
 
@@ -76,7 +79,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
 
   "getModuleByName" should "retrieve a registered module" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val module = createUppercaseModule()
+    val module        = createUppercaseModule()
     constellation.setModule(module).unsafeRunSync()
 
     val retrieved = constellation.getModuleByName("Uppercase").unsafeRunSync()
@@ -99,8 +102,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
     // Build a simple DAG
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -113,7 +116,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -124,7 +131,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
 
     val loaded = loadedFromDag(dag)
     val inputs = Map("input" -> CValue.CString("hello"))
-    val sig = constellation.run(loaded, inputs).unsafeRunSync()
+    val sig    = constellation.run(loaded, inputs).unsafeRunSync()
 
     sig.outputs.get("output") shouldBe Some(CValue.CString("HELLO"))
   }
@@ -133,7 +140,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     val inputs = Map("input" -> CValue.CString("test"))
-    val result = constellation.run("NonExistent", inputs, ExecutionOptions()).attempt.unsafeRunSync()
+    val result =
+      constellation.run("NonExistent", inputs, ExecutionOptions()).attempt.unsafeRunSync()
 
     result.isLeft shouldBe true
     result.left.exists(_.getMessage.contains("not found")) shouldBe true
@@ -145,8 +153,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     // Register the module
     constellation.setModule(createDoubleModule()).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -159,7 +167,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("x", Map(inputDataId -> "x", moduleId -> "x"), CType.CInt),
+        inputDataId  -> DataNodeSpec("x", Map(inputDataId -> "x", moduleId -> "x"), CType.CInt),
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -170,7 +178,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
 
     val loaded = loadedFromDag(dag)
     val inputs = Map("x" -> CValue.CInt(21))
-    val sig = constellation.run(loaded, inputs).unsafeRunSync()
+    val sig    = constellation.run(loaded, inputs).unsafeRunSync()
 
     sig.outputs.get("result") shouldBe Some(CValue.CInt(42))
   }
@@ -178,8 +186,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
   it should "execute with pre-resolved synthetic modules" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -192,7 +200,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("text", Map(inputDataId -> "text", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "text",
+          Map(inputDataId -> "text", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -203,10 +215,10 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
 
     // Pass modules as synthetic modules in LoadedProgram
     val syntheticModules = Map(moduleId -> createUppercaseModule())
-    val loaded = loadedFromDag(dag, syntheticModules)
+    val loaded           = loadedFromDag(dag, syntheticModules)
 
     val inputs = Map("text" -> CValue.CString("world"))
-    val sig = constellation.run(loaded, inputs).unsafeRunSync()
+    val sig    = constellation.run(loaded, inputs).unsafeRunSync()
 
     sig.outputs.get("result") shouldBe Some(CValue.CString("WORLD"))
   }
@@ -216,8 +228,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     // DAG expects input named "expectedInput"
@@ -231,7 +243,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("expectedInput", Map(inputDataId -> "expectedInput", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "expectedInput",
+          Map(inputDataId -> "expectedInput", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -251,8 +267,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -265,7 +281,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("text", Map(inputDataId -> "text", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "text",
+          Map(inputDataId -> "text", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -287,8 +307,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -301,7 +321,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("text", Map(inputDataId -> "text", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "text",
+          Map(inputDataId -> "text", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -312,7 +336,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
 
     val loaded = loadedFromDag(dag)
     val inputs = Map("text" -> CValue.CString("test"))
-    val sig = constellation.run(loaded, inputs).unsafeRunSync()
+    val sig    = constellation.run(loaded, inputs).unsafeRunSync()
 
     sig.status shouldBe PipelineStatus.Completed
     sig.outputs.get("result") shouldBe Some(CValue.CString("TEST"))

@@ -14,14 +14,15 @@ object ApiModels {
 
   /** Request to compile constellation-lang source code.
     *
-    * Accepts either `name` (new API) or `dagName` (legacy, deprecated).
-    * If both are present, `name` takes precedence. At least one must be provided.
+    * Accepts either `name` (new API) or `dagName` (legacy, deprecated). If both are present, `name`
+    * takes precedence. At least one must be provided.
     */
   case class CompileRequest(
       source: String,
       name: Option[String] = None,
       dagName: Option[String] = None
   ) {
+
     /** Resolve the effective program name (new `name` field takes priority). */
     def effectiveName: Option[String] = name.orElse(dagName)
   }
@@ -39,8 +40,8 @@ object ApiModels {
 
   /** Response from compilation.
     *
-    * Now includes `structuralHash` and `syntacticHash` for content-addressed lookups.
-    * The `dagName` field is retained for backward compatibility.
+    * Now includes `structuralHash` and `syntacticHash` for content-addressed lookups. The `dagName`
+    * field is retained for backward compatibility.
     */
   case class CompileResponse(
       success: Boolean,
@@ -58,14 +59,15 @@ object ApiModels {
 
   /** Request to execute a program.
     *
-    * Accepts `ref` (new API: name or "sha256:<hash>") or `dagName` (legacy).
-    * If both are present, `ref` takes precedence.
+    * Accepts `ref` (new API: name or "sha256:<hash>") or `dagName` (legacy). If both are present,
+    * `ref` takes precedence.
     */
   case class ExecuteRequest(
       ref: Option[String] = None,
       dagName: Option[String] = None,
       inputs: Map[String, Json] = Map.empty
   ) {
+
     /** Resolve the effective reference (new `ref` field takes priority). */
     def effectiveRef: Option[String] = ref.orElse(dagName)
   }

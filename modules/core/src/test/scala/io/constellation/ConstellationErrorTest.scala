@@ -2,8 +2,8 @@ package io.constellation
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.circe.syntax._
-import io.circe.parser._
+import io.circe.syntax.*
+import io.circe.parser.*
 import java.util.UUID
 
 class ConstellationErrorTest extends AnyFlatSpec with Matchers {
@@ -77,14 +77,16 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
     val json = error.toJson
     json.hcursor.get[String]("error").toOption shouldBe Some("TYPE_CONVERSION")
-    json.hcursor.get[String]("message").toOption.get should include("Cannot convert from RawValue to CValue")
+    json.hcursor.get[String]("message").toOption.get should include(
+      "Cannot convert from RawValue to CValue"
+    )
   }
 
   // ========== NodeNotFoundError Tests ==========
 
   "NodeNotFoundError" should "include node ID and type in message" in {
     val nodeId = UUID.randomUUID()
-    val error = NodeNotFoundError(nodeId, "Input")
+    val error  = NodeNotFoundError(nodeId, "Input")
 
     error.message shouldBe s"Input node $nodeId not found"
     error.errorCode shouldBe "NODE_NOT_FOUND"
@@ -102,7 +104,7 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   it should "serialize to JSON" in {
     val nodeId = UUID.randomUUID()
-    val error = NodeNotFoundError(nodeId, "Source", Map("dag" -> "test-dag"))
+    val error  = NodeNotFoundError(nodeId, "Source", Map("dag" -> "test-dag"))
 
     val json = error.toJson
     json.hcursor.get[String]("error").toOption shouldBe Some("NODE_NOT_FOUND")
@@ -140,7 +142,7 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   it should "include node IDs when provided" in {
     val nodeIds = List(UUID.randomUUID(), UUID.randomUUID())
-    val error = CycleDetectedError(nodeIds)
+    val error   = CycleDetectedError(nodeIds)
 
     error.message should include("involving nodes:")
     nodeIds.foreach { id =>
@@ -226,7 +228,7 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   "DataNotFoundError" should "include data ID and type" in {
     val dataId = UUID.randomUUID()
-    val error = DataNotFoundError(dataId, "Data")
+    val error  = DataNotFoundError(dataId, "Data")
 
     error.message shouldBe s"Data with ID $dataId not found"
     error.errorCode shouldBe "DATA_NOT_FOUND"
@@ -296,7 +298,7 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
     import ConstellationError.given
 
     val error: ConstellationError = TypeMismatchError("A", "B")
-    val json = error.asJson
+    val json                      = error.asJson
 
     json.hcursor.get[String]("error").toOption shouldBe Some("TYPE_MISMATCH")
   }

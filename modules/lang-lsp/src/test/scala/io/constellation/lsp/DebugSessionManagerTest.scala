@@ -20,8 +20,8 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
       .build
 
   private def createSimpleDag(): (DagSpec, Map[UUID, Module.Uninitialized]) = {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -34,7 +34,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("x", Map(inputDataId -> "x", moduleId -> "x"), CType.CInt),
+        inputDataId  -> DataNodeSpec("x", Map(inputDataId -> "x", moduleId -> "x"), CType.CInt),
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -53,7 +53,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
   "DebugSessionManager" should "create empty manager" in {
     val result = for {
       manager <- DebugSessionManager.create
-      count <- manager.sessionCount
+      count   <- manager.sessionCount
     } yield count
 
     result.unsafeRunSync() shouldBe 0
@@ -61,12 +61,12 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "create a debug session" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
       manager <- DebugSessionManager.create
       session <- manager.createSession(dag, Map.empty, modules, inputs)
-      count <- manager.sessionCount
+      count   <- manager.sessionCount
     } yield (session, count)
 
     val (session, count) = result.unsafeRunSync()
@@ -79,11 +79,11 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "retrieve existing session" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      created <- manager.createSession(dag, Map.empty, modules, inputs)
+      manager   <- DebugSessionManager.create
+      created   <- manager.createSession(dag, Map.empty, modules, inputs)
       retrieved <- manager.getSession(created.sessionId)
     } yield (created.sessionId, retrieved)
 
@@ -94,7 +94,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "return None for non-existent session" in {
     val result = for {
-      manager <- DebugSessionManager.create
+      manager   <- DebugSessionManager.create
       retrieved <- manager.getSession("non-existent-session-id")
     } yield retrieved
 
@@ -105,14 +105,14 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "update session state" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
       manager <- DebugSessionManager.create
       created <- manager.createSession(dag, Map.empty, modules, inputs)
       // Modify the session
       modified = created.copy(currentBatchIndex = created.currentBatchIndex + 1)
-      _ <- manager.updateSession(modified)
+      _         <- manager.updateSession(modified)
       retrieved <- manager.getSession(created.sessionId)
     } yield (created.currentBatchIndex, retrieved.map(_.currentBatchIndex))
 
@@ -122,7 +122,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "ignore update for non-existent session" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
       manager <- DebugSessionManager.create
@@ -140,7 +140,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
         runnableModules = Map.empty,
         startTime = System.currentTimeMillis()
       )
-      _ <- manager.updateSession(fakeSession)
+      _     <- manager.updateSession(fakeSession)
       count <- manager.sessionCount
     } yield count
 
@@ -151,14 +151,14 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "remove existing session" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      created <- manager.createSession(dag, Map.empty, modules, inputs)
-      removed <- manager.removeSession(created.sessionId)
+      manager    <- DebugSessionManager.create
+      created    <- manager.createSession(dag, Map.empty, modules, inputs)
+      removed    <- manager.removeSession(created.sessionId)
       countAfter <- manager.sessionCount
-      retrieved <- manager.getSession(created.sessionId)
+      retrieved  <- manager.getSession(created.sessionId)
     } yield (removed, countAfter, retrieved)
 
     val (removed, countAfter, retrieved) = result.unsafeRunSync()
@@ -180,12 +180,12 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "stop a session" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      created <- manager.createSession(dag, Map.empty, modules, inputs)
-      stopped <- manager.stopSession(created.sessionId)
+      manager   <- DebugSessionManager.create
+      created   <- manager.createSession(dag, Map.empty, modules, inputs)
+      stopped   <- manager.stopSession(created.sessionId)
       retrieved <- manager.getSession(created.sessionId)
     } yield (stopped, retrieved)
 
@@ -198,11 +198,11 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "step through execution" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      session <- manager.createSession(dag, Map.empty, modules, inputs)
+      manager    <- DebugSessionManager.create
+      session    <- manager.createSession(dag, Map.empty, modules, inputs)
       stepResult <- manager.stepNext(session.sessionId)
     } yield stepResult
 
@@ -213,7 +213,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "return None when stepping non-existent session" in {
     val result = for {
-      manager <- DebugSessionManager.create
+      manager    <- DebugSessionManager.create
       stepResult <- manager.stepNext("non-existent")
     } yield stepResult
 
@@ -222,11 +222,11 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "execute to completion" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      session <- manager.createSession(dag, Map.empty, modules, inputs)
+      manager          <- DebugSessionManager.create
+      session          <- manager.createSession(dag, Map.empty, modules, inputs)
       completedSession <- manager.stepContinue(session.sessionId)
     } yield completedSession
 
@@ -237,7 +237,7 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "return None when continuing non-existent session" in {
     val result = for {
-      manager <- DebugSessionManager.create
+      manager        <- DebugSessionManager.create
       continueResult <- manager.stepContinue("non-existent")
     } yield continueResult
 
@@ -248,16 +248,16 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "manage multiple sessions" in {
     val (dag, modules) = createSimpleDag()
-    val inputs1 = Map("x" -> CValue.CInt(10))
-    val inputs2 = Map("x" -> CValue.CInt(20))
-    val inputs3 = Map("x" -> CValue.CInt(30))
+    val inputs1        = Map("x" -> CValue.CInt(10))
+    val inputs2        = Map("x" -> CValue.CInt(20))
+    val inputs3        = Map("x" -> CValue.CInt(30))
 
     val result = for {
-      manager <- DebugSessionManager.create
+      manager  <- DebugSessionManager.create
       session1 <- manager.createSession(dag, Map.empty, modules, inputs1)
       session2 <- manager.createSession(dag, Map.empty, modules, inputs2)
       session3 <- manager.createSession(dag, Map.empty, modules, inputs3)
-      count <- manager.sessionCount
+      count    <- manager.sessionCount
       // Each session should be retrievable
       retrieved1 <- manager.getSession(session1.sessionId)
       retrieved2 <- manager.getSession(session2.sessionId)
@@ -275,17 +275,17 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "update last accessed time on getSession" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     // This test verifies that getSession updates the last accessed time
     // We can't directly inspect the ManagedSession, but we can verify
     // the session remains accessible after multiple gets
     val result = for {
-      manager <- DebugSessionManager.create
-      created <- manager.createSession(dag, Map.empty, modules, inputs)
-      _ <- manager.getSession(created.sessionId)
-      _ <- manager.getSession(created.sessionId)
-      _ <- manager.getSession(created.sessionId)
+      manager   <- DebugSessionManager.create
+      created   <- manager.createSession(dag, Map.empty, modules, inputs)
+      _         <- manager.getSession(created.sessionId)
+      _         <- manager.getSession(created.sessionId)
+      _         <- manager.getSession(created.sessionId)
       retrieved <- manager.getSession(created.sessionId)
     } yield retrieved
 
@@ -296,19 +296,19 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   it should "track session count correctly" in {
     val (dag, modules) = createSimpleDag()
-    val inputs = Map("x" -> CValue.CInt(21))
+    val inputs         = Map("x" -> CValue.CInt(21))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      count0 <- manager.sessionCount
+      manager  <- DebugSessionManager.create
+      count0   <- manager.sessionCount
       session1 <- manager.createSession(dag, Map.empty, modules, inputs)
-      count1 <- manager.sessionCount
+      count1   <- manager.sessionCount
       session2 <- manager.createSession(dag, Map.empty, modules, inputs)
-      count2 <- manager.sessionCount
-      _ <- manager.removeSession(session1.sessionId)
-      count3 <- manager.sessionCount
-      _ <- manager.removeSession(session2.sessionId)
-      count4 <- manager.sessionCount
+      count2   <- manager.sessionCount
+      _        <- manager.removeSession(session1.sessionId)
+      count3   <- manager.sessionCount
+      _        <- manager.removeSession(session2.sessionId)
+      count4   <- manager.sessionCount
     } yield (count0, count1, count2, count3, count4)
 
     val (count0, count1, count2, count3, count4) = result.unsafeRunSync()
@@ -323,10 +323,10 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   "DebugSessionManager with complex DAG" should "handle multi-level dependencies" in {
     // Create a DAG with multiple modules: A -> B -> C
-    val moduleAId = UUID.randomUUID()
-    val moduleBId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
-    val midDataId = UUID.randomUUID()
+    val moduleAId    = UUID.randomUUID()
+    val moduleBId    = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
+    val midDataId    = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -344,7 +344,11 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleAId -> "x"), CType.CInt),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleAId -> "x"),
+          CType.CInt
+        ),
         midDataId -> DataNodeSpec("mid", Map(moduleAId -> "result", moduleBId -> "x"), CType.CInt),
         outputDataId -> DataNodeSpec("output", Map(moduleBId -> "result"), CType.CInt)
       ),
@@ -362,8 +366,8 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
     val inputs = Map("input" -> CValue.CInt(10))
 
     val result = for {
-      manager <- DebugSessionManager.create
-      session <- manager.createSession(dag, Map.empty, modules, inputs)
+      manager   <- DebugSessionManager.create
+      session   <- manager.createSession(dag, Map.empty, modules, inputs)
       completed <- manager.stepContinue(session.sessionId)
     } yield completed
 
@@ -375,11 +379,11 @@ class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 
   "Session isolation" should "ensure sessions don't interfere with each other" in {
     val (dag, modules) = createSimpleDag()
-    val inputs1 = Map("x" -> CValue.CInt(10))
-    val inputs2 = Map("x" -> CValue.CInt(100))
+    val inputs1        = Map("x" -> CValue.CInt(10))
+    val inputs2        = Map("x" -> CValue.CInt(100))
 
     val result = for {
-      manager <- DebugSessionManager.create
+      manager  <- DebugSessionManager.create
       session1 <- manager.createSession(dag, Map.empty, modules, inputs1)
       session2 <- manager.createSession(dag, Map.empty, modules, inputs2)
       // Step session1

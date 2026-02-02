@@ -3,11 +3,11 @@ package io.constellation.lang.semantic
 /** Subtyping lattice for the Constellation type system.
   *
   * Implements structural subtyping with:
-  * - SNothing as bottom type (subtype of all types)
-  * - Covariant collections (List, Optional)
-  * - Width + depth subtyping for records
-  * - Union type handling (upper and lower bounds)
-  * - Contravariant function parameters
+  *   - SNothing as bottom type (subtype of all types)
+  *   - Covariant collections (List, Optional)
+  *   - Width + depth subtyping for records
+  *   - Union type handling (upper and lower bounds)
+  *   - Contravariant function parameters
   */
 object Subtyping {
 
@@ -34,7 +34,7 @@ object Subtyping {
     */
   def isSubtype(sub: SemanticType, sup: SemanticType): Boolean = {
     // Reflexivity: every type is a subtype of itself
-    if (sub == sup) return true
+    if sub == sup then return true
 
     (sub, sup) match {
       // Bottom type is subtype of everything
@@ -105,14 +105,15 @@ object Subtyping {
 
   /** Compute the least upper bound (LUB) of two types.
     *
-    * The LUB is the most specific type that is a supertype of both.
-    * Used for finding common type in conditional branches.
+    * The LUB is the most specific type that is a supertype of both. Used for finding common type in
+    * conditional branches.
     *
-    * @return The LUB, or a union type if no simpler common supertype exists
+    * @return
+    *   The LUB, or a union type if no simpler common supertype exists
     */
-  def lub(a: SemanticType, b: SemanticType): SemanticType = {
-    if (isSubtype(a, b)) b
-    else if (isSubtype(b, a)) a
+  def lub(a: SemanticType, b: SemanticType): SemanticType =
+    if isSubtype(a, b) then b
+    else if isSubtype(b, a) then a
     else {
       // No direct subtype relationship - create a union
       // Flatten any existing unions
@@ -125,30 +126,31 @@ object Subtyping {
         case other                        => Set(other)
       }
       val combined = aMembers ++ bMembers
-      if (combined.size == 1) combined.head
+      if combined.size == 1 then combined.head
       else SemanticType.SUnion(combined)
     }
-  }
 
   /** Compute the greatest lower bound (GLB) of two types.
     *
     * The GLB is the most general type that is a subtype of both.
     *
-    * @return The GLB, or SNothing if no common subtype exists
+    * @return
+    *   The GLB, or SNothing if no common subtype exists
     */
-  def glb(a: SemanticType, b: SemanticType): SemanticType = {
-    if (isSubtype(a, b)) a
-    else if (isSubtype(b, a)) b
+  def glb(a: SemanticType, b: SemanticType): SemanticType =
+    if isSubtype(a, b) then a
+    else if isSubtype(b, a) then b
     else SemanticType.SNothing // No common subtype
-  }
 
   /** Compute the common type for a list of types.
     *
-    * This is the LUB of all types in the list.
-    * Used for inferring element types in list literals and branch result types.
+    * This is the LUB of all types in the list. Used for inferring element types in list literals
+    * and branch result types.
     *
-    * @param types Non-empty list of types
-    * @return The common supertype
+    * @param types
+    *   Non-empty list of types
+    * @return
+    *   The common supertype
     */
   def commonType(types: List[SemanticType]): SemanticType = {
     require(types.nonEmpty, "commonType requires at least one type")
@@ -159,23 +161,24 @@ object Subtyping {
     *
     * Returns a human-readable explanation for type error messages.
     */
-  def explainFailure(sub: SemanticType, sup: SemanticType): Option[String] = {
-    if (isSubtype(sub, sup)) None
+  def explainFailure(sub: SemanticType, sup: SemanticType): Option[String] =
+    if isSubtype(sub, sup) then None
     else {
       (sub, sup) match {
         case (SemanticType.SRecord(subFields), SemanticType.SRecord(supFields)) =>
           // Find missing fields
           val missing = supFields.keySet.diff(subFields.keySet)
-          if (missing.nonEmpty) {
+          if missing.nonEmpty then {
             Some(s"Record is missing required field(s): ${missing.mkString(", ")}")
           } else {
             // Find incompatible fields
             val incompatible = supFields.collect {
-              case (name, supType) if subFields.get(name).exists(subType => !isSubtype(subType, supType)) =>
+              case (name, supType)
+                  if subFields.get(name).exists(subType => !isSubtype(subType, supType)) =>
                 val subType = subFields(name)
                 s"'$name' has type ${subType.prettyPrint} but expected ${supType.prettyPrint}"
             }
-            if (incompatible.nonEmpty) {
+            if incompatible.nonEmpty then {
               Some(s"Field type mismatch: ${incompatible.mkString("; ")}")
             } else {
               None
@@ -185,15 +188,16 @@ object Subtyping {
         // Closed record vs open record
         case (SemanticType.SRecord(subFields), SemanticType.SOpenRecord(supFields, _)) =>
           val missing = supFields.keySet.diff(subFields.keySet)
-          if (missing.nonEmpty) {
+          if missing.nonEmpty then {
             Some(s"Record is missing required field(s): ${missing.mkString(", ")}")
           } else {
             val incompatible = supFields.collect {
-              case (name, supType) if subFields.get(name).exists(subType => !isSubtype(subType, supType)) =>
+              case (name, supType)
+                  if subFields.get(name).exists(subType => !isSubtype(subType, supType)) =>
                 val subType = subFields(name)
                 s"'$name' has type ${subType.prettyPrint} but expected ${supType.prettyPrint}"
             }
-            if (incompatible.nonEmpty) {
+            if incompatible.nonEmpty then {
               Some(s"Field type mismatch: ${incompatible.mkString("; ")}")
             } else {
               None
@@ -221,5 +225,4 @@ object Subtyping {
           Some(s"${sub.prettyPrint} is not a subtype of ${sup.prettyPrint}")
       }
     }
-  }
 }

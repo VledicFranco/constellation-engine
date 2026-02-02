@@ -9,7 +9,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor.getField" should "extract field from RProduct by name" in {
     val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
     // Fields sorted: age (0), name (1)
     val raw = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
 
@@ -19,8 +19,8 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw TypeMismatchError for non-existent field" in {
     val structure = Map("name" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
-    val raw = RawValue.RProduct(Array(RawValue.RString("Alice")))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
+    val raw       = RawValue.RProduct(Array(RawValue.RString("Alice")))
 
     val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "nonexistent")
@@ -30,7 +30,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw TypeMismatchError when called on non-product type" in {
     val accessor = TypedValueAccessor(CType.CInt)
-    val raw = RawValue.RInt(42)
+    val raw      = RawValue.RInt(42)
 
     val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "field")
@@ -40,8 +40,8 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw TypeMismatchError when raw value is not RProduct" in {
     val structure = Map("name" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
-    val raw = RawValue.RString("not a product")
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
+    val raw       = RawValue.RString("not a product")
 
     val exception = intercept[TypeMismatchError] {
       accessor.getField(raw, "name")
@@ -51,7 +51,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw TypeMismatchError when field index out of bounds" in {
     val structure = Map("a" -> CType.CInt, "b" -> CType.CInt, "c" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
     // Only provide 2 values, but structure expects 3
     val raw = RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RInt(2)))
 
@@ -65,7 +65,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor.getFieldType" should "return type for existing field" in {
     val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
 
     accessor.getFieldType("name") shouldBe CType.CString
     accessor.getFieldType("age") shouldBe CType.CInt
@@ -73,7 +73,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw TypeMismatchError for non-existent field" in {
     val structure = Map("name" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
 
     val exception = intercept[TypeMismatchError] {
       accessor.getFieldType("nonexistent")
@@ -94,7 +94,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor.fieldAccessor" should "return accessor for field type" in {
     val structure = Map("name" -> CType.CString, "score" -> CType.CFloat)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
 
     val nameAccessor = accessor.fieldAccessor("name")
     nameAccessor.cType shouldBe CType.CString
@@ -105,7 +105,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw for non-existent field" in {
     val structure = Map("name" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
 
     val exception = intercept[TypeMismatchError] {
       accessor.fieldAccessor("missing")
@@ -116,14 +116,14 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
   // ========== elementAccessor Tests ==========
 
   "TypedValueAccessor.elementAccessor" should "return accessor for list element type" in {
-    val accessor = TypedValueAccessor(CType.CList(CType.CInt))
+    val accessor     = TypedValueAccessor(CType.CList(CType.CInt))
     val elemAccessor = accessor.elementAccessor
 
     elemAccessor.cType shouldBe CType.CInt
   }
 
   it should "handle nested list types" in {
-    val accessor = TypedValueAccessor(CType.CList(CType.CList(CType.CString)))
+    val accessor     = TypedValueAccessor(CType.CList(CType.CList(CType.CString)))
     val elemAccessor = accessor.elementAccessor
 
     elemAccessor.cType shouldBe CType.CList(CType.CString)
@@ -238,7 +238,9 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
   // ========== toCValue Tests - Primitives ==========
 
   "TypedValueAccessor.toCValue" should "convert primitive RawValues" in {
-    TypedValueAccessor(CType.CString).toCValue(RawValue.RString("test")) shouldBe CValue.CString("test")
+    TypedValueAccessor(CType.CString).toCValue(RawValue.RString("test")) shouldBe CValue.CString(
+      "test"
+    )
     TypedValueAccessor(CType.CInt).toCValue(RawValue.RInt(42)) shouldBe CValue.CInt(42)
     TypedValueAccessor(CType.CFloat).toCValue(RawValue.RFloat(3.14)) shouldBe CValue.CFloat(3.14)
     TypedValueAccessor(CType.CBoolean).toCValue(RawValue.RBool(true)) shouldBe CValue.CBoolean(true)
@@ -248,7 +250,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RSome to CSome" in {
     val accessor = TypedValueAccessor(CType.COptional(CType.CInt))
-    val raw = RawValue.RSome(RawValue.RInt(42))
+    val raw      = RawValue.RSome(RawValue.RInt(42))
     val expected = CValue.CSome(CValue.CInt(42), CType.CInt)
 
     accessor.toCValue(raw) shouldBe expected
@@ -261,7 +263,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert nested optionals" in {
     val accessor = TypedValueAccessor(CType.COptional(CType.COptional(CType.CInt)))
-    val raw = RawValue.RSome(RawValue.RSome(RawValue.RInt(10)))
+    val raw      = RawValue.RSome(RawValue.RSome(RawValue.RInt(10)))
     val expected = CValue.CSome(
       CValue.CSome(CValue.CInt(10), CType.CInt),
       CType.COptional(CType.CInt)
@@ -274,7 +276,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RIntList to CList" in {
     val accessor = TypedValueAccessor(CType.CList(CType.CInt))
-    val raw = RawValue.RIntList(Array(1L, 2L, 3L))
+    val raw      = RawValue.RIntList(Array(1L, 2L, 3L))
     val expected = CValue.CList(
       Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
       CType.CInt
@@ -285,7 +287,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RFloatList to CList" in {
     val accessor = TypedValueAccessor(CType.CList(CType.CFloat))
-    val raw = RawValue.RFloatList(Array(1.1, 2.2))
+    val raw      = RawValue.RFloatList(Array(1.1, 2.2))
     val expected = CValue.CList(
       Vector(CValue.CFloat(1.1), CValue.CFloat(2.2)),
       CType.CFloat
@@ -296,7 +298,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RStringList to CList" in {
     val accessor = TypedValueAccessor(CType.CList(CType.CString))
-    val raw = RawValue.RStringList(Array("a", "b", "c"))
+    val raw      = RawValue.RStringList(Array("a", "b", "c"))
     val expected = CValue.CList(
       Vector(CValue.CString("a"), CValue.CString("b"), CValue.CString("c")),
       CType.CString
@@ -307,7 +309,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RBoolList to CList" in {
     val accessor = TypedValueAccessor(CType.CList(CType.CBoolean))
-    val raw = RawValue.RBoolList(Array(true, false, true))
+    val raw      = RawValue.RBoolList(Array(true, false, true))
     val expected = CValue.CList(
       Vector(CValue.CBoolean(true), CValue.CBoolean(false), CValue.CBoolean(true)),
       CType.CBoolean
@@ -320,11 +322,13 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert generic RList to CList" in {
     val productType = CType.CProduct(Map("x" -> CType.CInt))
-    val accessor = TypedValueAccessor(CType.CList(productType))
-    val raw = RawValue.RList(Array(
-      RawValue.RProduct(Array(RawValue.RInt(1))),
-      RawValue.RProduct(Array(RawValue.RInt(2)))
-    ))
+    val accessor    = TypedValueAccessor(CType.CList(productType))
+    val raw = RawValue.RList(
+      Array(
+        RawValue.RProduct(Array(RawValue.RInt(1))),
+        RawValue.RProduct(Array(RawValue.RInt(2)))
+      )
+    )
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CList]
@@ -336,10 +340,12 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RMap to CMap" in {
     val accessor = TypedValueAccessor(CType.CMap(CType.CString, CType.CInt))
-    val raw = RawValue.RMap(Array(
-      (RawValue.RString("x"), RawValue.RInt(1)),
-      (RawValue.RString("y"), RawValue.RInt(2))
-    ))
+    val raw = RawValue.RMap(
+      Array(
+        (RawValue.RString("x"), RawValue.RInt(1)),
+        (RawValue.RString("y"), RawValue.RInt(2))
+      )
+    )
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CMap]
@@ -352,7 +358,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert empty RMap to empty CMap" in {
     val accessor = TypedValueAccessor(CType.CMap(CType.CString, CType.CFloat))
-    val raw = RawValue.RMap(Array.empty)
+    val raw      = RawValue.RMap(Array.empty)
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CMap]
@@ -363,7 +369,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RProduct to CProduct with sorted fields" in {
     val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CProduct(structure))
+    val accessor  = TypedValueAccessor(CType.CProduct(structure))
     // Sorted: age (0), name (1)
     val raw = RawValue.RProduct(Array(RawValue.RInt(30), RawValue.RString("Alice")))
 
@@ -377,10 +383,12 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
   it should "convert nested product" in {
     val innerStructure = Map("x" -> CType.CInt)
     val outerStructure = Map("inner" -> CType.CProduct(innerStructure))
-    val accessor = TypedValueAccessor(CType.CProduct(outerStructure))
-    val raw = RawValue.RProduct(Array(
-      RawValue.RProduct(Array(RawValue.RInt(42)))
-    ))
+    val accessor       = TypedValueAccessor(CType.CProduct(outerStructure))
+    val raw = RawValue.RProduct(
+      Array(
+        RawValue.RProduct(Array(RawValue.RInt(42)))
+      )
+    )
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CProduct]
@@ -392,8 +400,8 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "convert RUnion to CUnion" in {
     val structure = Map("Int" -> CType.CInt, "String" -> CType.CString)
-    val accessor = TypedValueAccessor(CType.CUnion(structure))
-    val raw = RawValue.RUnion("Int", RawValue.RInt(42))
+    val accessor  = TypedValueAccessor(CType.CUnion(structure))
+    val raw       = RawValue.RUnion("Int", RawValue.RInt(42))
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CUnion]
@@ -404,8 +412,8 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "throw for unknown union variant" in {
     val structure = Map("Int" -> CType.CInt)
-    val accessor = TypedValueAccessor(CType.CUnion(structure))
-    val raw = RawValue.RUnion("Unknown", RawValue.RString("test"))
+    val accessor  = TypedValueAccessor(CType.CUnion(structure))
+    val raw       = RawValue.RUnion("Unknown", RawValue.RString("test"))
 
     val exception = intercept[TypeMismatchError] {
       accessor.toCValue(raw)
@@ -435,22 +443,28 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   "TypedValueAccessor" should "handle deeply nested structures" in {
     // List[Optional[Product{name: String, values: List[Int]}]]
-    val productType = CType.CProduct(Map(
-      "name" -> CType.CString,
-      "values" -> CType.CList(CType.CInt)
-    ))
+    val productType = CType.CProduct(
+      Map(
+        "name"   -> CType.CString,
+        "values" -> CType.CList(CType.CInt)
+      )
+    )
     val listType = CType.CList(CType.COptional(productType))
     val accessor = TypedValueAccessor(listType)
 
     // Create a complex nested value
-    val innerProduct = RawValue.RProduct(Array(
-      RawValue.RString("test"),
-      RawValue.RIntList(Array(1, 2, 3))
-    ))
-    val raw = RawValue.RList(Array(
-      RawValue.RSome(innerProduct),
-      RawValue.RNone
-    ))
+    val innerProduct = RawValue.RProduct(
+      Array(
+        RawValue.RString("test"),
+        RawValue.RIntList(Array(1, 2, 3))
+      )
+    )
+    val raw = RawValue.RList(
+      Array(
+        RawValue.RSome(innerProduct),
+        RawValue.RNone
+      )
+    )
 
     val result = accessor.toCValue(raw)
     result shouldBe a[CValue.CList]
@@ -458,13 +472,13 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
 
   it should "support chained accessor navigation" in {
     val innerType = CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CFloat))
-    val listType = CType.CList(innerType)
+    val listType  = CType.CList(innerType)
     val outerType = CType.CProduct(Map("items" -> listType))
 
-    val accessor = TypedValueAccessor(outerType)
-    val itemsAccessor = accessor.fieldAccessor("items")
+    val accessor        = TypedValueAccessor(outerType)
+    val itemsAccessor   = accessor.fieldAccessor("items")
     val elementAccessor = itemsAccessor.elementAccessor
-    val xAccessor = elementAccessor.fieldAccessor("x")
+    val xAccessor       = elementAccessor.fieldAccessor("x")
 
     accessor.cType shouldBe outerType
     itemsAccessor.cType shouldBe listType

@@ -93,7 +93,7 @@ object IRGenerator {
     case TypedExpression.FunctionCall(name, signature, args, options, typedFallback, span) =>
       // Check if this is a higher-order function call (has lambda argument)
       val lambdaArgIndex = args.indexWhere(_.isInstanceOf[TypedExpression.Lambda])
-      if (lambdaArgIndex >= 0 && isHigherOrderFunction(signature.moduleName)) {
+      if lambdaArgIndex >= 0 && isHigherOrderFunction(signature.moduleName) then {
         // Generate higher-order node
         generateHigherOrderCall(name, signature, args, lambdaArgIndex, span, ctx)
       } else {
@@ -101,7 +101,7 @@ object IRGenerator {
         val (argsCtx, argIds) = args.foldLeft((ctx, List.empty[(String, UUID)])) {
           case ((currentCtx, ids), arg) =>
             val (newCtx, argId) = generateExpression(arg, currentCtx)
-            val paramName = signature.params(ids.size)._1
+            val paramName       = signature.params(ids.size)._1
             (newCtx, ids :+ (paramName -> argId))
         }
 
@@ -236,7 +236,7 @@ object IRGenerator {
       // If we reach here, it's an error (lambda used in invalid context).
       throw new IllegalStateException(
         s"Lambda expression at $span cannot be used in this context. " +
-        "Lambdas can only be used as arguments to higher-order functions like filter, map, etc."
+          "Lambdas can only be used as arguments to higher-order functions like filter, map, etc."
       )
   }
 
@@ -256,15 +256,15 @@ object IRGenerator {
 
   /** Generate IR for a higher-order function call with a lambda argument */
   private def generateHigherOrderCall(
-    name: String,
-    signature: FunctionSignature,
-    args: List[TypedExpression],
-    lambdaArgIndex: Int,
-    span: io.constellation.lang.ast.Span,
-    ctx: GenContext
+      name: String,
+      signature: FunctionSignature,
+      args: List[TypedExpression],
+      lambdaArgIndex: Int,
+      span: io.constellation.lang.ast.Span,
+      ctx: GenContext
   ): (GenContext, UUID) = {
     // Extract the source collection (first non-lambda argument)
-    val sourceArg = args.head  // Assuming source is always first
+    val sourceArg             = args.head // Assuming source is always first
     val (sourceCtx, sourceId) = generateExpression(sourceArg, ctx)
 
     // Extract the lambda argument
@@ -290,7 +290,7 @@ object IRGenerator {
   private def generateLambdaIR(lambda: TypedExpression.Lambda): TypedLambda = {
     // Create input nodes for lambda parameters
     val paramInputs = lambda.params.map { case (name, paramType) =>
-      val paramId = UUID.randomUUID()
+      val paramId   = UUID.randomUUID()
       val inputNode = IRNode.Input(paramId, name, paramType, None)
       (name, paramId, inputNode)
     }
@@ -314,17 +314,21 @@ object IRGenerator {
 
   /** Convert AST ModuleCallOptions to IR options, generating IR nodes for fallback if present.
     *
-    * @param options The AST module call options
-    * @param typedFallback The typed fallback expression (already type-checked)
-    * @param ctx Current generation context
-    * @return Updated context and IR options
+    * @param options
+    *   The AST module call options
+    * @param typedFallback
+    *   The typed fallback expression (already type-checked)
+    * @param ctx
+    *   Current generation context
+    * @return
+    *   Updated context and IR options
     */
   private def convertOptions(
       options: ModuleCallOptions,
       typedFallback: Option[TypedExpression],
       ctx: GenContext
-  ): (GenContext, IRModuleCallOptions) = {
-    if (options.isEmpty && typedFallback.isEmpty) {
+  ): (GenContext, IRModuleCallOptions) =
+    if options.isEmpty && typedFallback.isEmpty then {
       (ctx, IRModuleCallOptions.empty)
     } else {
       // Generate IR for typed fallback expression if present
@@ -338,13 +342,14 @@ object IRGenerator {
 
       // Convert priority to normalized Int value
       val priorityValue: Option[Int] = options.priority.map {
-        case Left(level) => level match {
-          case PriorityLevel.Critical   => 100
-          case PriorityLevel.High       => 80
-          case PriorityLevel.Normal     => 50
-          case PriorityLevel.Low        => 20
-          case PriorityLevel.Background => 0
-        }
+        case Left(level) =>
+          level match {
+            case PriorityLevel.Critical   => 100
+            case PriorityLevel.High       => 80
+            case PriorityLevel.Normal     => 50
+            case PriorityLevel.Low        => 20
+            case PriorityLevel.Background => 0
+          }
         case Right(custom) => custom.value
       }
 
@@ -366,5 +371,4 @@ object IRGenerator {
 
       (finalCtx, irOptions)
     }
-  }
 }

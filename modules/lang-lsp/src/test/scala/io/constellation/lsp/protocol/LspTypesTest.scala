@@ -13,14 +13,14 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   "Position" should "serialize to JSON" in {
     val position = Position(line = 10, character = 5)
-    val json = position.asJson.noSpaces
+    val json     = position.asJson.noSpaces
 
     json shouldBe """{"line":10,"character":5}"""
   }
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"line":42,"character":15}"""
-    val parsed = decode[Position](jsonStr)
+    val parsed  = decode[Position](jsonStr)
 
     parsed match {
       case Right(position) =>
@@ -33,16 +33,16 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = Position(100, 50)
-    val json = original.asJson
-    val parsed = json.as[Position]
+    val json     = original.asJson
+    val parsed   = json.as[Position]
 
     parsed shouldBe Right(original)
   }
 
   it should "handle zero-based positions" in {
     val position = Position(0, 0)
-    val json = position.asJson
-    val parsed = json.as[Position]
+    val json     = position.asJson
+    val parsed   = json.as[Position]
 
     parsed shouldBe Right(position)
   }
@@ -62,7 +62,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"start":{"line":5,"character":10},"end":{"line":5,"character":20}}"""
-    val parsed = decode[Range](jsonStr)
+    val parsed  = decode[Range](jsonStr)
 
     parsed match {
       case Right(range) =>
@@ -75,15 +75,15 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = Range(Position(10, 5), Position(15, 25))
-    val json = original.asJson
-    val parsed = json.as[Range]
+    val json     = original.asJson
+    val parsed   = json.as[Range]
 
     parsed shouldBe Right(original)
   }
 
   it should "handle multi-line ranges" in {
-    val range = Range(Position(0, 0), Position(100, 0))
-    val json = range.asJson
+    val range  = Range(Position(0, 0), Position(100, 0))
+    val json   = range.asJson
     val parsed = json.as[Range]
 
     parsed shouldBe Right(range)
@@ -92,7 +92,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
   // ========== TextDocumentIdentifier Tests ==========
 
   "TextDocumentIdentifier" should "serialize to JSON" in {
-    val doc = TextDocumentIdentifier("file:///test.cst")
+    val doc  = TextDocumentIdentifier("file:///test.cst")
     val json = doc.asJson.noSpaces
 
     json shouldBe """{"uri":"file:///test.cst"}"""
@@ -100,7 +100,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"uri":"file:///path/to/file.cst"}"""
-    val parsed = decode[TextDocumentIdentifier](jsonStr)
+    val parsed  = decode[TextDocumentIdentifier](jsonStr)
 
     parsed shouldBe Right(TextDocumentIdentifier("file:///path/to/file.cst"))
   }
@@ -108,7 +108,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
   // ========== VersionedTextDocumentIdentifier Tests ==========
 
   "VersionedTextDocumentIdentifier" should "serialize to JSON" in {
-    val doc = VersionedTextDocumentIdentifier("file:///test.cst", version = 5)
+    val doc  = VersionedTextDocumentIdentifier("file:///test.cst", version = 5)
     val json = doc.asJson.noSpaces
 
     json should include("\"uri\":\"file:///test.cst\"")
@@ -117,7 +117,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"uri":"file:///test.cst","version":10}"""
-    val parsed = decode[VersionedTextDocumentIdentifier](jsonStr)
+    val parsed  = decode[VersionedTextDocumentIdentifier](jsonStr)
 
     parsed match {
       case Right(doc) =>
@@ -146,7 +146,8 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deserialize from JSON" in {
-    val jsonStr = """{"uri":"file:///test.cst","languageId":"constellation","version":2,"text":"in y: String"}"""
+    val jsonStr =
+      """{"uri":"file:///test.cst","languageId":"constellation","version":2,"text":"in y: String"}"""
     val parsed = decode[TextDocumentItem](jsonStr)
 
     parsed match {
@@ -188,7 +189,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "deserialize from JSON" in {
     val jsonStr = """{"text":"updated content"}"""
-    val parsed = decode[TextDocumentContentChangeEvent](jsonStr)
+    val parsed  = decode[TextDocumentContentChangeEvent](jsonStr)
 
     parsed match {
       case Right(change) =>
@@ -217,7 +218,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       uri = "file:///another.cst",
       range = Range(Position(0, 0), Position(100, 50))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Location]
 
     parsed shouldBe Right(original)
@@ -301,7 +302,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       source = Some("test"),
       message = "Test warning"
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Diagnostic]
 
     parsed shouldBe Right(original)
@@ -400,7 +401,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       filterText = Some("test"),
       sortText = Some("test")
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionItem]
 
     parsed shouldBe Right(original)
@@ -412,8 +413,24 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
     val list = CompletionList(
       isIncomplete = false,
       items = List(
-        CompletionItem("in", Some(CompletionItemKind.Keyword), Some("Input"), None, None, None, None),
-        CompletionItem("out", Some(CompletionItemKind.Keyword), Some("Output"), None, None, None, None)
+        CompletionItem(
+          "in",
+          Some(CompletionItemKind.Keyword),
+          Some("Input"),
+          None,
+          None,
+          None,
+          None
+        ),
+        CompletionItem(
+          "out",
+          Some(CompletionItemKind.Keyword),
+          Some("Output"),
+          None,
+          None,
+          None,
+          None
+        )
       )
     )
     val json = list.asJson.noSpaces
@@ -442,7 +459,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
         CompletionItem("test", None, None, None, None, None, None)
       )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionList]
 
     parsed shouldBe Right(original)
@@ -474,8 +491,8 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip through JSON" in {
     val original = MarkupContent("markdown", "**bold** text")
-    val json = original.asJson
-    val parsed = json.as[MarkupContent]
+    val json     = original.asJson
+    val parsed   = json.as[MarkupContent]
 
     parsed shouldBe Right(original)
   }
@@ -508,7 +525,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       contents = MarkupContent("markdown", "Test hover"),
       range = Some(Range(Position(0, 0), Position(0, 10)))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Hover]
 
     parsed shouldBe Right(original)
@@ -535,7 +552,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       location = Location("file:///test.cst", Range(Position(0, 0), Position(0, 5))),
       message = "Test message"
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[DiagnosticRelatedInformation]
 
     parsed shouldBe Right(original)
@@ -548,12 +565,14 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       code = None,
       source = Some("constellation-lang"),
       message = "Type error",
-      relatedInformation = Some(List(
-        DiagnosticRelatedInformation(
-          location = Location("file:///other.cst", Range(Position(10, 0), Position(10, 5))),
-          message = "Declared here"
+      relatedInformation = Some(
+        List(
+          DiagnosticRelatedInformation(
+            location = Location("file:///other.cst", Range(Position(10, 0), Position(10, 5))),
+            message = "Declared here"
+          )
         )
-      ))
+      )
     )
     val json = diagnostic.asJson.noSpaces
 
@@ -568,22 +587,24 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       code = Some("W001"),
       source = Some("compiler"),
       message = "Warning message",
-      relatedInformation = Some(List(
-        DiagnosticRelatedInformation(
-          location = Location("file:///a.cst", Range(Position(0, 0), Position(0, 5))),
-          message = "First related"
-        ),
-        DiagnosticRelatedInformation(
-          location = Location("file:///b.cst", Range(Position(10, 0), Position(10, 10))),
-          message = "Second related"
-        ),
-        DiagnosticRelatedInformation(
-          location = Location("file:///c.cst", Range(Position(20, 5), Position(20, 15))),
-          message = "Third related"
+      relatedInformation = Some(
+        List(
+          DiagnosticRelatedInformation(
+            location = Location("file:///a.cst", Range(Position(0, 0), Position(0, 5))),
+            message = "First related"
+          ),
+          DiagnosticRelatedInformation(
+            location = Location("file:///b.cst", Range(Position(10, 0), Position(10, 10))),
+            message = "Second related"
+          ),
+          DiagnosticRelatedInformation(
+            location = Location("file:///c.cst", Range(Position(20, 5), Position(20, 15))),
+            message = "Third related"
+          )
         )
-      ))
+      )
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Diagnostic]
 
     parsed shouldBe Right(original)
@@ -599,7 +620,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       source = Some("lsp"),
       message = "Information diagnostic"
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Diagnostic]
 
     parsed shouldBe Right(original)
@@ -613,7 +634,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       source = Some("lsp"),
       message = "Hint diagnostic"
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Diagnostic]
 
     parsed shouldBe Right(original)
@@ -628,7 +649,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       message = "Test message",
       relatedInformation = Some(List.empty)
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Diagnostic]
 
     parsed shouldBe Right(original)
@@ -674,7 +695,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
         filterText = None,
         sortText = None
       )
-      val json = original.asJson
+      val json   = original.asJson
       val parsed = json.as[CompletionItem]
 
       parsed shouldBe Right(original)
@@ -691,7 +712,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       filterText = None,
       sortText = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionItem]
 
     parsed shouldBe Right(original)
@@ -714,7 +735,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       isIncomplete = false,
       items = items
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[CompletionList]
 
     parsed shouldBe Right(original)
@@ -726,7 +747,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       rangeLength = None,
       text = "new text"
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[TextDocumentContentChangeEvent]
 
     parsed shouldBe Right(original)
@@ -739,7 +760,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       rangeLength = None,
       text = largeText
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[TextDocumentContentChangeEvent]
 
     parsed shouldBe Right(original)
@@ -747,17 +768,17 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
 
   "Position" should "handle large line numbers" in {
     val original = Position(1000000, 5000)
-    val json = original.asJson
-    val parsed = json.as[Position]
+    val json     = original.asJson
+    val parsed   = json.as[Position]
 
     parsed shouldBe Right(original)
   }
 
   "Range" should "handle same start and end position" in {
-    val pos = Position(5, 10)
+    val pos      = Position(5, 10)
     val original = Range(pos, pos)
-    val json = original.asJson
-    val parsed = json.as[Range]
+    val json     = original.asJson
+    val parsed   = json.as[Range]
 
     parsed shouldBe Right(original)
   }
@@ -767,7 +788,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       uri = "file:///path%20with%20spaces/test.cst",
       range = Range(Position(0, 0), Position(0, 5))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Location]
 
     parsed shouldBe Right(original)
@@ -778,7 +799,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       contents = MarkupContent("plaintext", "Some hover text"),
       range = None
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Hover]
 
     parsed shouldBe Right(original)
@@ -800,7 +821,7 @@ class LspTypesTest extends AnyFlatSpec with Matchers {
       contents = MarkupContent("markdown", content),
       range = Some(Range(Position(0, 0), Position(10, 0)))
     )
-    val json = original.asJson
+    val json   = original.asJson
     val parsed = json.as[Hover]
 
     parsed shouldBe Right(original)

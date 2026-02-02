@@ -510,7 +510,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
     // Result type is union of Int and String
-    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(
+      Set(SemanticType.SInt, SemanticType.SString)
+    )
   }
 
   it should "include position information in errors" in {
@@ -2128,57 +2130,67 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   private def hofRegistry: FunctionRegistry = {
     val registry = FunctionRegistry.empty
     // filter: (List<Int>, (Int) => Boolean) => List<Int>
-    registry.register(FunctionSignature(
-      name = "filter",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.filter-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "filter",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.filter-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // map: (List<Int>, (Int) => Int) => List<Int>
-    registry.register(FunctionSignature(
-      name = "map",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "stdlib.hof.map-int-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "map",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "stdlib.hof.map-int-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // all: (List<Int>, (Int) => Boolean) => Boolean
-    registry.register(FunctionSignature(
-      name = "all",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.hof.all-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "all",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.hof.all-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // any: (List<Int>, (Int) => Boolean) => Boolean
-    registry.register(FunctionSignature(
-      name = "any",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.hof.any-int",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "any",
+        params = List(
+          "items"     -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.hof.any-int",
+        namespace = Some("stdlib.collection")
+      )
+    )
     // Comparison functions for use in lambda bodies
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
     registry
   }
 
@@ -2224,13 +2236,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     // Need arithmetic for x * 2 (desugars to multiply(x, 2))
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply",
+        namespace = Some("stdlib.math")
+      )
+    )
     val result = check(source, registry)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
@@ -2289,24 +2303,27 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "type check SFunction with multiple parameters" in {
-    val funcType = SemanticType.SFunction(List(SemanticType.SInt, SemanticType.SString), SemanticType.SBoolean)
+    val funcType =
+      SemanticType.SFunction(List(SemanticType.SInt, SemanticType.SString), SemanticType.SBoolean)
     funcType.prettyPrint shouldBe "(Int, String) => Boolean"
   }
 
   it should "type check lambda with boolean operators in body" in {
     val registry = hofRegistry
-    val source = """
+    val source   = """
       in items: List<Int>
       result = filter(items, (x) => x > 0 and x < 100)
       out result
     """
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
     val result = check(source, registry)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SInt)
@@ -2931,7 +2948,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert CType.CUnion to SemanticType correctly" in {
-    val cUnion = CType.CUnion(Map("String" -> CType.CString, "Int" -> CType.CInt))
+    val cUnion  = CType.CUnion(Map("String" -> CType.CString, "Int" -> CType.CInt))
     val semType = SemanticType.fromCType(cUnion)
 
     semType shouldBe a[SemanticType.SUnion]
@@ -2943,13 +2960,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check lambda with conditional expression in body" in {
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -2964,19 +2983,31 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check lambda with field access in body" in {
     val registry = FunctionRegistry.empty
     // filter over records
-    registry.register(FunctionSignature(
-      name = "filterRecords",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SRecord(Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean))),
-        "predicate" -> SemanticType.SFunction(
-          List(SemanticType.SRecord(Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean))),
-          SemanticType.SBoolean
-        )
-      ),
-      returns = SemanticType.SList(SemanticType.SRecord(Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean))),
-      moduleName = "filter-records",
-      namespace = Some("stdlib.collection")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "filterRecords",
+        params = List(
+          "items" -> SemanticType.SList(
+            SemanticType.SRecord(
+              Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean)
+            )
+          ),
+          "predicate" -> SemanticType.SFunction(
+            List(
+              SemanticType.SRecord(
+                Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean)
+              )
+            ),
+            SemanticType.SBoolean
+          )
+        ),
+        returns = SemanticType.SList(
+          SemanticType.SRecord(Map("value" -> SemanticType.SInt, "active" -> SemanticType.SBoolean))
+        ),
+        moduleName = "filter-records",
+        namespace = Some("stdlib.collection")
+      )
+    )
 
     val source = """
       in items: List<{ value: Int, active: Boolean }>
@@ -3001,13 +3032,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check lambda with or operator in body" in {
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -3021,13 +3054,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check map lambda with arithmetic expression" in {
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -3055,20 +3090,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check lambda with complex boolean expression" in {
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "lt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.lt",
-      namespace = Some("stdlib.compare")
-    ))
-    registry.register(FunctionSignature(
-      name = "gte",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gte",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "lt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lt",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "gte",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gte",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -3120,20 +3159,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Current behavior: Lambda parameter 'y' is not defined in the outer scope, so it fails with UndefinedVariable
   it should "report error when lambda passed to non-HOF function" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "process"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "process"
+      )
+    )
     // Also need add function for y + 1
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in x: Int
@@ -3150,15 +3193,18 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     // filter expects (Int) => Boolean but we provide (x, y) => ...
     // Note: Multi-param lambdas may not be fully supported, so this tests error handling
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "binaryFilter",
-      params = List(
-        "items" -> SemanticType.SList(SemanticType.SInt),
-        "predicate" -> SemanticType.SFunction(List(SemanticType.SInt, SemanticType.SInt), SemanticType.SBoolean)
-      ),
-      returns = SemanticType.SList(SemanticType.SInt),
-      moduleName = "binary-filter"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "binaryFilter",
+        params = List(
+          "items" -> SemanticType.SList(SemanticType.SInt),
+          "predicate" -> SemanticType
+            .SFunction(List(SemanticType.SInt, SemanticType.SInt), SemanticType.SBoolean)
+        ),
+        returns = SemanticType.SList(SemanticType.SInt),
+        moduleName = "binary-filter"
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -3172,13 +3218,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check chained HOF calls" in {
     val registry = hofRegistry
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in items: List<Int>
@@ -3275,13 +3323,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check string interpolation with arithmetic expression" in {
     // Arithmetic requires stdlib.math functions in registry
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in a: Int
@@ -3320,12 +3370,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check string interpolation with function call" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "double",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "double"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "double",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "double"
+      )
+    )
 
     val source = """
       in x: Int
@@ -3383,12 +3435,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "type check string interpolation used as function argument" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "process"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "process"
+      )
+    )
 
     val source = """
       in name: String
@@ -3414,13 +3468,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check string interpolation with comparison expression" in {
     // Comparison requires stdlib.compare functions in registry
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in a: Int
@@ -3448,20 +3504,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check string interpolation with parenthesized expression" in {
     // Arithmetic requires stdlib.math functions in registry
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.add",
-      namespace = Some("stdlib.math")
-    ))
-    registry.register(FunctionSignature(
-      name = "multiply",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "stdlib.multiply",
-      namespace = Some("stdlib.math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.add",
+        namespace = Some("stdlib.math")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "multiply",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.multiply",
+        namespace = Some("stdlib.math")
+      )
+    )
 
     val source = """
       in a: Int
@@ -3531,13 +3591,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check string interpolation with branch expression" in {
     // Comparison requires stdlib.compare functions in registry
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in score: Int
@@ -3649,7 +3711,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(
+      Set(SemanticType.SInt, SemanticType.SString)
+    )
   }
 
   it should "type check nested conditionals correctly" in {
@@ -3752,13 +3816,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test use declaration with valid namespace from function registry (lines 262-270)
   it should "accept use declaration for namespace that exists via function qualifiedNames" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "myFunc",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "mylib.myFunc",
-      namespace = Some("mylib")  // This creates the namespace
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "myFunc",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "mylib.myFunc",
+        namespace = Some("mylib") // This creates the namespace
+      )
+    )
 
     val source = """
       use mylib
@@ -3772,13 +3838,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "accept use declaration with alias for valid namespace" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "mylib.process",
-      namespace = Some("mylib")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "mylib.process",
+        namespace = Some("mylib")
+      )
+    )
 
     val source = """
       use mylib as m
@@ -3817,12 +3885,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test function call with wrong number of arguments (lines 383-389)
   it should "report error when function called with wrong number of arguments" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "twoArg",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "twoArg"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "twoArg",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "twoArg"
+      )
+    )
 
     val source = """
       in x: Int
@@ -3836,12 +3906,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
   it should "report error when function called with extra arguments" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "oneArg",
-      params = List("a" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "oneArg"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "oneArg",
+        params = List("a" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "oneArg"
+      )
+    )
 
     val source = """
       in x: Int
@@ -3857,12 +3929,14 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test function argument type mismatch (lines 400-407)
   it should "report error when function argument type mismatches parameter" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "expectString",
-      params = List("text" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "expectString"
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "expectString",
+        params = List("text" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "expectString"
+      )
+    )
 
     val source = """
       in x: Int
@@ -3882,20 +3956,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "report error for ambiguous function call" in {
     val registry = FunctionRegistry.empty
     // Register same function name in two different namespaces
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "lib1.process",
-      namespace = Some("lib1")
-    ))
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "lib2.process",
-      namespace = Some("lib2")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "lib1.process",
+        namespace = Some("lib1")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "lib2.process",
+        namespace = Some("lib2")
+      )
+    )
 
     // Import both namespaces with wildcard
     val source = """
@@ -3914,20 +3992,24 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "suggest importing function when it exists but not imported" in {
     val registry = FunctionRegistry.empty
     // Register two functions in different namespaces
-    registry.register(FunctionSignature(
-      name = "myFunc",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "mylib.myFunc",
-      namespace = Some("mylib")
-    ))
-    registry.register(FunctionSignature(
-      name = "other",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "otherlib.other",
-      namespace = Some("otherlib")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "myFunc",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "mylib.myFunc",
+        namespace = Some("mylib")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "other",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "otherlib.other",
+        namespace = Some("otherlib")
+      )
+    )
 
     // Import otherlib but NOT mylib - this disables backwards compatibility
     val source = """
@@ -3944,13 +4026,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test qualified name with namespace alias
   it should "type check qualified name with aliased import" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "compute",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "somelib.compute",
-      namespace = Some("somelib")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "compute",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "somelib.compute",
+        namespace = Some("somelib")
+      )
+    )
 
     val source = """
       use somelib as s
@@ -3965,13 +4049,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test calling namespace alias as function (incomplete reference)
   it should "report error when namespace alias used as function" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "compute",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "somelib.compute",
-      namespace = Some("somelib")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "compute",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "somelib.compute",
+        namespace = Some("somelib")
+      )
+    )
 
     val source = """
       use somelib as s
@@ -3987,13 +4073,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test fully qualified function name without import
   it should "allow fully qualified function call without import" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "math.add",
-      namespace = Some("math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "math.add",
+        namespace = Some("math")
+      )
+    )
 
     val source = """
       in x: Int
@@ -4015,20 +4103,23 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isLeft shouldBe true
     result.left.toOption.get.exists(e =>
-      e.isInstanceOf[CompileError.UndefinedNamespace] || e.isInstanceOf[CompileError.UndefinedFunction]
+      e.isInstanceOf[CompileError.UndefinedNamespace] || e
+        .isInstanceOf[CompileError.UndefinedFunction]
     ) shouldBe true
   }
 
   // Test backwards compatibility: function with namespace but no imports
   it should "find function with namespace when no imports defined (backwards compat)" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "helper",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "util.helper",
-      namespace = Some("util")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "helper",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "util.helper",
+        namespace = Some("util")
+      )
+    )
 
     // No imports, but function should still be found for backwards compatibility
     val source = """
@@ -4043,13 +4134,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Additional conditional error tests
   it should "type check nested if with complex boolean expression" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in x: Int
@@ -4068,13 +4161,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test comparison with type mismatch
   it should "report error for comparison with incompatible types" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in x: Int
@@ -4146,7 +4241,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(
+      Set(SemanticType.SInt, SemanticType.SString)
+    )
   }
 
   // Guard with string condition (alternative test for guard error)
@@ -4198,13 +4295,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Branch with non-boolean condition
   it should "report TypeMismatch when branch condition is not Boolean" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "gt",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SBoolean,
-      moduleName = "stdlib.gt",
-      namespace = Some("stdlib.compare")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "gt",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gt",
+        namespace = Some("stdlib.compare")
+      )
+    )
 
     val source = """
       in x: Int
@@ -4239,7 +4338,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(Set(SemanticType.SInt, SemanticType.SString))
+    getOutputType(result.toOption.get) shouldBe SemanticType.SUnion(
+      Set(SemanticType.SInt, SemanticType.SString)
+    )
   }
 
   // Boolean binary with non-boolean operands (inner mapN branch coverage)
@@ -4401,13 +4502,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     // The branch would only be hit if there's some inconsistency in the registry.
     //
     // For now, let's just verify we get UndefinedNamespace when expected
-    registry.register(FunctionSignature(
-      name = "func",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "other.func",
-      namespace = Some("other")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "func",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "other.func",
+        namespace = Some("other")
+      )
+    )
 
     val source = """
       use nonexistent
@@ -4425,13 +4528,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // Test aliased import where namespace exists (for span calculation branch)
   it should "type check aliased import with span calculation" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "add",
-      params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "math.add",
-      namespace = Some("math")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "add",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "math.add",
+        namespace = Some("math")
+      )
+    )
 
     val source = """
       use math as m
@@ -4463,13 +4568,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   // so if qualifiedName starts with X, the namespace also contains X or starts with X.
   it should "resolve aliased import for existing namespace" in {
     val registry = FunctionRegistry.empty
-    registry.register(FunctionSignature(
-      name = "process",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "tools.process",
-      namespace = Some("tools")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "process",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "tools.process",
+        namespace = Some("tools")
+      )
+    )
 
     // Use "tools" as an alias - namespace exists
     val source = """
@@ -4486,13 +4593,15 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
   it should "type check aliased import with existing namespace for span calculation" in {
     val registry = FunctionRegistry.empty
     // Register with namespace that will exist in allNamespaces
-    registry.register(FunctionSignature(
-      name = "compute",
-      params = List("x" -> SemanticType.SInt),
-      returns = SemanticType.SInt,
-      moduleName = "mymath.compute",
-      namespace = Some("mymath")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "compute",
+        params = List("x" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "mymath.compute",
+        namespace = Some("mymath")
+      )
+    )
 
     // Use the actual namespace with an alias - should hit line 276
     val source = """
@@ -4532,7 +4641,8 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
       FunctionSignature(
         name = "GetUser",
         params = List("id" -> SemanticType.SInt),
-        returns = SemanticType.SRecord(Map("name" -> SemanticType.SString, "age" -> SemanticType.SInt)),
+        returns =
+          SemanticType.SRecord(Map("name" -> SemanticType.SString, "age" -> SemanticType.SInt)),
         moduleName = "get-user-module"
       )
     )

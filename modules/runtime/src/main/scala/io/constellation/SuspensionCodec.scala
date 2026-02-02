@@ -6,8 +6,8 @@ final case class CodecError(message: String, cause: Option[Throwable] = None)
 
 /** Codec for serializing/deserializing [[SuspendedExecution]] snapshots.
   *
-  * Implementations should handle the full [[SuspendedExecution]] graph including
-  * CValue data, DagSpec topology, and module options.
+  * Implementations should handle the full [[SuspendedExecution]] graph including CValue data,
+  * DagSpec topology, and module options.
   */
 trait SuspensionCodec {
 

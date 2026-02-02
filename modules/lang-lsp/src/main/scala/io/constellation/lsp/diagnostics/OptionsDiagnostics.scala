@@ -1,16 +1,22 @@
 package io.constellation.lsp.diagnostics
 
 import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy, ModuleCallOptions, PriorityLevel}
-import io.constellation.lsp.protocol.LspTypes.{Diagnostic, DiagnosticSeverity, Hover, MarkupContent, Position, Range}
+import io.constellation.lsp.protocol.LspTypes.{
+  Diagnostic,
+  DiagnosticSeverity,
+  Hover,
+  MarkupContent,
+  Position,
+  Range
+}
 
-/**
- * Diagnostics and hover support for module call options (`with` clause).
- *
- * Provides:
- * - Semantic warnings for questionable option combinations
- * - Errors for invalid option values
- * - Hover documentation for option names and strategy values
- */
+/** Diagnostics and hover support for module call options (`with` clause).
+  *
+  * Provides:
+  *   - Semantic warnings for questionable option combinations
+  *   - Errors for invalid option values
+  *   - Hover documentation for option names and strategy values
+  */
 object OptionsDiagnostics {
 
   /** Maximum recommended retry count before warning */
@@ -21,18 +27,20 @@ object OptionsDiagnostics {
 
   // ========== Diagnostic Rules ==========
 
-  /**
-   * Analyze module call options and return any diagnostics.
-   *
-   * @param options The parsed ModuleCallOptions
-   * @param optionsRange The source range of the entire `with` clause
-   * @return List of diagnostics for invalid/questionable options
-   */
+  /** Analyze module call options and return any diagnostics.
+    *
+    * @param options
+    *   The parsed ModuleCallOptions
+    * @param optionsRange
+    *   The source range of the entire `with` clause
+    * @return
+    *   List of diagnostics for invalid/questionable options
+    */
   def diagnose(options: ModuleCallOptions, optionsRange: Range): List[Diagnostic] = {
     val diagnostics = List.newBuilder[Diagnostic]
 
     // Warning: delay without retry
-    if (options.delay.isDefined && options.retry.isEmpty) {
+    if options.delay.isDefined && options.retry.isEmpty then {
       diagnostics += Diagnostic(
         range = optionsRange,
         severity = Some(DiagnosticSeverity.Warning),
@@ -41,14 +49,16 @@ object OptionsDiagnostics {
         message = buildMessage(
           "Option `delay` has no effect without `retry`",
           "The `delay` option specifies the wait time between retry attempts. " +
-          "Without `retry`, the module is only called once, so the delay is never used.",
-          Some("Add `retry: N` to enable retry with delay, or remove `delay` if retries are not needed.")
+            "Without `retry`, the module is only called once, so the delay is never used.",
+          Some(
+            "Add `retry: N` to enable retry with delay, or remove `delay` if retries are not needed."
+          )
         )
       )
     }
 
     // Warning: backoff without delay
-    if (options.backoff.isDefined && options.delay.isEmpty) {
+    if options.backoff.isDefined && options.delay.isEmpty then {
       diagnostics += Diagnostic(
         range = optionsRange,
         severity = Some(DiagnosticSeverity.Warning),
@@ -57,7 +67,7 @@ object OptionsDiagnostics {
         message = buildMessage(
           "Option `backoff` has no effect without `delay`",
           "The `backoff` option controls how the delay changes between retries. " +
-          "Without a base `delay`, the backoff strategy cannot be applied.",
+            "Without a base `delay`, the backoff strategy cannot be applied.",
           Some("Add `delay: <duration>` to set a base delay for the backoff strategy.")
         )
       )
@@ -65,7 +75,7 @@ object OptionsDiagnostics {
 
     // Warning: high retry count
     options.retry.foreach { retryCount =>
-      if (retryCount > MaxRecommendedRetry) {
+      if retryCount > MaxRecommendedRetry then {
         diagnostics += Diagnostic(
           range = optionsRange,
           severity = Some(DiagnosticSeverity.Warning),
@@ -74,8 +84,10 @@ object OptionsDiagnostics {
           message = buildMessage(
             s"High retry count: $retryCount exceeds recommended maximum of $MaxRecommendedRetry",
             "High retry counts can lead to long execution times and may mask underlying issues. " +
-            "Consider whether so many retries are truly necessary.",
-            Some("Use a lower retry count with exponential backoff, or add a timeout to limit total execution time.")
+              "Consider whether so many retries are truly necessary.",
+            Some(
+              "Use a lower retry count with exponential backoff, or add a timeout to limit total execution time."
+            )
           )
         )
       }
@@ -83,7 +95,7 @@ object OptionsDiagnostics {
 
     // Error: negative retry
     options.retry.foreach { retryCount =>
-      if (retryCount < 0) {
+      if retryCount < 0 then {
         diagnostics += Diagnostic(
           range = optionsRange,
           severity = Some(DiagnosticSeverity.Error),
@@ -92,7 +104,7 @@ object OptionsDiagnostics {
           message = buildMessage(
             s"Invalid retry count: $retryCount (must be non-negative)",
             "The `retry` option specifies the number of retry attempts after the initial call fails. " +
-            "It must be zero or positive.",
+              "It must be zero or positive.",
             Some("Use `retry: 0` for no retries, or `retry: N` for N retry attempts.")
           )
         )
@@ -101,7 +113,7 @@ object OptionsDiagnostics {
 
     // Error: zero or negative concurrency
     options.concurrency.foreach { concurrency =>
-      if (concurrency <= 0) {
+      if concurrency <= 0 then {
         diagnostics += Diagnostic(
           range = optionsRange,
           severity = Some(DiagnosticSeverity.Error),
@@ -110,15 +122,17 @@ object OptionsDiagnostics {
           message = buildMessage(
             s"Invalid concurrency: $concurrency (must be positive)",
             "The `concurrency` option limits the number of parallel executions. " +
-            "It must be at least 1.",
-            Some("Use `concurrency: 1` for sequential execution, or `concurrency: N` for N parallel tasks.")
+              "It must be at least 1.",
+            Some(
+              "Use `concurrency: 1` for sequential execution, or `concurrency: N` for N parallel tasks."
+            )
           )
         )
       }
     }
 
     // Warning: backoff without retry
-    if (options.backoff.isDefined && options.retry.isEmpty) {
+    if options.backoff.isDefined && options.retry.isEmpty then {
       diagnostics += Diagnostic(
         range = optionsRange,
         severity = Some(DiagnosticSeverity.Warning),
@@ -127,14 +141,14 @@ object OptionsDiagnostics {
         message = buildMessage(
           "Option `backoff` has no effect without `retry`",
           "The `backoff` strategy only applies when retrying failed calls. " +
-          "Without `retry`, there are no retry attempts to apply backoff to.",
+            "Without `retry`, there are no retry attempts to apply backoff to.",
           Some("Add `retry: N` to enable retries with backoff.")
         )
       )
     }
 
     // Warning: cache_backend without cache
-    if (options.cacheBackend.isDefined && options.cache.isEmpty) {
+    if options.cacheBackend.isDefined && options.cache.isEmpty then {
       diagnostics += Diagnostic(
         range = optionsRange,
         severity = Some(DiagnosticSeverity.Warning),
@@ -143,7 +157,7 @@ object OptionsDiagnostics {
         message = buildMessage(
           "Option `cache_backend` has no effect without `cache`",
           "The `cache_backend` option specifies which cache store to use. " +
-          "Without `cache`, caching is disabled and the backend is ignored.",
+            "Without `cache`, caching is disabled and the backend is ignored.",
           Some("Add `cache: <duration>` to enable caching.")
         )
       )
@@ -152,9 +166,8 @@ object OptionsDiagnostics {
     diagnostics.result()
   }
 
-  /**
-   * Build a formatted diagnostic message with explanation and suggestion.
-   */
+  /** Build a formatted diagnostic message with explanation and suggestion.
+    */
   private def buildMessage(
       summary: String,
       explanation: String,
@@ -300,45 +313,49 @@ object OptionsDiagnostics {
 
     // Priority levels
     "critical" -> ("Priority Level", "Highest priority. Execute immediately with minimal queuing."),
-    "high" -> ("Priority Level", "Above normal priority. Execute before normal tasks."),
-    "normal" -> ("Priority Level", "Default priority level for most tasks."),
-    "low" -> ("Priority Level", "Below normal priority. Yield to higher-priority tasks."),
+    "high"     -> ("Priority Level", "Above normal priority. Execute before normal tasks."),
+    "normal"   -> ("Priority Level", "Default priority level for most tasks."),
+    "low"      -> ("Priority Level", "Below normal priority. Yield to higher-priority tasks."),
     "background" -> ("Priority Level", "Lowest priority. Execute when no other tasks are waiting.")
   )
 
-  /**
-   * Get hover information for a word at a position in a `with` clause.
-   *
-   * @param word The word under the cursor
-   * @param textBeforeCursor Text on the line before the cursor position
-   * @return Hover information if the word is an option name or strategy value
-   */
+  /** Get hover information for a word at a position in a `with` clause.
+    *
+    * @param word
+    *   The word under the cursor
+    * @param textBeforeCursor
+    *   Text on the line before the cursor position
+    * @return
+    *   Hover information if the word is an option name or strategy value
+    */
   def getHover(word: String, textBeforeCursor: String): Option[Hover] = {
     // Check if we're in a with clause context
     val isInWithClause = textBeforeCursor.contains("with ")
 
-    if (!isInWithClause) {
+    if !isInWithClause then {
       return None
     }
 
     // Check for option name
-    optionDocs.get(word).map { doc =>
-      val markdown = formatOptionHover(doc)
-      Hover(contents = MarkupContent(kind = "markdown", value = markdown))
-    }.orElse {
-      // Check for strategy value
-      strategyDocs.get(word).map { case (category, description) =>
-        val markdown = formatStrategyHover(word, category, description)
+    optionDocs
+      .get(word)
+      .map { doc =>
+        val markdown = formatOptionHover(doc)
         Hover(contents = MarkupContent(kind = "markdown", value = markdown))
       }
-    }
+      .orElse {
+        // Check for strategy value
+        strategyDocs.get(word).map { case (category, description) =>
+          val markdown = formatStrategyHover(word, category, description)
+          Hover(contents = MarkupContent(kind = "markdown", value = markdown))
+        }
+      }
   }
 
-  /**
-   * Format hover content for an option name.
-   */
+  /** Format hover content for an option name.
+    */
   private def formatOptionHover(doc: OptionDoc): String = {
-    val related = if (doc.relatedOptions.nonEmpty) {
+    val related = if doc.relatedOptions.nonEmpty then {
       s"\n\n**Related options:** ${doc.relatedOptions.map(o => s"`$o`").mkString(", ")}"
     } else ""
 
@@ -353,13 +370,11 @@ object OptionsDiagnostics {
        |""".stripMargin
   }
 
-  /**
-   * Format hover content for a strategy value.
-   */
-  private def formatStrategyHover(value: String, category: String, description: String): String = {
+  /** Format hover content for a strategy value.
+    */
+  private def formatStrategyHover(value: String, category: String, description: String): String =
     s"""### `$value` ($category)
        |
        |$description
        |""".stripMargin
-  }
 }

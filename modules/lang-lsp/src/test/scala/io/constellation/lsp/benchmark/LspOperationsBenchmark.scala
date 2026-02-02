@@ -22,9 +22,9 @@ import scala.collection.mutable.ListBuffer
   * Run with: sbt "langLsp/testOnly *LspOperationsBenchmark"
   *
   * Tests:
-  * - Document validation (didOpen, didChange notifications)
-  * - Code completion requests
-  * - DAG visualization requests
+  *   - Document validation (didOpen, didChange notifications)
+  *   - Code completion requests
+  *   - DAG visualization requests
   */
 class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
 
@@ -175,12 +175,22 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
 
     for {
       constellation <- ConstellationImpl.init
-      _ <- constellation.setModule(uppercaseModule)
-      _ <- constellation.setModule(lowercaseModule)
+      _             <- constellation.setModule(uppercaseModule)
+      _             <- constellation.setModule(lowercaseModule)
 
       compiler = LangCompiler.builder
-        .withModule("Uppercase", uppercaseModule, List("text" -> SemanticType.SString), SemanticType.SString)
-        .withModule("Lowercase", lowercaseModule, List("text" -> SemanticType.SString), SemanticType.SString)
+        .withModule(
+          "Uppercase",
+          uppercaseModule,
+          List("text" -> SemanticType.SString),
+          SemanticType.SString
+        )
+        .withModule(
+          "Lowercase",
+          lowercaseModule,
+          List("text" -> SemanticType.SString),
+          SemanticType.SString
+        )
         .withCaching() // Enable caching for realistic LSP performance
         .build
 
@@ -205,17 +215,23 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       phase = "didOpen",
       inputSize = "small"
     ) {
-      server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj(
-            "uri"        -> Json.fromString(uri),
-            "languageId" -> Json.fromString("constellation"),
-            "version"    -> Json.fromInt(1),
-            "text"       -> Json.fromString(smallSource)
+      server
+        .handleNotification(
+          Notification(
+            method = "textDocument/didOpen",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj(
+                  "uri"        -> Json.fromString(uri),
+                  "languageId" -> Json.fromString("constellation"),
+                  "version"    -> Json.fromInt(1),
+                  "text"       -> Json.fromString(smallSource)
+                )
+              )
+            )
           )
-        ))
-      )).unsafeRunSync()
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -233,17 +249,23 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       phase = "didOpen",
       inputSize = "medium"
     ) {
-      server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj(
-            "uri"        -> Json.fromString(uri),
-            "languageId" -> Json.fromString("constellation"),
-            "version"    -> Json.fromInt(1),
-            "text"       -> Json.fromString(mediumSource)
+      server
+        .handleNotification(
+          Notification(
+            method = "textDocument/didOpen",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj(
+                  "uri"        -> Json.fromString(uri),
+                  "languageId" -> Json.fromString("constellation"),
+                  "version"    -> Json.fromInt(1),
+                  "text"       -> Json.fromString(mediumSource)
+                )
+              )
+            )
           )
-        ))
-      )).unsafeRunSync()
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -261,17 +283,23 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       phase = "didOpen",
       inputSize = "large"
     ) {
-      server.handleNotification(Notification(
-        method = "textDocument/didOpen",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj(
-            "uri"        -> Json.fromString(uri),
-            "languageId" -> Json.fromString("constellation"),
-            "version"    -> Json.fromInt(1),
-            "text"       -> Json.fromString(largeSource)
+      server
+        .handleNotification(
+          Notification(
+            method = "textDocument/didOpen",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj(
+                  "uri"        -> Json.fromString(uri),
+                  "languageId" -> Json.fromString("constellation"),
+                  "version"    -> Json.fromInt(1),
+                  "text"       -> Json.fromString(largeSource)
+                )
+              )
+            )
           )
-        ))
-      )).unsafeRunSync()
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -289,17 +317,23 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
     val uri    = "file:///test/edit.cst"
 
     // Open document first
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri"        -> Json.fromString(uri),
-          "languageId" -> Json.fromString("constellation"),
-          "version"    -> Json.fromInt(1),
-          "text"       -> Json.fromString(mediumSource)
+    server
+      .handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(mediumSource)
+              )
+            )
+          )
         )
-      ))
-    )).unsafeRunSync()
+      )
+      .unsafeRunSync()
 
     var version = 1
     val result = measureLspOperation(
@@ -310,18 +344,24 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       version += 1
       // Simulate typing - add a comment line
       val modifiedSource = mediumSource + s"\n# edit $version"
-      server.handleNotification(Notification(
-        method = "textDocument/didChange",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj(
-            "uri"     -> Json.fromString(uri),
-            "version" -> Json.fromInt(version)
-          ),
-          "contentChanges" -> Json.arr(
-            Json.obj("text" -> Json.fromString(modifiedSource))
+      server
+        .handleNotification(
+          Notification(
+            method = "textDocument/didChange",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj(
+                  "uri"     -> Json.fromString(uri),
+                  "version" -> Json.fromInt(version)
+                ),
+                "contentChanges" -> Json.arr(
+                  Json.obj("text" -> Json.fromString(modifiedSource))
+                )
+              )
+            )
           )
-        ))
-      )).unsafeRunSync()
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -340,31 +380,43 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
     val uri    = "file:///test/complete.cst"
 
     // Open document
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri"        -> Json.fromString(uri),
-          "languageId" -> Json.fromString("constellation"),
-          "version"    -> Json.fromInt(1),
-          "text"       -> Json.fromString(smallSource)
+    server
+      .handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(smallSource)
+              )
+            )
+          )
         )
-      ))
-    )).unsafeRunSync()
+      )
+      .unsafeRunSync()
 
     val result = measureLspOperation(
       name = "completion_small",
       phase = "completion",
       inputSize = "small"
     ) {
-      server.handleRequest(Request(
-        id = StringId("comp"),
-        method = "textDocument/completion",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj("uri" -> Json.fromString(uri)),
-          "position"     -> Json.obj("line" -> Json.fromInt(1), "character" -> Json.fromInt(10))
-        ))
-      )).unsafeRunSync()
+      server
+        .handleRequest(
+          Request(
+            id = StringId("comp"),
+            method = "textDocument/completion",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj("uri" -> Json.fromString(uri)),
+                "position" -> Json.obj("line" -> Json.fromInt(1), "character" -> Json.fromInt(10))
+              )
+            )
+          )
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -379,31 +431,43 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
     val uri    = "file:///test/complete-large.cst"
 
     // Open document
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri"        -> Json.fromString(uri),
-          "languageId" -> Json.fromString("constellation"),
-          "version"    -> Json.fromInt(1),
-          "text"       -> Json.fromString(largeSource)
+    server
+      .handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(largeSource)
+              )
+            )
+          )
         )
-      ))
-    )).unsafeRunSync()
+      )
+      .unsafeRunSync()
 
     val result = measureLspOperation(
       name = "completion_large",
       phase = "completion",
       inputSize = "large"
     ) {
-      server.handleRequest(Request(
-        id = StringId("comp"),
-        method = "textDocument/completion",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj("uri" -> Json.fromString(uri)),
-          "position"     -> Json.obj("line" -> Json.fromInt(30), "character" -> Json.fromInt(15))
-        ))
-      )).unsafeRunSync()
+      server
+        .handleRequest(
+          Request(
+            id = StringId("comp"),
+            method = "textDocument/completion",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj("uri" -> Json.fromString(uri)),
+                "position" -> Json.obj("line" -> Json.fromInt(30), "character" -> Json.fromInt(15))
+              )
+            )
+          )
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -421,30 +485,42 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
     val uri    = "file:///test/viz-small.cst"
 
     // Open document
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri"        -> Json.fromString(uri),
-          "languageId" -> Json.fromString("constellation"),
-          "version"    -> Json.fromInt(1),
-          "text"       -> Json.fromString(smallSource)
+    server
+      .handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(smallSource)
+              )
+            )
+          )
         )
-      ))
-    )).unsafeRunSync()
+      )
+      .unsafeRunSync()
 
     val result = measureLspOperation(
       name = "dagviz_small",
       phase = "dagviz",
       inputSize = "small"
     ) {
-      server.handleRequest(Request(
-        id = StringId("viz"),
-        method = "constellation/getDagVisualization",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj("uri" -> Json.fromString(uri))
-        ))
-      )).unsafeRunSync()
+      server
+        .handleRequest(
+          Request(
+            id = StringId("viz"),
+            method = "constellation/getDagVisualization",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj("uri" -> Json.fromString(uri))
+              )
+            )
+          )
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -458,30 +534,42 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
     val uri    = "file:///test/viz-large.cst"
 
     // Open document
-    server.handleNotification(Notification(
-      method = "textDocument/didOpen",
-      params = Some(Json.obj(
-        "textDocument" -> Json.obj(
-          "uri"        -> Json.fromString(uri),
-          "languageId" -> Json.fromString("constellation"),
-          "version"    -> Json.fromInt(1),
-          "text"       -> Json.fromString(largeSource)
+    server
+      .handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(largeSource)
+              )
+            )
+          )
         )
-      ))
-    )).unsafeRunSync()
+      )
+      .unsafeRunSync()
 
     val result = measureLspOperation(
       name = "dagviz_large",
       phase = "dagviz",
       inputSize = "large"
     ) {
-      server.handleRequest(Request(
-        id = StringId("viz"),
-        method = "constellation/getDagVisualization",
-        params = Some(Json.obj(
-          "textDocument" -> Json.obj("uri" -> Json.fromString(uri))
-        ))
-      )).unsafeRunSync()
+      server
+        .handleRequest(
+          Request(
+            id = StringId("viz"),
+            method = "constellation/getDagVisualization",
+            params = Some(
+              Json.obj(
+                "textDocument" -> Json.obj("uri" -> Json.fromString(uri))
+              )
+            )
+          )
+        )
+        .unsafeRunSync()
     }
 
     println(result.toConsoleString)
@@ -550,10 +638,10 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       (end - start) / 1e6 // ms
     }
 
-    val avg    = timings.sum / timings.length
-    val sorted = timings.sorted
-    val min    = sorted.head
-    val max    = sorted.last
+    val avg      = timings.sum / timings.length
+    val sorted   = timings.sorted
+    val min      = sorted.head
+    val max      = sorted.last
     val variance = timings.map(t => math.pow(t - avg, 2)).sum / timings.length
     val stdDev   = math.sqrt(variance)
 
@@ -565,7 +653,7 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       minMs = min,
       maxMs = max,
       stdDevMs = stdDev,
-      throughputOpsPerSec = if (avg > 0) 1000.0 / avg else 0.0,
+      throughputOpsPerSec = if avg > 0 then 1000.0 / avg else 0.0,
       iterations = MeasureIterations
     )
   }
@@ -585,7 +673,7 @@ class LspOperationsBenchmark extends AnyFlatSpec with Matchers {
       json.append(s""""avgMs":${f"${r.avgMs}%.4f"},"minMs":${f"${r.minMs}%.4f"},""")
       json.append(s""""maxMs":${f"${r.maxMs}%.4f"},"stdDevMs":${f"${r.stdDevMs}%.4f"},""")
       json.append(s""""throughputOpsPerSec":${f"${r.throughputOpsPerSec}%.4f"}}""")
-      if (idx < allResults.length - 1) json.append(",")
+      if idx < allResults.length - 1 then json.append(",")
       json.append("\n")
     }
 

@@ -38,8 +38,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   // Tests for computeBatches
   "computeBatches" should "create batch for input data nodes first" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -52,7 +52,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
+        inputDataId  -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -67,8 +67,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
   }
 
   it should "create batch for modules in topological order" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -79,7 +79,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
+        inputDataId  -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -94,10 +94,10 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
   }
 
   it should "group parallel modules in same batch" in {
-    val moduleId1 = UUID.randomUUID()
-    val moduleId2 = UUID.randomUUID()
-    val inputDataId1 = UUID.randomUUID()
-    val inputDataId2 = UUID.randomUUID()
+    val moduleId1     = UUID.randomUUID()
+    val moduleId2     = UUID.randomUUID()
+    val inputDataId1  = UUID.randomUUID()
+    val inputDataId2  = UUID.randomUUID()
     val outputDataId1 = UUID.randomUUID()
     val outputDataId2 = UUID.randomUUID()
 
@@ -108,8 +108,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         moduleId2 -> ModuleNodeSpec(metadata = ComponentMetadata("M2", "M2", List.empty, 1, 0))
       ),
       data = Map(
-        inputDataId1 -> DataNodeSpec("in1", Map(moduleId1 -> "text"), CType.CString),
-        inputDataId2 -> DataNodeSpec("in2", Map(moduleId2 -> "text"), CType.CString),
+        inputDataId1  -> DataNodeSpec("in1", Map(moduleId1 -> "text"), CType.CString),
+        inputDataId2  -> DataNodeSpec("in2", Map(moduleId2 -> "text"), CType.CString),
         outputDataId1 -> DataNodeSpec("out1", Map(moduleId1 -> "result"), CType.CString),
         outputDataId2 -> DataNodeSpec("out2", Map(moduleId2 -> "result"), CType.CString)
       ),
@@ -125,10 +125,10 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
   }
 
   it should "order sequential modules in separate batches" in {
-    val moduleId1 = UUID.randomUUID()
-    val moduleId2 = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
-    val midDataId = UUID.randomUUID()
+    val moduleId1    = UUID.randomUUID()
+    val moduleId2    = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
+    val midDataId    = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -139,7 +139,11 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
       ),
       data = Map(
         inputDataId -> DataNodeSpec("input", Map(moduleId1 -> "text"), CType.CString),
-        midDataId -> DataNodeSpec("mid", Map(moduleId1 -> "result", moduleId2 -> "text"), CType.CString),
+        midDataId -> DataNodeSpec(
+          "mid",
+          Map(moduleId1 -> "result", moduleId2 -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId2 -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId1), (midDataId, moduleId2)),
@@ -166,8 +170,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   // Tests for createSession
   "createSession" should "create a session with correct initial state" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -178,7 +182,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
+        inputDataId  -> DataNodeSpec("input", Map(moduleId -> "text"), CType.CString),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -186,15 +190,17 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = Map(moduleId -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("test"))
+    val inputs  = Map("input" -> CValue.CString("test"))
 
-    val session = SteppedExecution.createSession(
-      sessionId = "test-session",
-      dagSpec = dag,
-      syntheticModules = Map.empty,
-      registeredModules = modules,
-      inputs = inputs
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        sessionId = "test-session",
+        dagSpec = dag,
+        syntheticModules = Map.empty,
+        registeredModules = modules,
+        inputs = inputs
+      )
+      .unsafeRunSync()
 
     session.sessionId shouldBe "test-session"
     session.currentBatchIndex shouldBe 0
@@ -204,12 +210,13 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   it should "initialize all node states as pending" in {
     val moduleId = UUID.randomUUID()
-    val dataId1 = UUID.randomUUID()
-    val dataId2 = UUID.randomUUID()
+    val dataId1  = UUID.randomUUID()
+    val dataId2  = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("NodeStateDag"),
-      modules = Map(moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("M", "", List.empty, 1, 0))),
+      modules =
+        Map(moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("M", "", List.empty, 1, 0))),
       data = Map(
         dataId1 -> DataNodeSpec("d1", Map.empty, CType.CString),
         dataId2 -> DataNodeSpec("d2", Map.empty, CType.CString)
@@ -218,9 +225,15 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
       outEdges = Set.empty
     )
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, Map.empty, Map.empty
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        Map.empty,
+        Map.empty
+      )
+      .unsafeRunSync()
 
     session.nodeStates(moduleId) shouldBe SteppedExecution.NodeState.Pending
     session.nodeStates(dataId1) shouldBe SteppedExecution.NodeState.Pending
@@ -229,8 +242,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   // Tests for initializeRuntime
   "initializeRuntime" should "setup runtime and mark input data as completed" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -243,7 +256,11 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -251,11 +268,17 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = Map(moduleId -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs  = Map("input" -> CValue.CString("hello"))
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, modules, inputs
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        modules,
+        inputs
+      )
+      .unsafeRunSync()
 
     val initializedSession = SteppedExecution.initializeRuntime(session).unsafeRunSync()
 
@@ -264,13 +287,15 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val inputNodeState = initializedSession.nodeStates(inputDataId)
     inputNodeState shouldBe a[SteppedExecution.NodeState.Completed]
-    inputNodeState.asInstanceOf[SteppedExecution.NodeState.Completed].value shouldBe CValue.CString("hello")
+    inputNodeState.asInstanceOf[SteppedExecution.NodeState.Completed].value shouldBe CValue.CString(
+      "hello"
+    )
   }
 
   // Tests for executeNextBatch
   "executeNextBatch" should "execute a batch and update node states" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -283,7 +308,11 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -291,13 +320,19 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = Map(moduleId -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("world"))
+    val inputs  = Map("input" -> CValue.CString("world"))
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, modules, inputs
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        modules,
+        inputs
+      )
+      .unsafeRunSync()
 
-    val initialized = SteppedExecution.initializeRuntime(session).unsafeRunSync()
+    val initialized              = SteppedExecution.initializeRuntime(session).unsafeRunSync()
     val (afterBatch, isComplete) = SteppedExecution.executeNextBatch(initialized).unsafeRunSync()
 
     isComplete shouldBe true
@@ -308,15 +343,23 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val outputState = afterBatch.nodeStates(outputDataId)
     outputState shouldBe a[SteppedExecution.NodeState.Completed]
-    outputState.asInstanceOf[SteppedExecution.NodeState.Completed].value shouldBe CValue.CString("WORLD")
+    outputState.asInstanceOf[SteppedExecution.NodeState.Completed].value shouldBe CValue.CString(
+      "WORLD"
+    )
   }
 
   it should "return true for isComplete when all batches executed" in {
     val dag = DagSpec.empty("EmptyDag")
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, Map.empty, Map.empty
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        Map.empty,
+        Map.empty
+      )
+      .unsafeRunSync()
 
     // Empty DAG has only 1 batch (inputs with empty dataIds), and no modules
     session.batches.length shouldBe 1
@@ -332,10 +375,10 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   // Tests for executeToCompletion
   "executeToCompletion" should "execute all batches in sequence" in {
-    val moduleId1 = UUID.randomUUID()
-    val moduleId2 = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
-    val midDataId = UUID.randomUUID()
+    val moduleId1    = UUID.randomUUID()
+    val moduleId2    = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
+    val midDataId    = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -353,8 +396,16 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId1 -> "text"), CType.CString),
-        midDataId -> DataNodeSpec("mid", Map(moduleId1 -> "result", moduleId2 -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId1 -> "text"),
+          CType.CString
+        ),
+        midDataId -> DataNodeSpec(
+          "mid",
+          Map(moduleId1 -> "result", moduleId2 -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId2 -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId1), (midDataId, moduleId2)),
@@ -367,12 +418,18 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     )
     val inputs = Map("input" -> CValue.CString("test"))
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, modules, inputs
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        modules,
+        inputs
+      )
+      .unsafeRunSync()
 
     val initialized = SteppedExecution.initializeRuntime(session).unsafeRunSync()
-    val completed = SteppedExecution.executeToCompletion(initialized).unsafeRunSync()
+    val completed   = SteppedExecution.executeToCompletion(initialized).unsafeRunSync()
 
     completed.currentBatchIndex shouldBe completed.batches.length
 
@@ -383,8 +440,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   // Tests for getOutputs
   "getOutputs" should "return declared outputs after execution" in {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -397,7 +454,11 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -407,14 +468,20 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     )
 
     val modules = Map(moduleId -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("output"))
+    val inputs  = Map("input" -> CValue.CString("output"))
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, modules, inputs
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        modules,
+        inputs
+      )
+      .unsafeRunSync()
 
     val initialized = SteppedExecution.initializeRuntime(session).unsafeRunSync()
-    val completed = SteppedExecution.executeToCompletion(initialized).unsafeRunSync()
+    val completed   = SteppedExecution.executeToCompletion(initialized).unsafeRunSync()
 
     val outputs = SteppedExecution.getOutputs(completed)
     outputs.keys should contain("result")
@@ -423,11 +490,12 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   it should "return empty map when no declared outputs" in {
     val moduleId = UUID.randomUUID()
-    val dataId = UUID.randomUUID()
+    val dataId   = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("NoOutputDag"),
-      modules = Map(moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("M", "", List.empty, 1, 0))),
+      modules =
+        Map(moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("M", "", List.empty, 1, 0))),
       data = Map(dataId -> DataNodeSpec("d", Map.empty, CType.CString)),
       inEdges = Set.empty,
       outEdges = Set.empty,
@@ -435,9 +503,15 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
       outputBindings = Map.empty
     )
 
-    val session = SteppedExecution.createSession(
-      "session", dag, Map.empty, Map.empty, Map.empty
-    ).unsafeRunSync()
+    val session = SteppedExecution
+      .createSession(
+        "session",
+        dag,
+        Map.empty,
+        Map.empty,
+        Map.empty
+      )
+      .unsafeRunSync()
 
     val outputs = SteppedExecution.getOutputs(session)
     outputs shouldBe empty
@@ -488,7 +562,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     val preview = SteppedExecution.valuePreview(
       CValue.CProduct(
         Map("name" -> CValue.CString("test"), "value" -> CValue.CInt(42)),
-        Map("name" -> CType.CString, "value" -> CType.CInt)
+        Map("name" -> CType.CString, "value"          -> CType.CInt)
       )
     )
     preview should include("name")
@@ -522,7 +596,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
   it should "truncate long strings" in {
     val longString = "a" * 100
-    val preview = SteppedExecution.valuePreview(CValue.CString(longString), maxLength = 20)
+    val preview    = SteppedExecution.valuePreview(CValue.CString(longString), maxLength = 20)
     preview.length shouldBe 20
     preview should endWith("...")
   }

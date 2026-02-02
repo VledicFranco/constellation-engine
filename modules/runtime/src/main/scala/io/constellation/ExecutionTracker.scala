@@ -1,9 +1,9 @@
 package io.constellation
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 import io.circe.{Encoder, Json}
-import io.circe.generic.semiauto._
+import io.circe.generic.semiauto.*
 
 import java.util.UUID
 import scala.collection.immutable.Queue

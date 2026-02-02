@@ -2,7 +2,7 @@ package io.constellation.benchmark
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation._
+import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -31,8 +31,8 @@ case class ExecutionBenchmarkResult(
 
 /** Benchmarks for DAG execution performance
   *
-  * Measures runtime execution time to complement compilation benchmarks.
-  * Tests both full execution and step-through execution modes.
+  * Measures runtime execution time to complement compilation benchmarks. Tests both full execution
+  * and step-through execution modes.
   *
   * Run with: sbt "runtime/testOnly *ExecutionBenchmark"
   */
@@ -108,7 +108,11 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId  -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
@@ -150,9 +154,21 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputDataId  -> DataNodeSpec("input", Map(inputDataId -> "input", moduleId1 -> "text"), CType.CString),
-        midDataId1   -> DataNodeSpec("mid1", Map(moduleId1 -> "result", moduleId2 -> "text"), CType.CString),
-        midDataId2   -> DataNodeSpec("mid2", Map(moduleId2 -> "result", moduleId3 -> "text"), CType.CString),
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId1 -> "text"),
+          CType.CString
+        ),
+        midDataId1 -> DataNodeSpec(
+          "mid1",
+          Map(moduleId1 -> "result", moduleId2 -> "text"),
+          CType.CString
+        ),
+        midDataId2 -> DataNodeSpec(
+          "mid2",
+          Map(moduleId2 -> "result", moduleId3 -> "text"),
+          CType.CString
+        ),
         outputDataId -> DataNodeSpec("output", Map(moduleId3 -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId1), (midDataId1, moduleId2), (midDataId2, moduleId3)),
@@ -177,7 +193,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
 
     // Create modules: alternating Uppercase and Lowercase for variety
     val moduleSpecs = moduleIds.zipWithIndex.map { case (id, idx) =>
-      val name = if (idx % 2 == 0) "Uppercase" else "Lowercase"
+      val name = if idx % 2 == 0 then "Uppercase" else "Lowercase"
       id -> ModuleNodeSpec(
         metadata = ComponentMetadata(name, s"M$idx", List.empty, 1, 0),
         consumes = Map("text" -> CType.CString),
@@ -187,10 +203,10 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
 
     // Create data nodes connecting modules sequentially
     val dataSpecs = dataIds.zipWithIndex.map { case (id, idx) =>
-      val portMap = if (idx == 0) {
+      val portMap = if idx == 0 then {
         // First data node is input, connects to first module
         Map(id -> "input", moduleIds.head -> "text")
-      } else if (idx < moduleIds.length) {
+      } else if idx < moduleIds.length then {
         // Middle nodes connect previous module output to next module input
         Map(moduleIds(idx - 1) -> "result", moduleIds(idx) -> "text")
       } else {
@@ -220,7 +236,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
     )
 
     val modules = moduleIds.zipWithIndex.map { case (id, idx) =>
-      if (idx % 2 == 0) id -> createUppercaseModule()
+      if idx   % 2 == 0 then id -> createUppercaseModule()
       else id -> createLowercaseModule()
     }.toMap
 
@@ -233,7 +249,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
     val dataIds   = (1 to (nodeCount + 1)).map(_ => UUID.randomUUID()).toList
 
     val moduleSpecs = moduleIds.zipWithIndex.map { case (id, idx) =>
-      val name = if (idx % 2 == 0) "Uppercase" else "Lowercase"
+      val name = if idx % 2 == 0 then "Uppercase" else "Lowercase"
       id -> ModuleNodeSpec(
         metadata = ComponentMetadata(name, s"M$idx", List.empty, 1, 0),
         consumes = Map("text" -> CType.CString),
@@ -242,9 +258,9 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
     }.toMap
 
     val dataSpecs = dataIds.zipWithIndex.map { case (id, idx) =>
-      val portMap = if (idx == 0) {
+      val portMap = if idx == 0 then {
         Map(id -> "input", moduleIds.head -> "text")
-      } else if (idx < moduleIds.length) {
+      } else if idx < moduleIds.length then {
         Map(moduleIds(idx - 1) -> "result", moduleIds(idx) -> "text")
       } else {
         Map(moduleIds.last -> "result")
@@ -271,7 +287,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
     )
 
     val modules = moduleIds.zipWithIndex.map { case (id, idx) =>
-      if (idx % 2 == 0) id -> createUppercaseModule()
+      if idx   % 2 == 0 then id -> createUppercaseModule()
       else id -> createLowercaseModule()
     }.toMap
 
@@ -314,7 +330,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
       minMs = min,
       maxMs = max,
       stdDevMs = stdDev,
-      throughputOpsPerSec = if (avg > 0) 1000.0 / avg else 0.0,
+      throughputOpsPerSec = if avg > 0 then 1000.0 / avg else 0.0,
       iterations = MeasureIterations
     )
   }
@@ -396,10 +412,11 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
 
       var currentSession = initializedSession
       var done           = false
-      while (!done) {
-        val start                    = System.nanoTime()
-        val (newSession, isComplete) = SteppedExecution.executeNextBatch(currentSession).unsafeRunSync()
-        val end                      = System.nanoTime()
+      while !done do {
+        val start = System.nanoTime()
+        val (newSession, isComplete) =
+          SteppedExecution.executeNextBatch(currentSession).unsafeRunSync()
+        val end = System.nanoTime()
 
         stepTimings += (end - start) / 1e6
         currentSession = newSession
@@ -422,7 +439,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
       minMs = minStep,
       maxMs = maxStep,
       stdDevMs = stdDev,
-      throughputOpsPerSec = if (avgStep > 0) 1000.0 / avgStep else 0.0,
+      throughputOpsPerSec = if avgStep > 0 then 1000.0 / avgStep else 0.0,
       iterations = stepTimings.size
     )
 
@@ -447,10 +464,11 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
 
       var currentSession = initializedSession
       var done           = false
-      while (!done) {
-        val start                    = System.nanoTime()
-        val (newSession, isComplete) = SteppedExecution.executeNextBatch(currentSession).unsafeRunSync()
-        val end                      = System.nanoTime()
+      while !done do {
+        val start = System.nanoTime()
+        val (newSession, isComplete) =
+          SteppedExecution.executeNextBatch(currentSession).unsafeRunSync()
+        val end = System.nanoTime()
 
         stepTimings += (end - start) / 1e6
         currentSession = newSession
@@ -469,7 +487,7 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
       minMs = sortedSteps.head,
       maxMs = sortedSteps.last,
       stdDevMs = math.sqrt(stepTimings.map(t => math.pow(t - avgStep, 2)).sum / stepTimings.size),
-      throughputOpsPerSec = if (avgStep > 0) 1000.0 / avgStep else 0.0,
+      throughputOpsPerSec = if avgStep > 0 then 1000.0 / avgStep else 0.0,
       iterations = stepTimings.size
     )
 
@@ -564,9 +582,9 @@ class ExecutionBenchmark extends AnyFlatSpec with Matchers {
         println(f"  Stress50 -> Stress100: ${s100 / s50}%.1fx time increase (2x nodes)")
         val scaling = (s100 / s50) / 2.0
         val scalingType =
-          if (scaling < 0.6) "sub-linear"
-          else if (scaling < 1.1) "linear"
-          else if (scaling < 1.5) "slightly super-linear"
+          if scaling < 0.6 then "sub-linear"
+          else if scaling < 1.1 then "linear"
+          else if scaling < 1.5 then "slightly super-linear"
           else "super-linear (warning!)"
         println(s"  Scaling characteristic: $scalingType ($scaling ratio)")
       case _ => ()

@@ -1,7 +1,7 @@
 package io.constellation.lang.benchmark
 
 import cats.effect.unsafe.implicits.global
-import io.constellation.lang._
+import io.constellation.lang.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -9,22 +9,22 @@ import scala.collection.mutable.ListBuffer
 
 /** Benchmarks for incremental compilation performance
   *
-  * Measures recompilation time for various types of source code changes,
-  * establishing baselines for editor responsiveness targets.
+  * Measures recompilation time for various types of source code changes, establishing baselines for
+  * editor responsiveness targets.
   *
   * Run with: sbt "langCompiler/testOnly *IncrementalCompileBenchmark"
   *
   * Scenarios tested:
-  * - Comment addition (whitespace-only change)
-  * - Variable rename (identifier change)
-  * - New output addition (semantic change)
-  * - Type definition modification (structural change)
+  *   - Comment addition (whitespace-only change)
+  *   - Variable rename (identifier change)
+  *   - New output addition (semantic change)
+  *   - Type definition modification (structural change)
   *
   * Target metrics:
-  * - Comment addition: <50ms
-  * - Variable rename: <100ms
-  * - New output: <100ms
-  * - Type modification: <200ms
+  *   - Comment addition: <50ms
+  *   - Variable rename: <100ms
+  *   - New output: <100ms
+  *   - Type modification: <200ms
   */
 class IncrementalCompileBenchmark extends AnyFlatSpec with Matchers {
 
@@ -273,7 +273,7 @@ class IncrementalCompileBenchmark extends AnyFlatSpec with Matchers {
     ) {
       iteration += 1
       // Modify a boolean expression
-      val toggle = if (iteration % 2 == 0) "and" else "or"
+      val toggle         = if iteration % 2 == 0 then "and" else "or"
       val modifiedSource = baseSource.replace("enabled and active", s"enabled $toggle active")
       compiler.compile(modifiedSource, "expr-dag")
     }
@@ -294,7 +294,7 @@ class IncrementalCompileBenchmark extends AnyFlatSpec with Matchers {
     println("INCREMENTAL COMPILATION SPEEDUP ANALYSIS")
     println("=" * 80)
 
-    val coldResult = allResults.find(_.phase == "cold")
+    val coldResult         = allResults.find(_.phase == "cold")
     val incrementalResults = allResults.filter(_.phase == "incremental").toList
 
     coldResult match {
@@ -305,16 +305,18 @@ class IncrementalCompileBenchmark extends AnyFlatSpec with Matchers {
 
         incrementalResults.foreach { incr =>
           val speedup = cold.avgMs / incr.avgMs
-          val status = if (speedup >= 1.0) "✓" else "✗"
-          println(f"  ${incr.inputSize}%-15s: ${incr.avgMs}%7.2fms  speedup: ${speedup}%5.2fx  $status")
+          val status  = if speedup >= 1.0 then "✓" else "✗"
+          println(
+            f"  ${incr.inputSize}%-15s: ${incr.avgMs}%7.2fms  speedup: ${speedup}%5.2fx  $status"
+          )
         }
 
         println("-" * 60)
 
         // Calculate average incremental time
-        if (incrementalResults.nonEmpty) {
+        if incrementalResults.nonEmpty then {
           val avgIncremental = incrementalResults.map(_.avgMs).sum / incrementalResults.size
-          val avgSpeedup = cold.avgMs / avgIncremental
+          val avgSpeedup     = cold.avgMs / avgIncremental
           println(f"\nAverage incremental time: $avgIncremental%.2fms")
           println(f"Average speedup vs cold:  ${avgSpeedup}%.2fx")
         }
@@ -356,7 +358,7 @@ class IncrementalCompileBenchmark extends AnyFlatSpec with Matchers {
     targets.foreach { case (inputSize, target) =>
       allResults.find(_.inputSize == inputSize) match {
         case Some(result) =>
-          val status = if (result.avgMs <= target) "PASS ✓" else "FAIL ✗"
+          val status = if result.avgMs <= target then "PASS ✓" else "FAIL ✗"
           println(f"  $inputSize%-15s: ${result.avgMs}%7.2fms / ${target}%.0fms target  $status")
         case None =>
           println(f"  $inputSize%-15s: (no data)")

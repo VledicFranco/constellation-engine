@@ -4,18 +4,23 @@ import io.constellation.lang.ast.CompileError
 
 /** Generates contextual suggestions for compiler errors.
   *
-  * Provides "Did you mean?" suggestions using Levenshtein distance
-  * and context-aware suggestions based on error type.
+  * Provides "Did you mean?" suggestions using Levenshtein distance and context-aware suggestions
+  * based on error type.
   */
 object Suggestions {
 
   /** Find strings similar to the target using Levenshtein distance.
     *
-    * @param target The string to match
-    * @param candidates Available strings to suggest
-    * @param maxDistance Maximum edit distance (default 2)
-    * @param maxSuggestions Maximum suggestions to return (default 3)
-    * @return List of similar strings, sorted by similarity (best first)
+    * @param target
+    *   The string to match
+    * @param candidates
+    *   Available strings to suggest
+    * @param maxDistance
+    *   Maximum edit distance (default 2)
+    * @param maxSuggestions
+    *   Maximum suggestions to return (default 3)
+    * @return
+    *   List of similar strings, sorted by similarity (best first)
     */
   def findSimilar(
       target: String,
@@ -33,30 +38,32 @@ object Suggestions {
 
   /** Calculate Levenshtein edit distance between two strings.
     *
-    * The Levenshtein distance is the minimum number of single-character edits
-    * (insertions, deletions, or substitutions) required to change one string
-    * into the other.
+    * The Levenshtein distance is the minimum number of single-character edits (insertions,
+    * deletions, or substitutions) required to change one string into the other.
     *
-    * @param s1 First string
-    * @param s2 Second string
-    * @return Edit distance (0 means strings are identical)
+    * @param s1
+    *   First string
+    * @param s2
+    *   Second string
+    * @return
+    *   Edit distance (0 means strings are identical)
     */
   def levenshteinDistance(s1: String, s2: String): Int = {
     val m = s1.length
     val n = s2.length
 
     // Handle edge cases
-    if (m == 0) return n
-    if (n == 0) return m
+    if m == 0 then return n
+    if n == 0 then return m
 
     // Use two-row optimization to reduce memory
     var prevRow = (0 to n).toArray
     var currRow = new Array[Int](n + 1)
 
-    for (i <- 1 to m) {
+    for i <- 1 to m do {
       currRow(0) = i
-      for (j <- 1 to n) {
-        val cost = if (s1(i - 1) == s2(j - 1)) 0 else 1
+      for j <- 1 to n do {
+        val cost = if s1(i - 1) == s2(j - 1) then 0 else 1
         currRow(j) = Math.min(
           Math.min(prevRow(j) + 1, currRow(j - 1) + 1),
           prevRow(j - 1) + cost
@@ -73,20 +80,23 @@ object Suggestions {
 
   /** Generate contextual suggestions for a compile error.
     *
-    * @param error The compile error
-    * @param context Compilation context with available symbols
-    * @return List of suggestion strings
+    * @param error
+    *   The compile error
+    * @param context
+    *   Compilation context with available symbols
+    * @return
+    *   List of suggestion strings
     */
   def forError(error: CompileError, context: SuggestionContext): List[String] =
     error match {
       case CompileError.UndefinedVariable(name, _) =>
         val similar = findSimilar(name, context.definedVariables)
         similar.map(s => s"Did you mean '$s'?") ++
-          (if (similar.isEmpty) List(s"Declare the variable: in $name: String") else Nil)
+          (if similar.isEmpty then List(s"Declare the variable: in $name: String") else Nil)
 
       case CompileError.UndefinedFunction(name, _) =>
-        val similar = findSimilar(name, context.availableFunctions)
-        val didYouMean = similar.map(s => s"Did you mean '$s'?")
+        val similar           = findSimilar(name, context.availableFunctions)
+        val didYouMean        = similar.map(s => s"Did you mean '$s'?")
         val importSuggestions = suggestImports(name, context)
         didYouMean ++ importSuggestions
 
@@ -99,14 +109,14 @@ object Suggestions {
       case CompileError.InvalidProjection(field, availableFields, _) =>
         val similar = findSimilar(field, availableFields)
         similar.map(s => s"Did you mean '$s'?") ++
-          (if (availableFields.nonEmpty)
+          (if availableFields.nonEmpty then
              List(s"Available fields: ${availableFields.mkString(", ")}")
            else Nil)
 
       case CompileError.InvalidFieldAccess(field, availableFields, _) =>
         val similar = findSimilar(field, availableFields)
         similar.map(s => s"Did you mean '.$s'?") ++
-          (if (availableFields.nonEmpty)
+          (if availableFields.nonEmpty then
              List(s"Available fields: ${availableFields.mkString(", ")}")
            else Nil)
 
@@ -116,7 +126,7 @@ object Suggestions {
       case CompileError.UndefinedNamespace(namespace, _) =>
         val similar = findSimilar(namespace, context.availableNamespaces)
         similar.map(s => s"Did you mean '$s'?") ++
-          (if (context.availableNamespaces.nonEmpty)
+          (if context.availableNamespaces.nonEmpty then
              List(s"Available namespaces: ${context.availableNamespaces.mkString(", ")}")
            else Nil)
 

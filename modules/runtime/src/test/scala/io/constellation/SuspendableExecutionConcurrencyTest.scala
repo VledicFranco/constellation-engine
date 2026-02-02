@@ -11,19 +11,22 @@ import java.util.UUID
 
 /** Tests for SuspendableExecution concurrent resume safety.
   *
-  * Verifies that concurrent resume calls on the same suspended execution
-  * are properly serialized to prevent data corruption.
+  * Verifies that concurrent resume calls on the same suspended execution are properly serialized to
+  * prevent data corruption.
   */
 class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
 
   // Helper to create a minimal suspended execution
-  private def createSuspendedExecution(executionId: UUID = UUID.randomUUID()): SuspendedExecution = {
+  private def createSuspendedExecution(
+      executionId: UUID = UUID.randomUUID()
+  ): SuspendedExecution = {
     // Create a user input data node with proper nickname
     val inputUuid = UUID.randomUUID()
     val inputDataNode = DataNodeSpec(
       name = "input1_data",
       cType = CType.CString,
-      nicknames = Map(UUID.randomUUID() -> "input1"), // Map some module UUID to the nickname "input1"
+      nicknames =
+        Map(UUID.randomUUID() -> "input1"), // Map some module UUID to the nickname "input1"
       inlineTransform = None,
       transformInputs = Map.empty
     )
@@ -71,7 +74,7 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
     val (result1, result2) = results
 
     val successes = List(result1, result2).count(_.isRight)
-    val failures = List(result1, result2).count(_.isLeft)
+    val failures  = List(result1, result2).count(_.isLeft)
 
     successes should be(1)
     failures should be(1)
@@ -86,20 +89,26 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
     val suspended = createSuspendedExecution()
 
     // First resume should succeed
-    val result1 = SuspendableExecution.resume(
-      suspended = suspended,
-      additionalInputs = Map("input1" -> CValue.CString("value-A"))
-    ).attempt.unsafeRunSync()
+    val result1 = SuspendableExecution
+      .resume(
+        suspended = suspended,
+        additionalInputs = Map("input1" -> CValue.CString("value-A"))
+      )
+      .attempt
+      .unsafeRunSync()
 
     result1 should be a Symbol("right")
 
     // Second resume (after first completes) should also work
     // Note: In practice, you'd resume the new suspended state, but for testing the lock mechanism,
     // we're testing that the lock is released after the first resume completes
-    val result2 = SuspendableExecution.resume(
-      suspended = suspended,
-      additionalInputs = Map("input1" -> CValue.CString("value-B"))
-    ).attempt.unsafeRunSync()
+    val result2 = SuspendableExecution
+      .resume(
+        suspended = suspended,
+        additionalInputs = Map("input1" -> CValue.CString("value-B"))
+      )
+      .attempt
+      .unsafeRunSync()
 
     result2 should be a Symbol("right")
   }
@@ -109,19 +118,25 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
     val suspended = createSuspendedExecution()
 
     // First resume will fail due to validation error (unknown input)
-    val result1 = SuspendableExecution.resume(
-      suspended = suspended,
-      additionalInputs = Map("unknown-input" -> CValue.CString("value"))
-    ).attempt.unsafeRunSync()
+    val result1 = SuspendableExecution
+      .resume(
+        suspended = suspended,
+        additionalInputs = Map("unknown-input" -> CValue.CString("value"))
+      )
+      .attempt
+      .unsafeRunSync()
 
     result1.isLeft should be(true)
     result1.left.toOption.get shouldBe a[UnknownNodeError]
 
     // Second resume should work (lock was released despite first resume failing)
-    val result2 = SuspendableExecution.resume(
-      suspended = suspended,
-      additionalInputs = Map("input1" -> CValue.CString("value-A"))
-    ).attempt.unsafeRunSync()
+    val result2 = SuspendableExecution
+      .resume(
+        suspended = suspended,
+        additionalInputs = Map("input1" -> CValue.CString("value-A"))
+      )
+      .attempt
+      .unsafeRunSync()
 
     result2 should be a Symbol("right")
   }
@@ -153,10 +168,12 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
 
     // Launch 10 concurrent resume attempts
     val resumes = (1 to 10).map { i =>
-      SuspendableExecution.resume(
-        suspended = suspended,
-        additionalInputs = Map("input1" -> CValue.CString(s"value-$i"))
-      ).attempt
+      SuspendableExecution
+        .resume(
+          suspended = suspended,
+          additionalInputs = Map("input1" -> CValue.CString(s"value-$i"))
+        )
+        .attempt
     }.toList
 
     // Run all in parallel
@@ -164,7 +181,7 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
 
     // Exactly one should succeed, others should fail with ResumeInProgressError
     val successes = results.count(_.isRight)
-    val failures = results.count(_.isLeft)
+    val failures  = results.count(_.isLeft)
 
     successes should be(1)
     failures should be(9)

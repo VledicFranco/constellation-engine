@@ -2,30 +2,30 @@ package io.constellation.execution
 
 import cats.effect.{IO, Ref}
 import cats.effect.std.Queue
-import cats.implicits._
+import cats.implicits.*
 
 import java.util.concurrent.atomic.AtomicLong
 
 /** Priority levels for task scheduling.
   *
   * Higher values indicate higher priority:
-  * - Critical (100): System-critical tasks
-  * - High (75): User-facing, latency-sensitive
-  * - Normal (50): Default priority
-  * - Low (25): Background processing
-  * - Background (0): Best-effort, lowest priority
-  * - Custom(n): User-defined priority value
+  *   - Critical (100): System-critical tasks
+  *   - High (75): User-facing, latency-sensitive
+  *   - Normal (50): Default priority
+  *   - Low (25): Background processing
+  *   - Background (0): Best-effort, lowest priority
+  *   - Custom(n): User-defined priority value
   */
 sealed trait PriorityLevel {
   def value: Int
 }
 
 object PriorityLevel {
-  case object Critical extends PriorityLevel { val value = 100 }
-  case object High extends PriorityLevel { val value = 75 }
-  case object Normal extends PriorityLevel { val value = 50 }
-  case object Low extends PriorityLevel { val value = 25 }
-  case object Background extends PriorityLevel { val value = 0 }
+  case object Critical          extends PriorityLevel { val value = 100 }
+  case object High              extends PriorityLevel { val value = 75  }
+  case object Normal            extends PriorityLevel { val value = 50  }
+  case object Low               extends PriorityLevel { val value = 25  }
+  case object Background        extends PriorityLevel { val value = 0   }
   case class Custom(value: Int) extends PriorityLevel
 
   /** Parse priority level from string. */
@@ -46,10 +46,14 @@ object PriorityLevel {
 
 /** A prioritized task for scheduling.
   *
-  * @param id Unique task identifier
-  * @param priority Task priority level
-  * @param submittedAt Submission timestamp (for FIFO within same priority)
-  * @param task The task to execute
+  * @param id
+  *   Unique task identifier
+  * @param priority
+  *   Task priority level
+  * @param submittedAt
+  *   Submission timestamp (for FIFO within same priority)
+  * @param task
+  *   The task to execute
   */
 final case class PrioritizedTask[A](
     id: Long,
@@ -59,6 +63,7 @@ final case class PrioritizedTask[A](
 )
 
 object PrioritizedTask {
+
   /** Ordering: higher priority first, then earlier submission. */
   implicit def ordering[A]: Ordering[PrioritizedTask[A]] =
     Ordering.by[PrioritizedTask[A], (Int, Long)](t => (-t.priority, t.submittedAt))
@@ -66,13 +71,13 @@ object PrioritizedTask {
 
 /** Priority-based task scheduler.
   *
-  * Provides priority hints for task execution. Higher priority tasks
-  * are preferred over lower priority ones.
+  * Provides priority hints for task execution. Higher priority tasks are preferred over lower
+  * priority ones.
   *
   * ==Current Implementation==
   *
-  * Currently executes tasks immediately with priority recorded for metrics.
-  * Future versions may implement actual priority queue scheduling.
+  * Currently executes tasks immediately with priority recorded for metrics. Future versions may
+  * implement actual priority queue scheduling.
   *
   * ==Usage==
   *
@@ -94,17 +99,20 @@ class PriorityScheduler private (
 
   /** Submit a task with the given priority.
     *
-    * @param task The task to execute
-    * @param priority The priority level
-    * @return The task result
+    * @param task
+    *   The task to execute
+    * @param priority
+    *   The priority level
+    * @return
+    *   The task result
     */
   def submit[A](task: IO[A], priority: PriorityLevel): IO[A] = {
-    val taskId = taskIdCounter.incrementAndGet()
+    val taskId      = taskIdCounter.incrementAndGet()
     val submittedAt = System.currentTimeMillis()
 
     for {
       // Record submission
-      _ <- statsRef.update(_.recordSubmission(priority))
+      _         <- statsRef.update(_.recordSubmission(priority))
       startTime <- IO.realTime
       // Execute the task
       result <- task.guarantee {
@@ -130,18 +138,20 @@ class PriorityScheduler private (
 object PriorityScheduler {
 
   /** Create a new priority scheduler. */
-  def create: IO[PriorityScheduler] = {
+  def create: IO[PriorityScheduler] =
     for {
       statsRef <- Ref.of[IO, PrioritySchedulerStats](PrioritySchedulerStats.empty)
     } yield new PriorityScheduler(new AtomicLong(0), statsRef)
-  }
 }
 
 /** Statistics for priority scheduler.
   *
-  * @param totalSubmitted Total tasks submitted
-  * @param totalCompleted Total tasks completed
-  * @param byPriority Per-priority statistics
+  * @param totalSubmitted
+  *   Total tasks submitted
+  * @param totalCompleted
+  *   Total tasks completed
+  * @param byPriority
+  *   Per-priority statistics
   */
 final case class PrioritySchedulerStats(
     totalSubmitted: Long,
@@ -171,13 +181,16 @@ final case class PrioritySchedulerStats(
 
   /** Get completion rate (0.0 to 1.0). */
   def completionRate: Double =
-    if (totalSubmitted == 0) 1.0
+    if totalSubmitted == 0 then 1.0
     else totalCompleted.toDouble / totalSubmitted
 
   override def toString: String = {
-    val priorities = byPriority.toSeq.sortBy(-_._1).map { case (p, s) =>
-      s"  priority=$p: ${s.submitted} submitted, ${s.completed} completed, avg=${s.avgDurationMs}ms"
-    }.mkString("\n")
+    val priorities = byPriority.toSeq
+      .sortBy(-_._1)
+      .map { case (p, s) =>
+        s"  priority=$p: ${s.submitted} submitted, ${s.completed} completed, avg=${s.avgDurationMs}ms"
+      }
+      .mkString("\n")
     s"PrioritySchedulerStats(submitted=$totalSubmitted, completed=$totalCompleted)\n$priorities"
   }
 }
@@ -198,7 +211,7 @@ final case class PriorityStats(
     copy(completed = completed + 1, totalDurationMs = totalDurationMs + durationMs)
 
   def avgDurationMs: Long =
-    if (completed == 0) 0
+    if completed == 0 then 0
     else totalDurationMs / completed
 
   def pendingCount: Long = submitted - completed

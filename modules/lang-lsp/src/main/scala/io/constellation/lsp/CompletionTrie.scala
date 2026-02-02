@@ -3,23 +3,22 @@ package io.constellation.lsp
 import io.constellation.lsp.protocol.LspTypes.CompletionItem
 import scala.collection.mutable
 
-/**
- * A trie (prefix tree) for efficient completion lookups.
- *
- * Provides O(k) lookup where k is the prefix length, compared to
- * O(n) for linear filtering where n is the number of items.
- *
- * This implementation is NOT thread-safe. Create a new trie for concurrent
- * access or synchronize externally.
- */
+/** A trie (prefix tree) for efficient completion lookups.
+  *
+  * Provides O(k) lookup where k is the prefix length, compared to O(n) for linear filtering where n
+  * is the number of items.
+  *
+  * This implementation is NOT thread-safe. Create a new trie for concurrent access or synchronize
+  * externally.
+  */
 class CompletionTrie {
 
   private class TrieNode {
-    val children: mutable.Map[Char, TrieNode] = mutable.Map.empty
+    val children: mutable.Map[Char, TrieNode]     = mutable.Map.empty
     val items: mutable.ListBuffer[CompletionItem] = mutable.ListBuffer.empty
   }
 
-  private val root = new TrieNode()
+  private val root       = new TrieNode()
   private var _size: Int = 0
 
   /** Number of items in the trie */
@@ -31,38 +30,36 @@ class CompletionTrie {
   /** Check if the trie is non-empty */
   def nonEmpty: Boolean = _size > 0
 
-  /**
-   * Insert a completion item into the trie.
-   *
-   * @param item The completion item to insert
-   */
+  /** Insert a completion item into the trie.
+    *
+    * @param item
+    *   The completion item to insert
+    */
   def insert(item: CompletionItem): Unit = {
-    val key = item.label.toLowerCase
+    val key  = item.label.toLowerCase
     var node = root
 
-    for (char <- key) {
-      node = node.children.getOrElseUpdate(char, new TrieNode())
-    }
+    for char <- key do node = node.children.getOrElseUpdate(char, new TrieNode())
 
     node.items += item
     _size += 1
   }
 
-  /**
-   * Insert multiple completion items into the trie.
-   *
-   * @param items The completion items to insert
-   */
-  def insertAll(items: Iterable[CompletionItem]): Unit = {
+  /** Insert multiple completion items into the trie.
+    *
+    * @param items
+    *   The completion items to insert
+    */
+  def insertAll(items: Iterable[CompletionItem]): Unit =
     items.foreach(insert)
-  }
 
-  /**
-   * Find all items matching the given prefix (case-insensitive).
-   *
-   * @param prefix The prefix to search for. Empty string returns all items.
-   * @return List of matching completion items
-   */
+  /** Find all items matching the given prefix (case-insensitive).
+    *
+    * @param prefix
+    *   The prefix to search for. Empty string returns all items.
+    * @return
+    *   List of matching completion items
+    */
   def findByPrefix(prefix: String): List[CompletionItem] = {
     val lowerPrefix = prefix.toLowerCase
 
@@ -74,10 +71,10 @@ class CompletionTrie {
   }
 
   private def navigateToPrefix(prefix: String): Option[TrieNode] = {
-    var node = root
-    var i = 0
+    var node  = root
+    var i     = 0
     var found = true
-    while (i < prefix.length && found) {
+    while i < prefix.length && found do
       node.children.get(prefix.charAt(i)) match {
         case Some(child) =>
           node = child
@@ -85,26 +82,24 @@ class CompletionTrie {
         case None =>
           found = false
       }
-    }
-    if (found) Some(node) else None
+    if found then Some(node) else None
   }
 
-  /**
-   * Check if any items match the given prefix.
-   *
-   * @param prefix The prefix to check
-   * @return true if any items match, false otherwise
-   */
-  def hasPrefix(prefix: String): Boolean = {
+  /** Check if any items match the given prefix.
+    *
+    * @param prefix
+    *   The prefix to check
+    * @return
+    *   true if any items match, false otherwise
+    */
+  def hasPrefix(prefix: String): Boolean =
     navigateToPrefix(prefix.toLowerCase) match {
       case Some(node) => node.items.nonEmpty || node.children.nonEmpty
       case None       => false
     }
-  }
 
-  /**
-   * Clear all items from the trie.
-   */
+  /** Clear all items from the trie.
+    */
   def clear(): Unit = {
     root.children.clear()
     root.items.clear()
@@ -122,30 +117,29 @@ class CompletionTrie {
       result: mutable.ListBuffer[CompletionItem]
   ): Unit = {
     result ++= node.items
-    for ((_, child) <- node.children) {
-      collectAllRecursive(child, result)
-    }
+    for (_, child) <- node.children do collectAllRecursive(child, result)
   }
 }
 
 object CompletionTrie {
 
-  /**
-   * Create a trie from a list of completion items.
-   *
-   * @param items The items to populate the trie with
-   * @return A new trie containing all items
-   */
+  /** Create a trie from a list of completion items.
+    *
+    * @param items
+    *   The items to populate the trie with
+    * @return
+    *   A new trie containing all items
+    */
   def apply(items: Iterable[CompletionItem]): CompletionTrie = {
     val trie = new CompletionTrie()
     trie.insertAll(items)
     trie
   }
 
-  /**
-   * Create an empty trie.
-   *
-   * @return A new empty trie
-   */
+  /** Create an empty trie.
+    *
+    * @return
+    *   A new empty trie
+    */
   def empty: CompletionTrie = new CompletionTrie()
 }

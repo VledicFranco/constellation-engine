@@ -20,7 +20,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   private val constellation    = ConstellationImpl.init.unsafeRunSync()
   private val compiler         = LangCompiler.empty
   private val functionRegistry = FunctionRegistry.empty
-  private val routes           = ConstellationRoutes(constellation, compiler, functionRegistry).routes
+  private val routes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
 
   // ---------------------------------------------------------------------------
   // POST /compile — returns structuralHash + syntacticHash
@@ -32,7 +32,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       name = Some("hash-test")
     )
 
-    val request = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
+    val request  = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.Ok
@@ -66,10 +66,10 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     )
 
     val request = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
-    val resp = routes.orNotFound.run(request).unsafeRunSync()
-    val body = resp.as[CompileResponse].unsafeRunSync()
+    val resp    = routes.orNotFound.run(request).unsafeRunSync()
+    val body    = resp.as[CompileResponse].unsafeRunSync()
 
-    val hash = body.structuralHash.get
+    val hash  = body.structuralHash.get
     val image = constellation.programStore.get(hash).unsafeRunSync()
     image shouldBe defined
     image.get.structuralHash shouldBe hash
@@ -81,19 +81,24 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
 
   "POST /execute" should "execute by name (ref field)" in {
     // Compile first
-    val compileReq = CompileRequest(source = "in text: String\nout text", name = Some("exec-by-name"))
-    routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync()
+    val compileReq =
+      CompileRequest(source = "in text: String\nout text", name = Some("exec-by-name"))
+    routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
 
     // Execute by name
     val execReq = ExecuteRequest(
       ref = Some("exec-by-name"),
       inputs = Map("text" -> Json.fromString("hello"))
     )
-    val response = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(execReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(execReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[ExecuteResponse].unsafeRunSync()
@@ -104,9 +109,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   it should "execute by structural hash (sha256: prefix)" in {
     // Compile first
     val compileReq = CompileRequest(source = "in n: Int\nout n", name = Some("exec-by-hash"))
-    val compileResp = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync()
+    val compileResp = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
     val hash = compileResp.as[CompileResponse].unsafeRunSync().structuralHash.get
 
     // Execute by hash
@@ -114,9 +121,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       ref = Some(s"sha256:$hash"),
       inputs = Map("n" -> Json.fromLong(42))
     )
-    val response = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(execReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(execReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[ExecuteResponse].unsafeRunSync()
@@ -127,18 +136,22 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   it should "fall back to legacy dagName for backward compat" in {
     // Compile with legacy dagName
     val compileReq = CompileRequest(source = "in v: String\nout v", dagName = Some("legacy-dag"))
-    routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync()
+    routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
 
     // Execute with legacy dagName
     val execReq = ExecuteRequest(
       dagName = Some("legacy-dag"),
       inputs = Map("v" -> Json.fromString("legacy"))
     )
-    val response = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(execReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(execReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[ExecuteResponse].unsafeRunSync()
@@ -151,9 +164,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       ref = Some("nonexistent-program"),
       inputs = Map("x" -> Json.fromLong(1))
     )
-    val response = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(execReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(execReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.NotFound
   }
@@ -167,9 +182,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in x: Int\nout x",
       inputs = Map("x" -> Json.fromLong(99))
     )
-    val response = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(runReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(runReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[RunResponse].unsafeRunSync()
@@ -181,17 +198,25 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   it should "produce same structuralHash for same source (dedup)" in {
     val source = "in a: String\nout a"
 
-    val resp1 = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(
-        RunRequest(source, Map("a" -> Json.fromString("first")))
+    val resp1 = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(
+          RunRequest(source, Map("a" -> Json.fromString("first")))
+        )
       )
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
 
-    val resp2 = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(
-        RunRequest(source, Map("a" -> Json.fromString("second")))
+    val resp2 = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(
+          RunRequest(source, Map("a" -> Json.fromString("second")))
+        )
       )
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
 
     resp1.structuralHash shouldBe resp2.structuralHash
   }
@@ -201,11 +226,15 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in flag: Boolean\nout flag",
       inputs = Map("flag" -> Json.fromBoolean(true))
     )
-    val body = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(runReq)
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+    val body = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(runReq)
+      )
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
 
-    val hash = body.structuralHash.get
+    val hash  = body.structuralHash.get
     val image = constellation.programStore.get(hash).unsafeRunSync()
     image shouldBe defined
   }
@@ -220,13 +249,17 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in w: Int\nout w",
       name = Some("list-prog-test")
     )
-    routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync()
+    routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
 
-    val response = routes.orNotFound.run(
-      Request[IO](Method.GET, uri"/programs")
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.GET, uri"/programs")
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[ProgramListResponse].unsafeRunSync()
@@ -245,13 +278,17 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in q: String\nout q",
       name = Some("detail-test")
     )
-    routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync()
+    routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
 
-    val response = routes.orNotFound.run(
-      Request[IO](Method.GET, uri"/programs/detail-test")
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.GET, uri"/programs/detail-test")
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
     val body = response.as[ProgramDetailResponse].unsafeRunSync()
@@ -261,9 +298,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return 404 for unknown program" in {
-    val response = routes.orNotFound.run(
-      Request[IO](Method.GET, uri"/programs/nonexistent")
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.GET, uri"/programs/nonexistent")
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.NotFound
   }
@@ -278,16 +317,22 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in del: Int\nout del",
       inputs = Map("del" -> Json.fromLong(1))
     )
-    val runBody = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(runReq)
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+    val runBody = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(runReq)
+      )
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
 
     val hash = runBody.structuralHash.get
 
     // Delete by hash
-    val response = routes.orNotFound.run(
-      Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
 
@@ -301,15 +346,21 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in keep: String\nout keep",
       name = Some("cannot-delete-alias")
     )
-    val compileBody = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
-    ).unsafeRunSync().as[CompileResponse].unsafeRunSync()
+    val compileBody = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(compileReq)
+      )
+      .unsafeRunSync()
+      .as[CompileResponse]
+      .unsafeRunSync()
 
     val hash = compileBody.structuralHash.get
 
-    val response = routes.orNotFound.run(
-      Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Conflict
     val body = response.as[ErrorResponse].unsafeRunSync()
@@ -317,9 +368,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return 404 for deleting unknown program" in {
-    val response = routes.orNotFound.run(
-      Request[IO](Method.DELETE, uri"/programs/sha256:nonexistent")
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.DELETE, uri"/programs/sha256:nonexistent")
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.NotFound
   }
@@ -331,9 +384,13 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   "PUT /programs/:name/alias" should "repoint alias to different hash" in {
     // Compile v1
     val v1 = CompileRequest(source = "in x: Int\nout x", name = Some("aliased-prog"))
-    val v1Body = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(v1)
-    ).unsafeRunSync().as[CompileResponse].unsafeRunSync()
+    val v1Body = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(v1)
+      )
+      .unsafeRunSync()
+      .as[CompileResponse]
+      .unsafeRunSync()
     val hash1 = v1Body.structuralHash.get
 
     // Compile v2 (different source = different hash)
@@ -341,18 +398,24 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in x: Int\nin y: Int\nout x",
       inputs = Map("x" -> Json.fromLong(1), "y" -> Json.fromLong(2))
     )
-    val v2Body = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(v2Run)
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+    val v2Body = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(v2Run)
+      )
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
     val hash2 = v2Body.structuralHash.get
 
     hash1 should not equal hash2
 
     // Repoint alias to v2
     val aliasReq = AliasRequest(structuralHash = hash2)
-    val response = routes.orNotFound.run(
-      Request[IO](Method.PUT, uri"/programs/aliased-prog/alias").withEntity(aliasReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.PUT, uri"/programs/aliased-prog/alias").withEntity(aliasReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.Ok
 
@@ -363,9 +426,11 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
 
   it should "return 404 when target hash doesn't exist" in {
     val aliasReq = AliasRequest(structuralHash = "nonexistent-hash")
-    val response = routes.orNotFound.run(
-      Request[IO](Method.PUT, uri"/programs/some-name/alias").withEntity(aliasReq)
-    ).unsafeRunSync()
+    val response = routes.orNotFound
+      .run(
+        Request[IO](Method.PUT, uri"/programs/some-name/alias").withEntity(aliasReq)
+      )
+      .unsafeRunSync()
 
     response.status shouldBe Status.NotFound
   }
@@ -377,15 +442,21 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   "Hot-load scenario" should "execute new version after alias repoint" in {
     // Compile v1: passthrough x
     val v1 = CompileRequest(source = "in x: Int\nout x", name = Some("hotload-prog"))
-    routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/compile").withEntity(v1)
-    ).unsafeRunSync()
+    routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/compile").withEntity(v1)
+      )
+      .unsafeRunSync()
 
     // Execute v1
     val exec1 = ExecuteRequest(ref = Some("hotload-prog"), inputs = Map("x" -> Json.fromLong(10)))
-    val resp1 = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(exec1)
-    ).unsafeRunSync().as[ExecuteResponse].unsafeRunSync()
+    val resp1 = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(exec1)
+      )
+      .unsafeRunSync()
+      .as[ExecuteResponse]
+      .unsafeRunSync()
     resp1.success shouldBe true
     resp1.outputs.get("x") shouldBe Some(Json.fromLong(10))
 
@@ -394,22 +465,33 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       source = "in y: String\nout y",
       inputs = Map("y" -> Json.fromString("v2"))
     )
-    val v2Body = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/run").withEntity(v2Run)
-    ).unsafeRunSync().as[RunResponse].unsafeRunSync()
+    val v2Body = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/run").withEntity(v2Run)
+      )
+      .unsafeRunSync()
+      .as[RunResponse]
+      .unsafeRunSync()
     val hash2 = v2Body.structuralHash.get
 
     // Repoint alias to v2
-    routes.orNotFound.run(
-      Request[IO](Method.PUT, uri"/programs/hotload-prog/alias")
-        .withEntity(AliasRequest(hash2))
-    ).unsafeRunSync()
+    routes.orNotFound
+      .run(
+        Request[IO](Method.PUT, uri"/programs/hotload-prog/alias")
+          .withEntity(AliasRequest(hash2))
+      )
+      .unsafeRunSync()
 
     // Execute should now use v2 (expects "y" input)
-    val exec2 = ExecuteRequest(ref = Some("hotload-prog"), inputs = Map("y" -> Json.fromString("updated")))
-    val resp2 = routes.orNotFound.run(
-      Request[IO](Method.POST, uri"/execute").withEntity(exec2)
-    ).unsafeRunSync().as[ExecuteResponse].unsafeRunSync()
+    val exec2 =
+      ExecuteRequest(ref = Some("hotload-prog"), inputs = Map("y" -> Json.fromString("updated")))
+    val resp2 = routes.orNotFound
+      .run(
+        Request[IO](Method.POST, uri"/execute").withEntity(exec2)
+      )
+      .unsafeRunSync()
+      .as[ExecuteResponse]
+      .unsafeRunSync()
 
     resp2.success shouldBe true
     resp2.outputs.get("y") shouldBe Some(Json.fromString("updated"))

@@ -84,7 +84,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     compiled.program.image.dagSpec.declaredOutputs should contain("result")
 
     // Should have the Uppercase module
-    compiled.program.image.dagSpec.modules.values.map(_.name).exists(_.contains("Uppercase")) shouldBe true
+    compiled.program.image.dagSpec.modules.values
+      .map(_.name)
+      .exists(_.contains("Uppercase")) shouldBe true
   }
 
   // ========== text-analysis.cst ==========
@@ -257,7 +259,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("HELLO WORLD")
   }
@@ -385,7 +387,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "union-typedef-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -405,7 +407,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "union-record-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -424,7 +426,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "union-assign-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("y")
     outputBinding.isDefined shouldBe true
 
@@ -445,7 +447,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "union-param-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -453,7 +455,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         structure.keys should contain("String")
         structure.values.exists {
           case CType.COptional(CType.CInt) => true
-          case _ => false
+          case _                           => false
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }
@@ -470,7 +472,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "union-merge-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled  = result.toOption.get
     val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
@@ -503,7 +505,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "guard-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -522,7 +524,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "guard-record-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -545,7 +547,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "guard-union-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -570,7 +572,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "coalesce-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -589,7 +591,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "coalesce-optional-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -609,7 +611,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "guard-coalesce-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -629,7 +631,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = compiler.compile(source, "chained-coalesce-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -642,17 +644,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   "Lambda and HOF programs" should "compile filter with lambda" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x) => gt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "filter-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "filter-lambda-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -663,17 +665,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile map with lambda" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.math
       in numbers: List<Int>
       result = map(numbers, (x) => multiply(x, 2))
       out result
     """
-    val result = stdlibCompiler.compile(source, "map-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "map-lambda-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -684,17 +686,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile all with lambda" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = all(numbers, (x) => gt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "all-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "all-lambda-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -705,17 +707,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile any with lambda" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = any(numbers, (x) => lt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "any-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "any-lambda-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -726,7 +728,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile chained filter and map with lambdas" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       use stdlib.math
@@ -735,7 +737,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       result = map(positives, (x) => multiply(x, 2))
       out result
     """
-    val result = stdlibCompiler.compile(source, "filter-map-chain-dag")
+    val result         = stdlibCompiler.compile(source, "filter-map-chain-dag")
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
@@ -752,17 +754,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile lambda with boolean operators in body" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x) => gt(x, 0) and lt(x, 100))
       out result
     """
-    val result = stdlibCompiler.compile(source, "lambda-bool-ops-dag")
+    val result         = stdlibCompiler.compile(source, "lambda-bool-ops-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
@@ -772,20 +774,20 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile lambda with explicit type annotation" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x: Int) => gt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "typed-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "typed-lambda-dag")
     result.isRight shouldBe true
   }
 
   it should "compile filter result passed to all" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
@@ -793,18 +795,18 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       result = all(positives, (x) => gt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "filter-to-all-dag")
+    val result         = stdlibCompiler.compile(source, "filter-to-all-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
   it should "compile filter result passed to any" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
@@ -812,18 +814,18 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       result = any(positives, (x) => gt(x, 100))
       out result
     """
-    val result = stdlibCompiler.compile(source, "filter-to-any-dag")
+    val result         = stdlibCompiler.compile(source, "filter-to-any-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
   it should "compile map result passed to filter" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       use stdlib.math
@@ -832,38 +834,38 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       result = filter(doubled, (x) => gt(x, 10))
       out result
     """
-    val result = stdlibCompiler.compile(source, "map-to-filter-dag")
+    val result         = stdlibCompiler.compile(source, "map-to-filter-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
 
   it should "compile lambda with literal comparison" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x) => gt(x, 42))
       out result
     """
-    val result = stdlibCompiler.compile(source, "literal-compare-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "literal-compare-lambda-dag")
     result.isRight shouldBe true
   }
 
   it should "compile lambda with not operator" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x) => not gt(x, 0))
       out result
     """
-    val result = stdlibCompiler.compile(source, "not-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "not-lambda-dag")
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
@@ -875,61 +877,61 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
   it should "compile lambda with or operator" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       use stdlib.compare
       in numbers: List<Int>
       result = filter(numbers, (x) => lt(x, 0) or gt(x, 100))
       out result
     """
-    val result = stdlibCompiler.compile(source, "or-lambda-dag")
+    val result         = stdlibCompiler.compile(source, "or-lambda-dag")
     result.isRight shouldBe true
   }
 
   it should "compile all with literal true predicate" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       in numbers: List<Int>
       result = all(numbers, (x) => true)
       out result
     """
-    val result = stdlibCompiler.compile(source, "all-true-dag")
+    val result         = stdlibCompiler.compile(source, "all-true-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
   it should "compile any with literal false predicate" in {
     val stdlibCompiler = StdLib.compiler
-    val source = """
+    val source         = """
       use stdlib.collection
       in numbers: List<Int>
       result = any(numbers, (x) => false)
       out result
     """
-    val result = stdlibCompiler.compile(source, "any-false-dag")
+    val result         = stdlibCompiler.compile(source, "any-false-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
   // ========== Lambda Execution Tests ==========
 
   "lambdas-and-hof.cst" should "compile successfully" in {
-    val files = getExampleFiles
+    val files      = getExampleFiles
     val hofExample = files.find(_.getName == "lambdas-and-hof.cst")
     hofExample shouldBe defined
 
-    val source = readFile(hofExample.get)
+    val source         = readFile(hofExample.get)
     val stdlibCompiler = StdLib.compiler
-    val result = stdlibCompiler.compile(source, "lambdas-and-hof")
+    val result         = stdlibCompiler.compile(source, "lambdas-and-hof")
 
     result match {
       case Left(errors) =>
@@ -944,12 +946,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "have expected HOF data nodes with inline transforms" in {
-    val files = getExampleFiles
-    val hofExample = files.find(_.getName == "lambdas-and-hof.cst").get
-    val source = readFile(hofExample)
+    val files          = getExampleFiles
+    val hofExample     = files.find(_.getName == "lambdas-and-hof.cst").get
+    val source         = readFile(hofExample)
     val stdlibCompiler = StdLib.compiler
-    val result = stdlibCompiler.compile(source, "lambdas-and-hof")
-    val compiled = result.toOption.get
+    val result         = stdlibCompiler.compile(source, "lambdas-and-hof")
+    val compiled       = result.toOption.get
 
     // Should have FilterTransform nodes
     val filterNodes = compiled.program.image.dagSpec.data.values.filter(d =>
@@ -990,9 +992,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val result = stdlibCompiler.compile(source, "interp-simple-dag")
     result.isRight shouldBe true
 
-    val compiled = result.toOption.get
+    val compiled      = result.toOption.get
     val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CString
   }
 
@@ -1204,7 +1206,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   "string-interpolation.cst" should "compile successfully" in {
-    val files = getExampleFiles
+    val files         = getExampleFiles
     val interpExample = files.find(_.getName == "string-interpolation.cst")
     interpExample shouldBe defined
 
@@ -1224,11 +1226,11 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "have expected StringInterpolationTransform nodes" in {
-    val files = getExampleFiles
+    val files         = getExampleFiles
     val interpExample = files.find(_.getName == "string-interpolation.cst").get
-    val source = readFile(interpExample)
+    val source        = readFile(interpExample)
     // Use ExampleLib compiler which includes Uppercase and other example functions
-    val result = compiler.compile(source, "string-interpolation")
+    val result   = compiler.compile(source, "string-interpolation")
     val compiled = result.toOption.get
 
     // Should have multiple StringInterpolationTransform nodes
@@ -1242,14 +1244,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in name: String
         result = "Hello, ${name}!"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("name" -> CValue.CString("World"))
@@ -1257,7 +1261,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Hello, World!")
@@ -1267,26 +1271,28 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in firstName: String
         in lastName: String
         result = "${firstName} ${lastName}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-multi-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-multi-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map(
         "firstName" -> CValue.CString("John"),
-        "lastName" -> CValue.CString("Doe")
+        "lastName"  -> CValue.CString("Doe")
       )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("John Doe")
@@ -1296,14 +1302,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in count: Int
         result = "Count: ${count}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-int-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-int-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("count" -> CValue.CInt(42))
@@ -1311,7 +1319,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Count: 42")
@@ -1321,14 +1329,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in active: Boolean
         result = "Active: ${active}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-bool-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-bool-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("active" -> CValue.CBoolean(true))
@@ -1336,7 +1346,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Active: true")
@@ -1346,14 +1356,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in name: String
         result = "${name} says hi"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-start-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-start-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("name" -> CValue.CString("Alice"))
@@ -1361,7 +1373,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Alice says hi")
@@ -1371,14 +1383,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in name: String
         result = "Hello ${name}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-end-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-end-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("name" -> CValue.CString("Bob"))
@@ -1386,7 +1400,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Hello Bob")
@@ -1396,14 +1410,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in name: String
         result = "${name}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-only-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-only-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("name" -> CValue.CString("test"))
@@ -1411,7 +1427,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("test")
@@ -1421,25 +1437,29 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in user: { name: String, age: Int }
         result = "User ${user.name} is ${user.age}"
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-field-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-field-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      inputs = Map("user" -> CValue.CProduct(
-        Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-        Map("name" -> CType.CString, "age" -> CType.CInt)
-      ))
+      inputs = Map(
+        "user" -> CValue.CProduct(
+          Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
+          Map("name" -> CType.CString, "age"           -> CType.CInt)
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("User Alice is 30")
@@ -1449,15 +1469,17 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         in name: String
         greeting = "Hello, ${name}!"
         message = "Message: ${greeting}"
         out message
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "interp-chain-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "interp-chain-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       inputs = Map("name" -> CValue.CString("World"))
@@ -1465,7 +1487,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("message")
+    val resultValue     = sig.outputs.get("message")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Message: Hello, World!")
@@ -1475,7 +1497,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1483,19 +1505,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, -2, 3, -4, 5]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1506,7 +1533,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1514,19 +1541,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-empty-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-empty-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 2, 3] - none > 100
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1537,7 +1569,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.math
         in numbers: List<Int>
@@ -1545,19 +1577,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "map-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "map-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 2, 3]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1568,7 +1605,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.math
         in numbers: List<Int>
@@ -1576,19 +1613,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "map-add-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "map-add-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 2, 3]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1599,7 +1641,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1607,19 +1649,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "all-true-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "all-true-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 2, 3] - all positive
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1629,7 +1676,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1637,19 +1684,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "all-false-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "all-false-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, -2, 3] - not all positive
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, -2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, -2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1659,7 +1711,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1667,8 +1719,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "all-empty-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "all-empty-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with empty list
@@ -1677,7 +1731,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1687,7 +1741,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1695,19 +1749,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "any-true-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "any-true-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, -2, 3] - some negative
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, -2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, -2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1717,7 +1776,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1725,19 +1784,24 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "any-false-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "any-false-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 2, 3] - none negative
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 2L, 3L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1747,7 +1811,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1755,8 +1819,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "any-empty-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "any-empty-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with empty list
@@ -1765,7 +1831,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1775,7 +1841,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         use stdlib.math
@@ -1785,20 +1851,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-map-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-map-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, -2, 3, -4, 5]
       // Filter: [1, 3, 5], then Map *2: [2, 6, 10]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1809,7 +1880,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1818,20 +1889,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-all-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-all-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, -2, 3, -4, 5]
       // Filter positives: [1, 3, 5], all are > 0 -> true
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1841,7 +1917,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1849,20 +1925,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-and-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-and-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [-5, 1, 5, 15, 20]
       // Filter: 0 < x < 10 -> [1, 5]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1873,7 +1954,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1881,20 +1962,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-or-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-or-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [-5, 1, 5, 15, 20]
       // Filter: x < 0 OR x > 10 -> [-5, 15, 20]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1905,7 +1991,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       stdlibCompiler = StdLib.compiler
-      source = """
+      source         = """
         use stdlib.collection
         use stdlib.compare
         in numbers: List<Int>
@@ -1913,20 +1999,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         out result
       """
       compiled <- IO.fromEither(
-        stdlibCompiler.compile(source, "filter-not-exec")
-          .left.map(e => new Exception(e.map(_.message).mkString(", ")))
+        stdlibCompiler
+          .compile(source, "filter-not-exec")
+          .left
+          .map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
       // Execute with input: [1, 3, 5, 7, 9]
       // Filter: NOT(x > 5) = x <= 5 -> [1, 3, 5]
-      inputs = Map("numbers" -> CValue.CList(
-        Vector(1L, 3L, 5L, 7L, 9L).map(CValue.CInt.apply), CType.CInt
-      ))
+      inputs = Map(
+        "numbers" -> CValue.CList(
+          Vector(1L, 3L, 5L, 7L, 9L).map(CValue.CInt.apply),
+          CType.CInt
+        )
+      )
       sig <- constellation.run(compiled.program, inputs)
     } yield (sig, compiled)
 
     val (sig, compiled) = test.unsafeRunSync()
-    val resultValue = sig.outputs.get("result")
+    val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]

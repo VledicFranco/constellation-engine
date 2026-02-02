@@ -44,9 +44,9 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
       inputs = List(uuid("x")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("x"),
-        "const" -> uuid("const"),
-        "dead" -> uuid("dead"),
+        "x"      -> uuid("x"),
+        "const"  -> uuid("const"),
+        "dead"   -> uuid("dead"),
         "result" -> uuid("result")
       )
     )
@@ -54,7 +54,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
     val result = IROptimizer.optimize(ir, OptimizationConfig.default)
 
     // Dead code should be eliminated
-    result.optimizedIR.nodes should not contain key (uuid("dead"))
+    result.optimizedIR.nodes should not contain key(uuid("dead"))
 
     // Constant should be folded
     result.optimizedIR.nodes(uuid("const")) shouldBe a[IRNode.LiteralNode]
@@ -151,8 +151,8 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
     result.optimizedIR.nodes(uuid("add")) shouldBe a[IRNode.LiteralNode]
 
     // DCE should have removed the now-unused literal nodes a and b
-    result.optimizedIR.nodes should not contain key (uuid("a"))
-    result.optimizedIR.nodes should not contain key (uuid("b"))
+    result.optimizedIR.nodes should not contain key(uuid("a"))
+    result.optimizedIR.nodes should not contain key(uuid("b"))
 
     // Multiple iterations should have occurred
     result.iterations should be >= 1
@@ -177,17 +177,17 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   it should "provide accurate statistics" in {
     val ir = IRProgram(
       nodes = Map(
-        uuid("x") -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
+        uuid("x")     -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         uuid("dead1") -> IRNode.LiteralNode(uuid("dead1"), 1, SemanticType.SInt, None),
         uuid("dead2") -> IRNode.LiteralNode(uuid("dead2"), 2, SemanticType.SInt, None),
-        uuid("used") -> IRNode.LiteralNode(uuid("used"), 42, SemanticType.SInt, None)
+        uuid("used")  -> IRNode.LiteralNode(uuid("used"), 42, SemanticType.SInt, None)
       ),
       inputs = List(uuid("x")),
       declaredOutputs = List("result"),
       variableBindings = Map(
-        "x" -> uuid("x"),
-        "dead1" -> uuid("dead1"),
-        "dead2" -> uuid("dead2"),
+        "x"      -> uuid("x"),
+        "dead1"  -> uuid("dead1"),
+        "dead2"  -> uuid("dead2"),
         "result" -> uuid("used")
       )
     )
@@ -234,7 +234,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
     val ir = IRProgram(
       nodes = Map(
         uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
-        uuid("lit") -> IRNode.LiteralNode(uuid("lit"), 5, SemanticType.SInt, None),
+        uuid("lit")   -> IRNode.LiteralNode(uuid("lit"), 5, SemanticType.SInt, None),
         uuid("call") -> IRNode.ModuleCall(
           uuid("call"),
           "stdlib.math.add",

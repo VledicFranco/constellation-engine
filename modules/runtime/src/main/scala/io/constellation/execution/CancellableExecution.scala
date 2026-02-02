@@ -1,7 +1,7 @@
 package io.constellation.execution
 
 import cats.effect.{Deferred, Fiber, IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 import io.constellation.Runtime
 
 import java.util.UUID
@@ -14,8 +14,8 @@ enum ExecutionStatus:
 
 /** Handle for a running DAG execution that supports cancellation.
   *
-  * Returned immediately by `Runtime.runCancellable` before execution completes.
-  * The caller can await completion via `result` or cancel via `cancel`.
+  * Returned immediately by `Runtime.runCancellable` before execution completes. The caller can
+  * await completion via `result` or cancel via `cancel`.
   */
 trait CancellableExecution {
 
@@ -55,19 +55,21 @@ object CancellableExecution {
 
     /** Cancel with a specific status (used internally for timeout vs user cancel). */
     private[constellation] def cancelWith(targetStatus: ExecutionStatus): IO[Unit] =
-      statusRef.modify {
-        case ExecutionStatus.Running =>
-          (targetStatus, true)
-        case other =>
-          (other, false)
-      }.flatMap {
-        case true =>
-          // Cancel all fibers — Cats Effect 3 fiber.cancel is safe and idempotent
-          val cancelAll = (moduleFibers ++ transformFibers).traverse_(_.cancel)
-          cancelAll
-        case false =>
-          IO.unit
-      }
+      statusRef
+        .modify {
+          case ExecutionStatus.Running =>
+            (targetStatus, true)
+          case other =>
+            (other, false)
+        }
+        .flatMap {
+          case true =>
+            // Cancel all fibers — Cats Effect 3 fiber.cancel is safe and idempotent
+            val cancelAll = (moduleFibers ++ transformFibers).traverse_(_.cancel)
+            cancelAll
+          case false =>
+            IO.unit
+        }
 
     def result: IO[Runtime.State] = resultDeferred.get
 

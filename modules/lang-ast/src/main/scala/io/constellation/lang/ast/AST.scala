@@ -157,9 +157,9 @@ sealed trait Annotation
 
 object Annotation {
 
-  /** @example(value) - provides example value for input declarations.
-    * Used by tooling (e.g., VSCode extension) to pre-populate run widgets.
-    * Does not affect compilation or runtime behavior.
+  /** @example(value)
+    *   \- provides example value for input declarations. Used by tooling (e.g., VSCode extension)
+    *   to pre-populate run widgets. Does not affect compilation or runtime behavior.
     */
   final case class Example(value: Located[Expression]) extends Annotation
 }
@@ -290,9 +290,9 @@ final case class ModuleCallOptions(
 ) {
   def isEmpty: Boolean =
     retry.isEmpty && timeout.isEmpty && delay.isEmpty && backoff.isEmpty &&
-    fallback.isEmpty && cache.isEmpty && cacheBackend.isEmpty &&
-    throttle.isEmpty && concurrency.isEmpty && onError.isEmpty &&
-    lazyEval.isEmpty && priority.isEmpty
+      fallback.isEmpty && cache.isEmpty && cacheBackend.isEmpty &&
+      throttle.isEmpty && concurrency.isEmpty && onError.isEmpty &&
+      lazyEval.isEmpty && priority.isEmpty
 }
 
 object ModuleCallOptions {
@@ -344,13 +344,13 @@ object Expression {
   /** String literal: "hello" */
   final case class StringLit(value: String) extends Expression
 
-  /** String interpolation: "Hello, ${name}!"
-    * Contains N+1 string parts for N interpolated expressions.
-    * Example: "Hello, ${name}!" has parts ["Hello, ", "!"] and expressions [VarRef("name")]
+  /** String interpolation: "Hello, ${name}!" Contains N+1 string parts for N interpolated
+    * expressions. Example: "Hello, ${name}!" has parts ["Hello, ", "!"] and expressions
+    * [VarRef("name")]
     */
   final case class StringInterpolation(
-    parts: List[String],                    // Static string parts (always parts.length == expressions.length + 1)
-    expressions: List[Located[Expression]]  // Interpolated expressions
+      parts: List[String], // Static string parts (always parts.length == expressions.length + 1)
+      expressions: List[Located[Expression]] // Interpolated expressions
   ) extends Expression
 
   /** Integer literal: 42 */
@@ -418,14 +418,14 @@ object Expression {
 
   /** Lambda parameter */
   final case class LambdaParam(
-    name: Located[String],
-    typeAnnotation: Option[Located[TypeExpr]]
+      name: Located[String],
+      typeAnnotation: Option[Located[TypeExpr]]
   )
 
   /** Lambda expression: (x, y) => x + y */
   final case class Lambda(
-    params: List[LambdaParam],
-    body: Located[Expression]
+      params: List[LambdaParam],
+      body: Located[Expression]
   ) extends Expression
 }
 
@@ -556,6 +556,7 @@ sealed trait CompileWarning {
 }
 
 object CompileWarning {
+
   /** Option dependency warning */
   final case class OptionDependency(
       option: String,
@@ -570,6 +571,7 @@ object CompileWarning {
       count: Int,
       span: Option[Span]
   ) extends CompileWarning {
-    def message: String = s"High retry count ($count) - consider using a lower value with exponential backoff"
+    def message: String =
+      s"High retry count ($count) - consider using a lower value with exponential backoff"
   }
 }

@@ -6,9 +6,9 @@ import java.util.UUID
 /** Status of a pipeline execution.
   *
   * Distinct from [[io.constellation.execution.ExecutionStatus]] which tracks
-  * Running/Completed/Cancelled/TimedOut/Failed for CancellableExecution handles.
-  * PipelineStatus describes the data-flow outcome: all outputs computed, some
-  * outputs pending, or errors encountered.
+  * Running/Completed/Cancelled/TimedOut/Failed for CancellableExecution handles. PipelineStatus
+  * describes the data-flow outcome: all outputs computed, some outputs pending, or errors
+  * encountered.
   */
 sealed trait PipelineStatus
 

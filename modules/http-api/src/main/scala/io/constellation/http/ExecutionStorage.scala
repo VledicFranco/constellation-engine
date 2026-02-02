@@ -1,9 +1,9 @@
 package io.constellation.http
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto._
+import io.circe.generic.semiauto.*
 import io.constellation.lang.viz.DagVizIR
 
 import java.util.UUID
@@ -23,9 +23,9 @@ object ExecutionStatus:
 
 /** Source of the execution request */
 enum ExecutionSource:
-  case Dashboard        // Executed from web dashboard
-  case VSCodeExtension  // Executed from VSCode extension
-  case API              // Executed directly via API
+  case Dashboard       // Executed from web dashboard
+  case VSCodeExtension // Executed from VSCode extension
+  case API             // Executed directly via API
 
 object ExecutionSource:
   given Encoder[ExecutionSource] = Encoder.encodeString.contramap(_.toString)
@@ -61,6 +61,7 @@ case class StoredExecution(
     sampleRate: Double,
     source: ExecutionSource
 ) {
+
   /** Total execution time in milliseconds, if completed */
   def durationMs: Option[Long] = endTime.map(_ - startTime)
 }
@@ -89,7 +90,7 @@ object ExecutionSummary:
   def fromStored(exec: StoredExecution): ExecutionSummary = {
     val preview = exec.outputs.flatMap { outputs =>
       outputs.headOption.map { case (key, value) =>
-        val jsonStr = value.noSpaces
+        val jsonStr   = value.noSpaces
         val truncated = if jsonStr.length > 50 then jsonStr.take(50) + "..." else jsonStr
         s"$key: $truncated"
       }
@@ -124,38 +125,48 @@ object StorageStats:
 
 /** Trait for execution storage backends.
   *
-  * Provides a pluggable interface for storing and retrieving execution history.
-  * The default implementation is in-memory with LRU eviction.
+  * Provides a pluggable interface for storing and retrieving execution history. The default
+  * implementation is in-memory with LRU eviction.
   */
 trait ExecutionStorage[F[_]] {
 
   /** Store an execution record.
     *
-    * @param execution The execution to store
-    * @return The execution ID
+    * @param execution
+    *   The execution to store
+    * @return
+    *   The execution ID
     */
   def store(execution: StoredExecution): F[String]
 
   /** Get an execution by ID.
     *
-    * @param executionId The execution ID to look up
-    * @return The execution if found
+    * @param executionId
+    *   The execution ID to look up
+    * @return
+    *   The execution if found
     */
   def get(executionId: String): F[Option[StoredExecution]]
 
   /** List executions with pagination.
     *
-    * @param limit Maximum number of results
-    * @param offset Number of results to skip
-    * @return List of execution summaries
+    * @param limit
+    *   Maximum number of results
+    * @param offset
+    *   Number of results to skip
+    * @return
+    *   List of execution summaries
     */
   def list(limit: Int, offset: Int): F[List[ExecutionSummary]]
 
   /** List executions for a specific script.
     *
-    * @param scriptPath Path to the script
-    * @param limit Maximum number of results
-    * @return List of execution summaries
+    * @param scriptPath
+    *   Path to the script
+    * @param limit
+    *   Maximum number of results
+    * @return
+    *   List of execution summaries
     */
   def listByScript(scriptPath: String, limit: Int): F[List[ExecutionSummary]]
 
@@ -164,16 +175,21 @@ trait ExecutionStorage[F[_]] {
 
   /** Update an execution (for recording completion).
     *
-    * @param executionId The execution ID to update
-    * @param f Function to transform the execution
-    * @return Updated execution if found
+    * @param executionId
+    *   The execution ID to update
+    * @param f
+    *   Function to transform the execution
+    * @return
+    *   Updated execution if found
     */
   def update(executionId: String)(f: StoredExecution => StoredExecution): F[Option[StoredExecution]]
 
   /** Delete an execution.
     *
-    * @param executionId The execution ID to delete
-    * @return True if deleted, false if not found
+    * @param executionId
+    *   The execution ID to delete
+    * @return
+    *   True if deleted, false if not found
     */
   def delete(executionId: String): F[Boolean]
 
@@ -185,8 +201,10 @@ object ExecutionStorage {
 
   /** Configuration for execution storage.
     *
-    * @param maxExecutions Maximum number of executions to store (LRU eviction)
-    * @param maxValueSizeBytes Maximum size of JSON values (larger values are truncated)
+    * @param maxExecutions
+    *   Maximum number of executions to store (LRU eviction)
+    * @param maxValueSizeBytes
+    *   Maximum size of JSON values (larger values are truncated)
     */
   case class Config(
       maxExecutions: Int = 1000,
@@ -290,7 +308,9 @@ object ExecutionStorage {
         )
       }
 
-    def update(executionId: String)(f: StoredExecution => StoredExecution): IO[Option[StoredExecution]] =
+    def update(executionId: String)(
+        f: StoredExecution => StoredExecution
+    ): IO[Option[StoredExecution]] =
       state.modify { s =>
         val updated = s.update(executionId)(f)
         (updated, updated.executions.get(executionId))
@@ -307,7 +327,7 @@ object ExecutionStorage {
 
     /** Truncate JSON values in an execution if they exceed the maximum size. */
     private def truncateExecution(exec: StoredExecution): StoredExecution = {
-      val truncatedInputs = exec.inputs.view.mapValues(truncateValue).toMap
+      val truncatedInputs  = exec.inputs.view.mapValues(truncateValue).toMap
       val truncatedOutputs = exec.outputs.map(_.view.mapValues(truncateValue).toMap)
       val truncatedNodes = exec.nodeResults.view.mapValues { node =>
         node.copy(value = node.value.map(truncateValue))
@@ -349,7 +369,11 @@ object ExecutionStorage {
   )
 
   /** Check if an execution should be sampled based on rate. */
-  def shouldSample(source: ExecutionSource, scriptRate: Option[Double], configRate: Double): Boolean =
+  def shouldSample(
+      source: ExecutionSource,
+      scriptRate: Option[Double],
+      configRate: Double
+  ): Boolean =
     source match {
       case ExecutionSource.VSCodeExtension => true // Always store VSCode executions
       case _ =>

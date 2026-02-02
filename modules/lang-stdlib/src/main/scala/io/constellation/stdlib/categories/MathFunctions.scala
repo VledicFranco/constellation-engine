@@ -104,9 +104,21 @@ trait MathFunctions {
   val minSignature: FunctionSignature =
     FunctionSignature("min", twoIntParams, SemanticType.SInt, "stdlib.min", Some("stdlib.math"))
   val absSignature: FunctionSignature =
-    FunctionSignature("abs", List("value" -> SemanticType.SInt), SemanticType.SInt, "stdlib.abs", Some("stdlib.math"))
+    FunctionSignature(
+      "abs",
+      List("value" -> SemanticType.SInt),
+      SemanticType.SInt,
+      "stdlib.abs",
+      Some("stdlib.math")
+    )
   val moduloSignature: FunctionSignature =
-    FunctionSignature("modulo", twoIntParams, SemanticType.SInt, "stdlib.modulo", Some("stdlib.math"))
+    FunctionSignature(
+      "modulo",
+      twoIntParams,
+      SemanticType.SInt,
+      "stdlib.modulo",
+      Some("stdlib.math")
+    )
   val roundSignature: FunctionSignature = FunctionSignature(
     "round",
     List("value" -> SemanticType.SFloat),

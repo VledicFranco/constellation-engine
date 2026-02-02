@@ -1,7 +1,7 @@
 package io.constellation.impl
 
 import cats.effect.{IO, Ref}
-import cats.implicits._
+import cats.implicits.*
 import io.constellation.{DagSpec, Module, ModuleNodeSpec, ModuleRegistry}
 
 import java.util.UUID
@@ -10,21 +10,20 @@ import java.util.UUID
   *
   * ==Performance Optimization==
   *
-  * Instead of performing string operations on every lookup, name variants are
-  * pre-computed at registration time. This eliminates:
-  * - String splitting on lookups
-  * - Array allocations on lookups
-  * - Secondary map lookups for stripped names
+  * Instead of performing string operations on every lookup, name variants are pre-computed at
+  * registration time. This eliminates:
+  *   - String splitting on lookups
+  *   - Array allocations on lookups
+  *   - Secondary map lookups for stripped names
   *
   * ==Name Resolution==
   *
   * Modules can be looked up by:
-  * - Full name (e.g., "mydag.Uppercase")
-  * - Short name (e.g., "Uppercase") if unambiguous
+  *   - Full name (e.g., "mydag.Uppercase")
+  *   - Short name (e.g., "Uppercase") if unambiguous
   *
-  * When multiple modules share the same short name (e.g., "dag1.Transform" and
-  * "dag2.Transform"), the first registered module wins for short name lookup.
-  * Full names always work correctly.
+  * When multiple modules share the same short name (e.g., "dag1.Transform" and "dag2.Transform"),
+  * the first registered module wins for short name lookup. Full names always work correctly.
   *
   * ==Thread Safety==
   *
@@ -44,8 +43,7 @@ class ModuleRegistryImpl(
       _ <- updateNameIndex(name)
     } yield ()
 
-  /** Register multiple modules efficiently.
-    * Useful for batch registration at startup.
+  /** Register multiple modules efficiently. Useful for batch registration at startup.
     */
   def registerAll(modules: List[(String, Module.Uninitialized)]): IO[Unit] =
     for {
@@ -53,17 +51,17 @@ class ModuleRegistryImpl(
       _ <- modules.traverse_ { case (name, _) => updateNameIndex(name) }
     } yield ()
 
-  /** Fast module lookup using pre-computed index.
-    * Tries exact match first, then stripped name (without prefix).
+  /** Fast module lookup using pre-computed index. Tries exact match first, then stripped name
+    * (without prefix).
     */
   override def get(name: String): IO[Option[Module.Uninitialized]] =
     for {
-      index <- nameIndexRef.get
+      index   <- nameIndexRef.get
       modules <- modulesRef.get
       // Try exact match first via index
       result = index.get(name).flatMap(modules.get).orElse {
         // Fallback: try stripped name (query might have prefix not in index)
-        if (name.contains(".")) {
+        if name.contains(".") then {
           val stripped = name.split('.').last
           index.get(stripped).flatMap(modules.get)
         } else None
@@ -72,24 +70,22 @@ class ModuleRegistryImpl(
 
   override def initModules(dagSpec: DagSpec): IO[Map[UUID, Module.Uninitialized]] =
     for {
-      index <- nameIndexRef.get
+      index   <- nameIndexRef.get
       modules <- modulesRef.get
-      loaded = dagSpec.modules.toList
-        .flatMap { case (uuid, spec) =>
-          // Try exact match first, then stripped name
-          val found = index.get(spec.name).flatMap(modules.get).orElse {
-            if (spec.name.contains(".")) {
-              val stripped = spec.name.split('.').last
-              index.get(stripped).flatMap(modules.get)
-            } else None
-          }
-          found.map(uuid -> _)
+      loaded = dagSpec.modules.toList.flatMap { case (uuid, spec) =>
+        // Try exact match first, then stripped name
+        val found = index.get(spec.name).flatMap(modules.get).orElse {
+          if spec.name.contains(".") then {
+            val stripped = spec.name.split('.').last
+            index.get(stripped).flatMap(modules.get)
+          } else None
         }
-        .toMap
+        found.map(uuid -> _)
+      }.toMap
     } yield loaded
 
-  /** Pre-compute and index all possible name variants.
-    * Called once at registration, not at every lookup.
+  /** Pre-compute and index all possible name variants. Called once at registration, not at every
+    * lookup.
     */
   private def updateNameIndex(canonicalName: String): IO[Unit] =
     nameIndexRef.update { index =>
@@ -98,7 +94,7 @@ class ModuleRegistryImpl(
 
       // Index short name (without dag prefix) if applicable
       // "mydag.Uppercase" → "Uppercase"
-      if (canonicalName.contains(".")) {
+      if canonicalName.contains(".") then {
         val shortName = canonicalName.split('.').last
 
         withFullName.get(shortName) match {
@@ -145,14 +141,14 @@ object ModuleRegistryImpl {
 
   def init: IO[ModuleRegistry] =
     for {
-      modulesRef <- Ref.of[IO, Map[String, Module.Uninitialized]](Map.empty)
+      modulesRef   <- Ref.of[IO, Map[String, Module.Uninitialized]](Map.empty)
       nameIndexRef <- Ref.of[IO, Map[String, String]](Map.empty)
     } yield new ModuleRegistryImpl(modulesRef, nameIndexRef)
 
   /** Create with pre-populated modules (for testing). */
   def withModules(modules: List[(String, Module.Uninitialized)]): IO[ModuleRegistryImpl] =
     for {
-      modulesRef <- Ref.of[IO, Map[String, Module.Uninitialized]](Map.empty)
+      modulesRef   <- Ref.of[IO, Map[String, Module.Uninitialized]](Map.empty)
       nameIndexRef <- Ref.of[IO, Map[String, String]](Map.empty)
       registry = new ModuleRegistryImpl(modulesRef, nameIndexRef)
       _ <- registry.registerAll(modules)

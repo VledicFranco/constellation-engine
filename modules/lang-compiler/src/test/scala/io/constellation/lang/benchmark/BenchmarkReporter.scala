@@ -1,7 +1,7 @@
 package io.constellation.lang.benchmark
 
-import io.circe._
-import io.circe.syntax._
+import io.circe.*
+import io.circe.syntax.*
 
 import java.io.{File, PrintWriter}
 import java.time.Instant
@@ -29,7 +29,7 @@ object BenchmarkReporter {
   /** Gather current environment metadata */
   def gatherMetadata(): BenchmarkMetadata = {
     val gitCommit = Try {
-      import scala.sys.process._
+      import scala.sys.process.*
       "git rev-parse --short HEAD".!!.trim
     }.toOption
 
@@ -61,7 +61,7 @@ object BenchmarkReporter {
     }
 
     // If no size groups, just print all
-    if (sizes.isEmpty && results.nonEmpty) {
+    if sizes.isEmpty && results.nonEmpty then {
       results.foreach(r => println(r.toConsoleString))
     }
 
@@ -71,8 +71,10 @@ object BenchmarkReporter {
 
   /** Write JSON report to file
     *
-    * @param results Benchmark results
-    * @param filePath Output file path
+    * @param results
+    *   Benchmark results
+    * @param filePath
+    *   Output file path
     */
   def writeJsonReport(results: List[BenchmarkResult], filePath: String): Unit = {
     val metadata = gatherMetadata()
@@ -98,7 +100,9 @@ object BenchmarkReporter {
     sb.append(s"""    "javaVersion": "${report.metadata.javaVersion}",\n""")
     sb.append(s"""    "jvmName": "${escapeJson(report.metadata.jvmName)}",\n""")
     sb.append(s"""    "scalaVersion": "${report.metadata.scalaVersion}",\n""")
-    sb.append(s"""    "gitCommit": ${report.metadata.gitCommit.map(s => s""""$s"""").getOrElse("null")},\n""")
+    sb.append(s"""    "gitCommit": ${report.metadata.gitCommit
+        .map(s => s""""$s"""")
+        .getOrElse("null")},\n""")
     sb.append(s"""    "hostname": "${report.metadata.hostname}"\n""")
     sb.append("  },\n")
     sb.append("  \"results\": [\n")
@@ -115,7 +119,7 @@ object BenchmarkReporter {
       sb.append(s"""      "throughputOpsPerSec": ${formatDouble(r.throughputOpsPerSec)},\n""")
       sb.append(s"""      "iterations": ${r.iterations}\n""")
       sb.append("    }")
-      if (idx < report.results.length - 1) sb.append(",")
+      if idx < report.results.length - 1 then sb.append(",")
       sb.append("\n")
     }
 
@@ -132,18 +136,19 @@ object BenchmarkReporter {
 
   /** Generate timestamped report filename */
   def generateReportPath(basePath: String = "target"): String = {
-    val timestamp = java.time.LocalDateTime.now()
+    val timestamp = java.time.LocalDateTime
+      .now()
       .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"))
     s"$basePath/benchmark-results-$timestamp.json"
   }
 
   /** Print quick summary statistics for a group of results */
   def printQuickStats(label: String, results: List[BenchmarkResult]): Unit = {
-    if (results.isEmpty) return
+    if results.isEmpty then return
 
-    val avgTotal   = results.map(_.avgMs).sum
-    val slowest    = results.maxBy(_.avgMs)
-    val fastest    = results.minBy(_.avgMs)
+    val avgTotal = results.map(_.avgMs).sum
+    val slowest  = results.maxBy(_.avgMs)
+    val fastest  = results.minBy(_.avgMs)
 
     println()
     println(s"=== $label ===")
@@ -167,7 +172,9 @@ object BenchmarkReporter {
       results2.find(_.name == r1.name).foreach { r2 =>
         val speedup = r2.avgMs / r1.avgMs
         val pctDiff = ((r1.avgMs - r2.avgMs) / r2.avgMs) * 100
-        println(f"${r1.name}%-40s : $label1=${r1.avgMs}%.2fms  $label2=${r2.avgMs}%.2fms  speedup=${speedup}%.1fx")
+        println(
+          f"${r1.name}%-40s : $label1=${r1.avgMs}%.2fms  $label2=${r2.avgMs}%.2fms  speedup=${speedup}%.1fx"
+        )
       }
     }
   }

@@ -22,17 +22,19 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
 
   "canonicalizeDagSpec" should "produce the same output for structurally equivalent DAGs" in {
     // Create two DAGs with different UUIDs but same structure
-    val mod1 = UUID.randomUUID()
+    val mod1  = UUID.randomUUID()
     val data1 = UUID.randomUUID()
     val data2 = UUID.randomUUID()
 
     val dag1 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod1 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("TestModule"),
-        consumes = Map("input" -> CType.CString),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        mod1 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("TestModule"),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(
         data1 -> DataNodeSpec("input", Map(mod1 -> "input"), CType.CString),
         data2 -> DataNodeSpec("output", Map(mod1 -> "out"), CType.CString)
@@ -43,17 +45,19 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
       outputBindings = Map("output" -> data2)
     )
 
-    val mod2 = UUID.randomUUID()
+    val mod2  = UUID.randomUUID()
     val data3 = UUID.randomUUID()
     val data4 = UUID.randomUUID()
 
     val dag2 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod2 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("TestModule"),
-        consumes = Map("input" -> CType.CString),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        mod2 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("TestModule"),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(
         data3 -> DataNodeSpec("input", Map(mod2 -> "input"), CType.CString),
         data4 -> DataNodeSpec("output", Map(mod2 -> "out"), CType.CString)
@@ -70,31 +74,35 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
   }
 
   it should "produce different output for structurally different DAGs" in {
-    val mod1 = UUID.randomUUID()
+    val mod1  = UUID.randomUUID()
     val data1 = UUID.randomUUID()
 
     val dag1 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod1 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("ModuleA"),
-        consumes = Map("input" -> CType.CString),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        mod1 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("ModuleA"),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(data1 -> DataNodeSpec("input", Map(mod1 -> "input"), CType.CString)),
       inEdges = Set((data1, mod1)),
       outEdges = Set.empty
     )
 
-    val mod2 = UUID.randomUUID()
+    val mod2  = UUID.randomUUID()
     val data2 = UUID.randomUUID()
 
     val dag2 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod2 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("ModuleB"),
-        consumes = Map("input" -> CType.CInt),
-        produces = Map("out" -> CType.CInt)
-      )),
+      modules = Map(
+        mod2 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("ModuleB"),
+          consumes = Map("input" -> CType.CInt),
+          produces = Map("out" -> CType.CInt)
+        )
+      ),
       data = Map(data2 -> DataNodeSpec("input", Map(mod2 -> "input"), CType.CInt)),
       inEdges = Set((data2, mod2)),
       outEdges = Set.empty
@@ -106,16 +114,18 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
   }
 
   "computeStructuralHash" should "be deterministic" in {
-    val mod1 = UUID.randomUUID()
+    val mod1  = UUID.randomUUID()
     val data1 = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod1 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("TestModule"),
-        consumes = Map("input" -> CType.CString),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        mod1 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("TestModule"),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(data1 -> DataNodeSpec("input", Map(mod1 -> "input"), CType.CString)),
       inEdges = Set((data1, mod1)),
       outEdges = Set.empty
@@ -128,31 +138,35 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
   }
 
   it should "produce the same hash for structurally equivalent DAGs with different UUIDs" in {
-    val mod1 = UUID.randomUUID()
+    val mod1  = UUID.randomUUID()
     val data1 = UUID.randomUUID()
 
     val dag1 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod1 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("M"),
-        consumes = Map("a" -> CType.CInt),
-        produces = Map("out" -> CType.CInt)
-      )),
+      modules = Map(
+        mod1 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("M"),
+          consumes = Map("a" -> CType.CInt),
+          produces = Map("out" -> CType.CInt)
+        )
+      ),
       data = Map(data1 -> DataNodeSpec("a", Map(mod1 -> "a"), CType.CInt)),
       inEdges = Set((data1, mod1)),
       outEdges = Set.empty
     )
 
-    val mod2 = UUID.randomUUID()
+    val mod2  = UUID.randomUUID()
     val data2 = UUID.randomUUID()
 
     val dag2 = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod2 -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("M"),
-        consumes = Map("a" -> CType.CInt),
-        produces = Map("out" -> CType.CInt)
-      )),
+      modules = Map(
+        mod2 -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("M"),
+          consumes = Map("a" -> CType.CInt),
+          produces = Map("out" -> CType.CInt)
+        )
+      ),
       data = Map(data2 -> DataNodeSpec("a", Map(mod2 -> "a"), CType.CInt)),
       inEdges = Set((data2, mod2)),
       outEdges = Set.empty
@@ -162,16 +176,18 @@ class ContentHashTest extends AnyFlatSpec with Matchers {
   }
 
   "canonicalizeDagSpec" should "sort maps by key for determinism" in {
-    val mod = UUID.randomUUID()
+    val mod  = UUID.randomUUID()
     val data = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("test"),
-      modules = Map(mod -> ModuleNodeSpec(
-        metadata = ComponentMetadata.empty("M"),
-        consumes = Map("z" -> CType.CString, "a" -> CType.CInt),
-        produces = Map("out" -> CType.CString)
-      )),
+      modules = Map(
+        mod -> ModuleNodeSpec(
+          metadata = ComponentMetadata.empty("M"),
+          consumes = Map("z" -> CType.CString, "a" -> CType.CInt),
+          produces = Map("out" -> CType.CString)
+        )
+      ),
       data = Map(data -> DataNodeSpec("x", Map.empty, CType.CString)),
       inEdges = Set.empty,
       outEdges = Set.empty

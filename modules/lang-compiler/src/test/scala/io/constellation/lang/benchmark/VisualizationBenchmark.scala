@@ -1,6 +1,6 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang._
+import io.constellation.lang.*
 import io.constellation.lang.compiler.{IRGenerator, IRProgram}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
@@ -16,9 +16,9 @@ import scala.collection.mutable.ListBuffer
   * Run with: sbt "langCompiler/testOnly *VisualizationBenchmark"
   *
   * Tests:
-  * - DagVizCompiler: Converting IR to visualization nodes/edges
-  * - SugiyamaLayout: Full graph layout algorithm
-  * - Combined pipeline: IR to positioned visualization
+  *   - DagVizCompiler: Converting IR to visualization nodes/edges
+  *   - SugiyamaLayout: Full graph layout algorithm
+  *   - Combined pipeline: IR to positioned visualization
   */
 class VisualizationBenchmark extends AnyFlatSpec with Matchers {
 
@@ -33,16 +33,16 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
   val emptyRegistry: FunctionRegistry = FunctionRegistry.empty
 
   // Pre-compile IR for each fixture size to isolate visualization benchmarks
-  lazy val smallIR: IRProgram  = compileToIR(TestFixtures.smallProgram)
-  lazy val mediumIR: IRProgram = compileToIR(TestFixtures.mediumProgram)
-  lazy val largeIR: IRProgram  = compileToIR(TestFixtures.largeProgram)
+  lazy val smallIR: IRProgram      = compileToIR(TestFixtures.smallProgram)
+  lazy val mediumIR: IRProgram     = compileToIR(TestFixtures.mediumProgram)
+  lazy val largeIR: IRProgram      = compileToIR(TestFixtures.largeProgram)
   lazy val stress100IR: IRProgram  = compileToIR(TestFixtures.stressProgram100)
   lazy val stress500IR: IRProgram  = compileToIR(TestFixtures.stressProgram500)
   lazy val stress1000IR: IRProgram = compileToIR(TestFixtures.stressProgram1000)
 
   private def compileToIR(source: String): IRProgram = {
-    val parsed  = ConstellationParser.parse(source).toOption.get
-    val typed   = TypeChecker.check(parsed, emptyRegistry).toOption.get
+    val parsed = ConstellationParser.parse(source).toOption.get
+    val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
     IRGenerator.generate(typed)
   }
 
@@ -214,7 +214,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "layout_stress500",
-      warmupIterations = 3, // Fewer warmups for slower tests
+      warmupIterations = 3,   // Fewer warmups for slower tests
       measureIterations = 10, // Fewer iterations for slower tests
       phase = "layout",
       inputSize = "stress500"
@@ -238,7 +238,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "layout_stress1000",
-      warmupIterations = 2, // Minimal warmups for very slow tests
+      warmupIterations = 2,  // Minimal warmups for very slow tests
       measureIterations = 5, // Very few iterations for slow test
       phase = "layout",
       inputSize = "stress1000"
@@ -334,10 +334,10 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
       inputSize = "large"
     ) {
       // Full pipeline: parse -> typecheck -> IR -> vizIR -> layout
-      val parsed    = ConstellationParser.parse(source).toOption.get
-      val typed     = TypeChecker.check(parsed, emptyRegistry).toOption.get
-      val ir        = IRGenerator.generate(typed)
-      val vizIR     = DagVizCompiler.compile(ir, Some("benchmark"))
+      val parsed = ConstellationParser.parse(source).toOption.get
+      val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
+      val ir     = IRGenerator.generate(typed)
+      val vizIR  = DagVizCompiler.compile(ir, Some("benchmark"))
       SugiyamaLayout.layout(vizIR, config)
     }
 
@@ -360,7 +360,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
     val vizcompileResults = allResults.filter(_.phase == "vizcompile").toList
     val layoutResults     = allResults.filter(_.phase == "layout").toList
 
-    if (vizcompileResults.nonEmpty && layoutResults.nonEmpty) {
+    if vizcompileResults.nonEmpty && layoutResults.nonEmpty then {
       BenchmarkReporter.printQuickStats("VizCompile phase", vizcompileResults)
       BenchmarkReporter.printQuickStats("Layout phase", layoutResults)
     }
@@ -392,7 +392,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
         println(f"  100 nodes: ${r100.avgMs}%.2fms")
         println(f"  500 nodes: ${r500.avgMs}%.2fms")
         println(f"  Scaling factor: ${scalingFactor}%.2fx")
-        if (scalingFactor < 30) {
+        if scalingFactor < 30 then {
           println(s"  Analysis: Better than O(n² log n) expected (~30x)")
         } else {
           println(s"  Analysis: As expected for O(n² log n) complexity")
@@ -410,7 +410,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
         println(f"  500 nodes: ${r500.avgMs}%.2fms")
         println(f"  1000 nodes: ${r1000.avgMs}%.2fms")
         println(f"  Scaling factor: ${scalingFactor}%.2fx")
-        if (scalingFactor < 5) {
+        if scalingFactor < 5 then {
           println(s"  Analysis: Better than O(n² log n) expected (~4.4x)")
         } else {
           println(s"  Analysis: As expected for O(n² log n) complexity")
@@ -438,18 +438,18 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
     println("WARNING THRESHOLD RECOMMENDATIONS:")
     println("-" * 60)
     stress500.foreach { r =>
-      if (r.avgMs > 1000) {
+      if r.avgMs > 1000 then {
         println(s"  500 nodes: ${r.avgMs.toLong}ms - Recommend warning at 500 nodes")
-      } else if (r.avgMs > 500) {
+      } else if r.avgMs > 500 then {
         println(s"  500 nodes: ${r.avgMs.toLong}ms - Recommend warning at 1000 nodes")
       } else {
         println(s"  500 nodes: ${r.avgMs.toLong}ms - Performance acceptable")
       }
     }
     stress1000.foreach { r =>
-      if (r.avgMs > 5000) {
+      if r.avgMs > 5000 then {
         println(s"  1000 nodes: ${r.avgMs.toLong}ms - CRITICAL: Consider limiting DAG size")
-      } else if (r.avgMs > 2000) {
+      } else if r.avgMs > 2000 then {
         println(s"  1000 nodes: ${r.avgMs.toLong}ms - Recommend warning at 1000 nodes")
       } else {
         println(s"  1000 nodes: ${r.avgMs.toLong}ms - Performance acceptable")

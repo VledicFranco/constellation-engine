@@ -11,15 +11,15 @@ import scala.collection.mutable.ListBuffer
   * Run with: sbt "langLsp/testOnly *SemanticTokenBenchmark"
   *
   * Tests:
-  * - Small file semantic token generation
-  * - Medium file semantic token generation
-  * - Large file semantic token generation
-  * - Repeated call timing (to identify caching opportunities)
+  *   - Small file semantic token generation
+  *   - Medium file semantic token generation
+  *   - Large file semantic token generation
+  *   - Repeated call timing (to identify caching opportunities)
   *
   * Target metrics:
-  * - Small files: <20ms
-  * - Medium files: <50ms
-  * - Large files: <100ms
+  *   - Small files: <20ms
+  *   - Medium files: <50ms
+  *   - Large files: <100ms
   */
 class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
 
@@ -374,7 +374,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
     // First call (cold)
     val coldTimings = (1 to 5).map { _ =>
       val freshProvider = SemanticTokenProvider()
-      val start = System.nanoTime()
+      val start         = System.nanoTime()
       freshProvider.computeTokens(source)
       (System.nanoTime() - start) / 1e6
     }
@@ -389,12 +389,12 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       (System.nanoTime() - start) / 1e6
     }
 
-    val coldAvg  = coldTimings.sum / coldTimings.length
-    val warmAvg  = warmTimings.sum / warmTimings.length
-    val coldVar  = coldTimings.map(t => math.pow(t - coldAvg, 2)).sum / coldTimings.length
-    val warmVar  = warmTimings.map(t => math.pow(t - warmAvg, 2)).sum / warmTimings.length
-    val coldStd  = math.sqrt(coldVar)
-    val warmStd  = math.sqrt(warmVar)
+    val coldAvg = coldTimings.sum / coldTimings.length
+    val warmAvg = warmTimings.sum / warmTimings.length
+    val coldVar = coldTimings.map(t => math.pow(t - coldAvg, 2)).sum / coldTimings.length
+    val warmVar = warmTimings.map(t => math.pow(t - warmAvg, 2)).sum / warmTimings.length
+    val coldStd = math.sqrt(coldVar)
+    val warmStd = math.sqrt(warmVar)
 
     println(f"\nCold calls (fresh provider): ${coldAvg}%.2fms (±${coldStd}%.2fms)")
     println(f"Warm calls (same provider):  ${warmAvg}%.2fms (±${warmStd}%.2fms)")
@@ -402,9 +402,9 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
     val speedup = coldAvg / warmAvg
     println(f"\nSpeedup (warm vs cold): ${speedup}%.2fx")
 
-    if (speedup > 1.5) {
+    if speedup > 1.5 then {
       println("Analysis: Significant speedup detected - internal caching IS providing benefit")
-    } else if (warmStd < coldStd * 0.5) {
+    } else if warmStd < coldStd * 0.5 then {
       println("Analysis: More consistent timing suggests stable performance")
     } else {
       println("Analysis: No significant caching benefit - consider adding AST caching")
@@ -419,7 +419,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       minMs = coldTimings.min,
       maxMs = coldTimings.max,
       stdDevMs = coldStd,
-      throughputOpsPerSec = if (coldAvg > 0) 1000.0 / coldAvg else 0.0,
+      throughputOpsPerSec = if coldAvg > 0 then 1000.0 / coldAvg else 0.0,
       iterations = coldTimings.length
     )
 
@@ -431,7 +431,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       minMs = warmTimings.min,
       maxMs = warmTimings.max,
       stdDevMs = warmStd,
-      throughputOpsPerSec = if (warmAvg > 0) 1000.0 / warmAvg else 0.0,
+      throughputOpsPerSec = if warmAvg > 0 then 1000.0 / warmAvg else 0.0,
       iterations = warmTimings.length
     )
 
@@ -453,9 +453,9 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       ("medium", mediumSource),
       ("large", largeSource)
     ).foreach { case (size, source) =>
-      val tokens   = provider.computeTokens(source)
-      val numLines = source.linesIterator.length
-      val numChars = source.length
+      val tokens    = provider.computeTokens(source)
+      val numLines  = source.linesIterator.length
+      val numChars  = source.length
       val numTokens = tokens.length / 5 // Each token is 5 integers
 
       println(f"\n$size%s file:")
@@ -480,7 +480,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
 
     val tokenResults = allResults.filter(_.phase == "semantic_tokens").toList
 
-    if (tokenResults.nonEmpty) {
+    if tokenResults.nonEmpty then {
       println("\n--- Semantic Token Generation Times ---")
       tokenResults.foreach(r => println(s"  ${r.toConsoleString}"))
 
@@ -502,7 +502,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
     targets.foreach { case (size, target) =>
       allResults.find(r => r.phase == "semantic_tokens" && r.inputSize == size) match {
         case Some(result) =>
-          val status = if (result.avgMs <= target) "PASS" else "FAIL"
+          val status = if result.avgMs <= target then "PASS" else "FAIL"
           println(f"  $size%-10s: ${result.avgMs}%7.2fms / ${target}%.0fms target  $status")
         case None =>
           println(f"  $size%-10s: (no data)")
@@ -533,10 +533,10 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       (end - start) / 1e6 // ms
     }
 
-    val avg    = timings.sum / timings.length
-    val sorted = timings.sorted
-    val min    = sorted.head
-    val max    = sorted.last
+    val avg      = timings.sum / timings.length
+    val sorted   = timings.sorted
+    val min      = sorted.head
+    val max      = sorted.last
     val variance = timings.map(t => math.pow(t - avg, 2)).sum / timings.length
     val stdDev   = math.sqrt(variance)
 
@@ -548,7 +548,7 @@ class SemanticTokenBenchmark extends AnyFlatSpec with Matchers {
       minMs = min,
       maxMs = max,
       stdDevMs = stdDev,
-      throughputOpsPerSec = if (avg > 0) 1000.0 / avg else 0.0,
+      throughputOpsPerSec = if avg > 0 then 1000.0 / avg else 0.0,
       iterations = MeasureIterations
     )
   }

@@ -67,7 +67,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   // ========== convertInputs Tests ==========
 
   "ExecutionHelper.convertInputs" should "convert JSON Int to CValue.CInt" in {
-    val dag = createInputOnlyDagSpec("x", CType.CInt)
+    val dag    = createInputOnlyDagSpec("x", CType.CInt)
     val inputs = Map("x" -> Json.fromInt(42))
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -77,7 +77,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert JSON String to CValue.CString" in {
-    val dag = createInputOnlyDagSpec("text", CType.CString)
+    val dag    = createInputOnlyDagSpec("text", CType.CString)
     val inputs = Map("text" -> Json.fromString("hello world"))
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -86,7 +86,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert JSON Boolean to CValue.CBoolean" in {
-    val dag = createInputOnlyDagSpec("flag", CType.CBoolean)
+    val dag    = createInputOnlyDagSpec("flag", CType.CBoolean)
     val inputs = Map("flag" -> Json.fromBoolean(true))
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -95,7 +95,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert JSON Float to CValue.CFloat" in {
-    val dag = createInputOnlyDagSpec("value", CType.CFloat)
+    val dag    = createInputOnlyDagSpec("value", CType.CFloat)
     val inputs = Map("value" -> Json.fromDoubleOrNull(3.14))
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -105,11 +105,15 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
 
   it should "convert JSON array to CValue.CList" in {
     val dag = createInputOnlyDagSpec("items", CType.CList(CType.CInt))
-    val inputs = Map("items" -> Json.fromValues(List(
-      Json.fromInt(1),
-      Json.fromInt(2),
-      Json.fromInt(3)
-    )))
+    val inputs = Map(
+      "items" -> Json.fromValues(
+        List(
+          Json.fromInt(1),
+          Json.fromInt(2),
+          Json.fromInt(3)
+        )
+      )
+    )
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
 
@@ -121,11 +125,13 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
 
   it should "convert JSON object to CValue.CProduct" in {
     val productType = CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
-    val dag = createInputOnlyDagSpec("user", productType)
-    val inputs = Map("user" -> Json.obj(
-      "name" -> Json.fromString("Alice"),
-      "age" -> Json.fromInt(30)
-    ))
+    val dag         = createInputOnlyDagSpec("user", productType)
+    val inputs = Map(
+      "user" -> Json.obj(
+        "name" -> Json.fromString("Alice"),
+        "age"  -> Json.fromInt(30)
+      )
+    )
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
 
@@ -151,7 +157,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
 
   it should "fail for missing required input" in {
     val (dag, _, _) = createDagSpecWithMultipleInputs()
-    val inputs = Map("x" -> Json.fromInt(42)) // missing "y"
+    val inputs      = Map("x" -> Json.fromInt(42)) // missing "y"
 
     val error = intercept[RuntimeException] {
       ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -162,7 +168,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fail for type mismatch" in {
-    val dag = createInputOnlyDagSpec("x", CType.CInt)
+    val dag    = createInputOnlyDagSpec("x", CType.CInt)
     val inputs = Map("x" -> Json.fromString("not a number"))
 
     val error = intercept[RuntimeException] {
@@ -189,7 +195,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert optional type with Some value" in {
-    val dag = createInputOnlyDagSpec("opt", CType.COptional(CType.CInt))
+    val dag    = createInputOnlyDagSpec("opt", CType.COptional(CType.CInt))
     val inputs = Map("opt" -> Json.fromInt(42))
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -198,7 +204,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert optional type with null value" in {
-    val dag = createInputOnlyDagSpec("opt", CType.COptional(CType.CString))
+    val dag    = createInputOnlyDagSpec("opt", CType.COptional(CType.CString))
     val inputs = Map("opt" -> Json.Null)
 
     val result = ExecutionHelper.convertInputs(inputs, dag).unsafeRunSync()
@@ -323,7 +329,7 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
   }
 
   it should "convert complex output types to JSON" in {
-    val outputId = UUID.randomUUID()
+    val outputId    = UUID.randomUUID()
     val productType = CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CString))
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -341,10 +347,14 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
       processUuid = UUID.randomUUID(),
       dag = dag,
       moduleStatus = Map.empty,
-      data = Map(outputId -> Eval.now(CValue.CProduct(
-        Map("x" -> CValue.CInt(10), "y" -> CValue.CString("test")),
-        productType.structure
-      )))
+      data = Map(
+        outputId -> Eval.now(
+          CValue.CProduct(
+            Map("x" -> CValue.CInt(10), "y" -> CValue.CString("test")),
+            productType.structure
+          )
+        )
+      )
     )
 
     val result = ExecutionHelper.extractOutputs(state).unsafeRunSync()
@@ -373,19 +383,25 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
       processUuid = UUID.randomUUID(),
       dag = dag,
       moduleStatus = Map.empty,
-      data = Map(outputId -> Eval.now(CValue.CList(
-        Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
-        CType.CInt
-      )))
+      data = Map(
+        outputId -> Eval.now(
+          CValue.CList(
+            Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
+            CType.CInt
+          )
+        )
+      )
     )
 
     val result = ExecutionHelper.extractOutputs(state).unsafeRunSync()
 
-    result("items") shouldBe Json.fromValues(List(
-      Json.fromInt(1),
-      Json.fromInt(2),
-      Json.fromInt(3)
-    ))
+    result("items") shouldBe Json.fromValues(
+      List(
+        Json.fromInt(1),
+        Json.fromInt(2),
+        Json.fromInt(3)
+      )
+    )
   }
 
   // ========== Legacy Output Extraction Tests ==========
