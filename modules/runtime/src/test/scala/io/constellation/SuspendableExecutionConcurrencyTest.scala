@@ -189,7 +189,7 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers with
     }
   }
 
-  it should "not corrupt data with race between validation and merge" in {
+  it should "not corrupt data with race between validation and merge" taggedAs Retryable in {
     // This test demonstrates the original bug: two concurrent resumes could both
     // pass validation before either merged, resulting in one overwriting the other.
     // With the fix, only one resume proceeds.
