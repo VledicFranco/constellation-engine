@@ -26,20 +26,20 @@ All interactions go through two main entry points:
 ### sbt
 
 ```scala
-val constellationVersion = "0.3.0"
+val constellationVersion = "0.3.1"
 
 libraryDependencies ++= Seq(
-  "io.constellation" %% "constellation-core"          % constellationVersion,
-  "io.constellation" %% "constellation-runtime"       % constellationVersion,
-  "io.constellation" %% "constellation-lang-compiler" % constellationVersion,
-  "io.constellation" %% "constellation-lang-stdlib"   % constellationVersion
+  "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-runtime"       % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-compiler" % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-stdlib"   % constellationVersion
 )
 ```
 
 Add the HTTP module only if you need the server:
 
 ```scala
-libraryDependencies += "io.constellation" %% "constellation-http-api" % constellationVersion
+libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % constellationVersion
 ```
 
 ### Required Transitive Dependencies

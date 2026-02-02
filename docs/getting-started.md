@@ -78,17 +78,37 @@ out result
 ### Prerequisites
 
 - **JDK 17+** (we recommend [Temurin](https://adoptium.net/))
-- **SBT 1.9.x** ([download](https://www.scala-sbt.org/download.html))
+- **SBT 1.10+** ([download](https://www.scala-sbt.org/download.html))
 - **VSCode** with the Constellation extension (optional but recommended)
 
-### Clone and Build
+### Add Dependencies
+
+Add Constellation Engine to your `build.sbt`:
+
+```scala
+val constellationVersion = "0.3.1"
+
+libraryDependencies ++= Seq(
+  "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-runtime"       % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-compiler" % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-stdlib"   % constellationVersion
+)
+```
+
+Add the HTTP server module if you want the REST API:
+
+```scala
+libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % constellationVersion
+```
+
+### Alternative: Clone and Run the Example App
+
+If you'd like to explore the example application and included pipelines:
 
 ```bash
-# Clone the repository
 git clone https://github.com/VledicFranco/constellation-engine.git
 cd constellation-engine
-
-# Compile and run tests
 make compile
 make test
 ```
@@ -165,7 +185,7 @@ Expected response:
 
 | Issue | Solution |
 |-------|----------|
-| `sbt: command not found` | Install SBT from https://www.scala-sbt.org/download.html |
+| `sbt: command not found` | Install SBT 1.10+ from https://www.scala-sbt.org/download.html |
 | `java: command not found` | Install JDK 17+ from https://adoptium.net/ |
 | Port 8080 in use | Set `CONSTELLATION_PORT=8081` before running |
 | Tests fail | Run `make clean` then `make compile` |

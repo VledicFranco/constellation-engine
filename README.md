@@ -350,7 +350,43 @@ Per-node overhead converges to **~0.15 ms** at scale — your services are the b
 
 ---
 
-## Quick Start
+## Installation
+
+Constellation Engine is published to Maven Central. Add the modules you need to your `build.sbt`:
+
+```scala
+val constellationVersion = "0.3.1"
+
+libraryDependencies ++= Seq(
+  "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-runtime"       % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-compiler" % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-stdlib"   % constellationVersion
+)
+```
+
+Add the HTTP server module if you want to expose pipelines via REST API:
+
+```scala
+libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % constellationVersion
+```
+
+### Available Modules
+
+| Module | artifactId | Description |
+|--------|------------|-------------|
+| Core | `constellation-core` | Type system, foundational types |
+| Runtime | `constellation-runtime` | DAG execution engine |
+| Lang AST | `constellation-lang-ast` | Syntax tree definitions |
+| Lang Parser | `constellation-lang-parser` | Text to AST parser |
+| Lang Compiler | `constellation-lang-compiler` | AST to executable DAG |
+| Lang Stdlib | `constellation-lang-stdlib` | Built-in functions |
+| Lang LSP | `constellation-lang-lsp` | Language Server Protocol |
+| HTTP API | `constellation-http-api` | REST API + WebSocket LSP |
+
+### Quick Start (Example App)
+
+To try the included example application:
 
 ```bash
 git clone https://github.com/VledicFranco/constellation-engine.git
@@ -407,7 +443,7 @@ Manifests include liveness/readiness probes, resource limits, and a ConfigMap fo
 ## Requirements
 
 - JDK 17+
-- SBT 1.9+
+- SBT 1.10+
 - Node.js 18+ (for VSCode extension)
 
 ## License

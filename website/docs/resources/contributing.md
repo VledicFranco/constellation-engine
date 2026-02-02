@@ -26,7 +26,7 @@ Thank you for your interest in contributing to Constellation Engine! This guide 
 Before you begin, ensure you have:
 
 - **Java 17+** (JDK 17 or later)
-- **SBT 1.9+** (Scala Build Tool)
+- **SBT 1.10+** (Scala Build Tool)
 - **Node.js 18+** and npm
 - **VSCode** (recommended for extension development)
 
@@ -34,7 +34,7 @@ Before you begin, ensure you have:
 
 ```bash
 java -version    # Should show Java 17+
-sbt --version    # Should show SBT 1.9+
+sbt --version    # Should show SBT 1.10+
 node --version   # Should show Node 18+
 npm --version
 ```
@@ -46,7 +46,7 @@ npm --version
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone https://github.com/your-org/constellation-engine.git
+git clone https://github.com/VledicFranco/constellation-engine.git
 cd constellation-engine
 
 # Install all dependencies

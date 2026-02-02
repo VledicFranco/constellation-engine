@@ -12,6 +12,21 @@ As a library user, you'll learn how to:
 4. ✅ **Expose your pipelines** via HTTP API
 5. ✅ **Run and test** your application
 
+## Dependencies
+
+To use Constellation Engine as a library in your own project, add the dependencies from [Maven Central](https://central.sonatype.com/):
+
+```scala
+val constellationVersion = "0.3.1"
+
+libraryDependencies ++= Seq(
+  "io.github.vledicfranco" %% "constellation-runtime"       % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-compiler" % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-stdlib"   % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-http-api"      % constellationVersion
+)
+```
+
 ## Quick Start
 
 ### 1. Start the Application

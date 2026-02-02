@@ -97,7 +97,7 @@ val fetchCustomer = ModuleBuilder
 ## Requirements
 
 - JDK 17+
-- SBT 1.9+
+- SBT 1.10+
 - Node.js 18+ (for VSCode extension, optional)
 
 ## Next Steps

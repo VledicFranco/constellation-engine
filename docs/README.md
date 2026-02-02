@@ -35,25 +35,35 @@ Constellation Engine consists of two main components:
 ### Prerequisites
 
 - Scala 3.3.x
-- SBT 1.9.x
+- SBT 1.10+
 - JDK 17+
 
 ### Installation
 
-Add to your `build.sbt`:
+Constellation Engine is published to [Maven Central](https://central.sonatype.com/). Add to your `build.sbt`:
 
 ```scala
+val constellationVersion = "0.3.1"
+
 libraryDependencies ++= Seq(
-  "org.typelevel" %% "cats-core" % "2.10.0",
-  "org.typelevel" %% "cats-effect" % "3.5.2",
-  "org.typelevel" %% "cats-parse" % "1.0.0",
-  "io.circe" %% "circe-core" % "0.14.6"
+  "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-runtime"       % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-compiler" % constellationVersion,
+  "io.github.vledicfranco" %% "constellation-lang-stdlib"   % constellationVersion
 )
 ```
 
-### Build and Test
+Add the HTTP module only if you need the REST API server:
+
+```scala
+libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % constellationVersion
+```
+
+### Build from Source (for contributors)
 
 ```bash
+git clone https://github.com/VledicFranco/constellation-engine.git
+cd constellation-engine
 make compile   # Compile the project
 make test      # Run all tests
 make dev       # Start development server
