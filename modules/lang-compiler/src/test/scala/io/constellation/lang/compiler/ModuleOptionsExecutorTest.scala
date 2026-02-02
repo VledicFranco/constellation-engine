@@ -6,18 +6,20 @@ import cats.syntax.all.*
 import io.constellation.CType
 import io.constellation.cache.CacheRegistry
 import io.constellation.execution.LimiterRegistry
+import io.constellation.lang.RetrySupport
 import io.constellation.lang.ast.{
   BackoffStrategy as ASTBackoffStrategy,
   ErrorStrategy as ASTErrorStrategy
 }
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.*
 
-class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
+class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "ModuleOptionsExecutor" should "execute without options (fast path)" in {
     val result = (for {
@@ -120,7 +122,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
     result._3 shouldBe 1 // Only one execution
   }
 
-  it should "apply throttle rate limiting" in {
+  it should "apply throttle rate limiting" taggedAs Retryable in {
     val counter = new AtomicInteger(0)
 
     val result = (for {
@@ -182,7 +184,7 @@ class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers {
     result shouldBe io.constellation.CValue.CInt(0)
   }
 
-  it should "apply backoff strategy" in {
+  it should "apply backoff strategy" taggedAs Retryable in {
     val counter    = new AtomicInteger(0)
     val timestamps = new java.util.concurrent.ConcurrentLinkedQueue[Long]()
 

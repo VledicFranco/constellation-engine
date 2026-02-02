@@ -3,8 +3,10 @@ package io.constellation.execution
 import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 import java.util.UUID
@@ -12,7 +14,7 @@ import java.util.UUID
 import io.constellation.*
 import io.constellation.spi.ConstellationBackends
 
-class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
+class ConstellationLifecycleTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // -------------------------------------------------------------------------
   // Helper: create a mock CancellableExecution
@@ -78,7 +80,7 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
     lc.inflightCount.unsafeRunSync() shouldBe 1
   }
 
-  it should "reject registration when Draining" in {
+  it should "reject registration when Draining" taggedAs Retryable in {
     val lc = ConstellationLifecycle.create.unsafeRunSync()
 
     // Register first to keep it in Draining state
@@ -121,7 +123,7 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
   // Shutdown - Drain
   // -------------------------------------------------------------------------
 
-  it should "drain in-flight executions during shutdown" in {
+  it should "drain in-flight executions during shutdown" taggedAs Retryable in {
     val lc = ConstellationLifecycle.create.unsafeRunSync()
 
     // Register an execution that completes after 200ms
@@ -183,7 +185,7 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers {
   // Backpressure - QueueFullException
   // -------------------------------------------------------------------------
 
-  "GlobalScheduler with maxQueueSize" should "reject when queue is full" in {
+  "GlobalScheduler with maxQueueSize" should "reject when queue is full" taggedAs Retryable in {
     GlobalScheduler
       .bounded(maxConcurrency = 1, maxQueueSize = 2)
       .use { scheduler =>

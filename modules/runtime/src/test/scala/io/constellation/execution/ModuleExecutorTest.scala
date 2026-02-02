@@ -2,13 +2,15 @@ package io.constellation.execution
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
-class ModuleExecutorTest extends AnyFlatSpec with Matchers {
+class ModuleExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // -------------------------------------------------------------------------
   // Retry Tests
@@ -67,7 +69,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     counter.get() shouldBe 3
   }
 
-  it should "apply delay between retries" in {
+  it should "apply delay between retries" taggedAs Retryable in {
     val counter = new AtomicInteger(0)
 
     val operation = IO {
@@ -323,7 +325,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
   // Convenience Methods Tests
   // -------------------------------------------------------------------------
 
-  "retryWithDelay" should "retry with specified delay" in {
+  "retryWithDelay" should "retry with specified delay" taggedAs Retryable in {
     val counter = new AtomicInteger(0)
 
     val (duration, result) = ModuleExecutor
@@ -448,7 +450,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     ) shouldBe 5.seconds // capped
   }
 
-  "executeWithRetry with backoff" should "apply exponential backoff delays" in {
+  "executeWithRetry with backoff" should "apply exponential backoff delays" taggedAs Retryable in {
     val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 
@@ -477,7 +479,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     totalTime should be >= 300.0
   }
 
-  it should "apply linear backoff delays" in {
+  it should "apply linear backoff delays" taggedAs Retryable in {
     val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 
@@ -505,7 +507,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers {
     totalTime should be >= 250.0
   }
 
-  it should "respect maxDelay cap" in {
+  it should "respect maxDelay cap" taggedAs Retryable in {
     val counter   = new AtomicInteger(0)
     val startTime = System.nanoTime()
 

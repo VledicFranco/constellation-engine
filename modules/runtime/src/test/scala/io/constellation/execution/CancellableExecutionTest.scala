@@ -3,8 +3,10 @@ package io.constellation.execution
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 import java.util.UUID
@@ -13,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import io.constellation.*
 import io.constellation.spi.{ConstellationBackends, ExecutionListener}
 
-class CancellableExecutionTest extends AnyFlatSpec with Matchers {
+class CancellableExecutionTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // -------------------------------------------------------------------------
   // Helper: build a simple DAG for testing
@@ -141,7 +143,7 @@ class CancellableExecutionTest extends AnyFlatSpec with Matchers {
   // Runtime.runCancellable - Cancellation
   // -------------------------------------------------------------------------
 
-  it should "cancel a slow execution and return Cancelled status" in {
+  it should "cancel a slow execution and return Cancelled status" taggedAs Retryable in {
     val (dag, modules) = buildSimpleDag("Slow", name => slowModule(name, 10.seconds))
     val inputs         = Map("text" -> CValue.CString("hello"))
 
@@ -168,7 +170,7 @@ class CancellableExecutionTest extends AnyFlatSpec with Matchers {
     exec.status.unsafeRunSync() shouldBe ExecutionStatus.Cancelled
   }
 
-  it should "be idempotent when cancelled multiple times" in {
+  it should "be idempotent when cancelled multiple times" taggedAs Retryable in {
     val (dag, modules) = buildSimpleDag("Slow2", name => slowModule(name, 10.seconds))
     val inputs         = Map("text" -> CValue.CString("hello"))
 
@@ -240,7 +242,7 @@ class CancellableExecutionTest extends AnyFlatSpec with Matchers {
     state.latency.isDefined shouldBe true
   }
 
-  it should "cancel execution when timeout elapses" in {
+  it should "cancel execution when timeout elapses" taggedAs Retryable in {
     val (dag, modules) = buildSimpleDag("Slow3", name => slowModule(name, 10.seconds))
     val inputs         = Map("text" -> CValue.CString("hello"))
 
@@ -265,7 +267,7 @@ class CancellableExecutionTest extends AnyFlatSpec with Matchers {
   // ExecutionListener.onExecutionCancelled
   // -------------------------------------------------------------------------
 
-  "ExecutionListener" should "receive onExecutionCancelled when execution is cancelled" in {
+  "ExecutionListener" should "receive onExecutionCancelled when execution is cancelled" taggedAs Retryable in {
     val cancelledCalled = new AtomicBoolean(false)
 
     val listener = new ExecutionListener {

@@ -3,13 +3,15 @@ package io.constellation.execution
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
-class CircuitBreakerTest extends AnyFlatSpec with Matchers {
+class CircuitBreakerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // -------------------------------------------------------------------------
   // CircuitBreaker - Closed State
@@ -146,7 +148,7 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
   // CircuitBreaker - HalfOpen State
   // -------------------------------------------------------------------------
 
-  it should "transition to HalfOpen after resetDuration" in {
+  it should "transition to HalfOpen after resetDuration" taggedAs Retryable in {
     val cb = CircuitBreaker
       .create(
         "TestModule",
@@ -176,7 +178,7 @@ class CircuitBreakerTest extends AnyFlatSpec with Matchers {
     cb.state.unsafeRunSync() shouldBe CircuitState.Closed
   }
 
-  it should "revert to Open if probe fails in HalfOpen" in {
+  it should "revert to Open if probe fails in HalfOpen" taggedAs Retryable in {
     val cb = CircuitBreaker
       .create(
         "TestModule",

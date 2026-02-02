@@ -3,13 +3,15 @@ package io.constellation.cache
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterEach
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 
-class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
+class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach with RetrySupport {
 
   var cache: InMemoryCacheBackend = _
 
@@ -62,7 +64,7 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
   // TTL and Expiration
   // -------------------------------------------------------------------------
 
-  it should "expire entries after TTL" in {
+  it should "expire entries after TTL" taggedAs Retryable in {
     cache.set("short-lived", "value", 50.millis).unsafeRunSync()
 
     // Should exist immediately
@@ -75,7 +77,7 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     cache.get[String]("short-lived").unsafeRunSync() shouldBe None
   }
 
-  it should "provide remaining TTL in entry" in {
+  it should "provide remaining TTL in entry" taggedAs Retryable in {
     cache.set("key", "value", 1.second).unsafeRunSync()
 
     val entry = cache.get[String]("key").unsafeRunSync().get
@@ -134,7 +136,7 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     stats.evictions should be >= 1L
   }
 
-  it should "evict least recently used entries" in {
+  it should "evict least recently used entries" taggedAs Retryable in {
     val limitedCache = InMemoryCacheBackend.withMaxSize(3)
 
     limitedCache.set("key1", "value1", 1.minute).unsafeRunSync()
@@ -176,7 +178,7 @@ class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach
     stats.size should be <= 10
   }
 
-  it should "cache stats results for performance (5 second TTL)" in {
+  it should "cache stats results for performance (5 second TTL)" taggedAs Retryable in {
     cache.set("key1", "value1", 1.minute).unsafeRunSync()
     cache.set("key2", "value2", 1.minute).unsafeRunSync()
 

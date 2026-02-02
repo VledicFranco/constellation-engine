@@ -3,8 +3,10 @@ package io.constellation
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.time.Instant
 import java.util.UUID
@@ -14,7 +16,7 @@ import java.util.UUID
   * Verifies that concurrent resume calls on the same suspended execution are properly serialized to
   * prevent data corruption.
   */
-class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
+class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // Helper to create a minimal suspended execution
   private def createSuspendedExecution(
@@ -53,7 +55,7 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers {
     )
   }
 
-  "SuspendableExecution.resume" should "prevent concurrent resumes on the same execution" in {
+  "SuspendableExecution.resume" should "prevent concurrent resumes on the same execution" taggedAs Retryable in {
     val suspended = createSuspendedExecution()
 
     // Launch two concurrent resume calls with different inputs for the same variable

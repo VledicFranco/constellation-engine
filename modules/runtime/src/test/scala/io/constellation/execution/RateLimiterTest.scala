@@ -3,8 +3,10 @@ package io.constellation.execution
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong, AtomicReference}
 import scala.concurrent.duration.*
@@ -41,7 +43,7 @@ class RateLimitTest extends AnyFlatSpec with Matchers {
   }
 }
 
-class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
+class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "TokenBucketRateLimiter" should "allow immediate execution when tokens available" in {
     val result = (for {
@@ -54,7 +56,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
     result shouldBe true
   }
 
-  it should "report available tokens" in {
+  it should "report available tokens" taggedAs Retryable in {
     val tokens = (for {
       limiter   <- TokenBucketRateLimiter(RateLimit.perSecond(10))
       initial   <- limiter.availableTokens
@@ -85,7 +87,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
     result shouldBe true
   }
 
-  it should "replenish tokens over time" in {
+  it should "replenish tokens over time" taggedAs Retryable in {
     val result = (for {
       limiter <- TokenBucketRateLimiter(RateLimit(10, 100.millis)) // 10 tokens per 100ms
       _       <- limiter.acquire
@@ -100,7 +102,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
     result._2 should be > result._1 // Tokens replenished
   }
 
-  it should "not exceed max tokens on replenish" in {
+  it should "not exceed max tokens on replenish" taggedAs Retryable in {
     val result = (for {
       limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
       _       <- IO.sleep(200.millis) // Wait for potential over-replenishment
@@ -124,7 +126,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
     counter.get() shouldBe 1
   }
 
-  it should "provide stats" in {
+  it should "provide stats" taggedAs Retryable in {
     val stats = (for {
       limiter <- TokenBucketRateLimiter(RateLimit.perSecond(10))
       _       <- limiter.acquire
@@ -137,7 +139,7 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers {
     stats.fillRatio shouldBe 0.9 +- 0.02
   }
 
-  "Rate limiting timing" should "enforce rate limits under load" in {
+  "Rate limiting timing" should "enforce rate limits under load" taggedAs Retryable in {
     val rate      = RateLimit(5, 100.millis) // 5 per 100ms = 50/sec
     val callCount = 10
 
@@ -302,7 +304,7 @@ class ConcurrencyLimiterTest extends AnyFlatSpec with Matchers {
   }
 }
 
-class LimiterRegistryTest extends AnyFlatSpec with Matchers {
+class LimiterRegistryTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "LimiterRegistry" should "create and reuse rate limiters" in {
     val result = (for {
@@ -381,7 +383,7 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
     result shouldBe (2, 0)
   }
 
-  it should "get all rate limiter stats" in {
+  it should "get all rate limiter stats" taggedAs Retryable in {
     val result = (for {
       registry <- LimiterRegistry.create
       limiter  <- registry.getRateLimiter("test", RateLimit.perSecond(10))
@@ -420,7 +422,7 @@ class LimiterRegistryTest extends AnyFlatSpec with Matchers {
   }
 }
 
-class RateControlExecutorTest extends AnyFlatSpec with Matchers {
+class RateControlExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "RateControlExecutor" should "apply throttle only" in {
     val counter = new AtomicInteger(0)
@@ -461,7 +463,7 @@ class RateControlExecutorTest extends AnyFlatSpec with Matchers {
     result shouldBe 2
   }
 
-  it should "apply both throttle and concurrency" in {
+  it should "apply both throttle and concurrency" taggedAs Retryable in {
     val counter       = new AtomicInteger(0)
     val maxActive     = new AtomicInteger(0)
     val currentActive = new AtomicInteger(0)

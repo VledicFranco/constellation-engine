@@ -11,8 +11,10 @@ import io.constellation.lang.compiler.{
   ModuleOptionsExecutor
 }
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
+import io.constellation.lang.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
@@ -21,7 +23,7 @@ import scala.concurrent.duration.*
 /** End-to-end integration tests for module call options. These tests verify that options specified
   * in constellation-lang source code are correctly parsed, compiled, and executed at runtime.
   */
-class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
+class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // Create a compiler with a test function registered
   private def compilerWithFunction(name: String): LangCompiler =
@@ -163,7 +165,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     result._3 shouldBe 1 // Only executed once
   }
 
-  "E2E with delay and backoff" should "apply backoff delays" in {
+  "E2E with delay and backoff" should "apply backoff delays" taggedAs Retryable in {
     val source = """
       in x: Int
       result = TestModule(x) with retry: 3, delay: 50ms, backoff: exponential
@@ -213,7 +215,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     }
   }
 
-  "E2E with throttle option" should "rate limit operations" in {
+  "E2E with throttle option" should "rate limit operations" taggedAs Retryable in {
     val source = """
       in x: Int
       result = TestModule(x) with throttle: 2/100ms

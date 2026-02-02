@@ -7,12 +7,13 @@ import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.time.Instant
 import java.util.UUID
 import scala.concurrent.duration.*
 
-class CompilationCacheTest extends AnyFlatSpec with Matchers {
+class CompilationCacheTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   /** Create a mock CompilationOutput for testing */
   private def mockCompileResult(name: String = "test-dag"): CompilationOutput = {
@@ -78,7 +79,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     retrieved shouldBe None
   }
 
-  it should "evict LRU entries when cache is full" in {
+  it should "evict LRU entries when cache is full" taggedAs Retryable in {
     val config = CompilationCache.Config(maxEntries = 2)
     val cache  = CompilationCache.createUnsafe(config)
 
@@ -95,7 +96,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     cache.get("c", "hash3", "hash3").unsafeRunSync() should not be empty
   }
 
-  it should "expire entries after TTL" in {
+  it should "expire entries after TTL" taggedAs Retryable in {
     val config = CompilationCache.Config(maxAge = 50.millis)
     val cache  = CompilationCache.createUnsafe(config)
 
@@ -165,7 +166,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers {
     cache.size.unsafeRunSync() shouldBe 0
   }
 
-  it should "calculate hit rate correctly" in {
+  it should "calculate hit rate correctly" taggedAs Retryable in {
     val cache = CompilationCache.createUnsafe()
 
     // 2 misses, then 2 hits

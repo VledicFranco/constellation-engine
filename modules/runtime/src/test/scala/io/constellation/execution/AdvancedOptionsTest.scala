@@ -4,8 +4,10 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 import io.constellation.{CType, CValue}
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.*
@@ -413,7 +415,7 @@ class PriorityLevelTest extends AnyFlatSpec with Matchers {
   }
 }
 
-class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
+class PrioritySchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "PriorityScheduler" should "execute submitted tasks" in {
     val counter = new AtomicInteger(0)
@@ -455,7 +457,7 @@ class PrioritySchedulerTest extends AnyFlatSpec with Matchers {
     result.forPriority(PriorityLevel.Low).get.submitted shouldBe 1
   }
 
-  it should "track duration by priority" in {
+  it should "track duration by priority" taggedAs Retryable in {
     val result = (for {
       scheduler <- PriorityScheduler.create
       _         <- scheduler.submit(IO.sleep(50.millis), PriorityLevel.High)

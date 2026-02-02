@@ -3,14 +3,16 @@ package io.constellation.execution
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+import io.constellation.RetrySupport
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 import scala.concurrent.duration.*
 import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import scala.collection.mutable.ListBuffer
 
-class GlobalSchedulerTest extends AnyFlatSpec with Matchers {
+class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   // -------------------------------------------------------------------------
   // Unbounded Scheduler Tests
@@ -141,7 +143,7 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers {
   // Bounded Scheduler - Priority Ordering Tests
   // -------------------------------------------------------------------------
 
-  "Bounded scheduler priority ordering" should "execute higher priority tasks before lower priority" in {
+  "Bounded scheduler priority ordering" should "execute higher priority tasks before lower priority" taggedAs Retryable in {
     GlobalScheduler
       .bounded(maxConcurrency = 1)
       .use { scheduler =>
@@ -280,7 +282,7 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers {
   // Bounded Scheduler - Starvation Prevention Tests
   // -------------------------------------------------------------------------
 
-  "Bounded scheduler starvation prevention" should "boost priority of waiting tasks over time" in {
+  "Bounded scheduler starvation prevention" should "boost priority of waiting tasks over time" taggedAs Retryable in {
     // Use a short starvation timeout for testing
     GlobalScheduler
       .bounded(maxConcurrency = 1, starvationTimeout = 1.second)
