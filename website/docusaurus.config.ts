@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Constellation Engine',
-  tagline: 'Type-safe ML pipeline orchestration for Scala',
+  tagline: 'Type-safe pipeline orchestration for Scala',
   favicon: 'img/logo-icon.svg',
 
   url: 'https://vledicfranco.github.io',

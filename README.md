@@ -5,7 +5,7 @@
 <h1 align="center">Constellation Engine</h1>
 
 <p align="center">
-  <strong>Type-safe ML pipeline orchestration for Scala</strong>
+  <strong>Type-safe pipeline orchestration for Scala</strong>
 </p>
 
 <p align="center">
@@ -225,8 +225,9 @@ object Server extends IOApp.Simple {
 | `/modules` | GET | List registered modules |
 | `/compile` | POST | Compile constellation-lang source |
 | `/run` | POST | Compile and execute in one call |
-| `/dags` | GET | List compiled DAGs |
-| `/execute` | POST | Execute a compiled DAG |
+| `/programs` | GET | List stored programs |
+| `/programs/{ref}` | GET | Get program metadata |
+| `/execute` | POST | Execute a stored program |
 | `/lsp` | WebSocket | Language Server Protocol for IDE support |
 
 ---

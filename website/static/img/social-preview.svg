@@ -58,7 +58,7 @@
   </text>
 
   <text x="600" y="480" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="24" font-weight="400" fill="#94a3b8">
-    Type-safe ML pipeline orchestration for Scala
+    Type-safe pipeline orchestration for Scala
   </text>
 
   <!-- Bottom accent line -->

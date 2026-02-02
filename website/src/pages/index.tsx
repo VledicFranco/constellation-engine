@@ -13,7 +13,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={siteConfig.title}
-      description="Type-safe ML pipeline orchestration for Scala"
+      description="Type-safe pipeline orchestration for Scala"
     >
       <main className={styles.main}>
         <HomepageHero />
