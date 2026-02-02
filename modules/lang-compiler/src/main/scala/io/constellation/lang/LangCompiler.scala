@@ -148,7 +148,7 @@ private class LangCompilerImpl(
         List(CompileError.InternalError(err.message))
       }
     } yield {
-      // Wrap CompileResult into CompilationOutput
+      // Build CompilationOutput from DagCompileOutput
       val sourceHash = ContentHash.computeSHA256(source.getBytes("UTF-8"))
       val structuralHash = ProgramImage.computeStructuralHash(result.dagSpec)
       val moduleOptions = result.moduleOptions.map { case (uuid, irOpts) =>

@@ -82,7 +82,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
       results.foreach(_.isRight shouldBe firstIsRight)
 
       if (firstIsRight) {
-        val dagSpecs = results.map(_.toOption.get.dagSpec)
+        val dagSpecs = results.map(_.toOption.get.program.image.dagSpec)
         // Module counts, data counts, edge counts should match
         dagSpecs.sliding(2).foreach { pair =>
           pair.head.modules.size shouldBe pair.last.modules.size
@@ -106,8 +106,8 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
       r1.isRight shouldBe r2.isRight
 
       if (r1.isRight) {
-        val d1 = r1.toOption.get.dagSpec
-        val d2 = r2.toOption.get.dagSpec
+        val d1 = r1.toOption.get.program.image.dagSpec
+        val d2 = r2.toOption.get.program.image.dagSpec
         d1.modules.size shouldBe d2.modules.size
         d1.data.size shouldBe d2.data.size
         d1.declaredOutputs shouldBe d2.declaredOutputs
@@ -188,7 +188,7 @@ class CompilationPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckP
 
     results.foreach(_.isRight shouldBe true)
 
-    val bindings = results.map(_.toOption.get.dagSpec.outputBindings.keySet)
+    val bindings = results.map(_.toOption.get.program.image.dagSpec.outputBindings.keySet)
     bindings.sliding(2).foreach { pair =>
       pair.head shouldBe pair.last
     }

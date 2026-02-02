@@ -6,10 +6,10 @@ info:
     REST API for the Constellation Engine - a type-safe, composable ML orchestration framework.
 
     This API allows you to:
-    - Compile constellation-lang source code into executable DAGs
-    - Execute stored DAGs with input data
+    - Compile constellation-lang source code into executable programs
+    - Execute compiled programs with input data
     - Compile and run scripts in a single request
-    - Query available modules, DAGs, and namespaces
+    - Query available modules and namespaces
 
     ## Quick Start
 
@@ -40,8 +40,6 @@ tags:
     description: Execute compiled DAGs
   - name: Programs
     description: Manage stored programs (content-addressed)
-  - name: DAGs
-    description: Query and manage DAGs (legacy)
   - name: Modules
     description: Query available modules
   - name: Namespaces
@@ -240,77 +238,6 @@ paths:
                 outputs: {}
                 compilationErrors: []
                 error: "Execution failed: Division by zero"
-
-  /dags:
-    get:
-      tags:
-        - DAGs
-      summary: List all stored DAGs
-      description: |
-        Returns a list of all DAGs that have been compiled and stored.
-        Each entry includes the DAG name and its metadata.
-      operationId: listDags
-      responses:
-        '200':
-          description: List of DAGs
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DagListResponse'
-              example:
-                dags:
-                  my-pipeline:
-                    name: "my-pipeline"
-                    description: "Text processing pipeline"
-                    tags: ["text", "processing"]
-                    majorVersion: 1
-                    minorVersion: 0
-                  lead-scorer:
-                    name: "lead-scorer"
-                    description: "Lead scoring pipeline"
-                    tags: ["ml", "scoring"]
-                    majorVersion: 2
-                    minorVersion: 1
-
-  /dags/{dagName}:
-    get:
-      tags:
-        - DAGs
-      summary: Get a specific DAG
-      description: Returns details about a specific DAG by name.
-      operationId: getDag
-      parameters:
-        - name: dagName
-          in: path
-          required: true
-          description: Name of the DAG
-          schema:
-            type: string
-          example: "my-pipeline"
-      responses:
-        '200':
-          description: DAG found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DagResponse'
-              example:
-                name: "my-pipeline"
-                metadata:
-                  name: "my-pipeline"
-                  description: "Text processing pipeline"
-                  tags: ["text", "processing"]
-                  majorVersion: 1
-                  minorVersion: 0
-        '404':
-          description: DAG not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-              example:
-                error: "DagNotFound"
-                message: "DAG 'unknown-pipeline' not found"
 
   /modules:
     get:
@@ -827,29 +754,6 @@ components:
           type: string
           nullable: true
           description: Runtime error message if execution failed
-
-    DagListResponse:
-      type: object
-      required:
-        - dags
-      properties:
-        dags:
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/ComponentMetadata'
-          description: Map of DAG names to their metadata
-
-    DagResponse:
-      type: object
-      required:
-        - name
-        - metadata
-      properties:
-        name:
-          type: string
-          description: DAG name
-        metadata:
-          $ref: '#/components/schemas/ComponentMetadata'
 
     ComponentMetadata:
       type: object

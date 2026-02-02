@@ -289,21 +289,28 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
         outputBindings = Map("output" -> outputDataId)
       )
 
-      _ <- constellation.setDag("BuilderTestDag", dag)
-      state <- constellation.runDag("BuilderTestDag", Map("input" -> CValue.CString("world")))
+      structuralHash = ProgramImage.computeStructuralHash(dag)
+      image = ProgramImage(
+        structuralHash = structuralHash,
+        syntacticHash = "",
+        dagSpec = dag,
+        moduleOptions = Map.empty,
+        compiledAt = java.time.Instant.now()
+      )
+      loaded = LoadedProgram(image, Map.empty)
+      sig <- constellation.run(loaded, Map("input" -> CValue.CString("world")))
 
       _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
 
       events  <- listenerEvents.get
       metrics <- metricRecords.get
       spans   <- spanRecords.get
-    } yield (state, events, metrics, spans)).unsafeRunSync()
+    } yield (sig, events, metrics, spans)).unsafeRunSync()
 
-    val (state, events, metrics, spans) = result
+    val (sig, events, metrics, spans) = result
 
     // Verify execution produced correct result
-    val outputValues = state.data.values.map(_.value).collect { case CValue.CString(s) => s }.toSet
-    outputValues should contain("WORLD")
+    sig.outputs.get("output") shouldBe Some(CValue.CString("WORLD"))
 
     // Verify listener events
     events.map(_.eventType) should contain("executionStart")

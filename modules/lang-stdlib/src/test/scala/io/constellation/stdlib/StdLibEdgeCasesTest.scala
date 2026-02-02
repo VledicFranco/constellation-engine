@@ -20,11 +20,8 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- ConstellationImpl.init
       compiled = StdLib.compiler.compile(source, "test-dag").toOption.get
-      // Use runDagWithModules which passes syntheticModules directly
-      state <- constellation.runDagWithModules(compiled.dagSpec, inputs, compiled.syntheticModules)
-      outputBinding = compiled.dagSpec.outputBindings(outputName)
-      result = state.data.get(outputBinding).map(_.value).get
-    } yield result
+      sig <- constellation.run(compiled.program, inputs)
+    } yield sig.outputs(outputName)
 
     test.unsafeRunSync()
   }

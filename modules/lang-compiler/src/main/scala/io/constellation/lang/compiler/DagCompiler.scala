@@ -9,12 +9,8 @@ import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
 
-/** Compilation result containing the DagSpec, synthetic modules, module options, and warnings.
-  *
-  * @deprecated Use [[CompilationOutput]] which wraps a [[io.constellation.LoadedProgram]].
-  */
-@deprecated("Use CompilationOutput with LoadedProgram", "0.3.0")
-final case class CompileResult(
+/** Internal compilation output from DagCompiler. */
+private[compiler] final case class DagCompileOutput(
     dagSpec: DagSpec,
     syntheticModules: Map[UUID, Module.Uninitialized],
     moduleOptions: Map[UUID, IRModuleCallOptions] = Map.empty,
@@ -52,7 +48,7 @@ object DagCompiler {
       program: IRProgram,
       dagName: String,
       registeredModules: Map[String, Module.Uninitialized]
-  ): Either[DagCompilerError, CompileResult] = {
+  ): Either[DagCompilerError, DagCompileOutput] = {
     val compiler = new DagCompilerState(dagName, registeredModules)
     compiler.compile(program)
   }
@@ -79,7 +75,7 @@ object DagCompiler {
     private def getNodeOutput(nodeId: UUID, context: String): Either[DagCompilerError, UUID] =
       nodeOutputs.get(nodeId).toRight(DagCompilerError.NodeNotFound(nodeId, context))
 
-    def compile(program: IRProgram): Either[DagCompilerError, CompileResult] = {
+    def compile(program: IRProgram): Either[DagCompilerError, DagCompileOutput] = {
       // Process nodes in topological order
       val processResult = program.topologicalOrder.foldLeft[Either[DagCompilerError, Unit]](Right(())) {
         case (Right(_), nodeId) =>
@@ -112,7 +108,7 @@ object DagCompiler {
           outputBindings = outputBindings
         )
 
-        CompileResult(dagSpec, syntheticModules, moduleOptions)
+        DagCompileOutput(dagSpec, syntheticModules, moduleOptions)
       }
     }
 

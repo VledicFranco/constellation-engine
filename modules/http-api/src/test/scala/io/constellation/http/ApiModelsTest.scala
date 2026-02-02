@@ -338,64 +338,6 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     parsed shouldBe Right(original)
   }
 
-  // ========== DagListResponse Tests ==========
-
-  "DagListResponse" should "serialize with multiple DAGs" in {
-    val response = DagListResponse(
-      dags = Map(
-        "dag1" -> ComponentMetadata("dag1", "First DAG", List.empty, 1, 0),
-        "dag2" -> ComponentMetadata("dag2", "Second DAG", List("test"), 2, 1)
-      )
-    )
-
-    val json = response.asJson.noSpaces
-
-    json should include("\"dag1\":")
-    json should include("\"dag2\":")
-    json should include("First DAG")
-    json should include("Second DAG")
-  }
-
-  it should "serialize empty DAG list" in {
-    val response = DagListResponse(Map.empty)
-    val json = response.asJson.noSpaces
-
-    json should include("\"dags\":{}")
-  }
-
-  it should "round-trip through JSON" in {
-    val original = DagListResponse(Map(
-      "test" -> ComponentMetadata("test", "Test", List.empty, 1, 0)
-    ))
-    val json = original.asJson
-    val parsed = json.as[DagListResponse]
-
-    parsed shouldBe Right(original)
-  }
-
-  // ========== DagResponse Tests ==========
-
-  "DagResponse" should "serialize DAG info" in {
-    val response = DagResponse(
-      name = "my-dag",
-      metadata = ComponentMetadata("my-dag", "My DAG description", List("tag1"), 1, 0)
-    )
-
-    val json = response.asJson.noSpaces
-
-    json should include("\"name\":\"my-dag\"")
-    json should include("\"description\":\"My DAG description\"")
-    json should include("\"tags\":[\"tag1\"]")
-  }
-
-  it should "round-trip through JSON" in {
-    val original = DagResponse("dag", ComponentMetadata("dag", "desc", List.empty, 1, 0))
-    val json = original.asJson
-    val parsed = json.as[DagResponse]
-
-    parsed shouldBe Right(original)
-  }
-
   // ========== ModuleListResponse Tests ==========
 
   "ModuleListResponse" should "serialize module list" in {

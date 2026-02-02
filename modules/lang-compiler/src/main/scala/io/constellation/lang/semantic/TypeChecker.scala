@@ -221,34 +221,6 @@ object TypeChecker {
     BidirectionalTypeChecker(functions).check(program)
   }
 
-  // Legacy implementation kept for reference - all logic now in BidirectionalTypeChecker
-  @deprecated("Use BidirectionalTypeChecker.check directly", "0.5.0")
-  private def checkLegacy(
-      program: Program,
-      functions: FunctionRegistry
-  ): Either[List[CompileError], TypedProgram] = {
-    val initialEnv = TypeEnvironment(functions = functions)
-
-    val result = program.declarations
-      .foldLeft((initialEnv, List.empty[TypedDeclaration]).validNel[CompileError]) {
-        case (Validated.Valid((env, decls)), decl) =>
-          checkDeclaration(decl, env).map { case (newEnv, typedDecl) =>
-            (newEnv, decls :+ typedDecl)
-          }
-        case (invalid, _) => invalid
-      }
-      .map { case (finalEnv, typedDecls) =>
-        // Collect output declarations with their types
-        val outputs = typedDecls.collect {
-          case TypedDeclaration.OutputDecl(name, semanticType, span) =>
-            (name, semanticType, span)
-        }
-        TypedProgram(typedDecls, outputs)
-      }
-
-    result.toEither.left.map(_.toList)
-  }
-
   private def checkDeclaration(
       decl: Declaration,
       env: TypeEnvironment

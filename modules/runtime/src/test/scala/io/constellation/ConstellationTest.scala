@@ -6,6 +6,7 @@ import io.constellation.impl.ConstellationImpl
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
+import java.time.Instant
 import java.util.UUID
 
 class ConstellationTest extends AnyFlatSpec with Matchers {
@@ -27,6 +28,19 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       .metadata("Double", "Doubles a number", 1, 0)
       .implementationPure[IntInput, IntOutput](in => IntOutput(in.x * 2))
       .build
+
+  /** Helper to build a LoadedProgram from a hand-built DagSpec */
+  private def loadedFromDag(dag: DagSpec, syntheticModules: Map[UUID, Module.Uninitialized] = Map.empty): LoadedProgram = {
+    val structuralHash = ProgramImage.computeStructuralHash(dag)
+    val image = ProgramImage(
+      structuralHash = structuralHash,
+      syntacticHash = "",
+      dagSpec = dag,
+      moduleOptions = Map.empty,
+      compiledAt = Instant.now()
+    )
+    LoadedProgram(image, syntheticModules)
+  }
 
   "Constellation" should "initialize successfully" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
@@ -77,116 +91,8 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     retrieved shouldBe None
   }
 
-  // DAG operations
-  "createDag" should "create a new empty DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    val result = constellation.createDag("TestDag").unsafeRunSync()
-    result shouldBe defined
-    result.get.name shouldBe "TestDag"
-  }
-
-  it should "return None if DAG already exists" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    constellation.createDag("TestDag").unsafeRunSync()
-    val result = constellation.createDag("TestDag").unsafeRunSync()
-    result shouldBe None
-  }
-
-  "dagExists" should "return false for non-existent DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    constellation.dagExists("NonExistent").unsafeRunSync() shouldBe false
-  }
-
-  it should "return true for existing DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    constellation.createDag("ExistingDag").unsafeRunSync()
-    constellation.dagExists("ExistingDag").unsafeRunSync() shouldBe true
-  }
-
-  "setDag" should "register a DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-    val dag = DagSpec.empty("TestDag")
-
-    constellation.setDag("TestDag", dag).unsafeRunSync()
-
-    constellation.dagExists("TestDag").unsafeRunSync() shouldBe true
-  }
-
-  it should "overwrite existing DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-    val dag1 = DagSpec(
-      metadata = ComponentMetadata("TestDag", "First version", List.empty, 1, 0),
-      modules = Map.empty,
-      data = Map.empty,
-      inEdges = Set.empty,
-      outEdges = Set.empty
-    )
-    val dag2 = DagSpec(
-      metadata = ComponentMetadata("TestDag", "Second version", List.empty, 2, 0),
-      modules = Map.empty,
-      data = Map.empty,
-      inEdges = Set.empty,
-      outEdges = Set.empty
-    )
-
-    constellation.setDag("TestDag", dag1).unsafeRunSync()
-    constellation.setDag("TestDag", dag2).unsafeRunSync()
-
-    val retrieved = constellation.getDag("TestDag").unsafeRunSync()
-    retrieved shouldBe defined
-    retrieved.get.description shouldBe "Second version"
-  }
-
-  "listDags" should "return empty map initially" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    val dags = constellation.listDags.unsafeRunSync()
-    dags shouldBe empty
-  }
-
-  it should "list all registered DAGs" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    constellation.createDag("Dag1").unsafeRunSync()
-    constellation.createDag("Dag2").unsafeRunSync()
-    constellation.createDag("Dag3").unsafeRunSync()
-
-    val dags = constellation.listDags.unsafeRunSync()
-    dags.size shouldBe 3
-    dags.keys should contain allOf ("Dag1", "Dag2", "Dag3")
-  }
-
-  "getDag" should "retrieve a registered DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-    val dag = DagSpec(
-      metadata = ComponentMetadata("TestDag", "Test description", List("test"), 1, 0),
-      modules = Map.empty,
-      data = Map.empty,
-      inEdges = Set.empty,
-      outEdges = Set.empty
-    )
-
-    constellation.setDag("TestDag", dag).unsafeRunSync()
-
-    val retrieved = constellation.getDag("TestDag").unsafeRunSync()
-    retrieved shouldBe defined
-    retrieved.get.name shouldBe "TestDag"
-    retrieved.get.description shouldBe "Test description"
-  }
-
-  it should "return None for non-existent DAG" in {
-    val constellation = ConstellationImpl.init.unsafeRunSync()
-
-    val retrieved = constellation.getDag("NonExistent").unsafeRunSync()
-    retrieved shouldBe None
-  }
-
-  // DAG execution
-  "runDag" should "execute a simple DAG" in {
+  // DAG execution via LoadedProgram
+  "run" should "execute a simple DAG" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     // Register the module
@@ -197,8 +103,6 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     val inputDataId = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
-    // Input data nodes need the public input name in their nicknames
-    // Using the data node's own UUID as the key for public input name
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("SimpleDag"),
       modules = Map(
@@ -218,26 +122,24 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outputBindings = Map("output" -> outputDataId)
     )
 
-    constellation.setDag("SimpleDag", dag).unsafeRunSync()
-
+    val loaded = loadedFromDag(dag)
     val inputs = Map("input" -> CValue.CString("hello"))
-    val state = constellation.runDag("SimpleDag", inputs).unsafeRunSync()
+    val sig = constellation.run(loaded, inputs).unsafeRunSync()
 
-    state.data.get(outputDataId) shouldBe defined
-    state.data(outputDataId).value shouldBe CValue.CString("HELLO")
+    sig.outputs.get("output") shouldBe Some(CValue.CString("HELLO"))
   }
 
-  it should "fail for non-existent DAG" in {
+  it should "fail for non-existent program ref" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     val inputs = Map("input" -> CValue.CString("test"))
-    val result = constellation.runDag("NonExistent", inputs).attempt.unsafeRunSync()
+    val result = constellation.run("NonExistent", inputs, ExecutionOptions()).attempt.unsafeRunSync()
 
     result.isLeft shouldBe true
     result.left.exists(_.getMessage.contains("not found")) shouldBe true
   }
 
-  "runDagSpec" should "execute a DAG spec directly" in {
+  it should "execute a DAG spec directly via LoadedProgram" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     // Register the module
@@ -266,14 +168,14 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outputBindings = Map("result" -> outputDataId)
     )
 
+    val loaded = loadedFromDag(dag)
     val inputs = Map("x" -> CValue.CInt(21))
-    val state = constellation.runDagSpec(dag, inputs).unsafeRunSync()
+    val sig = constellation.run(loaded, inputs).unsafeRunSync()
 
-    state.data.get(outputDataId) shouldBe defined
-    state.data(outputDataId).value shouldBe CValue.CInt(42)
+    sig.outputs.get("result") shouldBe Some(CValue.CInt(42))
   }
 
-  "runDagWithModules" should "execute with pre-resolved modules" in {
+  it should "execute with pre-resolved synthetic modules" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     val moduleId = UUID.randomUUID()
@@ -299,18 +201,18 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outputBindings = Map("result" -> outputDataId)
     )
 
-    // Pass modules directly
-    val modules = Map(moduleId -> createUppercaseModule())
+    // Pass modules as synthetic modules in LoadedProgram
+    val syntheticModules = Map(moduleId -> createUppercaseModule())
+    val loaded = loadedFromDag(dag, syntheticModules)
 
     val inputs = Map("text" -> CValue.CString("world"))
-    val state = constellation.runDagWithModules(dag, inputs, modules).unsafeRunSync()
+    val sig = constellation.run(loaded, inputs).unsafeRunSync()
 
-    state.data.get(outputDataId) shouldBe defined
-    state.data(outputDataId).value shouldBe CValue.CString("WORLD")
+    sig.outputs.get("result") shouldBe Some(CValue.CString("WORLD"))
   }
 
   // Input validation
-  "runDag" should "fail on unexpected input name" in {
+  "run" should "fail on unexpected input name" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
@@ -336,11 +238,11 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outEdges = Set((moduleId, outputDataId))
     )
 
-    constellation.setDag("ValidationDag", dag).unsafeRunSync()
+    val loaded = loadedFromDag(dag)
 
     // Use wrong input name - should fail because "wrongName" is not a valid input
     val inputs = Map("wrongName" -> CValue.CString("test"))
-    val result = constellation.runDag("ValidationDag", inputs).attempt.unsafeRunSync()
+    val result = constellation.run(loaded, inputs).attempt.unsafeRunSync()
 
     result.isLeft shouldBe true
   }
@@ -370,18 +272,18 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outEdges = Set((moduleId, outputDataId))
     )
 
-    constellation.setDag("TypeDag", dag).unsafeRunSync()
+    val loaded = loadedFromDag(dag)
 
     // Use wrong input type (Int instead of String)
     val inputs = Map("text" -> CValue.CInt(123))
-    val result = constellation.runDag("TypeDag", inputs).attempt.unsafeRunSync()
+    val result = constellation.run(loaded, inputs).attempt.unsafeRunSync()
 
     result.isLeft shouldBe true
     result.left.exists(_.getMessage.contains("different type")) shouldBe true
   }
 
-  // Module status tracking
-  "runDag" should "track module status" in {
+  // Module status tracking via DataSignature metadata
+  "run" should "complete successfully and report status" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     constellation.setModule(createUppercaseModule()).unsafeRunSync()
 
@@ -403,15 +305,16 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
         outputDataId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputDataId, moduleId)),
-      outEdges = Set((moduleId, outputDataId))
+      outEdges = Set((moduleId, outputDataId)),
+      declaredOutputs = List("result"),
+      outputBindings = Map("result" -> outputDataId)
     )
 
-    constellation.setDag("StatusDag", dag).unsafeRunSync()
-
+    val loaded = loadedFromDag(dag)
     val inputs = Map("text" -> CValue.CString("test"))
-    val state = constellation.runDag("StatusDag", inputs).unsafeRunSync()
+    val sig = constellation.run(loaded, inputs).unsafeRunSync()
 
-    state.moduleStatus.get(moduleId) shouldBe defined
-    state.moduleStatus(moduleId).value shouldBe a[Module.Status.Fired]
+    sig.status shouldBe PipelineStatus.Completed
+    sig.outputs.get("result") shouldBe Some(CValue.CString("TEST"))
   }
 }

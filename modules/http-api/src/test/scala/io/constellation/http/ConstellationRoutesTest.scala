@@ -72,55 +72,6 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     body.errors should not be empty
   }
 
-  it should "list available DAGs" in {
-    // First compile a DAG
-    val compileRequest = CompileRequest(
-      source = "in x: Int\nout x",
-      dagName = Some("list-test-dag")
-    )
-
-    val compileReq = Request[IO](Method.POST, uri"/compile")
-      .withEntity(compileRequest)
-    routes.orNotFound.run(compileReq).unsafeRunSync()
-
-    // Then list DAGs
-    val listRequest = Request[IO](Method.GET, uri"/dags")
-    val response    = routes.orNotFound.run(listRequest).unsafeRunSync()
-
-    response.status shouldBe Status.Ok
-    val body = response.as[DagListResponse].unsafeRunSync()
-    body.dags.keySet should contain("list-test-dag")
-  }
-
-  it should "get a specific DAG by name" in {
-    // First compile a DAG
-    val compileRequest = CompileRequest(
-      source = "in x: Int\nout x",
-      dagName = Some("get-test-dag")
-    )
-
-    val compileReq = Request[IO](Method.POST, uri"/compile")
-      .withEntity(compileRequest)
-    routes.orNotFound.run(compileReq).unsafeRunSync()
-
-    // Then get the DAG
-    val getRequest = Request[IO](Method.GET, uri"/dags/get-test-dag")
-    val response   = routes.orNotFound.run(getRequest).unsafeRunSync()
-
-    response.status shouldBe Status.Ok
-    val body = response.as[DagResponse].unsafeRunSync()
-    body.name shouldBe "get-test-dag"
-  }
-
-  it should "return 404 for non-existent DAG" in {
-    val request  = Request[IO](Method.GET, uri"/dags/non-existent")
-    val response = routes.orNotFound.run(request).unsafeRunSync()
-
-    response.status shouldBe Status.NotFound
-    val body = response.as[ErrorResponse].unsafeRunSync()
-    body.error shouldBe "DagNotFound"
-  }
-
   it should "list available modules" in {
     val request  = Request[IO](Method.GET, uri"/modules")
     val response = routes.orNotFound.run(request).unsafeRunSync()

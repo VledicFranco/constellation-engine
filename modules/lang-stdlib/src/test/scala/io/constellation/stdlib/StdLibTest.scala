@@ -20,9 +20,9 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.dagSpec.modules should not be empty
+    compiled.program.image.dagSpec.modules should not be empty
     // Module spec should reference stdlib.add
-    compiled.dagSpec.modules.values.exists(_.name.contains("add")) shouldBe true
+    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("add")) shouldBe true
   }
 
   it should "compile programs with string functions" in {
@@ -65,7 +65,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
     val result = compiler.compile(source, "compare-dag")
     result.isRight shouldBe true
-    result.toOption.get.dagSpec.modules should not be empty
+    result.toOption.get.program.image.dagSpec.modules should not be empty
   }
 
   it should "compile programs with list functions" in {
@@ -97,7 +97,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have modules for add and gt
-    compiled.dagSpec.modules.size shouldBe 2
+    compiled.program.image.dagSpec.modules.size shouldBe 2
   }
 
   it should "compile programs with conditionals using comparison" in {
@@ -230,7 +230,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.dagSpec.modules should not be empty
+    compiled.program.image.dagSpec.modules should not be empty
   }
 
   it should "compile programs with use declarations" in {
@@ -282,7 +282,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 modules: add and upper
-    compiled.dagSpec.modules should have size 2
+    compiled.program.image.dagSpec.modules should have size 2
   }
 
   it should "include synthetic modules for execution" in {
@@ -301,7 +301,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // syntheticModules should contain the add module
-    compiled.syntheticModules should not be empty
+    compiled.program.syntheticModules should not be empty
   }
 
   it should "expose function registry with namespaces" in {

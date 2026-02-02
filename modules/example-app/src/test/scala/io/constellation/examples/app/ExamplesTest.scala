@@ -65,7 +65,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     result.isRight shouldBe true
     val compiled = result.toOption.get
-    compiled.dagSpec.name shouldBe "simple-test"
+    compiled.program.image.dagSpec.name shouldBe "simple-test"
   }
 
   it should "have correct input and output structure" in {
@@ -77,14 +77,14 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have 'message' as input
-    val inputNames = compiled.dagSpec.data.values.map(_.name).toSet
+    val inputNames = compiled.program.image.dagSpec.data.values.map(_.name).toSet
     inputNames should contain("message")
 
     // Should have 'result' as declared output
-    compiled.dagSpec.declaredOutputs should contain("result")
+    compiled.program.image.dagSpec.declaredOutputs should contain("result")
 
     // Should have the Uppercase module
-    compiled.dagSpec.modules.values.map(_.name).exists(_.contains("Uppercase")) shouldBe true
+    compiled.program.image.dagSpec.modules.values.map(_.name).exists(_.contains("Uppercase")) shouldBe true
   }
 
   // ========== text-analysis.cst ==========
@@ -99,7 +99,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     result.isRight shouldBe true
     val compiled = result.toOption.get
-    compiled.dagSpec.name shouldBe "text-analysis"
+    compiled.program.image.dagSpec.name shouldBe "text-analysis"
   }
 
   it should "have correct input and output structure" in {
@@ -111,14 +111,14 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have 'document' as input
-    val inputNames = compiled.dagSpec.data.values.map(_.name).toSet
+    val inputNames = compiled.program.image.dagSpec.data.values.map(_.name).toSet
     inputNames should contain("document")
 
     // Should have multiple outputs
-    compiled.dagSpec.declaredOutputs should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
+    compiled.program.image.dagSpec.declaredOutputs should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
 
     // Should have the text processing modules
-    val moduleNames = compiled.dagSpec.modules.values.map(_.name).toList
+    val moduleNames = compiled.program.image.dagSpec.modules.values.map(_.name).toList
     moduleNames.exists(_.contains("Trim")) shouldBe true
     moduleNames.exists(_.contains("Lowercase")) shouldBe true
     moduleNames.exists(_.contains("WordCount")) shouldBe true
@@ -138,7 +138,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     result.isRight shouldBe true
     val compiled = result.toOption.get
-    compiled.dagSpec.name shouldBe "data-pipeline"
+    compiled.program.image.dagSpec.name shouldBe "data-pipeline"
   }
 
   it should "have correct input structure" in {
@@ -150,7 +150,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have 'numbers', 'threshold', and 'multiplier' as inputs
-    val inputNames = compiled.dagSpec.data.values.map(_.name).toSet
+    val inputNames = compiled.program.image.dagSpec.data.values.map(_.name).toSet
     inputNames should contain allOf ("numbers", "threshold", "multiplier")
   }
 
@@ -163,7 +163,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have all declared outputs
-    compiled.dagSpec.declaredOutputs should contain allOf (
+    compiled.program.image.dagSpec.declaredOutputs should contain allOf (
       "filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal"
     )
   }
@@ -177,7 +177,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have the data processing modules
-    val moduleNames = compiled.dagSpec.modules.values.map(_.name).toList
+    val moduleNames = compiled.program.image.dagSpec.modules.values.map(_.name).toList
     moduleNames.exists(_.contains("FilterGreaterThan")) shouldBe true
     moduleNames.exists(_.contains("MultiplyEach")) shouldBe true
     moduleNames.exists(_.contains("SumList")) shouldBe true
@@ -224,9 +224,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         val compiled = result.toOption.get
 
         // Every compiled program should have a valid DAG spec
-        compiled.dagSpec.name shouldBe dagName
-        compiled.dagSpec.data should not be empty
-        compiled.dagSpec.declaredOutputs should not be empty
+        compiled.program.image.dagSpec.name shouldBe dagName
+        compiled.program.image.dagSpec.data should not be empty
+        compiled.program.image.dagSpec.declaredOutputs should not be empty
       }
     }
   }
@@ -251,21 +251,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       // Compile
       compiled = compiler.compile(source, "simple-test").toOption.get
 
-      // Set up the DAG
-      _ <- constellation.setDag("simple-test", compiled.dagSpec)
-
       // Execute with input
       inputs = Map("message" -> CValue.CString("hello world"))
-      state <- constellation.runDag("simple-test", inputs)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-      // Get the output
-      resultBinding = compiled.dagSpec.outputBindings("result")
-      resultValue   = state.data.get(resultBinding).map(_.value)
-    } yield resultValue
-
-    val result = test.unsafeRunSync()
-    result shouldBe defined
-    result.get shouldBe CValue.CString("HELLO WORLD")
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
+    resultValue shouldBe defined
+    resultValue.get shouldBe CValue.CString("HELLO WORLD")
   }
 
   "text-analysis.cst" should "execute with correct outputs" in {
@@ -278,32 +272,28 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       // Compile
       compiled = compiler.compile(source, "text-analysis").toOption.get
 
-      // Set up the DAG
-      _ <- constellation.setDag("text-analysis", compiled.dagSpec)
-
       // Execute with input
       inputs = Map("document" -> CValue.CString("  Hello World\nLine 2  "))
-      state <- constellation.runDag("text-analysis", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
+    val (sig, compiled) = test.unsafeRunSync()
 
     // Verify outputs exist
-    val outputBindings = compiled.dagSpec.outputBindings
-    outputBindings.keys should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
+    sig.outputs.keys should contain allOf ("cleaned", "normalized", "words", "chars", "lines")
 
     // Check cleaned output
-    val cleanedValue = state.data.get(outputBindings("cleaned")).map(_.value)
+    val cleanedValue = sig.outputs.get("cleaned")
     cleanedValue shouldBe defined
     cleanedValue.get shouldBe CValue.CString("Hello World\nLine 2")
 
     // Check normalized output
-    val normalizedValue = state.data.get(outputBindings("normalized")).map(_.value)
+    val normalizedValue = sig.outputs.get("normalized")
     normalizedValue shouldBe defined
     normalizedValue.get shouldBe CValue.CString("hello world\nline 2")
 
     // Check word count
-    val wordsValue = state.data.get(outputBindings("words")).map(_.value)
+    val wordsValue = sig.outputs.get("words")
     wordsValue shouldBe defined
     wordsValue.get shouldBe CValue.CInt(4)
   }
@@ -318,9 +308,6 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
       // Compile
       compiled = compiler.compile(source, "data-pipeline").toOption.get
 
-      // Set up the DAG
-      _ <- constellation.setDag("data-pipeline", compiled.dagSpec)
-
       // Execute with inputs: numbers=[1,2,3,4,5], threshold=2, multiplier=3
       // Expected: filtered=[3,4,5], scaled=[9,12,15], total=36, avg=12.0, highest=15, lowest=9
       inputs = Map(
@@ -328,43 +315,42 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         "threshold"  -> CValue.CInt(2),
         "multiplier" -> CValue.CInt(3)
       )
-      state <- constellation.runDag("data-pipeline", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
+    val (sig, compiled) = test.unsafeRunSync()
 
-    val outputBindings = compiled.dagSpec.outputBindings
-    outputBindings.keys should contain allOf ("filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal")
+    sig.outputs.keys should contain allOf ("filtered", "scaled", "total", "avg", "highest", "lowest", "formattedTotal")
 
     // Verify filtered output: [3, 4, 5]
-    val filteredValue = state.data.get(outputBindings("filtered")).map(_.value)
+    val filteredValue = sig.outputs.get("filtered")
     filteredValue shouldBe defined
     val filteredList = filteredValue.get.asInstanceOf[CValue.CList]
     filteredList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(3L, 4L, 5L)
 
     // Verify scaled output: [9, 12, 15]
-    val scaledValue = state.data.get(outputBindings("scaled")).map(_.value)
+    val scaledValue = sig.outputs.get("scaled")
     scaledValue shouldBe defined
     val scaledList = scaledValue.get.asInstanceOf[CValue.CList]
     scaledList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(9L, 12L, 15L)
 
     // Verify total: 36
-    val totalValue = state.data.get(outputBindings("total")).map(_.value)
+    val totalValue = sig.outputs.get("total")
     totalValue shouldBe defined
     totalValue.get shouldBe CValue.CInt(36)
 
     // Verify avg: 12.0
-    val avgValue = state.data.get(outputBindings("avg")).map(_.value)
+    val avgValue = sig.outputs.get("avg")
     avgValue shouldBe defined
     avgValue.get shouldBe CValue.CFloat(12.0)
 
     // Verify highest: 15
-    val highestValue = state.data.get(outputBindings("highest")).map(_.value)
+    val highestValue = sig.outputs.get("highest")
     highestValue shouldBe defined
     highestValue.get shouldBe CValue.CInt(15)
 
     // Verify lowest: 9
-    val lowestValue = state.data.get(outputBindings("lowest")).map(_.value)
+    val lowestValue = sig.outputs.get("lowest")
     lowestValue shouldBe defined
     lowestValue.get shouldBe CValue.CInt(9)
   }
@@ -380,9 +366,9 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.dagSpec.data should have size 1
+    compiled.program.image.dagSpec.data should have size 1
 
-    val inputNode = compiled.dagSpec.data.values.head
+    val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure.keys should contain allOf ("String", "Int")
@@ -400,7 +386,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val inputNode = compiled.dagSpec.data.values.head
+    val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 3
@@ -420,7 +406,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val inputNode = compiled.dagSpec.data.values.head
+    val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -439,10 +425,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("y")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("y")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.CUnion(structure) =>
@@ -460,7 +446,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val inputNode = compiled.dagSpec.data.values.head
+    val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -485,7 +471,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val inputNode = compiled.dagSpec.data.values.head
+    val inputNode = compiled.program.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -518,10 +504,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.COptional(CType.CInt)
   }
@@ -537,10 +523,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.COptional(CType.CProduct(fields)) =>
@@ -560,10 +546,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.COptional(CType.CUnion(structure)) =>
@@ -585,10 +571,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CInt
   }
@@ -604,10 +590,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.COptional(CType.CInt)
   }
@@ -624,10 +610,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CInt
   }
@@ -644,10 +630,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CInt
   }
@@ -667,10 +653,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
@@ -688,10 +674,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
@@ -709,10 +695,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CBoolean
   }
@@ -730,10 +716,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CBoolean
   }
@@ -754,10 +740,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Verify both filter and map nodes exist
-    val hasFilter = compiled.dagSpec.data.values.exists(d =>
+    val hasFilter = compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     )
-    val hasMap = compiled.dagSpec.data.values.exists(d =>
+    val hasMap = compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
     )
     hasFilter shouldBe true
@@ -777,10 +763,10 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
     outputBinding.isDefined shouldBe true
 
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
 
@@ -811,8 +797,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -830,8 +816,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -850,8 +836,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
 
@@ -881,7 +867,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val hasFilter = compiled.dagSpec.data.values.exists(d =>
+    val hasFilter = compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     )
     hasFilter shouldBe true
@@ -912,8 +898,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -929,8 +915,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -950,7 +936,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
       case Right(compiled) =>
         // Verify expected outputs are declared
-        compiled.dagSpec.declaredOutputs should contain allOf (
+        compiled.program.image.dagSpec.declaredOutputs should contain allOf (
           "positives", "above10", "doubled", "tripled",
           "allPositive", "allNonNegative", "hasNegative", "hasZero"
         )
@@ -966,25 +952,25 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have FilterTransform nodes
-    val filterNodes = compiled.dagSpec.data.values.filter(d =>
+    val filterNodes = compiled.program.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     )
     filterNodes.size should be > 0
 
     // Should have MapTransform nodes
-    val mapNodes = compiled.dagSpec.data.values.filter(d =>
+    val mapNodes = compiled.program.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
     )
     mapNodes.size should be > 0
 
     // Should have AllTransform nodes
-    val allNodes = compiled.dagSpec.data.values.filter(d =>
+    val allNodes = compiled.program.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
     )
     allNodes.size should be > 0
 
     // Should have AnyTransform nodes
-    val anyNodes = compiled.dagSpec.data.values.filter(d =>
+    val anyNodes = compiled.program.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
     )
     anyNodes.size should be > 0
@@ -1005,8 +991,8 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val outputBinding = compiled.dagSpec.outputBindings.get("result")
-    val outputNode = compiled.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CString
   }
 
@@ -1025,7 +1011,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.dagSpec.data.values.exists(d =>
+    compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -1154,7 +1140,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 StringInterpolationTransform nodes
-    val interpCount = compiled.dagSpec.data.values.count(d =>
+    val interpCount = compiled.program.image.dagSpec.data.values.count(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     interpCount shouldBe 2
@@ -1192,7 +1178,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should NOT have StringInterpolationTransform for plain strings
-    val hasStringInterp = compiled.dagSpec.data.values.exists(d =>
+    val hasStringInterp = compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     hasStringInterp shouldBe false
@@ -1211,7 +1197,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Escaped $ should be literal, not interpolation
-    val hasStringInterp = compiled.dagSpec.data.values.exists(d =>
+    val hasStringInterp = compiled.program.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     hasStringInterp shouldBe false
@@ -1231,7 +1217,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
       case Right(compiled) =>
         // Verify expected outputs are declared
-        compiled.dagSpec.declaredOutputs should contain allOf (
+        compiled.program.image.dagSpec.declaredOutputs should contain allOf (
           "greeting", "ageNextYear", "summary", "formatted", "statusMessage", "formalGreeting"
         )
     }
@@ -1246,7 +1232,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Should have multiple StringInterpolationTransform nodes
-    val interpNodes = compiled.dagSpec.data.values.filter(d =>
+    val interpNodes = compiled.program.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     interpNodes.size should be > 0
@@ -1266,16 +1252,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-exec", compiled.dagSpec)
-
       inputs = Map("name" -> CValue.CString("World"))
-      state <- constellation.runDag("interp-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Hello, World!")
@@ -1296,19 +1278,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-multi-exec", compiled.dagSpec)
-
       inputs = Map(
         "firstName" -> CValue.CString("John"),
         "lastName" -> CValue.CString("Doe")
       )
-      state <- constellation.runDag("interp-multi-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("John Doe")
@@ -1328,16 +1306,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-int-exec", compiled.dagSpec)
-
       inputs = Map("count" -> CValue.CInt(42))
-      state <- constellation.runDag("interp-int-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Count: 42")
@@ -1357,16 +1331,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-bool-exec", compiled.dagSpec)
-
       inputs = Map("active" -> CValue.CBoolean(true))
-      state <- constellation.runDag("interp-bool-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Active: true")
@@ -1386,16 +1356,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-start-exec", compiled.dagSpec)
-
       inputs = Map("name" -> CValue.CString("Alice"))
-      state <- constellation.runDag("interp-start-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Alice says hi")
@@ -1415,16 +1381,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-end-exec", compiled.dagSpec)
-
       inputs = Map("name" -> CValue.CString("Bob"))
-      state <- constellation.runDag("interp-end-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Hello Bob")
@@ -1444,16 +1406,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-only-exec", compiled.dagSpec)
-
       inputs = Map("name" -> CValue.CString("test"))
-      state <- constellation.runDag("interp-only-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("test")
@@ -1473,19 +1431,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-field-exec", compiled.dagSpec)
-
       inputs = Map("user" -> CValue.CProduct(
         Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
         Map("name" -> CType.CString, "age" -> CType.CInt)
       ))
-      state <- constellation.runDag("interp-field-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("User Alice is 30")
@@ -1506,16 +1460,12 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("interp-chain-exec", compiled.dagSpec)
-
       inputs = Map("name" -> CValue.CString("World"))
-      state <- constellation.runDag("interp-chain-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("message")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("message")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CString("Message: Hello, World!")
@@ -1537,20 +1487,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      // Register synthetic modules
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-exec", compiled.dagSpec)
-
       // Execute with input: [1, -2, 3, -4, 5]
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1573,19 +1518,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-empty-exec", compiled.dagSpec)
-
       // Execute with input: [1, 2, 3] - none > 100
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-empty-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1608,19 +1549,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("map-exec", compiled.dagSpec)
-
       // Execute with input: [1, 2, 3]
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("map-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1643,19 +1580,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("map-add-exec", compiled.dagSpec)
-
       // Execute with input: [1, 2, 3]
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("map-add-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1678,19 +1611,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("all-true-exec", compiled.dagSpec)
-
       // Execute with input: [1, 2, 3] - all positive
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("all-true-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1712,19 +1641,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("all-false-exec", compiled.dagSpec)
-
       // Execute with input: [1, -2, 3] - not all positive
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, -2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("all-false-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1746,17 +1671,13 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("all-empty-exec", compiled.dagSpec)
-
       // Execute with empty list
       inputs = Map("numbers" -> CValue.CList(Vector.empty, CType.CInt))
-      state <- constellation.runDag("all-empty-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1778,19 +1699,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("any-true-exec", compiled.dagSpec)
-
       // Execute with input: [1, -2, 3] - some negative
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, -2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("any-true-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1812,19 +1729,15 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("any-false-exec", compiled.dagSpec)
-
       // Execute with input: [1, 2, 3] - none negative
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 2L, 3L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("any-false-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1846,17 +1759,13 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("any-empty-exec", compiled.dagSpec)
-
       // Execute with empty list
       inputs = Map("numbers" -> CValue.CList(Vector.empty, CType.CInt))
-      state <- constellation.runDag("any-empty-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(false)
@@ -1880,20 +1789,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-map-exec", compiled.dagSpec)
-
       // Execute with input: [1, -2, 3, -4, 5]
       // Filter: [1, 3, 5], then Map *2: [2, 6, 10]
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-map-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1917,20 +1822,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-all-exec", compiled.dagSpec)
-
       // Execute with input: [1, -2, 3, -4, 5]
       // Filter positives: [1, 3, 5], all are > 0 -> true
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, -2L, 3L, -4L, 5L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-all-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     resultValue.get shouldBe CValue.CBoolean(true)
@@ -1952,20 +1853,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-and-exec", compiled.dagSpec)
-
       // Execute with input: [-5, 1, 5, 15, 20]
       // Filter: 0 < x < 10 -> [1, 5]
       inputs = Map("numbers" -> CValue.CList(
         Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-and-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -1988,20 +1885,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-or-exec", compiled.dagSpec)
-
       // Execute with input: [-5, 1, 5, 15, 20]
       // Filter: x < 0 OR x > 10 -> [-5, 15, 20]
       inputs = Map("numbers" -> CValue.CList(
         Vector(-5L, 1L, 5L, 15L, 20L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-or-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]
@@ -2024,20 +1917,16 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
           .left.map(e => new Exception(e.map(_.message).mkString(", ")))
       )
 
-      _ <- compiled.syntheticModules.values.toList.traverse(constellation.setModule)
-      _ <- constellation.setDag("filter-not-exec", compiled.dagSpec)
-
       // Execute with input: [1, 3, 5, 7, 9]
       // Filter: NOT(x > 5) = x <= 5 -> [1, 3, 5]
       inputs = Map("numbers" -> CValue.CList(
         Vector(1L, 3L, 5L, 7L, 9L).map(CValue.CInt.apply), CType.CInt
       ))
-      state <- constellation.runDag("filter-not-exec", inputs)
-    } yield (state, compiled)
+      sig <- constellation.run(compiled.program, inputs)
+    } yield (sig, compiled)
 
-    val (state, compiled) = test.unsafeRunSync()
-    val outputBindings = compiled.dagSpec.outputBindings
-    val resultValue = state.data.get(outputBindings("result")).map(_.value)
+    val (sig, compiled) = test.unsafeRunSync()
+    val resultValue = sig.outputs.get("result")
 
     resultValue shouldBe defined
     val resultList = resultValue.get.asInstanceOf[CValue.CList]

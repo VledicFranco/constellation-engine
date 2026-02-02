@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.implicits.*
 import io.constellation.*
 import io.constellation.cache.CacheBackend
-import io.constellation.execution.{CancellableExecution, ConstellationLifecycle, GlobalScheduler}
+import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler}
 import io.constellation.spi.{ConstellationBackends, ExecutionListener, MetricsProvider, TracerProvider}
 
 import java.time.Instant
@@ -13,7 +13,7 @@ import scala.concurrent.duration.FiniteDuration
 
 /** Default implementation of the [[io.constellation.Constellation]] API.
   *
-  * Manages module and DAG registries, delegates execution to the [[io.constellation.Runtime]],
+  * Manages module registry, delegates execution to the [[io.constellation.Runtime]],
   * and integrates with the SPI backend layer for metrics, tracing, caching, and lifecycle management.
   *
   * ==Construction==
@@ -35,7 +35,6 @@ import scala.concurrent.duration.FiniteDuration
   * }}}
   *
   * @param moduleRegistry Registry for module definitions
-  * @param dagRegistry Registry for DAG specifications
   * @param programStoreInstance Program image store
   * @param scheduler Global scheduler for task ordering and concurrency control
   * @param backends Pluggable SPI backends (metrics, tracing, listener, cache, circuit breakers)
@@ -46,7 +45,6 @@ import scala.concurrent.duration.FiniteDuration
   */
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
-    dagRegistry: DagRegistry,
     programStoreInstance: ProgramStore,
     scheduler: GlobalScheduler = GlobalScheduler.unbounded,
     backends: ConstellationBackends = ConstellationBackends.defaults,
@@ -167,8 +165,12 @@ final class ConstellationImpl(
     }
 
     // Determine outputs (declared outputs that have been computed)
+    // Use outputBindings (name -> UUID) for reliable lookup since data node
+    // names may differ from variable names (e.g. "Uppercase_output" vs "result")
     val outputs: Map[String, CValue] = dagSpec.declaredOutputs.flatMap { name =>
-      computedNodes.get(name).map(name -> _)
+      dagSpec.outputBindings.get(name).flatMap { dataNodeUuid =>
+        state.data.get(dataNodeUuid).map(evalCValue => name -> evalCValue.value)
+      }.orElse(computedNodes.get(name).map(name -> _))
     }.toMap
 
     // Missing inputs
@@ -236,34 +238,6 @@ final class ConstellationImpl(
     )
   }
 
-  // ---------------------------------------------------------------------------
-  // Legacy API (deprecated)
-  // ---------------------------------------------------------------------------
-
-  def dagExists(name: String): IO[Boolean] =
-    dagRegistry.exists(name)
-
-  def createDag(name: String): IO[Option[DagSpec]] =
-    for {
-      exists <- dagRegistry.exists(name)
-      result <-
-        if exists then {
-          IO.pure(None)
-        } else {
-          val dagSpec = DagSpec.empty(name)
-          dagRegistry.register(name, dagSpec).as(Some(dagSpec))
-        }
-    } yield result
-
-  def setDag(name: String, spec: DagSpec): IO[Unit] =
-    dagRegistry.register(name, spec)
-
-  def listDags: IO[Map[String, ComponentMetadata]] =
-    dagRegistry.list
-
-  def getDag(name: String): IO[Option[DagSpec]] =
-    dagRegistry.retrieve(name, None)
-
   /** Execute with optional timeout applied. */
   private def executeWithTimeout(run: IO[Runtime.State], dagSpec: DagSpec, inputs: Map[String, CValue], modules: Map[java.util.UUID, Module.Uninitialized], priorities: Map[java.util.UUID, Int]): IO[Runtime.State] =
     defaultTimeout match {
@@ -272,90 +246,6 @@ final class ConstellationImpl(
       case None =>
         run
     }
-
-  /** Wrap execution with lifecycle registration if lifecycle is present. */
-  private def withLifecycle(exec: IO[CancellableExecution]): IO[CancellableExecution] =
-    lifecycle match {
-      case Some(lc) =>
-        exec.flatMap { handle =>
-          lc.registerExecution(handle.executionId, handle).flatMap {
-            case true =>
-              val wrapped = new CancellableExecution {
-                def executionId = handle.executionId
-                def cancel = handle.cancel
-                def result = handle.result.guarantee(lc.deregisterExecution(handle.executionId))
-                def status = handle.status
-              }
-              IO.pure(wrapped)
-            case false =>
-              handle.cancel *> IO.raiseError(
-                new ConstellationLifecycle.ShutdownRejectedException("System is shutting down")
-              )
-          }
-        }
-      case None => exec
-    }
-
-  def runDag(name: String, inputs: Map[String, CValue]): IO[Runtime.State] =
-    for {
-      dag <- dagRegistry.retrieve(name, None)
-      result <- dag match {
-        case Some(dagSpec) =>
-          for {
-            modules <- moduleRegistry.initModules(dagSpec)
-            context <- executeWithTimeout(
-              Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends),
-              dagSpec, inputs, modules, Map.empty
-            )
-          } yield context
-        case None => IO.raiseError(new Exception(s"DAG $name not found"))
-      }
-    } yield result
-
-  def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State] =
-    for {
-      modules <- moduleRegistry.initModules(dagSpec)
-      context <- executeWithTimeout(
-        Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends),
-        dagSpec, inputs, modules, Map.empty
-      )
-    } yield context
-
-  def runDagWithModules(
-      dagSpec: DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[java.util.UUID, Module.Uninitialized]
-  ): IO[Runtime.State] =
-    executeWithTimeout(
-      Runtime.runWithBackends(dagSpec, inputs, modules, Map.empty, scheduler, backends),
-      dagSpec, inputs, modules, Map.empty
-    )
-
-  def runDagWithModulesAndPriorities(
-      dagSpec: DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[java.util.UUID, Module.Uninitialized],
-      modulePriorities: Map[java.util.UUID, Int]
-  ): IO[Runtime.State] =
-    executeWithTimeout(
-      Runtime.runWithBackends(dagSpec, inputs, modules, modulePriorities, scheduler, backends),
-      dagSpec, inputs, modules, modulePriorities
-    )
-
-  override def runDagCancellable(name: String, inputs: Map[String, CValue]): IO[CancellableExecution] =
-    for {
-      dag <- dagRegistry.retrieve(name, None)
-      result <- dag match {
-        case Some(dagSpec) =>
-          for {
-            modules <- moduleRegistry.initModules(dagSpec)
-            exec <- withLifecycle(
-              Runtime.runCancellable(dagSpec, inputs, modules, Map.empty, scheduler, backends)
-            )
-          } yield exec
-        case None => IO.raiseError(new Exception(s"DAG $name not found"))
-      }
-    } yield result
 }
 
 object ConstellationImpl {
@@ -364,11 +254,9 @@ object ConstellationImpl {
   def init: IO[ConstellationImpl] =
     for {
       moduleRegistry <- ModuleRegistryImpl.init
-      dagRegistry    <- DagRegistryImpl.init
       ps             <- ProgramStoreImpl.init
     } yield new ConstellationImpl(
       moduleRegistry = moduleRegistry,
-      dagRegistry = dagRegistry,
       programStoreInstance = ps
     )
 
@@ -380,11 +268,9 @@ object ConstellationImpl {
   def initWithScheduler(scheduler: GlobalScheduler): IO[ConstellationImpl] =
     for {
       moduleRegistry <- ModuleRegistryImpl.init
-      dagRegistry    <- DagRegistryImpl.init
       ps             <- ProgramStoreImpl.init
     } yield new ConstellationImpl(
       moduleRegistry = moduleRegistry,
-      dagRegistry = dagRegistry,
       programStoreInstance = ps,
       scheduler = scheduler
     )
@@ -451,16 +337,14 @@ object ConstellationImpl {
 
     /** Build the configured [[ConstellationImpl]] instance.
       *
-      * Allocates module and DAG registries and returns a fully configured instance.
+      * Allocates module registry and returns a fully configured instance.
       */
     def build(): IO[ConstellationImpl] =
       for {
         moduleRegistry <- ModuleRegistryImpl.init
-        dagRegistry    <- DagRegistryImpl.init
         ps             <- programStoreOpt.map(IO.pure).getOrElse(ProgramStoreImpl.init)
       } yield new ConstellationImpl(
         moduleRegistry = moduleRegistry,
-        dagRegistry = dagRegistry,
         programStoreInstance = ps,
         scheduler = scheduler,
         backends = backends,

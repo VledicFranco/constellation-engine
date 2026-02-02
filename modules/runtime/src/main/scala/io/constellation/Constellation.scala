@@ -1,15 +1,12 @@
 package io.constellation
 
 import cats.effect.IO
-import io.constellation.execution.CancellableExecution
 
 /** Core API for the Constellation pipeline orchestration engine.
   *
-  * Provides methods for registering modules, managing DAG specifications,
-  * and executing pipelines. This is the primary interface that embedders
-  * interact with to compile and run constellation-lang pipelines.
-  *
-  * ==New API (0.3.0+)==
+  * Provides methods for registering modules and executing pipelines.
+  * This is the primary interface that embedders interact with to compile
+  * and run constellation-lang pipelines.
   *
   * {{{
   * for {
@@ -21,17 +18,6 @@ import io.constellation.execution.CancellableExecution
   *   _             <- constellation.programStore.store(image)
   *   _             <- constellation.programStore.alias("pipeline", image.structuralHash)
   *   result        <- constellation.run("pipeline", inputs)
-  * } yield result
-  * }}}
-  *
-  * ==Legacy API (deprecated)==
-  *
-  * {{{
-  * for {
-  *   constellation <- ConstellationImpl.init
-  *   _             <- constellation.setModule(myModule)
-  *   _             <- constellation.setDag("pipeline", compiledDagSpec)
-  *   result        <- constellation.runDag("pipeline", Map("input" -> CValue.CString("hello")))
   * } yield result
   * }}}
   *
@@ -123,58 +109,4 @@ trait Constellation {
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 
-  // ---------------------------------------------------------------------------
-  // Legacy API (deprecated, kept for backward compatibility)
-  // ---------------------------------------------------------------------------
-
-  /** Check whether a DAG with the given name exists in the registry. */
-  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
-  def dagExists(name: String): IO[Boolean]
-
-  /** Create a new empty DAG with the given name. */
-  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
-  def createDag(name: String): IO[Option[DagSpec]]
-
-  /** Register or replace a DAG specification. */
-  @deprecated("Use ProgramStore and Constellation.run", "0.3.0")
-  def setDag(name: String, spec: DagSpec): IO[Unit]
-
-  /** List all registered DAGs with their metadata. */
-  @deprecated("Use ProgramStore.listImages", "0.3.0")
-  def listDags: IO[Map[String, ComponentMetadata]]
-
-  /** Retrieve a DAG specification by name. */
-  @deprecated("Use ProgramStore.getByName", "0.3.0")
-  def getDag(name: String): IO[Option[DagSpec]]
-
-  /** Execute a named DAG with the given inputs. */
-  @deprecated("Use Constellation.run(ref, inputs, options)", "0.3.0")
-  def runDag(name: String, inputs: Map[String, CValue]): IO[Runtime.State]
-
-  /** Run a DAG specification directly without storing it in the registry. */
-  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
-  def runDagSpec(dagSpec: DagSpec, inputs: Map[String, CValue]): IO[Runtime.State]
-
-  /** Run a DAG with pre-resolved modules. */
-  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
-  def runDagWithModules(
-      dagSpec: DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[java.util.UUID, Module.Uninitialized]
-  ): IO[Runtime.State]
-
-  /** Run a DAG with pre-resolved modules and priority scheduling. */
-  @deprecated("Use Constellation.run(LoadedProgram, inputs)", "0.3.0")
-  def runDagWithModulesAndPriorities(
-      dagSpec: DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[java.util.UUID, Module.Uninitialized],
-      modulePriorities: Map[java.util.UUID, Int]
-  ): IO[Runtime.State]
-
-  /** Run a named DAG with cancellation support. */
-  def runDagCancellable(name: String, inputs: Map[String, CValue]): IO[CancellableExecution] =
-    runDag(name, inputs).flatMap { state =>
-      CancellableExecution.completed(java.util.UUID.randomUUID(), state)
-    }
 }

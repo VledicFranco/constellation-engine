@@ -4,7 +4,7 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import io.constellation.CType
 import io.constellation.lang.LangCompiler
-import io.constellation.lang.compiler.{CompilationOutput, CompileResult, DagCompiler, IRModuleCallOptions, ModuleOptionsExecutor}
+import io.constellation.lang.compiler.{CompilationOutput, DagCompiler, IRModuleCallOptions, ModuleOptionsExecutor}
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -34,17 +34,16 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
       .build
   }
 
-  /** Compile source and extract IRModuleCallOptions from the underlying CompileResult.
+  /** Compile source and extract IRModuleCallOptions from the underlying DagCompileOutput.
     * Uses compileToIR + DagCompiler to get the raw IR-level options needed by ModuleOptionsExecutor.
     */
-  private def compileAndGetOptions(source: String, moduleName: String): Either[Any, (CompileResult, IRModuleCallOptions)] = {
+  private def compileAndGetOptions(source: String, moduleName: String): Either[Any, IRModuleCallOptions] = {
     val compiler = compilerWithFunction(moduleName)
     for {
       ir <- compiler.compileToIR(source, "test-dag")
       result <- DagCompiler.compile(ir, "test-dag", Map.empty).left.map(e => List(e))
     } yield {
-      val options = result.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
-      (result, options)
+      result.moduleOptions.values.headOption.getOrElse(IRModuleCallOptions())
     }
   }
 
@@ -62,7 +61,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.retry shouldBe Some(3)
 
     // Simulate execution with retry
@@ -98,7 +97,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.timeoutMs shouldBe Some(100L)
 
     // Simulate slow execution
@@ -127,7 +126,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.cacheMs shouldBe Some(300000L) // 5min in ms
 
     // Simulate cacheable execution
@@ -169,7 +168,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.retry shouldBe Some(3)
     options.delayMs shouldBe Some(50L)
     options.backoff shouldBe Some(io.constellation.lang.ast.BackoffStrategy.Exponential)
@@ -219,7 +218,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.throttleCount shouldBe Some(2)
     options.throttlePerMs shouldBe Some(100L)
 
@@ -255,7 +254,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.concurrency shouldBe Some(2)
 
     val maxActive = new AtomicInteger(0)
@@ -291,7 +290,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.onError shouldBe Some(io.constellation.lang.ast.ErrorStrategy.Skip)
 
     val result = (for {
@@ -319,7 +318,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     // high priority is converted to 80 by IRGenerator
     options.priority shouldBe defined
     options.priority.get shouldBe 80
@@ -335,7 +334,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.lazyEval shouldBe Some(true)
 
     val counter = new AtomicInteger(0)
@@ -408,7 +407,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.throttleCount shouldBe Some(10)
     options.throttlePerMs shouldBe Some(1000L)
     options.concurrency shouldBe Some(3)
@@ -424,7 +423,7 @@ class OptionsRuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     val compiled = compileAndGetOptions(source, "TestModule")
     compiled.isRight shouldBe true
 
-    val (_, options) = compiled.toOption.get
+    val options = compiled.toOption.get
     options.cacheMs shouldBe Some(600000L) // 10min in ms
     options.cacheBackend shouldBe Some("redis")
   }

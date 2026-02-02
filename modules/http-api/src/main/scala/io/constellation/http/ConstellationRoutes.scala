@@ -6,7 +6,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, JsonCValueConverter, ProgramImage, Runtime}
+import io.constellation.{CValue, Constellation, JsonCValueConverter, ProgramImage}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -114,8 +114,6 @@ class ConstellationRoutes(
               _ <- constellation.programStore.store(image)
               // Create alias if name was provided
               _ <- effectiveName.traverse_(n => constellation.programStore.alias(n, image.structuralHash))
-              // Also store in legacy DagRegistry for backward compatibility
-              _ <- effectiveName.traverse_(n => constellation.setDag(n, compiled.program.image.dagSpec))
               resp <- Ok(
                 CompileResponse(
                   success = true,
@@ -329,39 +327,6 @@ class ConstellationRoutes(
         }
       } yield response
 
-    // ---------------------------------------------------------------------------
-    // Legacy DAG endpoints (kept for backward compatibility)
-    // ---------------------------------------------------------------------------
-
-    // List all available DAGs
-    case GET -> Root / "dags" =>
-      for {
-        dags     <- constellation.listDags
-        response <- Ok(DagListResponse(dags))
-      } yield response
-
-    // Get a specific DAG by name
-    case GET -> Root / "dags" / dagName =>
-      for {
-        dagOpt <- constellation.getDag(dagName)
-        response <- dagOpt match {
-          case Some(dagSpec) =>
-            Ok(
-              DagResponse(
-                name = dagName,
-                metadata = dagSpec.metadata
-              )
-            )
-          case None =>
-            NotFound(
-              ErrorResponse(
-                error = "DagNotFound",
-                message = s"DAG '$dagName' not found"
-              )
-            )
-        }
-      } yield response
-
     // List all available modules
     case GET -> Root / "modules" =>
       for {
@@ -483,10 +448,7 @@ class ConstellationRoutes(
     else
       constellation.programStore.getByName(ref)
 
-  /** Execute a program by reference using the new API.
-    *
-    * First tries ProgramStore (content-addressed). Falls back to legacy DagRegistry.
-    */
+  /** Execute a program by reference using the ProgramStore. */
   private def executeByRef(
       ref: String,
       jsonInputs: Map[String, Json]
@@ -494,7 +456,6 @@ class ConstellationRoutes(
     EitherT(
       resolveImage(ref).flatMap {
         case Some(image) =>
-          // New path: use ProgramStore + constellation.run
           val dagSpec = image.dagSpec
           convertInputs(jsonInputs, dagSpec).value.flatMap {
             case Left(err) => IO.pure(Left(err))
@@ -511,24 +472,9 @@ class ConstellationRoutes(
               }
           }
         case None =>
-          // Fall back to legacy DagRegistry
-          executeStoredDag(ref, jsonInputs).value
+          IO.pure(Left(ApiError.NotFoundError("Program", ref)))
       }
     )
-
-  /** Legacy: execute a stored DAG by name using EitherT for clean error handling */
-  private def executeStoredDag(dagName: String, jsonInputs: Map[String, Json]): EitherT[IO, ApiError, Map[String, Json]] =
-    for {
-      dagSpec <- EitherT(
-        constellation.getDag(dagName).map {
-          case Some(spec) => Right(spec)
-          case None       => Left(ApiError.NotFoundError("Program", dagName))
-        }
-      )
-      inputs  <- convertInputs(jsonInputs, dagSpec)
-      state   <- executeDag(dagName, inputs)
-      outputs <- extractOutputs(state)
-    } yield outputs
 
   /** Compile, store, and run a script in one step. Returns (outputs, structuralHash). */
   private def compileStoreAndRun(req: RunRequest): EitherT[IO, ApiError, (Map[String, Json], String)] =
@@ -562,20 +508,6 @@ class ConstellationRoutes(
       ApiError.InputError(t.getMessage)
     }
 
-  /** Execute a stored DAG by name */
-  private def executeDag(
-      dagName: String,
-      inputs: Map[String, CValue]
-  ): EitherT[IO, ApiError, Runtime.State] =
-    ErrorHandling.liftIO(constellation.runDag(dagName, inputs)) { t =>
-      ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
-    }
-
-  /** Extract outputs from execution state */
-  private def extractOutputs(state: Runtime.State): EitherT[IO, ApiError, Map[String, Json]] =
-    ErrorHandling.liftIO(ExecutionHelper.extractOutputs(state)) { t =>
-      ApiError.OutputError(t.getMessage)
-    }
 }
 
 object ConstellationRoutes {

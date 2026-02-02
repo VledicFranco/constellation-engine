@@ -10,7 +10,7 @@ import org.http4s.headers.`Content-Type`
 import org.http4s.MediaType
 import io.circe.Json
 import io.circe.syntax._
-import io.constellation.{CValue, Constellation, Runtime}
+import io.constellation.{CValue, Constellation}
 import io.constellation.http.DashboardModels._
 import io.constellation.http.ApiModels.ErrorResponse
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -399,12 +399,12 @@ class DashboardRoutes(
       executionId = UUID.randomUUID().toString
 
       // Optionally compile the DAG visualization
-      dagVizIR = irProgram.flatMap(ir => Try(DagVizCompiler.compile(ir, Some(compiled.dagSpec.metadata.name))).toOption)
+      dagVizIR = irProgram.flatMap(ir => Try(DagVizCompiler.compile(ir, Some(compiled.program.image.dagSpec.metadata.name))).toOption)
 
       // Create initial execution record if sampling
       _ <- if shouldStore then
         EitherT.liftF(storage.store(ExecutionStorage.createExecution(
-          dagName = compiled.dagSpec.metadata.name,
+          dagName = compiled.program.image.dagSpec.metadata.name,
           scriptPath = Some(req.scriptPath),
           inputs = req.inputs,
           source = source,
@@ -414,13 +414,17 @@ class DashboardRoutes(
         EitherT.pure[IO, ApiError](())
 
       // Convert inputs
-      inputs <- convertInputs(req.inputs, compiled.dagSpec)
+      inputs <- convertInputs(req.inputs, compiled.program.image.dagSpec)
 
-      // Execute the DAG
-      state <- executeDagWithModules(compiled.dagSpec, inputs, compiled.syntheticModules)
+      // Execute using the new API
+      sig <- ErrorHandling.liftIO(constellation.run(compiled.program, inputs)) { t =>
+        ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+      }
 
-      // Extract outputs
-      outputs <- extractOutputs(state)
+      // Extract outputs from DataSignature
+      outputs = sig.outputs.map { case (k, v) =>
+        k -> io.constellation.JsonCValueConverter.cValueToJson(v)
+      }
 
       endTime = System.currentTimeMillis()
       durationMs = endTime - startTime
@@ -470,22 +474,6 @@ class DashboardRoutes(
   ): EitherT[IO, ApiError, Map[String, CValue]] =
     ErrorHandling.liftIO(ExecutionHelper.convertInputs(inputs, dagSpec)) { t =>
       ApiError.InputError(t.getMessage)
-    }
-
-  /** Execute a DAG with pre-resolved modules */
-  private def executeDagWithModules(
-      dagSpec: io.constellation.DagSpec,
-      inputs: Map[String, CValue],
-      modules: Map[UUID, io.constellation.Module.Uninitialized]
-  ): EitherT[IO, ApiError, Runtime.State] =
-    ErrorHandling.liftIO(constellation.runDagWithModules(dagSpec, inputs, modules)) { t =>
-      ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
-    }
-
-  /** Extract outputs from execution state */
-  private def extractOutputs(state: Runtime.State): EitherT[IO, ApiError, Map[String, Json]] =
-    ErrorHandling.liftIO(ExecutionHelper.extractOutputs(state)) { t =>
-      ApiError.OutputError(t.getMessage)
     }
 
   /** Convert API error to HTTP response */

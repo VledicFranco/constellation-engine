@@ -499,7 +499,7 @@ class ConstellationLanguageServer(
 
     compiler.compile(document.text, dagName) match {
       case Right(compiled) =>
-        val dagSpec = compiled.dagSpec
+        val dagSpec = compiled.program.image.dagSpec
 
         val modules = dagSpec.modules.map { case (uuid, spec) =>
           uuid.toString -> ModuleNode(
@@ -936,10 +936,10 @@ class ConstellationLanguageServer(
         // Build module map from compiled DAG
         // First, merge synthetic modules with registered modules looked up by name
         val moduleMapIO: IO[Map[java.util.UUID, Module.Uninitialized]] =
-          compiled.dagSpec.modules.toList
+          compiled.program.image.dagSpec.modules.toList
             .traverse { case (uuid, spec) =>
               // First check if this is a synthetic module (keyed by uuid)
-              compiled.syntheticModules.get(uuid) match {
+              compiled.program.syntheticModules.get(uuid) match {
                 case Some(mod) => IO.pure(uuid -> mod)
                 case None      =>
                   // Otherwise look up by name from constellation's registered modules
@@ -955,8 +955,8 @@ class ConstellationLanguageServer(
         (for {
           moduleMap <- moduleMapIO
           session <- debugSessionManager.createSession(
-            compiled.dagSpec,
-            compiled.syntheticModules,
+            compiled.program.image.dagSpec,
+            compiled.program.syntheticModules,
             moduleMap,
             cvalueInputs
           )
@@ -1534,26 +1534,17 @@ class ConstellationLanguageServer(
           jsonToCValue(json).map(name -> _)
         }
 
-        // Get the declared outputs from the compiled DAG spec
-        val declaredOutputs = compiled.dagSpec.declaredOutputs
-
         for {
-          // Use runDagWithModules to pass the pre-resolved synthetic modules directly
+          // Use the new API: constellation.run with LoadedProgram
           result <- constellation
-            .runDagWithModules(compiled.dagSpec, cvalueInputs, compiled.syntheticModules)
+            .run(compiled.program, cvalueInputs)
             .attempt
           endTime = System.currentTimeMillis()
           execResult = result match {
-            case Right(state) =>
-              // Use outputBindings to look up data by UUID
-              val outputBindings = compiled.dagSpec.outputBindings
-              val outputJson: Map[String, Json] = declaredOutputs.flatMap { outputName =>
-                outputBindings.get(outputName).flatMap { dataNodeUuid =>
-                  state.data.get(dataNodeUuid).map { evalCvalue =>
-                    outputName -> cvalueToJson(evalCvalue.value)
-                  }
-                }
-              }.toMap
+            case Right(sig) =>
+              val outputJson: Map[String, Json] = sig.outputs.map { case (k, v) =>
+                k -> cvalueToJson(v)
+              }
 
               ExecutePipelineResult(
                 success = true,

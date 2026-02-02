@@ -121,27 +121,6 @@ object ApiModels {
     given Decoder[RunResponse] = deriveDecoder
   }
 
-  /** Response listing available DAGs */
-  case class DagListResponse(
-      dags: Map[String, ComponentMetadata]
-  )
-
-  object DagListResponse {
-    given Encoder[DagListResponse] = deriveEncoder
-    given Decoder[DagListResponse] = deriveDecoder
-  }
-
-  /** Response with a single DAG specification */
-  case class DagResponse(
-      name: String,
-      metadata: ComponentMetadata
-  )
-
-  object DagResponse {
-    given Encoder[DagResponse] = deriveEncoder
-    given Decoder[DagResponse] = deriveDecoder
-  }
-
   /** Response listing available modules */
   case class ModuleListResponse(
       modules: List[ModuleInfo]

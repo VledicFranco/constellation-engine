@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (Breaking)
+
+#### Deprecated API Removal (v1 RC)
+- **`DagRegistry`**: Deleted `DagRegistry` trait and `DagRegistryImpl` class. Use `ProgramStore` for storing and retrieving compiled programs.
+- **`Constellation` legacy methods**: Removed `dagExists`, `createDag`, `setDag`, `listDags`, `getDag`, `runDag`, `runDagSpec`, `runDagWithModules`, `runDagWithModulesAndPriorities`, and `runDagCancellable`. Use `constellation.run(LoadedProgram, inputs)` or `constellation.run(ref, inputs, options)` instead.
+- **`CompileResult`**: Replaced internal `CompileResult` with package-private `DagCompileOutput`. External callers use `CompilationOutput` (unchanged).
+- **`CompilationOutput` deprecated accessors**: Removed `.dagSpec`, `.syntheticModules`, `.moduleOptions` convenience accessors. Use `.program.image.dagSpec`, `.program.syntheticModules`, `.program.image.moduleOptions` instead.
+- **`TypeChecker.checkLegacy`**: Removed unused private method.
+- **`/dags` HTTP endpoints**: Removed `GET /dags` and `GET /dags/{dagName}`. Use `GET /programs` and `GET /programs/{ref}` instead.
+- **`DagListResponse` / `DagResponse` API models**: Removed from HTTP API models.
+
 ### Added
 
 #### Documentation (RFC-013 Phase 6)
