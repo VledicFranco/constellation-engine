@@ -1,0 +1,100 @@
+/**
+ * Constellation Engine - Docusaurus Theme
+ * Brand palette: Indigo + Slate
+ */
+
+:root {
+  /* Primary: Indigo */
+  --ifm-color-primary: #6366f1;
+  --ifm-color-primary-dark: #4f46e5;
+  --ifm-color-primary-darker: #4338ca;
+  --ifm-color-primary-darkest: #3730a3;
+  --ifm-color-primary-light: #818cf8;
+  --ifm-color-primary-lighter: #a5b4fc;
+  --ifm-color-primary-lightest: #c7d2fe;
+
+  /* Background */
+  --ifm-background-color: #f8fafc;
+  --ifm-background-surface-color: #ffffff;
+
+  /* Typography */
+  --ifm-font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'SF Mono',
+    Consolas, 'Liberation Mono', Menlo, monospace;
+  --ifm-code-font-size: 90%;
+
+  /* Links */
+  --ifm-link-color: #4f46e5;
+
+  /* Borders */
+  --ifm-global-radius: 0.5rem;
+}
+
+[data-theme='dark'] {
+  /* Primary: Indigo 300 for dark mode contrast */
+  --ifm-color-primary: #a5b4fc;
+  --ifm-color-primary-dark: #818cf8;
+  --ifm-color-primary-darker: #6366f1;
+  --ifm-color-primary-darkest: #4f46e5;
+  --ifm-color-primary-light: #c7d2fe;
+  --ifm-color-primary-lighter: #e0e7ff;
+  --ifm-color-primary-lightest: #eef2ff;
+
+  /* Background: Slate 900 */
+  --ifm-background-color: #0f172a;
+  --ifm-background-surface-color: #1e293b;
+
+  /* Footer: Slate 950 */
+  --ifm-footer-background-color: #020617;
+
+  /* Links */
+  --ifm-link-color: #a5b4fc;
+
+  /* Navbar */
+  --ifm-navbar-background-color: #0f172a;
+}
+
+/* Code blocks */
+.prism-code {
+  font-family: var(--ifm-font-family-monospace);
+}
+
+/* Navbar logo sizing */
+.navbar__logo img {
+  height: 2rem;
+}
+
+/* Dark mode footer styling */
+[data-theme='dark'] .footer {
+  background-color: #020617;
+}
+
+/* Table styling */
+table {
+  display: table;
+  width: 100%;
+}
+
+/* Sidebar active item */
+.menu__link--active:not(.menu__link--sublist) {
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+[data-theme='dark'] .menu__link--active:not(.menu__link--sublist) {
+  background-color: rgba(165, 180, 252, 0.1);
+}
+
+/* Admonition styling */
+.alert--info {
+  --ifm-alert-border-color: #6366f1;
+}
+
+[data-theme='dark'] .alert--info {
+  --ifm-alert-border-color: #a5b4fc;
+}
+
+/* Mermaid diagram background */
+.docusaurus-mermaid-container {
+  background-color: transparent;
+}

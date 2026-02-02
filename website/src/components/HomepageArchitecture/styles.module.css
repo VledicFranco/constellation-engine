@@ -1,0 +1,69 @@
+.section {
+  padding: 5rem 2rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.sectionTitle {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.sectionSubtitle {
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 3rem;
+  font-size: 1.1rem;
+}
+
+.pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  max-width: 1000px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-radius: 0.5rem;
+  border: 2px solid var(--ifm-color-primary);
+  background: var(--ifm-background-color);
+  min-width: 120px;
+}
+
+.stageName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.stageDetail {
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
+  margin-top: 0.25rem;
+}
+
+.arrow {
+  font-size: 1.5rem;
+  color: var(--ifm-color-primary);
+  padding: 0 0.5rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .pipeline {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .arrow {
+    transform: rotate(90deg);
+    padding: 0.25rem 0;
+  }
+}

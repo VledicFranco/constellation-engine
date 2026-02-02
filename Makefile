@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync
 
 # Default target
 help:
@@ -64,6 +64,13 @@ help:
 	@echo "  make assembly       - Build fat JAR via sbt-assembly"
 	@echo "  make docker-build   - Build Docker image"
 	@echo "  make docker-run     - Run Docker container on port 8080"
+	@echo ""
+	@echo "Documentation Website:"
+	@echo "  make docs-dev       - Start Docusaurus dev server"
+	@echo "  make docs-build     - Build documentation website"
+	@echo "  make docs-install   - Install website dependencies"
+	@echo "  make docs-serve     - Serve production build locally"
+	@echo "  make docs-sync      - Sync docs from source into website/"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -338,6 +345,31 @@ docker-build:
 docker-run:
 	@echo "Starting Constellation in Docker on http://localhost:8080..."
 	docker run -p 8080:8080 constellation-engine:latest
+
+# =============================================================================
+# Documentation Website
+# =============================================================================
+
+# Start Docusaurus dev server
+docs-dev:
+	cd website && npm start
+
+# Build documentation website for production
+docs-build:
+	bash website/scripts/sync-docs.sh
+	cd website && npm run build
+
+# Install documentation website dependencies
+docs-install:
+	cd website && npm ci
+
+# Serve production build locally
+docs-serve:
+	cd website && npm run serve
+
+# Sync docs from source into website/docs/
+docs-sync:
+	bash website/scripts/sync-docs.sh
 
 # =============================================================================
 # Utilities
