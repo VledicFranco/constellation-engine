@@ -9,14 +9,17 @@
 
 ## Summary
 
-Standardize "pipeline" as the canonical term for a compiled constellation `.cst` program, formalize the distinction between **hot pipelines** (ad-hoc, compiled on-the-fly) and **cold pipelines** (pre-loaded, stored for execution-by-reference), and implement the full pipeline lifecycle within the HTTP API module — covering suspension/resumption over HTTP, pipeline persistence, startup loading, and hot-reload.
+Standardize "pipeline" as the canonical term for a compiled constellation `.cst` program, formalize the distinction between **hot pipelines** (ad-hoc, compiled on-the-fly) and **cold pipelines** (pre-loaded, stored for execution-by-reference), and implement the full pipeline lifecycle within the HTTP API module — covering suspension/resumption over HTTP, pipeline persistence, startup loading, hot-reload with versioning, and canary releases.
 
-This RFC introduces:
-1. **Terminology standardization** — rename "program" to "pipeline" across the codebase, docs, API, and VSCode extension; define hot/cold as first-class concepts
-2. **Suspension-aware HTTP endpoints** — expose `DataSignature` status, missing inputs, and resume-by-ID via REST
-3. **Pipeline persistence** — pluggable `PipelineStore` backend (filesystem, database) so cold pipelines survive restarts
-4. **Startup pipeline loader** — load `.cst` files from a configured directory at server boot
-5. **Hot-reload with versioning and canary releases** — recompile a cold pipeline without restarting, with version history, traffic splitting, observability, and automatic rollback
+This is a **master RFC** that defines shared terminology and architecture. The implementation is split into child RFCs:
+
+| Child RFC | Scope | Depends On |
+|-----------|-------|------------|
+| [RFC-015a](./rfc-015a-suspension-http.md) | Suspension-aware HTTP responses + resume endpoint | RFC-015 |
+| [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Startup pipeline loader, hot-reload, versioning | RFC-015 |
+| [RFC-015c](./rfc-015c-canary-releases.md) | Canary releases with observability | RFC-015b |
+| [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore (filesystem-backed) | RFC-015 |
+| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard integration (pipelines panel, suspend/resume UI, canary UI) | RFC-015a, RFC-015b |
 
 ---
 
@@ -59,7 +62,7 @@ RFC-014 implemented full suspend/resume semantics at the library level. The `Dat
 - There is no `POST /executions/:id/resume` endpoint
 - There is no way to list or manage suspended executions via HTTP
 
-This means HTTP consumers cannot use multi-step workflows at all. The suspension feature — one of the most architecturally significant capabilities — is invisible to HTTP clients.
+This means HTTP consumers cannot use multi-step workflows at all. The suspension feature — one of the most architecturally significant capabilities — is invisible to HTTP clients. See [RFC-015a](./rfc-015a-suspension-http.md).
 
 ### Gap 3: Pipelines Don't Survive Restarts
 
@@ -69,7 +72,9 @@ This means HTTP consumers cannot use multi-step workflows at all. The suspension
 - There is no startup loader to restore previously-compiled pipelines
 - The dashboard file browser reads `.cst` files from disk but has no connection to `ProgramStore` — browsing a file doesn't load it as a cold pipeline
 
-### Gap 4: No Hot-Reload
+See [RFC-015b](./rfc-015b-pipeline-loader-reload.md) and [RFC-015d](./rfc-015d-persistent-pipeline-store.md).
+
+### Gap 4: No Hot-Reload or Safe Rollouts
 
 Once a cold pipeline is compiled and aliased, the only way to update it is to:
 1. Stop the server
@@ -77,17 +82,20 @@ Once a cold pipeline is compiled and aliased, the only way to update it is to:
 3. Restart the server (losing all pipelines)
 4. Recompile everything
 
-There is no endpoint to recompile a named pipeline from new source. The existing `PUT /programs/:name/alias` can repoint a name to a different structural hash, but requires the new version to be compiled first via a separate `/compile` call.
+There is no endpoint to recompile a named pipeline from new source. No version history is maintained, so rollback is impossible. And there is no way to safely test a new pipeline version with a fraction of traffic before promoting it.
+
+See [RFC-015b](./rfc-015b-pipeline-loader-reload.md) and [RFC-015c](./rfc-015c-canary-releases.md).
 
 ### What This Enables
 
-After this RFC:
+After this RFC and its children:
 
 - The entire codebase, docs, API, and tooling use **"pipeline"** consistently
 - Users understand the **hot vs cold** distinction and choose the right mode for their use case
 - A deployment can **pre-load production pipelines** from a directory at startup, making them immediately available by name
 - An HTTP client can **start a multi-step workflow**, receive the list of missing inputs, and **resume** with additional data across separate HTTP requests
-- A CI/CD system can **hot-reload a pipeline** by posting updated source to a single endpoint, without restarting the server
+- Pipelines have **version history** with instant rollback to any previous version
+- A CI/CD system can **canary-release a new pipeline version** with traffic splitting, per-version observability, and automatic rollback on error threshold breach
 - The dashboard file browser can **load pipelines into PipelineStore**, bridging the gap between file browsing and pipeline management
 
 ---
@@ -101,7 +109,7 @@ After this RFC:
 | **Library-first** | All new capabilities are exposed through the Scala library API first, then surfaced in HTTP. The HTTP module is a thin adapter. |
 | **Pluggable persistence** | `PipelineStore` is a trait with in-memory (default) and persistent (filesystem, custom) backends. The HTTP module doesn't know which backend is active. |
 | **Clean breaks allowed** | No external consumers exist yet. We can rename types, change endpoints, and restructure responses without deprecation. This freedom won't last — use it now for the terminology rename. |
-| **Opt-in complexity** | Suspension-aware endpoints, persistence, startup loading, and hot-reload are all opt-in. The default server works exactly as today. |
+| **Opt-in complexity** | Suspension-aware endpoints, persistence, startup loading, hot-reload, canary releases, and dashboard integration are all opt-in. The default server works exactly as today. |
 | **Content-addressed foundation** | All pipeline identity flows through structural hashes (from RFC-014). Persistence, hot-reload, and canary releases build on this — same source = same hash = no-op. |
 | **Progressive rollouts** | Canary releases allow operators to validate new pipeline versions with a fraction of traffic before full promotion. Observability (per-version metrics) and automatic rollback provide safety nets for production deployments. |
 
@@ -213,15 +221,15 @@ The following identifiers, endpoints, and documentation must be renamed:
 | `DELETE /programs/:ref` | `DELETE /pipelines/:ref` |
 | `PUT /programs/:name/alias` | `PUT /pipelines/:name/alias` |
 
-#### Environment Variables (New in Phase 3)
+#### Environment Variables (New in Child RFCs)
 
-These env vars are introduced by this RFC (Phase 3). They don't exist in the codebase today — this table documents the names to use.
+These env vars are introduced by child RFCs. They don't exist in the codebase today — this table documents the names to use.
 
-| Variable | Purpose |
-|----------|---------|
-| `CONSTELLATION_PIPELINE_DIR` | Directory to load `.cst` files from at startup |
-| `CONSTELLATION_PIPELINE_RECURSIVE` | Scan subdirectories |
-| `CONSTELLATION_PIPELINE_FAIL_ON_ERROR` | Fail startup if any pipeline fails to compile |
+| Variable | Purpose | Introduced By |
+|----------|---------|---------------|
+| `CONSTELLATION_PIPELINE_DIR` | Directory to load `.cst` files from at startup | RFC-015b |
+| `CONSTELLATION_PIPELINE_RECURSIVE` | Scan subdirectories | RFC-015b |
+| `CONSTELLATION_PIPELINE_FAIL_ON_ERROR` | Fail startup if any pipeline fails to compile | RFC-015b |
 
 #### File Renames
 
@@ -383,7 +391,7 @@ Client                          Server
 
 ### Cold Execution (Pre-Loaded)
 
-**Mechanism:** Server loads `.cst` files from a configured directory at startup, compiles them, and stores them by filename as aliases.
+**Mechanism:** Server loads `.cst` files from a configured directory at startup, compiles them, and stores them by filename as aliases. See [RFC-015b](./rfc-015b-pipeline-loader-reload.md).
 
 ```
 Server Startup                          Filesystem
@@ -417,770 +425,22 @@ Client                          Server
 
 **Use cases:** Production deployments, Docker containers with baked-in pipelines, Kubernetes pods with ConfigMap-mounted `.cst` files.
 
-**Caching behavior:** Pipelines are compiled once at startup and stored in `PipelineStore`. `CompilationCache` may be populated as a side effect but is not used for cold execution. Hot-reload (Phase 4) recompiles and updates the stored image without clearing `CompilationCache`.
-
----
-
-## Phase 1: Suspension-Aware HTTP Responses
-
-### Extended Response Models
-
-Add optional fields to existing responses (backward compatible):
-
-```scala
-// Extended ExecuteResponse
-case class ExecuteResponse(
-  success: Boolean,
-  outputs: Option[Map[String, Json]] = None,
-  error: Option[String] = None,
-  // --- New fields (Phase 1) ---
-  status: Option[String] = None,           // "completed" | "suspended" | "failed"
-  executionId: Option[String] = None,      // UUID for resume reference
-  missingInputs: Option[Map[String, String]] = None,  // name → type
-  pendingOutputs: Option[List[String]] = None,
-  resumptionCount: Option[Int] = None
-)
-
-// Extended RunResponse (same additions)
-case class RunResponse(
-  success: Boolean,
-  outputs: Option[Map[String, Json]] = None,
-  structuralHash: Option[String] = None,
-  compilationErrors: Option[List[String]] = None,
-  error: Option[String] = None,
-  // --- New fields (Phase 1) ---
-  status: Option[String] = None,
-  executionId: Option[String] = None,
-  missingInputs: Option[Map[String, String]] = None,
-  pendingOutputs: Option[List[String]] = None,
-  resumptionCount: Option[Int] = None
-)
-```
-
-### Behavior Change
-
-When `constellation.run()` returns a `DataSignature` with `status = Suspended`:
-
-**Before (current):**
-```json
-{
-  "success": true,
-  "outputs": {}
-}
-```
-
-**After:**
-```json
-{
-  "success": true,
-  "status": "suspended",
-  "executionId": "550e8400-e29b-41d4-a716-446655440000",
-  "outputs": { "partialResult": 42 },
-  "missingInputs": { "approval": "Bool", "managerNotes": "String" },
-  "pendingOutputs": ["finalScore", "recommendation"],
-  "resumptionCount": 0
-}
-```
-
-Existing clients that only read `success` and `outputs` continue to work unchanged. Clients aware of suspension can check `status` and proceed accordingly.
-
-### What Changes
-
-| Component | Change |
-|-----------|--------|
-| `ApiModels.scala` | Add optional fields to `ExecuteResponse`, `RunResponse` |
-| `ConstellationRoutes.scala` | Map `DataSignature` fields to response, populate new fields |
-
-### What Doesn't Change
-
-| Component | Reason |
-|-----------|--------|
-| `DataSignature` | Already has all the information |
-| `ConstellationImpl` | Already returns `DataSignature` |
-| `SuspendableExecution` | Already works |
-| `PipelineStore` | Not affected |
-
-### Tests
-
-- Existing `/run` and `/execute` tests pass unchanged (new fields are optional/`None`)
-- New test: `/run` with partial inputs returns `status: "suspended"` and `missingInputs`
-- New test: `/execute` with partial inputs returns `status: "suspended"`
-- New test: Completed execution returns `status: "completed"` with `missingInputs: {}`
-
----
-
-## Phase 2: Resume Endpoint
-
-### New Endpoint
-
-```
-POST /executions/:id/resume
-Content-Type: application/json
-
-{
-  "additionalInputs": {
-    "approval": true,
-    "managerNotes": "Looks good"
-  }
-}
-```
-
-**Response:** Same shape as `ExecuteResponse` (may suspend again if more inputs needed).
-
-### Suspension Storage
-
-The server needs to store `SuspendedExecution` state between requests. This uses the existing `SuspensionStore` trait from the runtime module:
-
-```scala
-// Already defined in runtime module
-trait SuspensionStore[F[_]] {
-  def save(state: SuspendedExecution): F[Unit]
-  def load(executionId: UUID): F[Option[SuspendedExecution]]
-  def delete(executionId: UUID): F[Unit]
-  def list: F[List[SuspendedExecution]]
-}
-```
-
-**Default:** In-memory `SuspensionStore` (sufficient for single-instance deployments).
-
-### Server Builder Extension
-
-```scala
-ConstellationServer.builder(constellation, compiler)
-  .withSuspensionStore(InMemorySuspensionStore.create)  // opt-in
-  .run
-```
-
-When no suspension store is configured, resume returns `404 Not Found` (suspension state is discarded).
-
-### Additional Endpoints
-
-```
-GET /executions                    → List suspended executions
-GET /executions/:id                → Get suspension details
-DELETE /executions/:id             → Abandon/delete a suspended execution
-```
-
-### Request/Response Models
-
-```scala
-case class ResumeRequest(
-  additionalInputs: Option[Map[String, Json]] = None,
-  resolvedNodes: Option[Map[String, Json]] = None  // Manual healing
-)
-
-case class ExecutionSummary(
-  executionId: String,
-  structuralHash: String,
-  pipelineName: Option[String],
-  resumptionCount: Int,
-  missingInputs: Map[String, String],
-  createdAt: String  // ISO-8601
-)
-
-case class ExecutionListResponse(
-  executions: List[ExecutionSummary]
-)
-```
-
-### Execution Flow
-
-```
-Client                          Server
-  │                               │
-  │  POST /run (partial inputs)   │
-  │──────────────────────────────>│
-  │                               │ execute → suspend → store in SuspensionStore
-  │  { status: "suspended",       │
-  │    executionId: "abc-123",    │
-  │    missingInputs: {...} }     │
-  │<──────────────────────────────│
-  │                               │
-  │  ... (hours/days pass) ...    │
-  │                               │
-  │  POST /executions/abc-123/resume
-  │  { additionalInputs: {...} }  │
-  │──────────────────────────────>│
-  │                               │ load from SuspensionStore → resume → complete
-  │  { status: "completed",       │
-  │    outputs: { ... } }         │
-  │<──────────────────────────────│
-```
-
-### What Changes
-
-| Component | Change |
-|-----------|--------|
-| `ConstellationRoutes.scala` | Add `/executions/*` routes |
-| `ConstellationServer.scala` | Add `withSuspensionStore()` builder method |
-| `ApiModels.scala` | Add `ResumeRequest`, `ExecutionSummary`, `ExecutionListResponse` |
-
-### What Doesn't Change
-
-| Component | Reason |
-|-----------|--------|
-| `SuspendableExecution` | Resume logic already works |
-| `SuspensionStore` trait | Already defined |
-| `DataSignature` | Already captures suspension state |
-
-### Tests
-
-- Resume a suspended execution, verify outputs
-- Resume with wrong execution ID → 404
-- Resume without suspension store configured → 404 with clear error
-- Resume with type-mismatched inputs → 400
-- Concurrent resume attempts → 409 Conflict
-- List suspended executions
-- Delete a suspended execution, verify resume returns 404
-
----
-
-## Phase 3: Startup Pipeline Loader
-
-### Configuration
-
-```scala
-case class PipelineLoaderConfig(
-  directory: Path,                        // Directory containing .cst files
-  recursive: Boolean = false,             // Scan subdirectories
-  failOnError: Boolean = false,           // Fail startup on compilation error (vs log warning)
-  aliasStrategy: AliasStrategy = AliasStrategy.FileName  // How to name pipelines
-)
-
-enum AliasStrategy {
-  case FileName          // scoring.cst → "scoring"
-  case RelativePath      // pipelines/scoring.cst → "pipelines/scoring"
-  case None              // No alias, only structural hash
-}
-```
-
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CONSTELLATION_PIPELINE_DIR` | (none) | Directory to load `.cst` files from at startup |
-| `CONSTELLATION_PIPELINE_RECURSIVE` | `false` | Scan subdirectories |
-| `CONSTELLATION_PIPELINE_FAIL_ON_ERROR` | `false` | Fail startup if any pipeline fails to compile |
-
-### Server Builder Extension
-
-```scala
-ConstellationServer.builder(constellation, compiler)
-  .withPipelineLoader(PipelineLoaderConfig(
-    directory = Paths.get("/opt/constellation/pipelines"),
-    recursive = true,
-    failOnError = true
-  ))
-  .run
-```
-
-### Startup Behavior
-
-1. Scan `directory` for `*.cst` files
-2. For each file:
-   a. Read source
-   b. Compute syntactic hash
-   c. Check if already in `PipelineStore` (via `lookupSyntactic`) — skip if present
-   d. Compile via `compiler.compileIO(source, name)`
-   e. Store `PipelineImage` in `PipelineStore`
-   f. Alias by filename (or configured strategy)
-   g. Log: `Loaded pipeline 'scoring' (sha256:abc123...) from scoring.cst`
-3. If `failOnError = true` and any compilation fails → abort startup with error details
-4. If `failOnError = false` → log warnings, continue with successfully compiled pipelines
-
-### Logging
-
-```
-INFO  - Loading pipelines from /opt/constellation/pipelines/
-INFO  - Loaded 'scoring' (sha256:abc..., 5 modules, 2 inputs, 1 output)
-INFO  - Loaded 'enrichment' (sha256:def..., 3 modules, 1 input, 2 outputs)
-WARN  - Failed to compile 'broken.cst': Parse error at line 5: unexpected token
-INFO  - Pipeline loading complete: 2 loaded, 1 failed
-```
-
-### What Changes
-
-| Component | Change |
-|-----------|--------|
-| `ConstellationServer.scala` | Add `withPipelineLoader()`, call loader during startup |
-| New: `PipelineLoader.scala` | Startup loading logic |
-| New: `PipelineLoaderConfig.scala` | Configuration case class |
-
-### Tests
-
-- Load directory with 2 valid `.cst` files → both accessible via `/execute`
-- Load directory with 1 valid, 1 invalid file, `failOnError = false` → valid one loaded, warning logged
-- Load directory with 1 valid, 1 invalid file, `failOnError = true` → startup fails
-- Load empty directory → no-op, server starts normally
-- Load with `recursive = true` → finds files in subdirectories
-- Reload same directory (no changes) → all deduplicated via syntactic hash
-- Alias strategies: FileName, RelativePath, None
-
----
-
-## Phase 4: Versioning, Hot-Reload, and Canary Releases
-
-### Pipeline Versioning
-
-Every named pipeline maintains an ordered version history. Each reload creates a new version rather than silently replacing the old one.
-
-```scala
-case class PipelineVersion(
-  version: Int,              // monotonic, auto-incremented (v1, v2, v3...)
-  structuralHash: String,
-  createdAt: Instant,
-  source: Option[String]     // retained for reload-from-file traceability
-)
-```
-
-The alias for a pipeline name (e.g., `"scoring"`) always points to the **active** version. By default that's the latest, but pinning and rollback can change it.
-
-**Version management endpoints:**
-
-```
-GET  /pipelines/:name/versions            → list version history
-POST /pipelines/:name/rollback            → rollback to previous active version
-POST /pipelines/:name/rollback/:version   → rollback to specific version
-```
-
-**Version lifecycle:**
-
-- The first `POST /compile` or startup load creates version 1
-- Each `POST /pipelines/:name/reload` creates the next version (v2, v3, ...)
-- Rollback re-points the alias to an earlier version (no recompilation)
-- Old versions remain in `PipelineStore` by structural hash until explicitly deleted
-- Version numbers are monotonic integers — simple, unambiguous, no semver complexity
-
-### Hot-Reload Endpoint
-
-```
-POST /pipelines/:name/reload
-Content-Type: application/json
-
-{
-  "source": "in x: Int\nresult = Double(x)\nout result"
-}
-```
-
-**Response (immediate reload, no canary):**
-
-```json
-{
-  "success": true,
-  "previousHash": "abc123...",
-  "newHash": "def456...",
-  "name": "scoring",
-  "changed": true,
-  "version": 3
-}
-```
-
-If the source hasn't changed (same structural hash), returns `changed: false` — no recompilation occurs, no new version is created.
-
-#### Behavior
-
-1. Compile the new source
-2. Compute structural hash
-3. If same hash as current alias target → `changed: false`, no-op
-4. Store new `PipelineImage`
-5. Create new `PipelineVersion` entry
-6. Update alias to point to new structural hash (or start canary, see below)
-7. Old image remains in store (other aliases or hashes may reference it)
-8. In-flight executions of the old version complete normally (they hold a reference to the old `LoadedPipeline`)
-
-#### File-Based Reload
-
-When a pipeline loader is configured, also support reloading from the file:
-
-```
-POST /pipelines/:name/reload
-```
-
-(No body — re-reads the original `.cst` file from disk.)
-
-This enables CI/CD workflows:
-1. Update `.cst` file on disk (via ConfigMap update, file sync, etc.)
-2. `POST /pipelines/scoring/reload` → server re-reads and recompiles
-3. No restart needed
-
-#### Caching Interaction
-
-When a cold pipeline is reloaded:
-1. The new `PipelineImage` is stored in `PipelineStore` (replacing the alias target)
-2. `CompilationCache` is **not** invalidated — it uses source hash as key, and the new source has a different hash. The old cache entry will eventually be evicted by LRU
-3. If the same new source was already hot-executed earlier, `CompilationCache` may have a hit for it — this is correct and avoids redundant compilation
-
-#### Endpoint Variants
-
-| Request | Behavior |
-|---------|----------|
-| `POST /pipelines/:name/reload` with `source` body | Compile from provided source |
-| `POST /pipelines/:name/reload` without body | Re-read from original file path (requires pipeline loader) |
-| `POST /pipelines/:name/reload` with `source` + `canary` | Compile and start canary deployment |
-| `POST /pipelines/:name/reload` without `source`, with `canary` | Re-read from file and start canary deployment |
-
-### Canary Releases
-
-When reloading a pipeline, the operator can opt into a canary strategy instead of an immediate cutover. Traffic is split between the old and new versions, with per-version observability to evaluate safety before promoting.
-
-#### Canary Configuration
-
-```scala
-case class CanaryConfig(
-  initialWeight: Double = 0.05,          // 5% traffic to new version
-  promotionSteps: List[Double] = List(0.10, 0.25, 0.50, 1.0),
-  observationWindow: FiniteDuration = 5.minutes,  // per step
-  errorThreshold: Double = 0.05,         // >5% error rate triggers rollback
-  latencyThresholdMs: Option[Long] = None,  // p99 latency ceiling
-  minRequests: Int = 10,                 // minimum requests before evaluating a step
-  autoPromote: Boolean = true            // false = manual promotion only
-)
-```
-
-#### Canary State
-
-```scala
-case class CanaryState(
-  pipelineName: String,
-  oldVersion: PipelineVersion,
-  newVersion: PipelineVersion,
-  currentWeight: Double,
-  currentStep: Int,
-  status: CanaryStatus,       // Observing | Promoting | RolledBack | Complete
-  startedAt: Instant,
-  metrics: CanaryMetrics
-)
-
-enum CanaryStatus {
-  case Observing    // collecting metrics at current weight
-  case Promoting    // advancing to next weight step
-  case RolledBack   // error threshold exceeded, reverted to old version
-  case Complete     // reached 100%, new version is now active
-}
-
-case class CanaryMetrics(
-  oldVersion: VersionMetrics,
-  newVersion: VersionMetrics
-)
-
-case class VersionMetrics(
-  requests: Long,
-  successes: Long,
-  failures: Long,
-  avgLatencyMs: Double,
-  p99LatencyMs: Double
-)
-```
-
-#### Reload with Canary
-
-```json
-POST /pipelines/scoring/reload
-{
-  "source": "in x: Int\nresult = Double(x)\nout result",
-  "canary": {
-    "initialWeight": 0.05,
-    "promotionSteps": [0.10, 0.25, 0.50, 1.0],
-    "observationWindow": "5m",
-    "errorThreshold": 0.05,
-    "minRequests": 10,
-    "autoPromote": true
-  }
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "previousHash": "abc123...",
-  "newHash": "def456...",
-  "name": "scoring",
-  "changed": true,
-  "version": 3,
-  "canary": {
-    "status": "observing",
-    "currentWeight": 0.05,
-    "oldVersion": 2,
-    "newVersion": 3
-  }
-}
-```
-
-Without the `canary` field in the request, reload works as before — immediate cutover, no canary.
-
-#### Canary Execution Flow
-
-When a canary is active for pipeline `"scoring"`:
-
-```
-Client                          Server
-  │                               │
-  │  POST /execute                │
-  │  { ref: "scoring",            │
-  │    inputs: { x: 42 } }       │
-  │──────────────────────────────>│
-  │                               │ canary active for "scoring"
-  │                               │ weighted random: 5% → v3, 95% → v2
-  │                               │ selected: v2 (old version)
-  │                               │ execute v2, record metrics
-  │  { success: true,             │
-  │    outputs: { result: 84 } }  │
-  │<──────────────────────────────│
-```
-
-Step-by-step:
-
-1. `POST /execute { ref: "scoring" }` arrives
-2. Router detects active canary for `"scoring"`
-3. Weighted random: 5% → new version, 95% → old version
-4. Execute selected version, record metrics (success/failure, latency)
-5. After `observationWindow` and `minRequests` reached, evaluate:
-   - New version error rate ≤ `errorThreshold` and latency ≤ threshold → promote to next step
-   - New version error rate > `errorThreshold` → automatic rollback
-6. Repeat steps until weight reaches 1.0 (complete) or rollback
-
-#### Canary Management Endpoints
-
-```
-GET  /pipelines/:name/canary              → current canary status + metrics
-POST /pipelines/:name/canary/promote      → manually advance to next step
-POST /pipelines/:name/canary/rollback     → manually rollback to old version
-DELETE /pipelines/:name/canary            → abort canary (rollback to old)
-```
-
-**Example: Get canary status**
-
-```
-GET /pipelines/scoring/canary
-```
-
-```json
-{
-  "pipelineName": "scoring",
-  "oldVersion": { "version": 2, "structuralHash": "abc123..." },
-  "newVersion": { "version": 3, "structuralHash": "def456..." },
-  "currentWeight": 0.25,
-  "currentStep": 2,
-  "status": "observing",
-  "startedAt": "2026-02-02T14:30:00Z",
-  "metrics": {
-    "oldVersion": {
-      "requests": 950,
-      "successes": 948,
-      "failures": 2,
-      "avgLatencyMs": 12.3,
-      "p99LatencyMs": 45.0
-    },
-    "newVersion": {
-      "requests": 50,
-      "successes": 49,
-      "failures": 1,
-      "avgLatencyMs": 11.8,
-      "p99LatencyMs": 42.0
-    }
-  }
-}
-```
-
-#### Observability
-
-- **Metrics endpoint:** `GET /metrics` extended with per-pipeline per-version metrics when a canary is active
-- **Canary status endpoint:** `GET /pipelines/:name/canary` returns live metrics for both versions
-- **Logging:** All state transitions are logged:
-  ```
-  INFO  - Canary 'scoring' v2→v3: started at 5% weight
-  INFO  - Canary 'scoring' v2→v3: promoted to 25% (error rate 0.8%, 142 requests)
-  INFO  - Canary 'scoring' v2→v3: promoted to 50% (error rate 1.2%, 380 requests)
-  INFO  - Canary 'scoring' v2→v3: complete at 100% (error rate 0.9%, 1204 requests)
-  ```
-- **Rollback logging:**
-  ```
-  WARN  - Canary 'scoring' v2→v3: rolled back at 10% (error rate 12.3% > threshold 5.0%, 87 requests)
-  ```
-- **Dashboard integration (Phase 6):** Canary status and metrics shown in the pipelines panel
-
-#### Canary Constraints
-
-- **One canary per pipeline** — starting a new canary while one is active requires aborting the current one first
-- **Per-pipeline, not global** — canaries on different pipelines are independent
-- **In-memory state** — canary state lives in memory (does not survive restarts). If the server restarts during a canary, the new version becomes immediately active (the reload already stored it as the latest version). Persistent canary state is future work.
-- **`autoPromote: false` for manual control** — in high-stakes deployments, operators can disable automatic promotion and manually approve each step via `POST /pipelines/:name/canary/promote` after reviewing metrics
-
-### What Changes
-
-| Component | Change |
-|-----------|--------|
-| `ConstellationRoutes.scala` | Add `/pipelines/:name/reload`, `/pipelines/:name/versions`, `/pipelines/:name/rollback`, `/pipelines/:name/canary/*` routes |
-| `ApiModels.scala` | Add `ReloadRequest`, `ReloadResponse`, `PipelineVersion`, `CanaryConfig`, `CanaryState`, `CanaryMetrics`, `VersionMetrics` |
-| `PipelineLoader.scala` | Track source file paths for file-based reload |
-| New: `PipelineVersionStore.scala` | Version history tracking per named pipeline |
-| New: `CanaryRouter.scala` | Weighted routing logic, metric collection, step evaluation, auto-promote/rollback |
-| `ConstellationServer.scala` | Wire canary router into execution path |
-
-### Tests
-
-#### Versioning tests
-- Reload creates a new version, version number increments
-- Reload with same source → `changed: false`, no new version
-- `GET /pipelines/:name/versions` returns ordered version history
-- Rollback to previous version → alias re-pointed, no recompilation
-- Rollback to specific version → works
-- Rollback non-existent version → 404
-- Version history preserved across multiple reloads
-
-#### Hot-reload tests
-- Reload with new source → alias updated, new hash returned
-- Reload non-existent pipeline → 404
-- Reload from file (pipeline loader configured) → works
-- Reload from file (no pipeline loader) → 400 with error
-- In-flight execution uses old version while reload happens
-- Concurrent reloads of same pipeline → serialized, both succeed
-
-#### Canary tests
-- Canary routes traffic by weight (statistical test over N requests)
-- Canary promotes through steps when error rate is below threshold
-- Canary auto-rollback when error rate exceeds threshold
-- Canary with `autoPromote: false` stays at current step until manual promote
-- Manual promote advances to next step
-- Manual rollback reverts to old version
-- Abort (DELETE) reverts to old version
-- Get canary status returns metrics for both versions
-- Start canary while one is active → 409 Conflict
-- Canary on non-existent pipeline → 404
-- Canary with `minRequests` — no evaluation until threshold met
-- Canary with `latencyThresholdMs` — rollback on p99 latency exceeded
-- Concurrent executions during canary → metrics are thread-safe
-
----
-
-## Phase 5: Persistent PipelineStore
-
-### Motivation
-
-For production cold pipelines, pipeline images should survive restarts without recompilation. The startup loader (Phase 3) handles the case where source files are available, but persistent storage avoids recompilation entirely.
-
-### Pluggable Backend
-
-```scala
-trait PipelineStore {
-  // ... existing trait (unchanged interface, renamed from ProgramStore)
-}
-
-// Existing
-class InMemoryPipelineStore extends PipelineStore { ... }
-
-// New: filesystem-backed
-class FileSystemPipelineStore(
-  directory: Path,
-  delegate: InMemoryPipelineStore  // in-memory cache layer
-) extends PipelineStore { ... }
-```
-
-### Filesystem Layout
-
-```
-.constellation-store/
-  images/
-    abc123.json     # PipelineImage serialized as JSON
-    def456.json
-  aliases.json      # { "scoring": "abc123", "enrichment": "def456" }
-  syntactic-index.json
-```
-
-### Design Constraint
-
-`PipelineImage` contains `DagSpec`, which is fully serializable (case classes, enums, UUIDs). The `LoadedPipeline` contains live `Module.Uninitialized` instances (closures) which are not serializable. Therefore:
-
-- **Persist:** `PipelineImage` (serializable artifact)
-- **Don't persist:** `LoadedPipeline` (reconstructed at load time via `PipelineImage.rehydrate()`)
-
-This is consistent with RFC-014's design separation between serializable images and executable pipelines.
-
-### Server Builder Extension
-
-```scala
-ConstellationServer.builder(constellation, compiler)
-  .withPersistentPipelineStore(Paths.get(".constellation-store"))
-  .run
-```
-
-### What Changes
-
-| Component | Change |
-|-----------|--------|
-| `PipelineStore.scala` | Add `FileSystemPipelineStore` |
-| `PipelineImage.scala` | Add Circe codecs for JSON serialization |
-| `ConstellationServer.scala` | Add `withPersistentPipelineStore()` |
-
-### What Doesn't Change
-
-| Component | Reason |
-|-----------|--------|
-| `PipelineStore` trait | Interface unchanged |
-| `ConstellationRoutes` | Uses `PipelineStore` trait, backend-agnostic |
-| `InMemoryPipelineStore` | Still the default |
-
-### Tests
-
-- Store → restart → load → pipelines still available
-- Concurrent writes don't corrupt filesystem
-- Corrupted file → log warning, skip (don't crash)
-- Filesystem store with in-memory cache → reads served from memory
-
----
-
-## Phase 6: Dashboard Integration
-
-### Bridge File Browser → PipelineStore
-
-The dashboard file browser currently reads `.cst` files from disk via `/api/v1/files` and sends source to `/api/v1/execute` (hot path). After Phase 3, files loaded at startup are already in `PipelineStore`.
-
-Add a "Load" action in the file browser that:
-1. Compiles the selected file via `/compile`
-2. Aliases it by filename
-3. Shows it in a "Loaded Pipelines" panel alongside file browser
-
-### Pipelines Panel
-
-New dashboard panel showing loaded pipelines:
-
-| Pipeline | Hash | Inputs | Outputs | Actions |
-|----------|------|--------|---------|---------|
-| scoring | abc1... | x: Int, y: Float | score: Float | Execute, Reload, Delete |
-| enrichment | def4... | text: String | entities: List | Execute, Reload, Delete |
-
-### Execute from Pipelines Panel
-
-Clicking "Execute" on a loaded pipeline:
-1. Shows input form (populated from `inputSchema` in pipeline metadata)
-2. Submits via `POST /execute { ref: "scoring", inputs: {...} }`
-3. Shows outputs (or suspension state with missing inputs)
-
-### Suspend/Resume in Dashboard
-
-When an execution returns `status: "suspended"`:
-1. Show partially computed outputs
-2. Highlight missing inputs in the input form
-3. "Resume" button submits `POST /executions/:id/resume` with filled-in missing inputs
-
-This is a UX enhancement and can be implemented after the HTTP endpoints are stable.
+**Caching behavior:** Pipelines are compiled once at startup and stored in `PipelineStore`. `CompilationCache` may be populated as a side effect but is not used for cold execution. Hot-reload ([RFC-015b](./rfc-015b-pipeline-loader-reload.md)) recompiles and updates the stored image without clearing `CompilationCache`.
 
 ---
 
 ## Implementation Order
 
-| Phase | Depends On | Scope |
-|-------|-----------|-------|
-| Phase 0: Terminology rename | Nothing | Large: mechanical rename across codebase, well-defined |
-| Phase 1: Suspension-aware responses | Phase 0 | Small: extend 2 response models, map fields |
-| Phase 2: Resume endpoint | Phase 1 | Medium: new routes, SuspensionStore wiring |
-| Phase 3: Startup loader | Phase 0 | Medium: new component, env vars, logging |
-| Phase 4a: Versioning + hot-reload | Phase 3 (for file-based reload) | Medium: version store, reload endpoint, version management endpoints |
-| Phase 4b: Canary releases | Phase 4a | Medium: canary router, weighted execution, metric collection, auto-promote/rollback |
-| Phase 5: Persistent PipelineStore | Phase 0 | Medium: filesystem backend, Circe codecs |
-| Phase 6: Dashboard integration | Phases 1-4 | Large: frontend work, new panel, canary UI, UX |
+| Phase | RFC | Depends On | Scope |
+|-------|-----|-----------|-------|
+| Phase 0: Terminology rename | RFC-015 (this RFC) | Nothing | Large: mechanical rename across codebase, well-defined |
+| Phase 1: Suspension-aware responses | [RFC-015a](./rfc-015a-suspension-http.md) | Phase 0 | Small: extend 2 response models, map fields |
+| Phase 2: Resume endpoint | [RFC-015a](./rfc-015a-suspension-http.md) | Phase 1 | Medium: new routes, SuspensionStore wiring |
+| Phase 3: Startup loader | [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Phase 0 | Medium: new component, env vars, logging |
+| Phase 4a: Versioning + hot-reload | [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Phase 3 | Medium: version store, reload endpoint, version management |
+| Phase 4b: Canary releases | [RFC-015c](./rfc-015c-canary-releases.md) | Phase 4a | Medium: canary router, weighted execution, metrics, auto-promote/rollback |
+| Phase 5: Persistent PipelineStore | [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Phase 0 | Medium: filesystem backend, Circe codecs |
+| Phase 6: Dashboard integration | [RFC-015e](./rfc-015e-dashboard-integration.md) | Phases 1-4 | Large: frontend work, new panel, canary UI, UX |
 
 Phase 0 must come first (all other phases use the new names). After Phase 0, Phases 1, 3, and 5 can proceed in parallel. Phase 2 depends on Phase 1. Phase 4a depends on Phase 3. Phase 4b depends on Phase 4a (canary requires versioning to track old/new versions). Phase 6 depends on all others.
 
@@ -1196,7 +456,7 @@ Phase 0 must come first (all other phases use the new names). After Phase 0, Pha
 
 **HTTP API:** `/programs/*` endpoints are removed and replaced with `/pipelines/*`. No redirects.
 
-**Environment variables:** New pipeline-related env vars use the `CONSTELLATION_PIPELINE_*` prefix (no existing env vars to rename — these are introduced by Phase 3).
+**Environment variables:** New pipeline-related env vars use the `CONSTELLATION_PIPELINE_*` prefix (no existing env vars to rename — these are introduced by [RFC-015b](./rfc-015b-pipeline-loader-reload.md)).
 
 ### For Server Operators
 
@@ -1205,14 +465,14 @@ Phase 0 must come first (all other phases use the new names). After Phase 0, Pha
 To opt in:
 ```scala
 ConstellationServer.builder(constellation, compiler)
-  // Phase 2: Enable suspension
+  // RFC-015a: Enable suspension
   .withSuspensionStore(InMemorySuspensionStore.create)
-  // Phase 3: Load pipelines at startup
+  // RFC-015b: Load pipelines at startup
   .withPipelineLoader(PipelineLoaderConfig(
     directory = Paths.get("/opt/pipelines"),
     failOnError = true
   ))
-  // Phase 5: Persist pipelines across restarts
+  // RFC-015d: Persist pipelines across restarts
   .withPersistentPipelineStore(Paths.get(".constellation-store"))
   .run
 ```
@@ -1225,44 +485,12 @@ CONSTELLATION_PIPELINE_FAIL_ON_ERROR=true
 
 ---
 
-## Future Work (Out of Scope)
-
-| Feature | Rationale |
-|---------|-----------|
-| **File watching / inotify** | Automatic hot-reload when `.cst` files change on disk. Adds OS-specific complexity (Java WatchService). Better as a follow-up after manual reload is proven. |
-| **Distributed PipelineStore** | Database-backed (PostgreSQL, Redis) PipelineStore for multi-instance deployments. Filesystem is sufficient for single-instance. |
-| **Persistent canary state** | Canary state surviving server restarts. Adds complexity (serializing in-flight metrics, resuming observation windows). In-memory is sufficient for initial release — if the server restarts during a canary, the new version becomes immediately active. |
-| **Canary webhooks / alerting** | Notify external systems (Slack, PagerDuty) on canary state transitions (promote, rollback). Application-level concern, easy to add via hook on state change. |
-| **A/B testing (multi-version traffic split)** | Running more than two versions simultaneously with configurable weights. Canary is a special case of A/B with two versions. Generalizing adds routing complexity. |
-| **Version diff / changelog** | Dashboard showing source diff between pipeline versions. Requires storing source text in version history (already captured in `PipelineVersion.source`), but the UI is non-trivial. |
-| **Suspension TTL / expiry** | Auto-cleanup of abandoned suspended executions after a configurable time. Simple to add to SuspensionStore later. |
-| **Webhook on suspension** | Notify external systems when an execution suspends (e.g., send email, post to Slack). Application-level concern. |
-| **Pipeline dependencies** | One pipeline importing/calling another. Fundamental language change, separate RFC. |
-
----
-
 ## Design Decisions
+
+These design decisions apply to the master RFC (Phase 0 and overall architecture). Each child RFC contains its own design decisions for its specific scope.
 
 **D1: "Pipeline" over "program", "workflow", or "graph".** "Program" is overloaded (any code is a "program"). "Workflow" implies a sequence of steps (pipelines are DAGs, not sequences). "Graph" is too technical and doesn't convey the input-output nature. "Pipeline" is precise: data flows through a series of typed transformations. It's the standard term in data engineering, ML systems, and CI/CD — audiences that overlap with Constellation's target users.
 
 **D2: Hot/cold as named concepts, not just usage patterns.** Without names, the distinction is implicit in which endpoints you call. With names, it becomes a designable axis: caching strategy differs (CompilationCache vs PipelineStore), lifecycle differs (ephemeral vs permanent), operational model differs (stateless vs stateful). Naming it enables documenting it, testing it, and optimizing for it.
 
-**D3: Additive responses over new endpoints.** We extend existing `/execute` and `/run` responses with optional suspension fields rather than creating separate `/execute-with-suspend` endpoints. This keeps the API surface small and avoids forcing clients to choose between endpoint variants.
-
-**D4: SuspensionStore is opt-in.** Without a configured store, suspended state is returned in the response but not persisted server-side. Clients can store it themselves (same as the library API pattern). The store is only needed for the resume endpoint.
-
-**D5: Filesystem persistence over database.** For single-instance deployments (the primary use case for the HTTP module), filesystem persistence is simpler, has no external dependencies, and is easy to inspect/debug. Database backends can be added later.
-
-**D6: Startup loader reads source files, not serialized images.** Even though persistent PipelineStore can store serialized images, the startup loader always reads `.cst` source and compiles it. This ensures pipelines are always compiled with the current compiler version, avoiding stale/incompatible serialized state.
-
-**D7: Hot-reload is explicit, not automatic.** The `/pipelines/:name/reload` endpoint must be called explicitly rather than watching for file changes. This is simpler, more predictable, and avoids platform-specific file watching issues. File watching can be added as a separate follow-up.
-
-**D8: Old versions are not garbage collected.** When a pipeline is reloaded, the old `PipelineImage` remains in the store (referenced by its structural hash and version history). Explicit `DELETE /pipelines/:ref` is the cleanup mechanism. Automatic GC adds complexity around determining when an image is truly unreferenced — especially during canary deployments where both old and new versions are actively serving traffic.
-
-**D9: Hard rename, no deprecation.** The library has no external consumers yet, so we do a clean break: rename everything in one commit with no type aliases or endpoint redirects. This keeps the codebase unambiguous — there is exactly one name for each concept, not two. If external consumers exist in the future, breaking changes will require deprecation cycles, but that constraint doesn't apply today.
-
-**D10: Monotonic integer versions, not semver.** Pipeline versions use simple incrementing integers (v1, v2, v3) rather than semantic versioning. Pipelines don't have a meaningful notion of "breaking" vs "non-breaking" changes at the version level — any input/output schema change is caught at compile time. Semver would add cognitive overhead without providing actionable information. The version number's purpose is ordering and rollback reference, not compatibility signaling.
-
-**D11: Canary is opt-in per reload, not a global deployment strategy.** Canary behavior is triggered by including a `canary` configuration in the reload request. Without it, reload is an immediate cutover (the simple case). This keeps the default behavior simple and predictable while making progressive rollouts available when needed. The canary config is per-reload, not per-pipeline — the same pipeline can be reloaded with or without canary at different times depending on the operator's confidence in the change.
-
-**D12: Canary evaluation is request-driven, not timer-driven.** The canary evaluates promotion/rollback criteria after each request (when `minRequests` is met and `observationWindow` has elapsed), rather than running a background timer. This avoids complexity around background fibers and ensures evaluation happens naturally with traffic. For low-traffic pipelines, this means promotion may be slower — but that's appropriate, since low traffic means less statistical confidence in the canary's health.
+**D3: Hard rename, no deprecation.** The library has no external consumers yet, so we do a clean break: rename everything in one commit with no type aliases or endpoint redirects. This keeps the codebase unambiguous — there is exactly one name for each concept, not two. If external consumers exist in the future, breaking changes will require deprecation cycles, but that constraint doesn't apply today.

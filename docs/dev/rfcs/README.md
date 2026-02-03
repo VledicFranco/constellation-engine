@@ -13,7 +13,9 @@ This directory contains Request for Comments (RFC) documents for proposed featur
 
 ---
 
-## Module Execution Options
+## RFC Index
+
+### Module Execution Options (RFC-001 to RFC-011)
 
 These RFCs introduce a `with` clause for configuring module call behavior:
 
@@ -21,42 +23,96 @@ These RFCs introduce a `with` clause for configuring module call behavior:
 result = MyModule(input) with retry: 3, timeout: 30s, cache: 5min
 ```
 
-### Priority 1: Core Resilience
+#### Priority 1: Core Resilience
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
-| [RFC-001](./rfc-001-retry.md) | `retry` | Draft | Retry failed module calls N times |
-| [RFC-002](./rfc-002-timeout.md) | `timeout` | Draft | Maximum execution time for module calls |
-| [RFC-003](./rfc-003-fallback.md) | `fallback` | Draft | Default value when module call fails |
-| [RFC-004](./rfc-004-cache.md) | `cache` | Draft | Cache results with TTL and pluggable backends |
+| [RFC-001](./rfc-001-retry.md) | `retry` | Implemented | Retry failed module calls N times |
+| [RFC-002](./rfc-002-timeout.md) | `timeout` | Implemented | Maximum execution time for module calls |
+| [RFC-003](./rfc-003-fallback.md) | `fallback` | Implemented | Default value when module call fails |
+| [RFC-004](./rfc-004-cache.md) | `cache` | Implemented | Cache results with TTL and pluggable backends |
 
-### Priority 2: Retry Configuration
-
-| RFC | Feature | Status | Description |
-|-----|---------|--------|-------------|
-| [RFC-005](./rfc-005-delay.md) | `delay` | Draft | Delay between retry attempts |
-| [RFC-006](./rfc-006-backoff.md) | `backoff` | Draft | Retry backoff strategy (exponential, linear, fixed) |
-
-### Priority 3: Rate Control
+#### Priority 2: Retry Configuration
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
-| [RFC-007](./rfc-007-throttle.md) | `throttle` | Draft | Rate limiting for API calls |
-| [RFC-008](./rfc-008-concurrency.md) | `concurrency` | Draft | Limit parallel executions |
+| [RFC-005](./rfc-005-delay.md) | `delay` | Implemented | Delay between retry attempts |
+| [RFC-006](./rfc-006-backoff.md) | `backoff` | Implemented | Retry backoff strategy (exponential, linear, fixed) |
 
-### Priority 4: Advanced Control
+#### Priority 3: Rate Control
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
-| [RFC-009](./rfc-009-on-error.md) | `on_error` | Draft | Error handling strategy |
-| [RFC-010](./rfc-010-lazy.md) | `lazy` | Draft | Lazy evaluation |
-| [RFC-011](./rfc-011-priority.md) | `priority` | Draft | Execution priority hints |
+| [RFC-007](./rfc-007-throttle.md) | `throttle` | Implemented | Rate limiting for API calls |
+| [RFC-008](./rfc-008-concurrency.md) | `concurrency` | Implemented | Limit parallel executions |
+
+#### Priority 4: Advanced Control
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-009](./rfc-009-on-error.md) | `on_error` | Implemented | Error handling strategy |
+| [RFC-010](./rfc-010-lazy.md) | `lazy` | Implemented | Lazy evaluation |
+| [RFC-011](./rfc-011-priority.md) | `priority` | Implemented | Execution priority hints |
+
+---
+
+### Quality Infrastructure
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-012](./rfc-012-dashboard-e2e-tests.md) | Dashboard E2E Tests | Implemented | Playwright-based end-to-end test suite for the web dashboard |
+
+---
+
+### Production Readiness
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-013](./rfc-013-production-readiness.md) | Production Readiness | Implemented | HTTP hardening (auth, CORS, rate limiting), health checks, Docker, K8s |
+
+---
+
+### Runtime Features
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-014](./rfc-014-suspendable-execution.md) | Suspendable Execution | Draft | Suspend/resume execution at runtime when inputs are missing or nodes fail |
+
+---
+
+### Pipeline Lifecycle (RFC-015 family)
+
+RFC-015 is a **structured RFC** with a master document defining shared terminology and architecture, and child RFCs covering specific capabilities.
+
+| RFC | Feature | Status | Depends On | Description |
+|-----|---------|--------|------------|-------------|
+| [RFC-015](./rfc-015-pipeline-lifecycle.md) | Pipeline Lifecycle (master) | Draft | — | Terminology standardization ("program" → "pipeline"), hot/cold/warm definitions, caching architecture, rename inventory |
+| [RFC-015a](./rfc-015a-suspension-http.md) | Suspension-Aware HTTP | Draft | RFC-015 | Expose suspend/resume over HTTP: extended response models, `POST /executions/:id/resume`, SuspensionStore wiring |
+| [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Pipeline Loader & Reload | Draft | RFC-015 | Startup `.cst` loader, hot-reload endpoint, pipeline versioning with rollback |
+| [RFC-015c](./rfc-015c-canary-releases.md) | Canary Releases | Draft | RFC-015b | Traffic splitting between pipeline versions, per-version metrics, auto-promote/rollback |
+| [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore | Draft | RFC-015 | Filesystem-backed PipelineStore for pipelines that survive restarts |
+| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard Integration | Draft | RFC-015a, 015b | Pipelines panel, suspend/resume UI, canary visualization, file browser bridge |
+
+#### Implementation Order
+
+```
+RFC-015 (terminology rename)
+  ├── RFC-015a (suspension HTTP)     ← can start after 015
+  │     └── Phase 1: responses
+  │     └── Phase 2: resume endpoint
+  ├── RFC-015b (loader + reload)     ← can start after 015
+  │     └── Phase 3: startup loader
+  │     └── Phase 4a: versioning + hot-reload
+  │           └── RFC-015c (canary)  ← requires 015b
+  ├── RFC-015d (persistent store)    ← can start after 015
+  └── RFC-015e (dashboard)           ← requires 015a + 015b
+```
 
 ---
 
 ## Syntax Overview
 
-The `with` clause follows a module call and contains comma-separated options:
+The `with` clause (RFC-001 through RFC-011) follows a module call and contains comma-separated options:
 
 ```constellation
 # Single option
@@ -74,34 +130,3 @@ result = Module(input) with
     fallback: "default",
     cache: 5min
 ```
-
----
-
-## Implementation Phases
-
-### Phase 1: Core Resilience (MVP)
-- RFC-001: retry
-- RFC-002: timeout
-- RFC-003: fallback
-- RFC-004: cache
-
-### Phase 2: Retry Configuration
-- RFC-005: delay
-- RFC-006: backoff
-
-### Phase 3: Rate Control
-- RFC-007: throttle
-- RFC-008: concurrency
-
-### Phase 4: Advanced
-- RFC-009: on_error
-- RFC-010: lazy
-- RFC-011: priority
-
----
-
-## Quality Infrastructure
-
-| RFC | Feature | Status | Description |
-|-----|---------|--------|-------------|
-| [RFC-012](./rfc-012-dashboard-e2e-tests.md) | Dashboard E2E Tests | Implemented | Playwright-based end-to-end test suite for the web dashboard |
