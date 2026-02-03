@@ -163,6 +163,12 @@ Step-by-step:
    - New version error rate > `errorThreshold` → automatic rollback
 6. Repeat steps until weight reaches 1.0 (complete) or rollback
 
+### Metrics Reset Between Steps
+
+Metrics are **reset at each promotion step**. When the canary advances from 10% to 25%, the counters for both versions are zeroed. This ensures each step is evaluated on its own merit — a step that was healthy at 10% traffic might show different behavior at 25% (e.g., contention effects). Cumulative metrics would mask per-step regressions.
+
+The `observationWindow` and `minRequests` thresholds apply per step. Each step must independently pass the evaluation criteria.
+
 ---
 
 ## Canary Management Endpoints
@@ -214,7 +220,7 @@ GET /pipelines/scoring/canary
 POST /pipelines/scoring/canary/promote
 ```
 
-Advances to the next weight step. Returns updated `CanaryState`. Returns `400` if `autoPromote = true` (automatic promotion handles it) or if there's no active canary.
+Advances to the next weight step. Returns updated `CanaryState`. Returns `404` if there's no active canary. Works regardless of `autoPromote` setting — manual override is always available, even when automatic promotion is enabled.
 
 ### Manual Rollback
 
@@ -287,6 +293,7 @@ Same effect as rollback — reverts to old version and clears canary state.
 - Canary on non-existent pipeline → 404
 - Canary with `minRequests` — no evaluation until threshold met
 - Canary with `latencyThresholdMs` — rollback on p99 latency exceeded
+- Metrics reset on promotion — counters zeroed when advancing to next step
 - Concurrent executions during canary → metrics are thread-safe
 
 ---

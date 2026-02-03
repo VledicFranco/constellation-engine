@@ -91,7 +91,7 @@ RFC-015 is a **structured RFC** with a master document defining shared terminolo
 | [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Pipeline Loader & Reload | Draft | RFC-015 | Startup `.cst` loader, hot-reload endpoint, pipeline versioning with rollback |
 | [RFC-015c](./rfc-015c-canary-releases.md) | Canary Releases | Draft | RFC-015b | Traffic splitting between pipeline versions, per-version metrics, auto-promote/rollback |
 | [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore | Draft | RFC-015 | Filesystem-backed PipelineStore for pipelines that survive restarts |
-| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard Integration | Draft | RFC-015a, 015b | Pipelines panel, suspend/resume UI, canary visualization, file browser bridge |
+| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard Integration | Draft | RFC-015a, 015b, 015c | Pipelines panel, suspend/resume UI, canary visualization, file browser bridge |
 
 #### Implementation Order
 

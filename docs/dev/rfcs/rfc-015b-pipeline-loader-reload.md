@@ -42,7 +42,7 @@ case class PipelineLoaderConfig(
 enum AliasStrategy {
   case FileName          // scoring.cst → "scoring"
   case RelativePath      // pipelines/scoring.cst → "pipelines/scoring"
-  case None              // No alias, only structural hash
+  case HashOnly          // No alias, only structural hash
 }
 ```
 
@@ -83,7 +83,7 @@ pipelines/
 
 **Path separators:** Always uses `/` regardless of OS. Windows `\` is normalized to `/`.
 
-#### `None`
+#### `HashOnly`
 
 No alias is created. Pipelines are stored by structural hash only:
 
@@ -102,6 +102,7 @@ pipelines/
 | `CONSTELLATION_PIPELINE_DIR` | (none) | Directory to load `.cst` files from at startup |
 | `CONSTELLATION_PIPELINE_RECURSIVE` | `false` | Scan subdirectories |
 | `CONSTELLATION_PIPELINE_FAIL_ON_ERROR` | `false` | Fail startup if any pipeline fails to compile |
+| `CONSTELLATION_PIPELINE_ALIAS_STRATEGY` | `filename` | Alias strategy: `filename`, `relative-path`, or `hash-only` |
 
 ### Server Builder Extension
 
@@ -155,7 +156,7 @@ INFO  - Pipeline loading complete: 2 loaded, 1 failed
 - Load empty directory → no-op, server starts normally
 - Load with `recursive = true` → finds files in subdirectories
 - Reload same directory (no changes) → all deduplicated via syntactic hash
-- Alias strategies: FileName, RelativePath, None — each verified
+- Alias strategies: FileName, RelativePath, HashOnly — each verified
 - FileName collision with `recursive = true` → error logged, first file wins
 
 ---

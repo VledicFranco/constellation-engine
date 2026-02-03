@@ -5,7 +5,7 @@
 **Author:** Human + Claude
 **Created:** 2026-02-02
 **Parent:** [RFC-015: Pipeline Lifecycle Management](./rfc-015-pipeline-lifecycle.md)
-**Depends On:** [RFC-015a](./rfc-015a-suspension-http.md), [RFC-015b](./rfc-015b-pipeline-loader-reload.md)
+**Depends On:** [RFC-015a](./rfc-015a-suspension-http.md), [RFC-015b](./rfc-015b-pipeline-loader-reload.md), [RFC-015c](./rfc-015c-canary-releases.md) (for canary UI)
 
 ---
 
@@ -30,7 +30,7 @@ These features exist at the HTTP level (RFC-015a through RFC-015d) but are invis
 
 ## Bridge File Browser → PipelineStore
 
-The dashboard file browser currently reads `.cst` files from disk via `/api/v1/files` and sends source to `/api/v1/execute` (hot path). After [RFC-015b](./rfc-015b-pipeline-loader-reload.md), files loaded at startup are already in `PipelineStore`.
+The dashboard file browser currently reads `.cst` files from disk via the file browsing API and sends source to `POST /run` (hot path). After [RFC-015b](./rfc-015b-pipeline-loader-reload.md), files loaded at startup are already in `PipelineStore`.
 
 Add a **"Load"** action in the file browser that:
 1. Compiles the selected file via `POST /compile`

@@ -230,6 +230,7 @@ These env vars are introduced by child RFCs. They don't exist in the codebase to
 | `CONSTELLATION_PIPELINE_DIR` | Directory to load `.cst` files from at startup | RFC-015b |
 | `CONSTELLATION_PIPELINE_RECURSIVE` | Scan subdirectories | RFC-015b |
 | `CONSTELLATION_PIPELINE_FAIL_ON_ERROR` | Fail startup if any pipeline fails to compile | RFC-015b |
+| `CONSTELLATION_PIPELINE_ALIAS_STRATEGY` | Alias strategy: `filename`, `relative-path`, or `hash-only` | RFC-015b |
 
 #### File Renames
 
@@ -482,6 +483,24 @@ Or via environment variables:
 CONSTELLATION_PIPELINE_DIR=/opt/pipelines
 CONSTELLATION_PIPELINE_FAIL_ON_ERROR=true
 ```
+
+---
+
+## Future Work (Out of Scope)
+
+These features are related to the pipeline lifecycle but are explicitly out of scope for this RFC family. They may be addressed in future RFCs.
+
+| Feature | Related RFC | Rationale |
+|---------|------------|-----------|
+| **File watching / inotify** | RFC-015b | Automatic hot-reload when `.cst` files change on disk. Adds OS-specific complexity (Java WatchService). Better as a follow-up after manual reload is proven. |
+| **Distributed PipelineStore** | RFC-015d | Database-backed (PostgreSQL, Redis) PipelineStore for multi-instance deployments. Filesystem is sufficient for single-instance. |
+| **Persistent canary state** | RFC-015c | Canary state surviving server restarts. Adds complexity (serializing in-flight metrics, resuming observation windows). In-memory is sufficient for initial release. |
+| **Canary webhooks / alerting** | RFC-015c | Notify external systems (Slack, PagerDuty) on canary state transitions. Application-level concern, easy to add via hook on state change. |
+| **A/B testing (multi-version split)** | RFC-015c | Running more than two versions simultaneously with configurable weights. Canary is a special case of A/B with two versions. Generalizing adds routing complexity. |
+| **Version diff / changelog** | RFC-015b, 015e | Dashboard showing source diff between pipeline versions. Requires storing source text in version history (already captured in `PipelineVersion.source`), but the UI is non-trivial. |
+| **Suspension TTL / expiry** | RFC-015a | Auto-cleanup of abandoned suspended executions after a configurable time. Simple to add to SuspensionStore later. |
+| **Webhook on suspension** | RFC-015a | Notify external systems when an execution suspends. Application-level concern. |
+| **Pipeline dependencies** | — | One pipeline importing/calling another. Fundamental language change, separate RFC. |
 
 ---
 

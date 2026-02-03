@@ -58,12 +58,14 @@ The `FileSystemPipelineStore` wraps `InMemoryPipelineStore` as a cache layer:
   images/
     abc123.json         # PipelineImage serialized as JSON
     def456.json
-  versions/
+  versions/             # Only populated when RFC-015b (versioning) is implemented
     scoring.json        # Version history for "scoring" pipeline
     enrichment.json     # Version history for "enrichment" pipeline
   aliases.json          # { "scoring": "abc123", "enrichment": "def456" }
   syntactic-index.json  # Syntactic hash → structural hash mapping
 ```
+
+> **Note on versioning:** The `versions/` directory stores version history introduced by [RFC-015b](./rfc-015b-pipeline-loader-reload.md). If RFC-015d is implemented before RFC-015b, the persistent store operates without version history — it persists images, aliases, and the syntactic index only. The `versions/` directory is created on demand when version tracking is active.
 
 ### File Formats
 
@@ -101,6 +103,8 @@ The `FileSystemPipelineStore` wraps `InMemoryPipelineStore` as a cache layer:
   "enrichment": "ghi789..."
 }
 ```
+
+> **Note:** `aliases.json` is intentionally redundant with the `activeVersion` in `versions/<name>.json`. The alias file enables O(1) startup loading of the name → hash mapping without parsing every version history file. The version files are the source of truth; `aliases.json` is a denormalized index rebuilt on startup if missing or corrupted.
 
 **`syntactic-index.json`** — syntactic hash → structural hash mapping (for deduplication):
 ```json
