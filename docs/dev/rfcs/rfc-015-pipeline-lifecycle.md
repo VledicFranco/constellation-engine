@@ -16,7 +16,7 @@ This RFC introduces:
 2. **Suspension-aware HTTP endpoints** — expose `DataSignature` status, missing inputs, and resume-by-ID via REST
 3. **Pipeline persistence** — pluggable `PipelineStore` backend (filesystem, database) so cold pipelines survive restarts
 4. **Startup pipeline loader** — load `.cst` files from a configured directory at server boot
-5. **Hot-reload** — recompile and re-alias a cold pipeline without restarting the server
+5. **Hot-reload with versioning and canary releases** — recompile a cold pipeline without restarting, with version history, traffic splitting, observability, and automatic rollback
 
 ---
 
@@ -102,7 +102,8 @@ After this RFC:
 | **Pluggable persistence** | `PipelineStore` is a trait with in-memory (default) and persistent (filesystem, custom) backends. The HTTP module doesn't know which backend is active. |
 | **Clean breaks allowed** | No external consumers exist yet. We can rename types, change endpoints, and restructure responses without deprecation. This freedom won't last — use it now for the terminology rename. |
 | **Opt-in complexity** | Suspension-aware endpoints, persistence, startup loading, and hot-reload are all opt-in. The default server works exactly as today. |
-| **Content-addressed foundation** | All pipeline identity flows through structural hashes (from RFC-014). Persistence and hot-reload build on this — same source = same hash = no-op. |
+| **Content-addressed foundation** | All pipeline identity flows through structural hashes (from RFC-014). Persistence, hot-reload, and canary releases build on this — same source = same hash = no-op. |
+| **Progressive rollouts** | Canary releases allow operators to validate new pipeline versions with a fraction of traffic before full promotion. Observability (per-version metrics) and automatic rollback provide safety nets for production deployments. |
 
 ---
 
@@ -717,9 +718,40 @@ INFO  - Pipeline loading complete: 2 loaded, 1 failed
 
 ---
 
-## Phase 4: Hot-Reload Endpoint
+## Phase 4: Versioning, Hot-Reload, and Canary Releases
 
-### New Endpoint
+### Pipeline Versioning
+
+Every named pipeline maintains an ordered version history. Each reload creates a new version rather than silently replacing the old one.
+
+```scala
+case class PipelineVersion(
+  version: Int,              // monotonic, auto-incremented (v1, v2, v3...)
+  structuralHash: String,
+  createdAt: Instant,
+  source: Option[String]     // retained for reload-from-file traceability
+)
+```
+
+The alias for a pipeline name (e.g., `"scoring"`) always points to the **active** version. By default that's the latest, but pinning and rollback can change it.
+
+**Version management endpoints:**
+
+```
+GET  /pipelines/:name/versions            → list version history
+POST /pipelines/:name/rollback            → rollback to previous active version
+POST /pipelines/:name/rollback/:version   → rollback to specific version
+```
+
+**Version lifecycle:**
+
+- The first `POST /compile` or startup load creates version 1
+- Each `POST /pipelines/:name/reload` creates the next version (v2, v3, ...)
+- Rollback re-points the alias to an earlier version (no recompilation)
+- Old versions remain in `PipelineStore` by structural hash until explicitly deleted
+- Version numbers are monotonic integers — simple, unambiguous, no semver complexity
+
+### Hot-Reload Endpoint
 
 ```
 POST /pipelines/:name/reload
@@ -730,7 +762,7 @@ Content-Type: application/json
 }
 ```
 
-**Response:**
+**Response (immediate reload, no canary):**
 
 ```json
 {
@@ -738,23 +770,25 @@ Content-Type: application/json
   "previousHash": "abc123...",
   "newHash": "def456...",
   "name": "scoring",
-  "changed": true
+  "changed": true,
+  "version": 3
 }
 ```
 
-If the source hasn't changed (same structural hash), returns `changed: false` — no recompilation occurs.
+If the source hasn't changed (same structural hash), returns `changed: false` — no recompilation occurs, no new version is created.
 
-### Behavior
+#### Behavior
 
 1. Compile the new source
 2. Compute structural hash
 3. If same hash as current alias target → `changed: false`, no-op
 4. Store new `PipelineImage`
-5. Update alias to point to new structural hash
-6. Old image remains in store (other aliases or hashes may reference it)
-7. In-flight executions of the old version complete normally (they hold a reference to the old `LoadedPipeline`)
+5. Create new `PipelineVersion` entry
+6. Update alias to point to new structural hash (or start canary, see below)
+7. Old image remains in store (other aliases or hashes may reference it)
+8. In-flight executions of the old version complete normally (they hold a reference to the old `LoadedPipeline`)
 
-### File-Based Reload
+#### File-Based Reload
 
 When a pipeline loader is configured, also support reloading from the file:
 
@@ -769,37 +803,255 @@ This enables CI/CD workflows:
 2. `POST /pipelines/scoring/reload` → server re-reads and recompiles
 3. No restart needed
 
-### Caching Interaction
+#### Caching Interaction
 
 When a cold pipeline is reloaded:
 1. The new `PipelineImage` is stored in `PipelineStore` (replacing the alias target)
 2. `CompilationCache` is **not** invalidated — it uses source hash as key, and the new source has a different hash. The old cache entry will eventually be evicted by LRU
 3. If the same new source was already hot-executed earlier, `CompilationCache` may have a hit for it — this is correct and avoids redundant compilation
 
-### Endpoint Variants
+#### Endpoint Variants
 
 | Request | Behavior |
 |---------|----------|
 | `POST /pipelines/:name/reload` with `source` body | Compile from provided source |
 | `POST /pipelines/:name/reload` without body | Re-read from original file path (requires pipeline loader) |
+| `POST /pipelines/:name/reload` with `source` + `canary` | Compile and start canary deployment |
+| `POST /pipelines/:name/reload` without `source`, with `canary` | Re-read from file and start canary deployment |
+
+### Canary Releases
+
+When reloading a pipeline, the operator can opt into a canary strategy instead of an immediate cutover. Traffic is split between the old and new versions, with per-version observability to evaluate safety before promoting.
+
+#### Canary Configuration
+
+```scala
+case class CanaryConfig(
+  initialWeight: Double = 0.05,          // 5% traffic to new version
+  promotionSteps: List[Double] = List(0.10, 0.25, 0.50, 1.0),
+  observationWindow: FiniteDuration = 5.minutes,  // per step
+  errorThreshold: Double = 0.05,         // >5% error rate triggers rollback
+  latencyThresholdMs: Option[Long] = None,  // p99 latency ceiling
+  minRequests: Int = 10,                 // minimum requests before evaluating a step
+  autoPromote: Boolean = true            // false = manual promotion only
+)
+```
+
+#### Canary State
+
+```scala
+case class CanaryState(
+  pipelineName: String,
+  oldVersion: PipelineVersion,
+  newVersion: PipelineVersion,
+  currentWeight: Double,
+  currentStep: Int,
+  status: CanaryStatus,       // Observing | Promoting | RolledBack | Complete
+  startedAt: Instant,
+  metrics: CanaryMetrics
+)
+
+enum CanaryStatus {
+  case Observing    // collecting metrics at current weight
+  case Promoting    // advancing to next weight step
+  case RolledBack   // error threshold exceeded, reverted to old version
+  case Complete     // reached 100%, new version is now active
+}
+
+case class CanaryMetrics(
+  oldVersion: VersionMetrics,
+  newVersion: VersionMetrics
+)
+
+case class VersionMetrics(
+  requests: Long,
+  successes: Long,
+  failures: Long,
+  avgLatencyMs: Double,
+  p99LatencyMs: Double
+)
+```
+
+#### Reload with Canary
+
+```json
+POST /pipelines/scoring/reload
+{
+  "source": "in x: Int\nresult = Double(x)\nout result",
+  "canary": {
+    "initialWeight": 0.05,
+    "promotionSteps": [0.10, 0.25, 0.50, 1.0],
+    "observationWindow": "5m",
+    "errorThreshold": 0.05,
+    "minRequests": 10,
+    "autoPromote": true
+  }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "previousHash": "abc123...",
+  "newHash": "def456...",
+  "name": "scoring",
+  "changed": true,
+  "version": 3,
+  "canary": {
+    "status": "observing",
+    "currentWeight": 0.05,
+    "oldVersion": 2,
+    "newVersion": 3
+  }
+}
+```
+
+Without the `canary` field in the request, reload works as before — immediate cutover, no canary.
+
+#### Canary Execution Flow
+
+When a canary is active for pipeline `"scoring"`:
+
+```
+Client                          Server
+  │                               │
+  │  POST /execute                │
+  │  { ref: "scoring",            │
+  │    inputs: { x: 42 } }       │
+  │──────────────────────────────>│
+  │                               │ canary active for "scoring"
+  │                               │ weighted random: 5% → v3, 95% → v2
+  │                               │ selected: v2 (old version)
+  │                               │ execute v2, record metrics
+  │  { success: true,             │
+  │    outputs: { result: 84 } }  │
+  │<──────────────────────────────│
+```
+
+Step-by-step:
+
+1. `POST /execute { ref: "scoring" }` arrives
+2. Router detects active canary for `"scoring"`
+3. Weighted random: 5% → new version, 95% → old version
+4. Execute selected version, record metrics (success/failure, latency)
+5. After `observationWindow` and `minRequests` reached, evaluate:
+   - New version error rate ≤ `errorThreshold` and latency ≤ threshold → promote to next step
+   - New version error rate > `errorThreshold` → automatic rollback
+6. Repeat steps until weight reaches 1.0 (complete) or rollback
+
+#### Canary Management Endpoints
+
+```
+GET  /pipelines/:name/canary              → current canary status + metrics
+POST /pipelines/:name/canary/promote      → manually advance to next step
+POST /pipelines/:name/canary/rollback     → manually rollback to old version
+DELETE /pipelines/:name/canary            → abort canary (rollback to old)
+```
+
+**Example: Get canary status**
+
+```
+GET /pipelines/scoring/canary
+```
+
+```json
+{
+  "pipelineName": "scoring",
+  "oldVersion": { "version": 2, "structuralHash": "abc123..." },
+  "newVersion": { "version": 3, "structuralHash": "def456..." },
+  "currentWeight": 0.25,
+  "currentStep": 2,
+  "status": "observing",
+  "startedAt": "2026-02-02T14:30:00Z",
+  "metrics": {
+    "oldVersion": {
+      "requests": 950,
+      "successes": 948,
+      "failures": 2,
+      "avgLatencyMs": 12.3,
+      "p99LatencyMs": 45.0
+    },
+    "newVersion": {
+      "requests": 50,
+      "successes": 49,
+      "failures": 1,
+      "avgLatencyMs": 11.8,
+      "p99LatencyMs": 42.0
+    }
+  }
+}
+```
+
+#### Observability
+
+- **Metrics endpoint:** `GET /metrics` extended with per-pipeline per-version metrics when a canary is active
+- **Canary status endpoint:** `GET /pipelines/:name/canary` returns live metrics for both versions
+- **Logging:** All state transitions are logged:
+  ```
+  INFO  - Canary 'scoring' v2→v3: started at 5% weight
+  INFO  - Canary 'scoring' v2→v3: promoted to 25% (error rate 0.8%, 142 requests)
+  INFO  - Canary 'scoring' v2→v3: promoted to 50% (error rate 1.2%, 380 requests)
+  INFO  - Canary 'scoring' v2→v3: complete at 100% (error rate 0.9%, 1204 requests)
+  ```
+- **Rollback logging:**
+  ```
+  WARN  - Canary 'scoring' v2→v3: rolled back at 10% (error rate 12.3% > threshold 5.0%, 87 requests)
+  ```
+- **Dashboard integration (Phase 6):** Canary status and metrics shown in the pipelines panel
+
+#### Canary Constraints
+
+- **One canary per pipeline** — starting a new canary while one is active requires aborting the current one first
+- **Per-pipeline, not global** — canaries on different pipelines are independent
+- **In-memory state** — canary state lives in memory (does not survive restarts). If the server restarts during a canary, the new version becomes immediately active (the reload already stored it as the latest version). Persistent canary state is future work.
+- **`autoPromote: false` for manual control** — in high-stakes deployments, operators can disable automatic promotion and manually approve each step via `POST /pipelines/:name/canary/promote` after reviewing metrics
 
 ### What Changes
 
 | Component | Change |
 |-----------|--------|
-| `ConstellationRoutes.scala` | Add `/pipelines/:name/reload` route |
-| `ApiModels.scala` | Add `ReloadRequest`, `ReloadResponse` |
+| `ConstellationRoutes.scala` | Add `/pipelines/:name/reload`, `/pipelines/:name/versions`, `/pipelines/:name/rollback`, `/pipelines/:name/canary/*` routes |
+| `ApiModels.scala` | Add `ReloadRequest`, `ReloadResponse`, `PipelineVersion`, `CanaryConfig`, `CanaryState`, `CanaryMetrics`, `VersionMetrics` |
 | `PipelineLoader.scala` | Track source file paths for file-based reload |
+| New: `PipelineVersionStore.scala` | Version history tracking per named pipeline |
+| New: `CanaryRouter.scala` | Weighted routing logic, metric collection, step evaluation, auto-promote/rollback |
+| `ConstellationServer.scala` | Wire canary router into execution path |
 
 ### Tests
 
+#### Versioning tests
+- Reload creates a new version, version number increments
+- Reload with same source → `changed: false`, no new version
+- `GET /pipelines/:name/versions` returns ordered version history
+- Rollback to previous version → alias re-pointed, no recompilation
+- Rollback to specific version → works
+- Rollback non-existent version → 404
+- Version history preserved across multiple reloads
+
+#### Hot-reload tests
 - Reload with new source → alias updated, new hash returned
-- Reload with same source → `changed: false`
 - Reload non-existent pipeline → 404
 - Reload from file (pipeline loader configured) → works
 - Reload from file (no pipeline loader) → 400 with error
 - In-flight execution uses old version while reload happens
 - Concurrent reloads of same pipeline → serialized, both succeed
+
+#### Canary tests
+- Canary routes traffic by weight (statistical test over N requests)
+- Canary promotes through steps when error rate is below threshold
+- Canary auto-rollback when error rate exceeds threshold
+- Canary with `autoPromote: false` stays at current step until manual promote
+- Manual promote advances to next step
+- Manual rollback reverts to old version
+- Abort (DELETE) reverts to old version
+- Get canary status returns metrics for both versions
+- Start canary while one is active → 409 Conflict
+- Canary on non-existent pipeline → 404
+- Canary with `minRequests` — no evaluation until threshold met
+- Canary with `latencyThresholdMs` — rollback on p99 latency exceeded
+- Concurrent executions during canary → metrics are thread-safe
 
 ---
 
@@ -925,11 +1177,12 @@ This is a UX enhancement and can be implemented after the HTTP endpoints are sta
 | Phase 1: Suspension-aware responses | Phase 0 | Small: extend 2 response models, map fields |
 | Phase 2: Resume endpoint | Phase 1 | Medium: new routes, SuspensionStore wiring |
 | Phase 3: Startup loader | Phase 0 | Medium: new component, env vars, logging |
-| Phase 4: Hot-reload | Phase 3 (for file-based reload) | Small: new endpoint, alias update |
+| Phase 4a: Versioning + hot-reload | Phase 3 (for file-based reload) | Medium: version store, reload endpoint, version management endpoints |
+| Phase 4b: Canary releases | Phase 4a | Medium: canary router, weighted execution, metric collection, auto-promote/rollback |
 | Phase 5: Persistent PipelineStore | Phase 0 | Medium: filesystem backend, Circe codecs |
-| Phase 6: Dashboard integration | Phases 1-4 | Large: frontend work, new panel, UX |
+| Phase 6: Dashboard integration | Phases 1-4 | Large: frontend work, new panel, canary UI, UX |
 
-Phase 0 must come first (all other phases use the new names). After Phase 0, Phases 1, 3, and 5 can proceed in parallel. Phase 2 depends on Phase 1. Phase 4 depends on Phase 3. Phase 6 depends on all others.
+Phase 0 must come first (all other phases use the new names). After Phase 0, Phases 1, 3, and 5 can proceed in parallel. Phase 2 depends on Phase 1. Phase 4a depends on Phase 3. Phase 4b depends on Phase 4a (canary requires versioning to track old/new versions). Phase 6 depends on all others.
 
 ---
 
@@ -978,7 +1231,10 @@ CONSTELLATION_PIPELINE_FAIL_ON_ERROR=true
 |---------|-----------|
 | **File watching / inotify** | Automatic hot-reload when `.cst` files change on disk. Adds OS-specific complexity (Java WatchService). Better as a follow-up after manual reload is proven. |
 | **Distributed PipelineStore** | Database-backed (PostgreSQL, Redis) PipelineStore for multi-instance deployments. Filesystem is sufficient for single-instance. |
-| **Pipeline versioning UI** | Dashboard showing version history of a pipeline, with diff view. Depends on persistent store capturing version history. |
+| **Persistent canary state** | Canary state surviving server restarts. Adds complexity (serializing in-flight metrics, resuming observation windows). In-memory is sufficient for initial release — if the server restarts during a canary, the new version becomes immediately active. |
+| **Canary webhooks / alerting** | Notify external systems (Slack, PagerDuty) on canary state transitions (promote, rollback). Application-level concern, easy to add via hook on state change. |
+| **A/B testing (multi-version traffic split)** | Running more than two versions simultaneously with configurable weights. Canary is a special case of A/B with two versions. Generalizing adds routing complexity. |
+| **Version diff / changelog** | Dashboard showing source diff between pipeline versions. Requires storing source text in version history (already captured in `PipelineVersion.source`), but the UI is non-trivial. |
 | **Suspension TTL / expiry** | Auto-cleanup of abandoned suspended executions after a configurable time. Simple to add to SuspensionStore later. |
 | **Webhook on suspension** | Notify external systems when an execution suspends (e.g., send email, post to Slack). Application-level concern. |
 | **Pipeline dependencies** | One pipeline importing/calling another. Fundamental language change, separate RFC. |
@@ -1001,6 +1257,12 @@ CONSTELLATION_PIPELINE_FAIL_ON_ERROR=true
 
 **D7: Hot-reload is explicit, not automatic.** The `/pipelines/:name/reload` endpoint must be called explicitly rather than watching for file changes. This is simpler, more predictable, and avoids platform-specific file watching issues. File watching can be added as a separate follow-up.
 
-**D8: Old versions are not garbage collected.** When a pipeline is reloaded, the old `PipelineImage` remains in the store (referenced by its structural hash). Explicit `DELETE /pipelines/:ref` is the cleanup mechanism. Automatic GC adds complexity around determining when an image is truly unreferenced.
+**D8: Old versions are not garbage collected.** When a pipeline is reloaded, the old `PipelineImage` remains in the store (referenced by its structural hash and version history). Explicit `DELETE /pipelines/:ref` is the cleanup mechanism. Automatic GC adds complexity around determining when an image is truly unreferenced — especially during canary deployments where both old and new versions are actively serving traffic.
 
 **D9: Hard rename, no deprecation.** The library has no external consumers yet, so we do a clean break: rename everything in one commit with no type aliases or endpoint redirects. This keeps the codebase unambiguous — there is exactly one name for each concept, not two. If external consumers exist in the future, breaking changes will require deprecation cycles, but that constraint doesn't apply today.
+
+**D10: Monotonic integer versions, not semver.** Pipeline versions use simple incrementing integers (v1, v2, v3) rather than semantic versioning. Pipelines don't have a meaningful notion of "breaking" vs "non-breaking" changes at the version level — any input/output schema change is caught at compile time. Semver would add cognitive overhead without providing actionable information. The version number's purpose is ordering and rollback reference, not compatibility signaling.
+
+**D11: Canary is opt-in per reload, not a global deployment strategy.** Canary behavior is triggered by including a `canary` configuration in the reload request. Without it, reload is an immediate cutover (the simple case). This keeps the default behavior simple and predictable while making progressive rollouts available when needed. The canary config is per-reload, not per-pipeline — the same pipeline can be reloaded with or without canary at different times depending on the operator's confidence in the change.
+
+**D12: Canary evaluation is request-driven, not timer-driven.** The canary evaluates promotion/rollback criteria after each request (when `minRequests` is met and `observationWindow` has elapsed), rather than running a background timer. This avoids complexity around background fibers and ensures evaluation happens naturally with traffic. For low-traffic pipelines, this means promotion may be slower — but that's appropriate, since low traffic means less statistical confidence in the canary's health.
