@@ -1,6 +1,6 @@
 # RFC-015b: Pipeline Loader, Hot-Reload, and Versioning
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P1 (Core HTTP Module)
 **Author:** Human + Claude
 **Created:** 2026-02-02

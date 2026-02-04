@@ -1,6 +1,6 @@
 # RFC-015a: Suspension-Aware HTTP Endpoints
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P1 (Core HTTP Module)
 **Author:** Human + Claude
 **Created:** 2026-02-02
