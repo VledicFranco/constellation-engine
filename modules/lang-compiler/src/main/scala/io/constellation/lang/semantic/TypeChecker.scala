@@ -30,7 +30,7 @@ final case class TypeEnvironment(
   def lookupVariable(name: String): Option[SemanticType] = variables.get(name)
 }
 
-/** Typed program after type checking */
+/** Typed pipeline after type checking */
 final case class TypedPipeline(
     declarations: List[TypedDeclaration],
     outputs: List[(String, SemanticType, Span)], // (name, type, span) for each declared output
@@ -207,10 +207,10 @@ object TypeChecker {
 
   type TypeResult[A] = ValidatedNel[CompileError, A]
 
-  /** Type check a program using bidirectional type inference.
+  /** Type check a pipeline using bidirectional type inference.
     *
     * @param program
-    *   The parsed program to type check
+    *   The parsed pipeline to type check
     * @param functions
     *   Registry of available function signatures
     * @return

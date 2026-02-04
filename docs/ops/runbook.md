@@ -40,12 +40,12 @@ curl http://localhost:8080/metrics | jq .cache
 ```
 
 - `hitRate` < 0.5 — sources are changing frequently or cache is too small
-- `hitRate` > 0.8 — cache is working; latency may be from large programs
+- `hitRate` > 0.8 — cache is working; latency may be from large pipelines
 
 **Actions:**
-- Ensure clients reuse compiled programs via `/execute` instead of recompiling
-- Check program complexity (large DAGs take longer)
-- Compilation has a 30-second timeout; if hit, simplify the program
+- Ensure clients reuse compiled pipelines via `/execute` instead of recompiling
+- Check pipeline complexity (large DAGs take longer)
+- Compilation has a 30-second timeout; if hit, simplify the pipeline
 
 ### Rate Limit Errors (429)
 

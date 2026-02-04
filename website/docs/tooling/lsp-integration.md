@@ -63,7 +63,7 @@ npm run package
 code --install-extension constellation-lang-0.1.0.vsix
 ```
 
-### 4. Write Constellation Programs
+### 4. Write Constellation Pipelines
 
 Create a file with `.cst` extension:
 
@@ -101,7 +101,7 @@ result = Up[CTRL+SPACE]
 
 **Real-time Error Checking:**
 
-As you type, the LSP validates your program and shows errors:
+As you type, the LSP validates your pipeline and shows errors:
 
 ```constellation
 in text: String

@@ -27,7 +27,7 @@ object IRGenerator {
     def empty: GenContext = GenContext(Map.empty, Map.empty)
   }
 
-  /** Generate IR from a typed program */
+  /** Generate IR from a typed pipeline */
   def generate(program: TypedPipeline): IRPipeline = {
     val (finalCtx, inputIds) = generateDeclarations(program.declarations, GenContext.empty)
 

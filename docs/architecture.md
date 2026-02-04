@@ -136,12 +136,12 @@ case class Position(line: Int, column: Int, offset: Int)
 case class Located[+A](value: A, pos: Position)
 
 // Parser entry point
-def parse(source: String): Either[CompileError.ParseError, Program]
+def parse(source: String): Either[CompileError.ParseError, Pipeline]
 ```
 
 ### Phase 2: Type Checking (`lang/semantic/`)
 
-Type checking validates the program and produces a typed AST.
+Type checking validates the pipeline and produces a typed AST.
 
 **SemanticType** - Internal type representation:
 

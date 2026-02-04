@@ -8,10 +8,10 @@ import java.util.UUID
 /** Compiles an IRPipeline into a DagVizIR for visualization */
 object DagVizCompiler:
 
-  /** Compile an IR program to visualization IR
+  /** Compile an IR pipeline to visualization IR
     *
     * @param ir
-    *   The compiled IR program
+    *   The compiled IR pipeline
     * @param title
     *   Optional title for the visualization
     * @return

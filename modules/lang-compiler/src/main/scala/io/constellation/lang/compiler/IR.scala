@@ -62,7 +62,7 @@ object IRModuleCallOptions {
   val empty: IRModuleCallOptions = IRModuleCallOptions()
 }
 
-/** Intermediate representation for constellation-lang programs.
+/** Intermediate representation for constellation-lang pipelines.
   *
   * The IR represents a data-flow graph where:
   *   - Each node produces a value with a known type
@@ -266,7 +266,7 @@ final case class TypedLambda(
     returnType: SemanticType
 )
 
-/** The complete IR program representing a constellation-lang program */
+/** The complete IR representation of a constellation-lang pipeline */
 final case class IRPipeline(
     nodes: Map[UUID, IRNode],
     inputs: List[UUID],                 // IDs of input nodes (for top-level data)

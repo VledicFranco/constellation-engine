@@ -377,7 +377,7 @@ Reference numbers from the benchmark suite (see `docs/dev/performance-benchmarks
 
 | Operation | Target | Notes |
 |-----------|--------|-------|
-| Parse (small program) | <5ms | 3-5 line scripts |
+| Parse (small pipeline) | <5ms | 3-5 line scripts |
 | Full pipeline (medium) | <100ms | Parse + type-check + compile + execute |
 | Cache hit | <5ms | Cached compilation result lookup |
 | Cache speedup | >5x | Cached vs uncached compilation |

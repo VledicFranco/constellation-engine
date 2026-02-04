@@ -23,7 +23,7 @@ object ApiModels {
       dagName: Option[String] = None
   ) {
 
-    /** Resolve the effective program name (new `name` field takes priority). */
+    /** Resolve the effective pipeline name (new `name` field takes priority). */
     def effectiveName: Option[String] = name.orElse(dagName)
   }
 
@@ -57,7 +57,7 @@ object ApiModels {
     given Decoder[CompileResponse] = deriveDecoder
   }
 
-  /** Request to execute a program.
+  /** Request to execute a pipeline.
     *
     * Accepts `ref` (new API: name or "sha256:<hash>") or `dagName` (legacy). If both are present,
     * `ref` takes precedence.
@@ -119,7 +119,7 @@ object ApiModels {
 
   /** Response from compile-and-run.
     *
-    * Now includes `structuralHash` so callers can reference the program by hash. Suspension-aware
+    * Now includes `structuralHash` so callers can reference the pipeline by hash. Suspension-aware
     * fields mirror those on [[ExecuteResponse]].
     */
   case class RunResponse(
@@ -214,7 +214,7 @@ object ApiModels {
   // Pipeline management models (Phase 5)
   // ---------------------------------------------------------------------------
 
-  /** Summary of a stored program image */
+  /** Summary of a stored pipeline image */
   case class PipelineSummary(
       structuralHash: String,
       syntacticHash: String,
@@ -239,7 +239,7 @@ object ApiModels {
     given Decoder[PipelineListResponse] = deriveDecoder
   }
 
-  /** Detailed program metadata response */
+  /** Detailed pipeline metadata response */
   case class PipelineDetailResponse(
       structuralHash: String,
       syntacticHash: String,

@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
 
 /** HTTP server for the Constellation Engine API
   *
-  * Provides a REST API for compiling constellation-lang programs, managing DAGs and modules, and
+  * Provides a REST API for compiling constellation-lang pipelines, managing DAGs and modules, and
   * executing computational pipelines.
   *
   * Example usage:

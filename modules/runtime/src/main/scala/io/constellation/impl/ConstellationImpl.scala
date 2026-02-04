@@ -89,7 +89,7 @@ final class ConstellationImpl(
     val startedAt = Instant.now()
 
     for {
-      // Merge registry modules with synthetic modules from the loaded program
+      // Merge registry modules with synthetic modules from the loaded pipeline
       registryModules <- moduleRegistry.initModules(dagSpec)
       allModules = registryModules ++ loaded.syntheticModules
 

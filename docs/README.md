@@ -75,6 +75,7 @@ make dev       # Start development server
 
 | Document | Description |
 |----------|-------------|
+| [Core Concepts](concepts.md) | Key concepts: modules, pipelines, type system, lifecycle |
 | [Getting Started Tutorial](getting-started.md) | Step-by-step tutorial for new users |
 | [Embedding Guide](embedding-guide.md) | Embed Constellation in your JVM application |
 | [Pipeline Examples](examples/README.md) | Real-world pipeline examples with explanations |
@@ -122,6 +123,16 @@ Plug in your own metrics, tracing, event publishing, caching, and storage:
 |----------|-------------|
 | [OpenAPI Specification](api/openapi.yaml) | REST API specification (OpenAPI 3.0) |
 | [LSP WebSocket Protocol](api/lsp-websocket.md) | WebSocket protocol for IDE integration |
+
+### Pipeline Lifecycle
+
+| Document | Description |
+|----------|-------------|
+| [Pipeline Lifecycle RFC](dev/rfcs/rfc-015-pipeline-lifecycle.md) | Umbrella RFC for pipeline lifecycle features |
+| [Suspension HTTP API](dev/rfcs/rfc-015a-suspension-http.md) | Suspend/resume execution endpoints |
+| [Pipeline Reload](dev/rfcs/rfc-015b-pipeline-loader-reload.md) | Hot-reload and versioning |
+| [Canary Releases](dev/rfcs/rfc-015c-canary-releases.md) | Traffic splitting and canary deployments |
+| [Persistent Pipeline Store](dev/rfcs/rfc-015d-persistent-pipeline-store.md) | Content-addressed pipeline storage |
 
 ### Migration
 
@@ -179,7 +190,7 @@ val compiler = LangCompiler.builder
   ))
   .build
 
-// Compile the program
+// Compile the pipeline
 val result = compiler.compile(source, "my-pipeline")
 
 result match {

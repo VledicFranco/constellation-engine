@@ -12,7 +12,7 @@ import java.util.UUID
   * @param executionId
   *   Unique ID for this execution run
   * @param structuralHash
-  *   Structural hash of the program that was executed
+  *   Structural hash of the pipeline that was executed
   * @param resumptionCount
   *   Number of times this execution has been resumed (0 for first run)
   * @param status

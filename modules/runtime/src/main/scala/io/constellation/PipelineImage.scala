@@ -5,7 +5,7 @@ import java.util.UUID
 
 /** Immutable, serializable snapshot of a compiled pipeline.
   *
-  * A PipelineImage captures everything needed to reconstruct a runnable program: the DAG topology,
+  * A PipelineImage captures everything needed to reconstruct a runnable pipeline: the DAG topology,
   * module call options, and content hashes for deduplication.
   *
   * @param structuralHash
@@ -39,7 +39,7 @@ object PipelineImage {
   /** Rehydrate a PipelineImage into a LoadedPipeline by reconstructing synthetic modules.
     *
     * Only branch modules can be reconstructed from the DagSpec alone. HOF transforms (filter, map,
-    * etc.) contain closures that cannot be reconstructed; those programs require the original
+    * etc.) contain closures that cannot be reconstructed; those pipelines require the original
     * LoadedPipeline or recompilation.
     */
   def rehydrate(image: PipelineImage): LoadedPipeline = {

@@ -92,7 +92,7 @@ kubectl scale deployment constellation --replicas=4 -n constellation
 
 **Considerations:**
 - Each instance has its own in-memory compilation cache (no shared cache)
-- Program state (compiled DAGs) is per-instance
+- Pipeline state (compiled DAGs) is per-instance
 - For shared state, use a load balancer with session affinity or an external store
 
 ### Ingress / Load Balancer

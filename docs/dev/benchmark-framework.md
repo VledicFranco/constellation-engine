@@ -255,7 +255,7 @@ TestFixtures.allFixtures.foreach { fixture =>
 
 ### Fixture Content Overview
 
-**Small Program:** Basic variable assignment, conditionals, guards, coalesce
+**Small Pipeline:** Basic variable assignment, conditionals, guards, coalesce
 ```
 type Data = { value: Int, flag: Boolean }
 in data: Data
@@ -264,7 +264,7 @@ guarded = value when flag
 out result
 ```
 
-**Medium Program:** Multiple record types, compound boolean logic, chains
+**Medium Pipeline:** Multiple record types, compound boolean logic, chains
 ```
 type Config = { enabled: Boolean, active: Boolean, ... }
 isFullyEnabled = enabled and active
@@ -272,7 +272,7 @@ effectiveScore = premiumScore ?? activeScore ?? defaultScore
 out effectiveScore
 ```
 
-**Large Program:** Complex access control system with many derived values
+**Large Pipeline:** Complex access control system with many derived values
 ```
 # System, feature flags, user profile, access rules
 canAccessExperimental = canAccessAdvanced and experimentalFeatures and canAccessBeta

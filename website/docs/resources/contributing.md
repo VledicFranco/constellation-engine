@@ -247,7 +247,7 @@ The project includes `.vscode/tasks.json` with pre-configured tasks.
 
 4. **Restart server** to pick up changes
 
-### Testing a Constellation-Lang Program
+### Testing a Constellation-Lang Pipeline
 
 Create a `.cst` file:
 ```

@@ -8,6 +8,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'getting-started/introduction',
+        'getting-started/concepts',
         'getting-started/tutorial',
         'getting-started/embedding-guide',
         {

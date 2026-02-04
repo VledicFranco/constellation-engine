@@ -102,6 +102,7 @@ val fetchCustomer = ModuleBuilder
 
 ## Next Steps
 
+- Read [Core Concepts](./concepts) to understand pipelines, modules, and the type system
 - Follow the [Tutorial](./tutorial) to build your first pipeline
 - Read the [Language Reference](/docs/language/) to learn constellation-lang syntax
 - Check out the [Examples](./examples/) for common pipeline patterns

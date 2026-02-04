@@ -44,7 +44,7 @@ private[compiler] final case class DagCompileOutput(
   */
 object DagCompiler {
 
-  /** Compile an IR program to a DagSpec and synthetic modules */
+  /** Compile an IR pipeline to a DagSpec and synthetic modules */
   def compile(
       program: IRPipeline,
       dagName: String,

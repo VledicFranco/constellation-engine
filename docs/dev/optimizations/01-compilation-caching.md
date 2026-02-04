@@ -9,13 +9,13 @@
 
 ## Problem Statement
 
-Currently, every request to execute a Constellation program triggers the full compilation pipeline:
+Currently, every request to execute a Constellation pipeline triggers the full compilation process:
 
 ```
 Source Code → Parser → Type Checker → IR Generator → DAG Compiler → DagSpec
 ```
 
-This happens even when the exact same program was compiled moments ago. For ML pipelines that repeatedly execute the same transformation graph, this represents significant wasted computation.
+This happens even when the exact same pipeline was compiled moments ago. For ML workflows that repeatedly execute the same transformation graph, this represents significant wasted computation.
 
 ### Current Flow
 
@@ -169,7 +169,7 @@ Using `source.hashCode` is simple but has limitations:
 | SHA-256 of source | No collisions | Slower to compute |
 | Normalized AST hash | Ignores whitespace/comments | Requires parsing first |
 
-**Recommendation:** Start with `source.hashCode` for simplicity. Hash collisions are extremely rare for program-sized strings and the worst case is just recompilation.
+**Recommendation:** Start with `source.hashCode` for simplicity. Hash collisions are extremely rare for pipeline-sized strings and the worst case is just recompilation.
 
 ### Module Signature Invalidation
 

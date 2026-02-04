@@ -158,7 +158,7 @@ projected = data[field1, field2]
 
 ## Output Declaration
 
-Every program must have exactly one output:
+Every pipeline must have exactly one output:
 
 ```
 out expression

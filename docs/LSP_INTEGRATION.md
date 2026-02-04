@@ -95,7 +95,7 @@ result = Up[CTRL+SPACE]
 
 **Real-time Error Checking:**
 
-As you type, the LSP validates your program and shows errors:
+As you type, the LSP validates your pipeline and shows errors:
 
 ```constellation
 in text: String

@@ -10,7 +10,7 @@ import java.util.UUID
   * @param executionId
   *   Unique ID for this execution
   * @param structuralHash
-  *   Structural hash of the program
+  *   Structural hash of the pipeline
   * @param resumptionCount
   *   How many times this execution has been resumed
   * @param dagSpec

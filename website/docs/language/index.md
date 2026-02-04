@@ -12,7 +12,7 @@ constellation-lang is a domain-specific language for defining data transformatio
 
 ### Core Language
 
-- [Program Structure](./program-structure.md) - Overall program organization
+- [Pipeline Structure](./pipeline-structure.md) - Overall pipeline organization
 - [Types](./types.md) - Primitive, record, union, optional, and parameterized types
 - [Declarations](./declarations.md) - Type definitions, inputs, assignments, outputs
   - [Input Annotations](./declarations.md#input-annotations) - `@example` for input metadata
@@ -39,5 +39,5 @@ constellation-lang is a domain-specific language for defining data transformatio
 
 ### Reference
 
-- [Examples](./examples.md) - Complete example programs
+- [Examples](./examples.md) - Complete example pipelines
 - [Error Messages](./error-messages.md) - Understanding compiler errors

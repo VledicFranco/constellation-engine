@@ -9,14 +9,14 @@ import io.constellation.lang.compiler.{IRNode, IRPipeline}
   */
 object IROptimizer {
 
-  /** Optimize an IR program using the given configuration.
+  /** Optimize an IR pipeline using the given configuration.
     *
     * @param ir
-    *   The IR program to optimize
+    *   The IR pipeline to optimize
     * @param config
     *   The optimization configuration
     * @return
-    *   The optimized IR program and statistics
+    *   The optimized IR pipeline and statistics
     */
   def optimize(
       ir: IRPipeline,
@@ -56,7 +56,7 @@ object IROptimizer {
     OptimizationResult(current, stats, iteration)
   }
 
-  /** Optimize an IR program and return just the optimized IR.
+  /** Optimize an IR pipeline and return just the optimized IR.
     *
     * Convenience method for when statistics are not needed.
     */
@@ -74,7 +74,7 @@ object IROptimizer {
       if config.enableDCE then Some(DeadCodeElimination) else None
     ).flatten
 
-  /** Analyze an IR program and return statistics */
+  /** Analyze an IR pipeline and return statistics */
   def analyze(ir: IRPipeline): IRAnalysis = {
     val nodesByType = ir.nodes.values.groupBy(_.getClass.getSimpleName)
 

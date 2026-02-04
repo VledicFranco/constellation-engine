@@ -142,7 +142,7 @@ case class Position(line: Int, column: Int, offset: Int)
 case class Located[+A](value: A, pos: Position)
 
 // Parser entry point
-def parse(source: String): Either[CompileError.ParseError, Program]
+def parse(source: String): Either[CompileError.ParseError, Pipeline]
 ```
 
 ### Phase 2: Type Checking (`lang/semantic/`)
