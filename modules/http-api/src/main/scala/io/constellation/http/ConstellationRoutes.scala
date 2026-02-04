@@ -6,7 +6,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, DataSignature, DagSpec, JsonCValueConverter, PipelineImage, PipelineStatus}
+import io.constellation.{CValue, Constellation, DataSignature, DagSpec, JsonCValueConverter, PipelineImage, PipelineStatus, SuspensionFilter, SuspensionHandle, SuspensionSummary, InputTypeMismatchError, InputAlreadyProvidedError, ResumeInProgressError, UnknownNodeError, NodeTypeMismatchError, NodeAlreadyResolvedError, PipelineChangedError}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -192,6 +192,7 @@ class ConstellationRoutes(
                           case PipelineStatus.Failed(_) => false
                           case _                        => true
                         }
+                        autoSaveSuspension(sig) *>
                         Ok(
                           ExecuteResponse(
                             success = isSuccess,
@@ -280,6 +281,7 @@ class ConstellationRoutes(
                   case PipelineStatus.Failed(_) => false
                   case _                        => true
                 }
+                autoSaveSuspension(sig) *>
                 Ok(
                   RunResponse(
                     success = isSuccess,
@@ -463,6 +465,238 @@ class ConstellationRoutes(
             }
         }
       } yield response
+
+    // ---------------------------------------------------------------------------
+    // Suspension management endpoints (Phase 2)
+    // ---------------------------------------------------------------------------
+
+    // List suspended executions
+    case GET -> Root / "executions" =>
+      constellation.suspensionStore match {
+        case None =>
+          Ok(ExecutionListResponse(List.empty))
+        case Some(store) =>
+          for {
+            summaries <- store.list()
+            execSummaries = summaries.map { s =>
+              ExecutionSummary(
+                executionId = s.executionId.toString,
+                structuralHash = s.structuralHash,
+                resumptionCount = s.resumptionCount,
+                missingInputs = s.missingInputs.map { case (name, ctype) => name -> ctype.toString },
+                createdAt = s.createdAt.toString
+              )
+            }
+            response <- Ok(ExecutionListResponse(execSummaries))
+          } yield response
+      }
+
+    // Get suspended execution detail
+    case GET -> Root / "executions" / id =>
+      constellation.suspensionStore match {
+        case None =>
+          NotFound(
+            ErrorResponse(
+              error = "NotFound",
+              message = s"Execution '$id' not found (no suspension store configured)"
+            )
+          )
+        case Some(store) =>
+          findHandleByExecutionId(store, id).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+              )
+            case Some(handle) =>
+              // Re-list with the specific filter to get the summary
+              store.list(SuspensionFilter(executionId = Some(UUID.fromString(id)))).flatMap {
+                case summary :: _ =>
+                  Ok(
+                    ExecutionSummary(
+                      executionId = summary.executionId.toString,
+                      structuralHash = summary.structuralHash,
+                      resumptionCount = summary.resumptionCount,
+                      missingInputs = summary.missingInputs.map { case (name, ctype) =>
+                        name -> ctype.toString
+                      },
+                      createdAt = summary.createdAt.toString
+                    )
+                  )
+                case Nil =>
+                  NotFound(
+                    ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+                  )
+              }
+          }
+      }
+
+    // Resume a suspended execution
+    case req @ POST -> Root / "executions" / id / "resume" =>
+      constellation.suspensionStore match {
+        case None =>
+          NotFound(
+            ErrorResponse(
+              error = "NotFound",
+              message = s"Execution '$id' not found (no suspension store configured)"
+            )
+          )
+        case Some(store) =>
+          val reqId = requestId(req)
+          (for {
+            resumeReq <- req.as[ResumeRequest]
+            handleOpt <- findHandleByExecutionId(store, id)
+            response <- handleOpt match {
+              case None =>
+                NotFound(
+                  ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+                )
+              case Some(handle) =>
+                // Load the suspended state to get the DagSpec for input conversion
+                store.load(handle).flatMap {
+                  case None =>
+                    NotFound(
+                      ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+                    )
+                  case Some(suspended) =>
+                    val dagSpec = suspended.dagSpec
+                    // Convert JSON inputs to CValue using the DagSpec
+                    val jsonInputs    = resumeReq.additionalInputs.getOrElse(Map.empty)
+                    val jsonResolved  = resumeReq.resolvedNodes.getOrElse(Map.empty)
+                    (for {
+                      cvalueInputs <- convertAdditionalInputs(jsonInputs, dagSpec)
+                      cvalueResolved <- convertResolvedNodes(jsonResolved, dagSpec)
+                      sig <- constellation.resumeFromStore(
+                        handle,
+                        cvalueInputs,
+                        cvalueResolved
+                      )
+                      // Auto-delete on completion, auto-save if still suspended
+                      _ <- sig.status match {
+                        case PipelineStatus.Completed =>
+                          store.delete(handle).void
+                        case _ =>
+                          // Delete old entry, save new one
+                          store.delete(handle) *> autoSaveSuspension(sig)
+                      }
+                    } yield sig).attempt.flatMap {
+                      case Right(sig) =>
+                        val outputs = outputsToJson(sig)
+                        val missing = ExecutionHelper.buildMissingInputsMap(
+                          sig.inputs.keySet,
+                          dagSpec
+                        )
+                        val isSuccess = sig.status match {
+                          case PipelineStatus.Failed(_) => false
+                          case _                        => true
+                        }
+                        Ok(
+                          ExecuteResponse(
+                            success = isSuccess,
+                            outputs = outputs,
+                            error = sig.status match {
+                              case PipelineStatus.Failed(errors) =>
+                                Some(errors.map(_.message).mkString("; "))
+                              case _ => None
+                            },
+                            status = Some(statusString(sig.status)),
+                            executionId = Some(sig.executionId.toString),
+                            missingInputs =
+                              if missing.nonEmpty then Some(missing) else None,
+                            pendingOutputs =
+                              if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
+                              else None,
+                            resumptionCount = Some(sig.resumptionCount)
+                          )
+                        )
+                      case Left(_: ResumeInProgressError) =>
+                        Conflict(
+                          ErrorResponse(
+                            error = "ResumeInProgress",
+                            message = s"A resume operation is already in progress for execution '$id'",
+                            requestId = Some(reqId)
+                          )
+                        )
+                      case Left(e: InputTypeMismatchError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                        )
+                      case Left(e: InputAlreadyProvidedError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                        )
+                      case Left(e: UnknownNodeError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                        )
+                      case Left(e: NodeTypeMismatchError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                        )
+                      case Left(e: NodeAlreadyResolvedError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                        )
+                      case Left(e: PipelineChangedError) =>
+                        BadRequest(
+                          ExecuteResponse(success = false, error = Some(s"Pipeline error: ${e.getMessage}"))
+                        )
+                      case Left(e: NoSuchElementException) =>
+                        NotFound(
+                          ErrorResponse(
+                            error = "NotFound",
+                            message = e.getMessage,
+                            requestId = Some(reqId)
+                          )
+                        )
+                      case Left(error) =>
+                        logger.error(error)(s"[$reqId] Unexpected error in /executions/$id/resume") *>
+                          InternalServerError(
+                            ExecuteResponse(
+                              success = false,
+                              error = Some(s"Unexpected error: ${safeMessage(error)}")
+                            )
+                          )
+                    }
+                }
+            }
+          } yield response).handleErrorWith { error =>
+            val rid = reqId
+            logger.error(error)(s"[$rid] Unexpected error in /executions/$id/resume") *>
+              InternalServerError(
+                ExecuteResponse(
+                  success = false,
+                  error = Some(s"Unexpected error: ${safeMessage(error)}")
+                )
+              )
+          }
+      }
+
+    // Delete a suspended execution
+    case DELETE -> Root / "executions" / id =>
+      constellation.suspensionStore match {
+        case None =>
+          NotFound(
+            ErrorResponse(
+              error = "NotFound",
+              message = s"Execution '$id' not found (no suspension store configured)"
+            )
+          )
+        case Some(store) =>
+          findHandleByExecutionId(store, id).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+              )
+            case Some(handle) =>
+              store.delete(handle).flatMap { deleted =>
+                if deleted then Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
+                else
+                  NotFound(
+                    ErrorResponse(error = "NotFound", message = s"Execution '$id' not found")
+                  )
+              }
+          }
+      }
 
     // List all available modules
     case GET -> Root / "modules" =>
@@ -694,6 +928,88 @@ class ConstellationRoutes(
   private def outputsToJson(sig: DataSignature): Map[String, Json] =
     sig.outputs.map { case (k, v) => k -> JsonCValueConverter.cValueToJson(v) }
 
+  /** Convert JSON additional inputs to CValue for resume.
+    *
+    * Looks up each input name in the DagSpec's user input data nodes to determine the expected
+    * type, then converts the JSON value accordingly. Unknown names raise UnknownNodeError so the
+    * resume validation layer produces proper error messages.
+    */
+  private def convertAdditionalInputs(
+      jsonInputs: Map[String, Json],
+      dagSpec: DagSpec
+  ): IO[Map[String, CValue]] = {
+    val inputNameToType: Map[String, io.constellation.CType] =
+      dagSpec.userInputDataNodes.values.flatMap { spec =>
+        spec.nicknames.values.map(name => name -> spec.cType)
+      }.toMap
+
+    jsonInputs.toList.traverse { case (name, json) =>
+      inputNameToType.get(name) match {
+        case Some(ctype) =>
+          JsonCValueConverter.jsonToCValue(json, ctype, name) match {
+            case Right(cValue) => IO.pure(name -> cValue)
+            case Left(error) =>
+              IO.raiseError(new RuntimeException(s"Input '$name': $error"))
+          }
+        case None =>
+          IO.raiseError(UnknownNodeError(name))
+      }
+    }.map(_.toMap)
+  }
+
+  /** Convert JSON resolved nodes to CValue for resume.
+    *
+    * Looks up each node name in the DagSpec's data nodes to determine the expected type and
+    * converts the JSON value accordingly.
+    */
+  private def convertResolvedNodes(
+      jsonNodes: Map[String, Json],
+      dagSpec: DagSpec
+  ): IO[Map[String, CValue]] = {
+    val nameToType: Map[String, io.constellation.CType] =
+      dagSpec.data.map { case (_, spec) => spec.name -> spec.cType }
+
+    jsonNodes.toList.traverse { case (name, json) =>
+      nameToType.get(name) match {
+        case Some(ctype) =>
+          JsonCValueConverter.jsonToCValue(json, ctype, name) match {
+            case Right(cValue) => IO.pure(name -> cValue)
+            case Left(error) =>
+              IO.raiseError(new RuntimeException(s"Node '$name': $error"))
+          }
+        case None =>
+          IO.raiseError(UnknownNodeError(name))
+      }
+    }.map(_.toMap)
+  }
+
+  /** Auto-save a suspended execution to the SuspensionStore if configured.
+    *
+    * If the constellation has a SuspensionStore and the DataSignature contains a suspendedState,
+    * saves it to the store. No-op if no store is configured or execution is not suspended.
+    */
+  private def autoSaveSuspension(sig: DataSignature): IO[Unit] =
+    (constellation.suspensionStore, sig.suspendedState) match {
+      case (Some(store), Some(suspended)) =>
+        store.save(suspended).void
+      case _ => IO.unit
+    }
+
+  /** Find a SuspensionHandle by executionId using the SuspensionStore.
+    *
+    * @return
+    *   Some(handle) if found, None if not found
+    */
+  private def findHandleByExecutionId(
+      store: io.constellation.SuspensionStore,
+      executionId: String
+  ): IO[Option[SuspensionHandle]] =
+    IO.fromTry(scala.util.Try(UUID.fromString(executionId))).attempt.flatMap {
+      case Left(_) => IO.pure(None)
+      case Right(uuid) =>
+        store.list(SuspensionFilter(executionId = Some(uuid))).map(_.headOption.map(_.handle))
+    }
+
   /** Build a Suspended DataSignature without executing the runtime.
     *
     * Used when inputs are incomplete — we know the pipeline will be suspended so we can
@@ -707,8 +1023,19 @@ class ConstellationRoutes(
     val allInputNames  = dagSpec.userInputDataNodes.values.map(_.name).toSet
     val missingInputs  = (allInputNames -- inputs.keySet).toList.sorted
     val pendingOutputs = dagSpec.declaredOutputs // All outputs are pending when suspended pre-execution
+    val execId         = UUID.randomUUID()
+    val suspendedState = io.constellation.SuspendedExecution(
+      executionId = execId,
+      structuralHash = structuralHash,
+      resumptionCount = 0,
+      dagSpec = dagSpec,
+      moduleOptions = Map.empty,
+      providedInputs = inputs,
+      computedValues = Map.empty,
+      moduleStatuses = Map.empty
+    )
     DataSignature(
-      executionId = UUID.randomUUID(),
+      executionId = execId,
       structuralHash = structuralHash,
       resumptionCount = 0,
       status = PipelineStatus.Suspended,
@@ -716,7 +1043,8 @@ class ConstellationRoutes(
       computedNodes = Map.empty,
       outputs = Map.empty,
       missingInputs = missingInputs,
-      pendingOutputs = pendingOutputs
+      pendingOutputs = pendingOutputs,
+      suspendedState = Some(suspendedState)
     )
   }
 

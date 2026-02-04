@@ -265,4 +265,61 @@ object ApiModels {
     given Encoder[AliasRequest] = deriveEncoder
     given Decoder[AliasRequest] = deriveDecoder
   }
+
+  // ---------------------------------------------------------------------------
+  // Suspension management models (Phase 2)
+  // ---------------------------------------------------------------------------
+
+  /** Request to resume a suspended execution.
+    *
+    * @param additionalInputs
+    *   New input values to provide (keyed by variable name, JSON-encoded)
+    * @param resolvedNodes
+    *   Manually-resolved data node values (keyed by variable name, JSON-encoded)
+    */
+  case class ResumeRequest(
+      additionalInputs: Option[Map[String, Json]] = None,
+      resolvedNodes: Option[Map[String, Json]] = None
+  )
+
+  object ResumeRequest {
+    given Encoder[ResumeRequest] = deriveEncoder
+    given Decoder[ResumeRequest] = deriveDecoder
+  }
+
+  /** Summary of a suspended execution for listing.
+    *
+    * @param executionId
+    *   UUID string of the execution
+    * @param structuralHash
+    *   Pipeline structural hash
+    * @param resumptionCount
+    *   How many times this execution has been resumed
+    * @param missingInputs
+    *   Map of missing input names to type strings (e.g. "CInt", "CString")
+    * @param createdAt
+    *   ISO-8601 timestamp when the suspension was created
+    */
+  case class ExecutionSummary(
+      executionId: String,
+      structuralHash: String,
+      resumptionCount: Int,
+      missingInputs: Map[String, String],
+      createdAt: String
+  )
+
+  object ExecutionSummary {
+    given Encoder[ExecutionSummary] = deriveEncoder
+    given Decoder[ExecutionSummary] = deriveDecoder
+  }
+
+  /** Response listing suspended executions. */
+  case class ExecutionListResponse(
+      executions: List[ExecutionSummary]
+  )
+
+  object ExecutionListResponse {
+    given Encoder[ExecutionListResponse] = deriveEncoder
+    given Decoder[ExecutionListResponse] = deriveDecoder
+  }
 }

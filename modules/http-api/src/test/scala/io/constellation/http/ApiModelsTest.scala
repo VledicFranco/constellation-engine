@@ -600,6 +600,104 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     parsed shouldBe Right(original)
   }
 
+  // ========== ResumeRequest Tests ==========
+
+  "ResumeRequest" should "round-trip through JSON" in {
+    val original = ResumeRequest(
+      additionalInputs = Some(Map("x" -> Json.fromInt(42))),
+      resolvedNodes = Some(Map("computed" -> Json.fromString("value")))
+    )
+    val json   = original.asJson
+    val parsed = json.as[ResumeRequest]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with empty fields" in {
+    val original = ResumeRequest()
+    val json     = original.asJson
+    val parsed   = json.as[ResumeRequest]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with only additionalInputs" in {
+    val original = ResumeRequest(additionalInputs = Some(Map("y" -> Json.fromString("hello"))))
+    val json     = original.asJson
+    val parsed   = json.as[ResumeRequest]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "deserialize from minimal JSON" in {
+    val jsonStr = """{}"""
+    val parsed  = parser.decode[ResumeRequest](jsonStr)
+
+    parsed match {
+      case Right(request) =>
+        request.additionalInputs shouldBe None
+        request.resolvedNodes shouldBe None
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
+  }
+
+  // ========== ExecutionSummary Tests ==========
+
+  "ExecutionSummary" should "round-trip through JSON" in {
+    val original = ExecutionSummary(
+      executionId = "550e8400-e29b-41d4-a716-446655440000",
+      structuralHash = "abc123def456",
+      resumptionCount = 2,
+      missingInputs = Map("y" -> "CInt", "z" -> "CString"),
+      createdAt = "2026-01-15T10:30:00Z"
+    )
+    val json   = original.asJson
+    val parsed = json.as[ExecutionSummary]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "serialize all fields" in {
+    val summary = ExecutionSummary(
+      executionId = "test-uuid",
+      structuralHash = "hash123",
+      resumptionCount = 0,
+      missingInputs = Map("x" -> "CInt"),
+      createdAt = "2026-02-01T00:00:00Z"
+    )
+
+    val json = summary.asJson.noSpaces
+
+    json should include("\"executionId\":\"test-uuid\"")
+    json should include("\"structuralHash\":\"hash123\"")
+    json should include("\"resumptionCount\":0")
+    json should include("\"missingInputs\":")
+    json should include("\"createdAt\":\"2026-02-01T00:00:00Z\"")
+  }
+
+  // ========== ExecutionListResponse Tests ==========
+
+  "ExecutionListResponse" should "round-trip through JSON" in {
+    val original = ExecutionListResponse(
+      executions = List(
+        ExecutionSummary("id1", "hash1", 0, Map("x" -> "CInt"), "2026-01-01T00:00:00Z"),
+        ExecutionSummary("id2", "hash2", 1, Map.empty, "2026-01-02T00:00:00Z")
+      )
+    )
+    val json   = original.asJson
+    val parsed = json.as[ExecutionListResponse]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "serialize empty list" in {
+    val response = ExecutionListResponse(List.empty)
+    val json     = response.asJson.noSpaces
+
+    json should include("\"executions\":[]")
+  }
+
   // ========== ComponentMetadata Codec Tests ==========
 
   "ComponentMetadata codec" should "serialize correctly" in {
