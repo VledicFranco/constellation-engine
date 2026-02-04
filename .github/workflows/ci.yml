@@ -30,6 +30,9 @@ jobs:
       - name: Check formatting
         run: sbt scalafmtCheckAll
 
+      - name: Check scalafix rules
+        run: sbt "scalafixAll --check"
+
       - name: Run tests with coverage
         run: sbt coverage test coverageReport coverageAggregate
 
