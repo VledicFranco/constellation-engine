@@ -120,7 +120,8 @@ object ConstellationServer {
       authConfig: Option[AuthConfig] = None,
       corsConfig: Option[CorsConfig] = None,
       rateLimitConfig: Option[RateLimitConfig] = None,
-      healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default
+      healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default,
+      pipelineLoaderConfig: Option[PipelineLoaderConfig] = None
   )
 
   /** Builder for creating a Constellation HTTP server */
@@ -201,6 +202,15 @@ object ConstellationServer {
         config.copy(healthCheckConfig = healthCheckConfig)
       )
 
+    /** Configure startup pipeline loader to pre-load `.cst` files from a directory */
+    def withPipelineLoader(pipelineLoaderConfig: PipelineLoaderConfig): ServerBuilder =
+      new ServerBuilder(
+        constellation,
+        compiler,
+        functionRegistry,
+        config.copy(pipelineLoaderConfig = Some(pipelineLoaderConfig))
+      )
+
     /** Build the HTTP server resource.
       *
       * Validates all configuration at startup. Fails fast with clear errors if any config is
@@ -250,6 +260,19 @@ object ConstellationServer {
       for {
         dashboardRoutesOpt <- Resource.eval(dashboardRoutesIO)
         rateLimitState     <- Resource.eval(rateLimitBucketsIO)
+        // Load pipelines from directory if configured (before server starts listening)
+        _ <- Resource.eval(
+          config.pipelineLoaderConfig match {
+            case Some(plConfig) =>
+              PipelineLoader.load(plConfig, constellation, compiler).flatMap { result =>
+                logger.info(
+                  s"PipelineLoader: startup complete — loaded=${result.loaded}, " +
+                    s"failed=${result.failed}, skipped=${result.skipped}"
+                )
+              }
+            case None => IO.unit
+          }
+        )
         server <- EmberServerBuilder
           .default[IO]
           .withHost(host)
@@ -301,8 +324,11 @@ object ConstellationServer {
         val rateSummary = config.rateLimitConfig
           .map(c => s"rateLimit=${c.requestsPerMinute}rpm")
           .getOrElse("rateLimit=off")
+        val loaderSummary = config.pipelineLoaderConfig
+          .map(c => s"pipelineDir=${c.directory}")
+          .getOrElse("pipelineLoader=off")
         logger.info(
-          s"Constellation HTTP API server started at http://${config.host}:${config.port} [$authSummary, $corsSummary, $rateSummary]"
+          s"Constellation HTTP API server started at http://${config.host}:${config.port} [$authSummary, $corsSummary, $rateSummary, $loaderSummary]"
         ) *>
           IO.never
       }
