@@ -1,6 +1,6 @@
 # RFC-015f: QA Iteration 1 — Post-Implementation Audit
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P1 (Stability & Correctness)
 **Author:** Human + Claude
 **Created:** 2026-02-04
@@ -241,34 +241,34 @@ Each RFC phase was audited by cross-referencing the RFC specification against th
 
 ## Findings Summary
 
-| ID | Severity | Phase | Component | Short Description |
-|----|----------|-------|-----------|-------------------|
-| F-0.1 | Low | 0 | Comments | 17 stale "program" references in Scaladoc |
-| F-1.1 | Critical | 1–2 | SuspensionStore | No TTL for stale suspensions — memory leak |
-| F-1.2 | Medium | 1–2 | Tests | Missing HTTP tests for suspension edge cases |
-| F-2.1 | Critical | 3–4a | PipelineLoader | Stores images before confirming overall success |
-| F-2.2 | Critical | 3–4a | VersionStore | Unbounded version history growth |
-| F-2.3 | Medium | 3–4a | Tests | Missing HTTP tests for reload/version endpoints |
-| F-3.1 | High | 4b | CanaryRouter | Race condition in step evaluation timing |
-| F-3.2 | Medium | 4b | CanaryRouter | Unbounded latency vector growth |
-| F-3.3 | Medium | 4b | CanaryRouter | Completed canary state blocks new canaries |
-| F-3.4 | Medium | 4b | CanaryRouter | Latency includes pre-execution overhead |
-| F-4.1 | Critical | 5 | FileSystemStore | Non-atomic concurrent alias writes |
-| F-4.2 | High | 5 | FileSystemStore | Syntactic index loses registryHash |
-| F-4.3 | Medium | 5 | FileSystemStore | Path traversal (latent, defense-in-depth) |
-| F-4.4 | Medium | 5 | FileSystemStore | Non-atomic image writes |
-| F-4.5 | Medium | 5 | FileSystemStore | Disk-full errors silently swallowed |
-| F-5.1 | High | 6 | Dashboard | Sequential canary fetches in pipeline list |
+| ID | Severity | Phase | Component | Short Description | Status |
+|----|----------|-------|-----------|-------------------|--------|
+| F-0.1 | Low | 0 | Comments | 17 stale "program" references in Scaladoc | Open |
+| F-1.1 | Critical | 1–2 | SuspensionStore | No TTL for stale suspensions — memory leak | Fixed in `a8cf31f` |
+| F-1.2 | Medium | 1–2 | Tests | Missing HTTP tests for suspension edge cases | Open |
+| F-2.1 | Critical | 3–4a | PipelineLoader | Stores images before confirming overall success | Fixed in `a8cf31f` |
+| F-2.2 | Critical | 3–4a | VersionStore | Unbounded version history growth | Fixed in `a8cf31f` |
+| F-2.3 | Medium | 3–4a | Tests | Missing HTTP tests for reload/version endpoints | Open |
+| F-3.1 | High | 4b | CanaryRouter | Race condition in step evaluation timing | Fixed in `a8cf31f` |
+| F-3.2 | Medium | 4b | CanaryRouter | Unbounded latency vector growth | Fixed in `a8cf31f` |
+| F-3.3 | Medium | 4b | CanaryRouter | Completed canary state blocks new canaries | Fixed in `a8cf31f` |
+| F-3.4 | Medium | 4b | CanaryRouter | Latency includes pre-execution overhead | Open |
+| F-4.1 | Critical | 5 | FileSystemStore | Non-atomic concurrent alias writes | Fixed in `a8cf31f` |
+| F-4.2 | High | 5 | FileSystemStore | Syntactic index loses registryHash | Fixed in `a8cf31f` |
+| F-4.3 | Medium | 5 | FileSystemStore | Path traversal (latent, defense-in-depth) | Fixed in `a8cf31f` |
+| F-4.4 | Medium | 5 | FileSystemStore | Non-atomic image writes | Fixed in `a8cf31f` |
+| F-4.5 | Medium | 5 | FileSystemStore | Disk-full errors silently swallowed | Fixed in `a8cf31f` |
+| F-5.1 | High | 6 | Dashboard | Sequential canary fetches in pipeline list | Fixed in `a8cf31f` |
 
 ### By Severity
 
-| Severity | Count | Findings |
-|----------|-------|----------|
-| Critical | 4 | F-1.1, F-2.1, F-2.2, F-4.1 |
-| High | 3 | F-3.1, F-4.2, F-5.1 |
-| Medium | 8 | F-1.2, F-2.3, F-3.2, F-3.3, F-3.4, F-4.3, F-4.4, F-4.5 |
-| Low | 1 | F-0.1 |
-| **Total** | **16** | |
+| Severity | Count | Fixed | Open | Findings |
+|----------|-------|-------|------|----------|
+| Critical | 4 | 4 | 0 | F-1.1, F-2.1, F-2.2, F-4.1 |
+| High | 3 | 3 | 0 | F-3.1, F-4.2, F-5.1 |
+| Medium | 8 | 5 | 3 | F-1.2, F-2.3, F-3.2, F-3.3, F-3.4, F-4.3, F-4.4, F-4.5 |
+| Low | 1 | 0 | 1 | F-0.1 |
+| **Total** | **16** | **12** | **4** | |
 
 ---
 
