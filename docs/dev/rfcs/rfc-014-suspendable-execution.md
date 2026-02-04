@@ -1,6 +1,6 @@
 # RFC-014: Suspendable Execution
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P1 (Core Runtime)
 **Author:** Human + Claude
 **Created:** 2026-01-30
