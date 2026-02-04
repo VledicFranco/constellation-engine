@@ -6,7 +6,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, JsonCValueConverter, PipelineImage}
+import io.constellation.{CValue, Constellation, DataSignature, DagSpec, JsonCValueConverter, PipelineImage, PipelineStatus}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -182,8 +182,35 @@ class ConstellationRoutes(
                     )
                   case Right(validatedRef) =>
                     executeByRef(validatedRef, execReq.inputs).value.flatMap {
-                      case Right(outputs) =>
-                        Ok(ExecuteResponse(success = true, outputs = outputs, error = None))
+                      case Right((sig, dagSpec)) =>
+                        val outputs = outputsToJson(sig)
+                        val missing = ExecutionHelper.buildMissingInputsMap(
+                          sig.inputs.keySet,
+                          dagSpec
+                        )
+                        val isSuccess = sig.status match {
+                          case PipelineStatus.Failed(_) => false
+                          case _                        => true
+                        }
+                        Ok(
+                          ExecuteResponse(
+                            success = isSuccess,
+                            outputs = outputs,
+                            error = sig.status match {
+                              case PipelineStatus.Failed(errors) =>
+                                Some(errors.map(_.message).mkString("; "))
+                              case _ => None
+                            },
+                            status = Some(statusString(sig.status)),
+                            executionId = Some(sig.executionId.toString),
+                            missingInputs =
+                              if missing.nonEmpty then Some(missing) else None,
+                            pendingOutputs =
+                              if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
+                              else None,
+                            resumptionCount = Some(sig.resumptionCount)
+                          )
+                        )
                       case Left(ApiError.NotFoundError(_, name)) =>
                         NotFound(
                           ErrorResponse(
@@ -243,12 +270,34 @@ class ConstellationRoutes(
             runReq <- req.as[RunRequest]
             result <- compileStoreAndRun(runReq).value
             response <- result match {
-              case Right((outputs, structuralHash)) =>
+              case Right((sig, dagSpec, structuralHash)) =>
+                val outputs = outputsToJson(sig)
+                val missing = ExecutionHelper.buildMissingInputsMap(
+                  sig.inputs.keySet,
+                  dagSpec
+                )
+                val isSuccess = sig.status match {
+                  case PipelineStatus.Failed(_) => false
+                  case _                        => true
+                }
                 Ok(
                   RunResponse(
-                    success = true,
+                    success = isSuccess,
                     outputs = outputs,
-                    structuralHash = Some(structuralHash)
+                    structuralHash = Some(structuralHash),
+                    error = sig.status match {
+                      case PipelineStatus.Failed(errors) =>
+                        Some(errors.map(_.message).mkString("; "))
+                      case _ => None
+                    },
+                    status = Some(statusString(sig.status)),
+                    executionId = Some(sig.executionId.toString),
+                    missingInputs =
+                      if missing.nonEmpty then Some(missing) else None,
+                    pendingOutputs =
+                      if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
+                      else None,
+                    resumptionCount = Some(sig.resumptionCount)
                   )
                 )
               case Left(ApiError.CompilationError(errors)) =>
@@ -542,27 +591,36 @@ class ConstellationRoutes(
     if ref.startsWith("sha256:") then constellation.PipelineStore.get(ref.stripPrefix("sha256:"))
     else constellation.PipelineStore.getByName(ref)
 
-  /** Execute a pipeline by reference using the PipelineStore. */
+  /** Execute a pipeline by reference using the PipelineStore.
+    *
+    * Returns the full DataSignature and DagSpec so route handlers can populate suspension fields.
+    * If inputs are incomplete, returns a Suspended DataSignature without calling the runtime.
+    */
   private def executeByRef(
       ref: String,
       jsonInputs: Map[String, Json]
-  ): EitherT[IO, ApiError, Map[String, Json]] =
+  ): EitherT[IO, ApiError, (DataSignature, DagSpec)] =
     EitherT(
       resolveImage(ref).flatMap {
         case Some(image) =>
           val dagSpec = image.dagSpec
-          convertInputs(jsonInputs, dagSpec).value.flatMap {
+          convertInputsLenient(jsonInputs, dagSpec).value.flatMap {
             case Left(err) => IO.pure(Left(err))
             case Right(inputs) =>
-              val loaded = io.constellation.PipelineImage.rehydrate(image)
-              constellation.run(loaded, inputs).attempt.map {
-                case Right(sig) =>
-                  val outputs = sig.outputs.map { case (k, v) =>
-                    k -> JsonCValueConverter.cValueToJson(v)
-                  }
-                  Right(outputs)
-                case Left(err) =>
-                  Left(ApiError.ExecutionError(s"Execution failed: ${err.getMessage}"))
+              val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
+              val missingNames  = allInputNames -- inputs.keySet
+              if missingNames.nonEmpty then {
+                // Short-circuit: build a Suspended DataSignature without runtime execution
+                val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
+                IO.pure(Right((sig, dagSpec)))
+              } else {
+                val loaded = io.constellation.PipelineImage.rehydrate(image)
+                constellation.run(loaded, inputs).attempt.map {
+                  case Right(sig) =>
+                    Right((sig, dagSpec))
+                  case Left(err) =>
+                    Left(ApiError.ExecutionError(s"Execution failed: ${err.getMessage}"))
+                }
               }
           }
         case None =>
@@ -570,10 +628,15 @@ class ConstellationRoutes(
       }
     )
 
-  /** Compile, store, and run a script in one step. Returns (outputs, structuralHash). */
+  /** Compile, store, and run a script in one step.
+    *
+    * Returns the full DataSignature, DagSpec, and structuralHash so route handlers can populate
+    * suspension fields. If inputs are incomplete, returns a Suspended DataSignature without calling
+    * the runtime.
+    */
   private def compileStoreAndRun(
       req: RunRequest
-  ): EitherT[IO, ApiError, (Map[String, Json], String)] =
+  ): EitherT[IO, ApiError, (DataSignature, DagSpec, String)] =
     for {
       compiled <- EitherT(
         compiler
@@ -583,19 +646,24 @@ class ConstellationRoutes(
           })
       )
       image = compiled.pipeline.image
+      dagSpec = image.dagSpec
       // Store image in PipelineStore for dedup and future reference
       _      <- EitherT.liftF(constellation.PipelineStore.store(image))
-      inputs <- convertInputs(req.inputs, compiled.pipeline.image.dagSpec)
-      // Use new API: constellation.run with LoadedPipeline
-      sig <- ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
-        ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+      inputs <- convertInputsLenient(req.inputs, dagSpec)
+      sig <- {
+        val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
+        val missingNames  = allInputNames -- inputs.keySet
+        if missingNames.nonEmpty then {
+          // Short-circuit: build a Suspended DataSignature without runtime execution
+          EitherT.rightT[IO, ApiError](buildSuspendedSignature(dagSpec, image.structuralHash, inputs))
+        } else {
+          // All inputs present — run the pipeline
+          ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
+            ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+          }
+        }
       }
-    } yield {
-      val outputs = sig.outputs.map { case (k, v) =>
-        k -> JsonCValueConverter.cValueToJson(v)
-      }
-      (outputs, image.structuralHash)
-    }
+    } yield (sig, dagSpec, image.structuralHash)
 
   /** Convert JSON inputs to CValue, wrapping errors */
   private def convertInputs(
@@ -605,6 +673,52 @@ class ConstellationRoutes(
     ErrorHandling.liftIO(ExecutionHelper.convertInputs(inputs, dagSpec)) { t =>
       ApiError.InputError(t.getMessage)
     }
+
+  /** Convert JSON inputs to CValue leniently (skip missing), wrapping errors */
+  private def convertInputsLenient(
+      inputs: Map[String, Json],
+      dagSpec: io.constellation.DagSpec
+  ): EitherT[IO, ApiError, Map[String, CValue]] =
+    ErrorHandling.liftIO(ExecutionHelper.convertInputsLenient(inputs, dagSpec)) { t =>
+      ApiError.InputError(t.getMessage)
+    }
+
+  /** Convert a PipelineStatus to its wire string representation. */
+  private def statusString(status: PipelineStatus): String = status match {
+    case PipelineStatus.Completed  => "completed"
+    case PipelineStatus.Suspended  => "suspended"
+    case PipelineStatus.Failed(_)  => "failed"
+  }
+
+  /** Extract outputs from a DataSignature and convert CValues to JSON. */
+  private def outputsToJson(sig: DataSignature): Map[String, Json] =
+    sig.outputs.map { case (k, v) => k -> JsonCValueConverter.cValueToJson(v) }
+
+  /** Build a Suspended DataSignature without executing the runtime.
+    *
+    * Used when inputs are incomplete — we know the pipeline will be suspended so we can
+    * short-circuit and return the suspension information directly.
+    */
+  private def buildSuspendedSignature(
+      dagSpec: io.constellation.DagSpec,
+      structuralHash: String,
+      inputs: Map[String, CValue]
+  ): DataSignature = {
+    val allInputNames  = dagSpec.userInputDataNodes.values.map(_.name).toSet
+    val missingInputs  = (allInputNames -- inputs.keySet).toList.sorted
+    val pendingOutputs = dagSpec.declaredOutputs // All outputs are pending when suspended pre-execution
+    DataSignature(
+      executionId = UUID.randomUUID(),
+      structuralHash = structuralHash,
+      resumptionCount = 0,
+      status = PipelineStatus.Suspended,
+      inputs = inputs,
+      computedNodes = Map.empty,
+      outputs = Map.empty,
+      missingInputs = missingInputs,
+      pendingOutputs = pendingOutputs
+    )
+  }
 
 }
 

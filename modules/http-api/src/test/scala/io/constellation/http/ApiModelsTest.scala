@@ -215,6 +215,39 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     parsed shouldBe Right(original)
   }
 
+  it should "round-trip with suspension fields" in {
+    val original = ExecuteResponse(
+      success = true,
+      outputs = Map("x" -> Json.fromInt(1)),
+      status = Some("suspended"),
+      executionId = Some("550e8400-e29b-41d4-a716-446655440000"),
+      missingInputs = Some(Map("y" -> "CString")),
+      pendingOutputs = Some(List("result")),
+      resumptionCount = Some(0)
+    )
+    val json   = original.asJson
+    val parsed = json.as[ExecuteResponse]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "decode JSON without suspension fields as all None (backward compat)" in {
+    val jsonStr = """{"success":true,"outputs":{"x":1}}"""
+    val parsed  = parser.decode[ExecuteResponse](jsonStr)
+
+    parsed match {
+      case Right(response) =>
+        response.success shouldBe true
+        response.status shouldBe None
+        response.executionId shouldBe None
+        response.missingInputs shouldBe None
+        response.pendingOutputs shouldBe None
+        response.resumptionCount shouldBe None
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
+  }
+
   // ========== RunRequest Tests ==========
 
   "RunRequest" should "serialize with source and inputs" in {
@@ -299,6 +332,40 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     val parsed   = json.as[RunResponse]
 
     parsed shouldBe Right(original)
+  }
+
+  it should "round-trip with suspension fields" in {
+    val original = RunResponse(
+      success = true,
+      outputs = Map("x" -> Json.fromInt(1)),
+      structuralHash = Some("abc123"),
+      status = Some("suspended"),
+      executionId = Some("550e8400-e29b-41d4-a716-446655440000"),
+      missingInputs = Some(Map("y" -> "CInt")),
+      pendingOutputs = Some(List("result")),
+      resumptionCount = Some(1)
+    )
+    val json   = original.asJson
+    val parsed = json.as[RunResponse]
+
+    parsed shouldBe Right(original)
+  }
+
+  it should "decode JSON without suspension fields as all None (backward compat)" in {
+    val jsonStr = """{"success":true,"outputs":{"x":1},"compilationErrors":[]}"""
+    val parsed  = parser.decode[RunResponse](jsonStr)
+
+    parsed match {
+      case Right(response) =>
+        response.success shouldBe true
+        response.status shouldBe None
+        response.executionId shouldBe None
+        response.missingInputs shouldBe None
+        response.pendingOutputs shouldBe None
+        response.resumptionCount shouldBe None
+      case Left(error) =>
+        fail(s"Failed to parse: ${error.getMessage}")
+    }
   }
 
   // ========== PipelineSummary Tests ==========

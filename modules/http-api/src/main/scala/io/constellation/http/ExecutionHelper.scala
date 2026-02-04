@@ -3,7 +3,7 @@ package io.constellation.http
 import cats.effect.IO
 import cats.implicits.*
 import io.circe.Json
-import io.constellation.{CValue, DagSpec, JsonCValueConverter, Runtime}
+import io.constellation.{CType, CValue, DagSpec, JsonCValueConverter, Runtime}
 
 /** Helper functions for converting between JSON and CValue when executing DAGs.
   *
@@ -50,6 +50,60 @@ object ExecutionHelper {
         }
       }
       .map(_.toMap)
+
+  /** Convert JSON inputs to CValue inputs leniently — skip missing inputs instead of failing.
+    *
+    * Present inputs are converted using the expected type (type mismatches still raise errors).
+    * Missing inputs are silently skipped so the runtime can produce a Suspended status.
+    *
+    * @param inputs
+    *   Map of input names to JSON values
+    * @param dagSpec
+    *   The DAG specification containing input schema
+    * @return
+    *   IO containing Map of provided input names to CValue
+    */
+  def convertInputsLenient(
+      inputs: Map[String, Json],
+      dagSpec: DagSpec
+  ): IO[Map[String, CValue]] =
+    dagSpec.userInputDataNodes.toList
+      .traverse { case (uuid, dataSpec) =>
+        val inputName = dataSpec.name
+        inputs.get(inputName) match {
+          case Some(json) =>
+            JsonCValueConverter.jsonToCValue(json, dataSpec.cType, inputName) match {
+              case Right(cValue) =>
+                IO.pure(Some(inputName -> cValue))
+              case Left(error) =>
+                IO.raiseError(new RuntimeException(s"Input '$inputName': $error"))
+            }
+          case None =>
+            IO.pure(None)
+        }
+      }
+      .map(_.flatten.toMap)
+
+  /** Build a map of missing input names to their expected type strings.
+    *
+    * Cross-references the provided input names against `dagSpec.userInputDataNodes` to identify
+    * which inputs were not provided, and returns their names mapped to `cType.toString`.
+    *
+    * @param providedInputNames
+    *   Names of inputs that were actually provided
+    * @param dagSpec
+    *   The DAG specification containing input schema
+    * @return
+    *   Map of missing input names to type strings (e.g. "CInt", "CString")
+    */
+  def buildMissingInputsMap(
+      providedInputNames: Set[String],
+      dagSpec: DagSpec
+  ): Map[String, String] =
+    dagSpec.userInputDataNodes.values
+      .filterNot(spec => providedInputNames.contains(spec.name))
+      .map(spec => spec.name -> spec.cType.toString)
+      .toMap
 
   /** Extract outputs from Runtime.State and convert to JSON.
     *

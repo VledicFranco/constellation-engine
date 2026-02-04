@@ -212,6 +212,85 @@ class ExecutionHelperTest extends AnyFlatSpec with Matchers {
     result("opt") shouldBe CValue.CNone(CType.CString)
   }
 
+  // ========== convertInputsLenient Tests ==========
+
+  "ExecutionHelper.convertInputsLenient" should "skip missing inputs" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val inputs      = Map("x" -> Json.fromInt(42)) // missing "y"
+
+    val result = ExecutionHelper.convertInputsLenient(inputs, dag).unsafeRunSync()
+
+    result.size shouldBe 1
+    result("x") shouldBe CValue.CInt(42)
+    result.get("y") shouldBe None
+  }
+
+  it should "still fail for type mismatch" in {
+    val dag    = createInputOnlyDagSpec("x", CType.CInt)
+    val inputs = Map("x" -> Json.fromString("not a number"))
+
+    val error = intercept[RuntimeException] {
+      ExecutionHelper.convertInputsLenient(inputs, dag).unsafeRunSync()
+    }
+
+    error.getMessage should include("x")
+  }
+
+  it should "convert all inputs when all are present" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val inputs = Map(
+      "x" -> Json.fromInt(42),
+      "y" -> Json.fromString("test")
+    )
+
+    val result = ExecutionHelper.convertInputsLenient(inputs, dag).unsafeRunSync()
+
+    result.size shouldBe 2
+    result("x") shouldBe CValue.CInt(42)
+    result("y") shouldBe CValue.CString("test")
+  }
+
+  it should "return empty map when all inputs are missing" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val inputs      = Map.empty[String, Json]
+
+    val result = ExecutionHelper.convertInputsLenient(inputs, dag).unsafeRunSync()
+
+    result shouldBe empty
+  }
+
+  // ========== buildMissingInputsMap Tests ==========
+
+  "ExecutionHelper.buildMissingInputsMap" should "return correct name-to-type map for missing inputs" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val provided    = Set("x") // only x provided, y is missing
+
+    val result = ExecutionHelper.buildMissingInputsMap(provided, dag)
+
+    result.size shouldBe 1
+    result("y") shouldBe "CString"
+  }
+
+  it should "return empty map when all inputs are provided" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val provided    = Set("x", "y")
+
+    val result = ExecutionHelper.buildMissingInputsMap(provided, dag)
+
+    result shouldBe empty
+  }
+
+  it should "return all inputs when none are provided" in {
+    val (dag, _, _) = createDagSpecWithMultipleInputs()
+    val provided    = Set.empty[String]
+
+    val result = ExecutionHelper.buildMissingInputsMap(provided, dag)
+
+    result.size shouldBe 2
+    result("x") shouldBe "CInt"
+    result("y") shouldBe "CString"
+  }
+
   // ========== extractOutputs Tests ==========
 
   "ExecutionHelper.extractOutputs" should "extract declared outputs from state" in {

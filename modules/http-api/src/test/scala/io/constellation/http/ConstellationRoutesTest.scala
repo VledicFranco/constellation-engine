@@ -196,7 +196,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.NotFound
   }
 
-  it should "return 400 for missing required input" in {
+  it should "return 200 with suspended status for missing input" in {
     // First compile a DAG with two inputs (both are top-level data nodes)
     val compileRequest = CompileRequest(
       source = """
@@ -222,10 +222,13 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
       .withEntity(executeRequest)
     val response = routes.orNotFound.run(execReq).unsafeRunSync()
 
-    response.status shouldBe Status.BadRequest
+    response.status shouldBe Status.Ok
     val body = response.as[ExecuteResponse].unsafeRunSync()
-    body.success shouldBe false
-    body.error.get should include("Missing required input")
+    body.success shouldBe true
+    body.status shouldBe Some("suspended")
+    body.missingInputs should not be None
+    body.missingInputs.get should contain key "y"
+    body.executionId should not be None
   }
 
   it should "return 400 for input type mismatch" in {
@@ -347,7 +350,7 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
     body.compilationErrors should not be empty
   }
 
-  it should "return 400 for missing required input in /run" in {
+  it should "return 200 with suspended status for missing input in /run" in {
     val runRequest = RunRequest(
       source = """
         in x: Int
@@ -362,10 +365,14 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
       .withEntity(runRequest)
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
-    response.status shouldBe Status.BadRequest
+    response.status shouldBe Status.Ok
     val body = response.as[RunResponse].unsafeRunSync()
-    body.success shouldBe false
-    body.error.get should include("Missing required input")
+    body.success shouldBe true
+    body.status shouldBe Some("suspended")
+    body.missingInputs should not be None
+    body.missingInputs.get should contain key "y"
+    body.executionId should not be None
+    body.structuralHash should not be None
   }
 
   it should "return 400 for input type mismatch in /run" in {
@@ -415,6 +422,87 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
         "age"  -> Json.fromLong(30)
       )
     )
+  }
+
+  it should "return status 'completed' with executionId for successful /execute" in {
+    // Compile a simple passthrough
+    val compileRequest = CompileRequest(
+      source = """
+        in text: String
+        out text
+      """,
+      dagName = Some("status-test-pipeline")
+    )
+
+    val compileReq = Request[IO](Method.POST, uri"/compile")
+      .withEntity(compileRequest)
+    routes.orNotFound.run(compileReq).unsafeRunSync()
+
+    // Execute with all inputs
+    val executeRequest = ExecuteRequest(
+      dagName = Some("status-test-pipeline"),
+      inputs = Map("text" -> Json.fromString("hello"))
+    )
+
+    val execReq = Request[IO](Method.POST, uri"/execute")
+      .withEntity(executeRequest)
+    val response = routes.orNotFound.run(execReq).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe true
+    body.status shouldBe Some("completed")
+    body.executionId should not be None
+    body.resumptionCount shouldBe Some(0)
+    body.missingInputs shouldBe None
+    body.pendingOutputs shouldBe None
+  }
+
+  it should "return status 'completed' with executionId for successful /run" in {
+    val runRequest = RunRequest(
+      source = """
+        in text: String
+        out text
+      """,
+      inputs = Map("text" -> Json.fromString("hello"))
+    )
+
+    val request = Request[IO](Method.POST, uri"/run")
+      .withEntity(runRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[RunResponse].unsafeRunSync()
+    body.success shouldBe true
+    body.status shouldBe Some("completed")
+    body.executionId should not be None
+    body.resumptionCount shouldBe Some(0)
+    body.missingInputs shouldBe None
+    body.pendingOutputs shouldBe None
+    body.structuralHash should not be None
+  }
+
+  it should "include missing input type information for suspended /run" in {
+    val runRequest = RunRequest(
+      source = """
+        in x: Int
+        in y: String
+        out x
+      """,
+      inputs = Map("x" -> Json.fromLong(42))
+      // missing "y"
+    )
+
+    val request = Request[IO](Method.POST, uri"/run")
+      .withEntity(runRequest)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.Ok
+    val body = response.as[RunResponse].unsafeRunSync()
+    body.status shouldBe Some("suspended")
+    body.missingInputs should not be None
+    // Verify the missing input includes the type string
+    body.missingInputs.flatMap(_.get("y")) shouldBe Some("CString")
   }
 
   it should "run script with multiple inputs where all are required" in {

@@ -83,11 +83,22 @@ object ApiModels {
     }
   }
 
-  /** Response from DAG execution */
+  /** Response from DAG execution.
+    *
+    * When suspension-aware fields are populated: `status` is "completed", "suspended", or "failed";
+    * `executionId` is a UUID string; `missingInputs` maps missing input names to type strings;
+    * `pendingOutputs` lists outputs that were not computed; `resumptionCount` tracks resume count.
+    * All new fields default to None for backward compatibility.
+    */
   case class ExecuteResponse(
       success: Boolean,
       outputs: Map[String, Json] = Map.empty,
-      error: Option[String] = None
+      error: Option[String] = None,
+      status: Option[String] = None,
+      executionId: Option[String] = None,
+      missingInputs: Option[Map[String, String]] = None,
+      pendingOutputs: Option[List[String]] = None,
+      resumptionCount: Option[Int] = None
   )
 
   object ExecuteResponse {
@@ -108,14 +119,20 @@ object ApiModels {
 
   /** Response from compile-and-run.
     *
-    * Now includes `structuralHash` so callers can reference the program by hash.
+    * Now includes `structuralHash` so callers can reference the program by hash. Suspension-aware
+    * fields mirror those on [[ExecuteResponse]].
     */
   case class RunResponse(
       success: Boolean,
       outputs: Map[String, Json] = Map.empty,
       structuralHash: Option[String] = None,
       compilationErrors: List[String] = List.empty,
-      error: Option[String] = None
+      error: Option[String] = None,
+      status: Option[String] = None,
+      executionId: Option[String] = None,
+      missingInputs: Option[Map[String, String]] = None,
+      pendingOutputs: Option[List[String]] = None,
+      resumptionCount: Option[Int] = None
   )
 
   object RunResponse {
