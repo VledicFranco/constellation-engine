@@ -260,9 +260,10 @@ object ConstellationServer {
         dashboardRoutesOpt <- Resource.eval(dashboardRoutesIO)
         rateLimitState     <- Resource.eval(rateLimitBucketsIO)
 
-        // Create pipeline version store and file path map
+        // Create pipeline version store, file path map, and canary router
         versionStore <- Resource.eval(PipelineVersionStore.init)
         filePathRef  <- Resource.eval(Ref.of[IO, Map[String, java.nio.file.Path]](Map.empty))
+        canaryRouter <- Resource.eval(CanaryRouter.init)
 
         // Load pipelines from directory if configured (before server starts listening)
         _ <- Resource.eval(
@@ -289,7 +290,7 @@ object ConstellationServer {
           }
         )
 
-        // Create HTTP routes with version store wired in
+        // Create HTTP routes with version store and canary router wired in
         httpRoutes = new ConstellationRoutes(
           constellation,
           compiler,
@@ -297,7 +298,8 @@ object ConstellationServer {
           scheduler = None,
           lifecycle = None,
           versionStore = Some(versionStore),
-          filePathMap = Some(filePathRef)
+          filePathMap = Some(filePathRef),
+          canaryRouter = Some(canaryRouter)
         ).routes
 
         server <- EmberServerBuilder

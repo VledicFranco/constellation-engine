@@ -43,7 +43,8 @@ class ConstellationRoutes(
     scheduler: Option[GlobalScheduler] = None,
     lifecycle: Option[ConstellationLifecycle] = None,
     versionStore: Option[PipelineVersionStore] = None,
-    filePathMap: Option[Ref[IO, Map[String, Path]]] = None
+    filePathMap: Option[Ref[IO, Map[String, Path]]] = None,
+    canaryRouter: Option[CanaryRouter] = None
 ) {
 
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationRoutes])
@@ -554,6 +555,98 @@ class ConstellationRoutes(
       }
 
     // ---------------------------------------------------------------------------
+    // Canary release endpoints (Phase 4b)
+    // ---------------------------------------------------------------------------
+
+    // Get canary deployment status
+    case GET -> Root / "pipelines" / name / "canary" =>
+      canaryRouter match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "CanaryNotEnabled", message = "Canary routing not enabled")
+          )
+        case Some(cr) =>
+          cr.getState(name).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(
+                  error = "NotFound",
+                  message = s"No canary deployment active for pipeline '$name'"
+                )
+              )
+            case Some(state) =>
+              Ok(toCanaryStateResponse(state))
+          }
+      }
+
+    // Manually promote canary to next step
+    case POST -> Root / "pipelines" / name / "canary" / "promote" =>
+      canaryRouter match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "CanaryNotEnabled", message = "Canary routing not enabled")
+          )
+        case Some(cr) =>
+          cr.promote(name).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(
+                  error = "NotFound",
+                  message = s"No canary deployment active for pipeline '$name'"
+                )
+              )
+            case Some(state) =>
+              // If promotion completed the canary, update the alias to the new version
+              (if state.status == CanaryStatus.Complete then
+                constellation.PipelineStore.alias(name, state.newVersion.structuralHash)
+              else IO.unit) *>
+              Ok(toCanaryStateResponse(state))
+          }
+      }
+
+    // Manually rollback canary
+    case POST -> Root / "pipelines" / name / "canary" / "rollback" =>
+      canaryRouter match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "CanaryNotEnabled", message = "Canary routing not enabled")
+          )
+        case Some(cr) =>
+          cr.rollback(name).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(
+                  error = "NotFound",
+                  message = s"No canary deployment active for pipeline '$name'"
+                )
+              )
+            case Some(state) =>
+              Ok(toCanaryStateResponse(state))
+          }
+      }
+
+    // Abort canary deployment
+    case DELETE -> Root / "pipelines" / name / "canary" =>
+      canaryRouter match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "CanaryNotEnabled", message = "Canary routing not enabled")
+          )
+        case Some(cr) =>
+          cr.abort(name).flatMap {
+            case None =>
+              NotFound(
+                ErrorResponse(
+                  error = "NotFound",
+                  message = s"No canary deployment active for pipeline '$name'"
+                )
+              )
+            case Some(state) =>
+              Ok(toCanaryStateResponse(state))
+          }
+      }
+
+    // ---------------------------------------------------------------------------
     // Suspension management endpoints (Phase 2)
     // ---------------------------------------------------------------------------
 
@@ -916,38 +1009,73 @@ class ConstellationRoutes(
     *
     * Returns the full DataSignature and DagSpec so route handlers can populate suspension fields.
     * If inputs are incomplete, returns a Suspended DataSignature without calling the runtime.
+    *
+    * When a canary deployment is active for the pipeline name, traffic is routed to either the old
+    * or new version based on the configured weight. Execution latency and success/failure are
+    * recorded in the canary metrics.
     */
   private def executeByRef(
       ref: String,
       jsonInputs: Map[String, Json]
   ): EitherT[IO, ApiError, (DataSignature, DagSpec)] =
     EitherT(
-      resolveImage(ref).flatMap {
-        case Some(image) =>
-          val dagSpec = image.dagSpec
-          convertInputsLenient(jsonInputs, dagSpec).value.flatMap {
-            case Left(err) => IO.pure(Left(err))
-            case Right(inputs) =>
-              val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
-              val missingNames  = allInputNames -- inputs.keySet
-              if missingNames.nonEmpty then {
-                // Short-circuit: build a Suspended DataSignature without runtime execution
-                val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
-                IO.pure(Right((sig, dagSpec)))
-              } else {
-                val loaded = io.constellation.PipelineImage.rehydrate(image)
-                constellation.run(loaded, inputs).attempt.map {
-                  case Right(sig) =>
-                    Right((sig, dagSpec))
-                  case Left(err) =>
-                    Left(ApiError.ExecutionError(s"Execution failed: ${err.getMessage}"))
+      // Check if canary routing applies (only for name refs, not hash refs)
+      canaryRouter
+        .filter(_ => !ref.startsWith("sha256:") && ref.length != 64)
+        .traverse(_.selectVersion(ref))
+        .map(_.flatten)
+        .flatMap {
+          case Some(selectedHash) =>
+            // Canary active — execute the selected version by hash and record metrics
+            val startTime = System.nanoTime()
+            resolveImage(s"sha256:$selectedHash").flatMap {
+              case Some(image) =>
+                executeImage(image, jsonInputs).flatMap { result =>
+                  val latencyMs = (System.nanoTime() - startTime) / 1e6
+                  val success = result.isRight && result.toOption.exists { case (sig, _) =>
+                    sig.status != PipelineStatus.Failed(Nil)
+                  }
+                  canaryRouter
+                    .traverse(_.recordResult(ref, selectedHash, success, latencyMs))
+                    .as(result)
                 }
-              }
-          }
-        case None =>
-          IO.pure(Left(ApiError.NotFoundError("Pipeline", ref)))
-      }
+              case None =>
+                IO.pure(Left(ApiError.NotFoundError("Pipeline", ref)))
+            }
+          case None =>
+            // No canary — normal resolution
+            resolveImage(ref).flatMap {
+              case Some(image) => executeImage(image, jsonInputs)
+              case None        => IO.pure(Left(ApiError.NotFoundError("Pipeline", ref)))
+            }
+        }
     )
+
+  /** Execute a resolved pipeline image with the given JSON inputs. */
+  private def executeImage(
+      image: PipelineImage,
+      jsonInputs: Map[String, Json]
+  ): IO[Either[ApiError, (DataSignature, DagSpec)]] = {
+    val dagSpec = image.dagSpec
+    convertInputsLenient(jsonInputs, dagSpec).value.flatMap {
+      case Left(err) => IO.pure(Left(err))
+      case Right(inputs) =>
+        val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
+        val missingNames  = allInputNames -- inputs.keySet
+        if missingNames.nonEmpty then {
+          val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
+          IO.pure(Right((sig, dagSpec)))
+        } else {
+          val loaded = io.constellation.PipelineImage.rehydrate(image)
+          constellation.run(loaded, inputs).attempt.map {
+            case Right(sig) =>
+              Right((sig, dagSpec))
+            case Left(err) =>
+              Left(ApiError.ExecutionError(s"Execution failed: ${err.getMessage}"))
+          }
+        }
+    }
+  }
 
   /** Compile, store, and run a script in one step.
     *
@@ -1168,20 +1296,50 @@ class ConstellationRoutes(
                     for {
                       // Store new image
                       _ <- constellation.PipelineStore.store(image)
-                      // Update alias
-                      _ <- constellation.PipelineStore.alias(name, newHash)
+                      // Update alias (unless canary — alias stays on old version during canary)
+                      _ <- if reloadReq.canary.isEmpty then
+                        constellation.PipelineStore.alias(name, newHash)
+                      else IO.unit
                       // Record new version
                       pv <- vs.recordVersion(name, newHash, Some(source))
-                      resp <- Ok(
-                        ReloadResponse(
-                          success = true,
-                          previousHash = currentHashOpt,
-                          newHash = newHash,
-                          name = name,
-                          changed = true,
-                          version = pv.version
-                        )
-                      )
+                      // Start canary deployment if requested
+                      canaryStateOpt <- (canaryRouter, reloadReq.canary) match {
+                        case (Some(cr), Some(ccReq)) =>
+                          val canaryConfig = toCanaryConfig(ccReq)
+                          // Look up old version from the version store
+                          vs.getVersion(name, pv.version - 1).flatMap {
+                            case Some(oldPv) =>
+                              cr.startCanary(name, oldPv, pv, canaryConfig)
+                            case None =>
+                              // No previous version — cannot canary
+                              IO.pure(Left("No previous version exists for canary deployment"))
+                          }
+                        case _ => IO.pure(Right(null)) // No canary requested
+                      }
+                      resp <- canaryStateOpt match {
+                        case Left(errMsg) if reloadReq.canary.isDefined =>
+                          Conflict(
+                            ErrorResponse(
+                              error = "CanaryConflict",
+                              message = errMsg
+                            )
+                          )
+                        case _ =>
+                          val canaryResp = canaryStateOpt.toOption
+                            .flatMap(Option(_))
+                            .map(toCanaryStateResponse)
+                          Ok(
+                            ReloadResponse(
+                              success = true,
+                              previousHash = currentHashOpt,
+                              newHash = newHash,
+                              name = name,
+                              changed = true,
+                              version = pv.version,
+                              canary = canaryResp
+                            )
+                          )
+                      }
                     } yield resp
                   }
                 } yield result
@@ -1281,6 +1439,70 @@ class ConstellationRoutes(
       case Right(uuid) =>
         store.list(SuspensionFilter(executionId = Some(uuid))).map(_.headOption.map(_.handle))
     }
+
+  /** Convert a CanaryConfigRequest to a CanaryConfig, applying defaults for omitted fields. */
+  private def toCanaryConfig(req: CanaryConfigRequest): CanaryConfig = {
+    val defaults = CanaryConfig()
+    CanaryConfig(
+      initialWeight = req.initialWeight.getOrElse(defaults.initialWeight),
+      promotionSteps = req.promotionSteps.getOrElse(defaults.promotionSteps),
+      observationWindow = req.observationWindow.flatMap(parseDuration).getOrElse(defaults.observationWindow),
+      errorThreshold = req.errorThreshold.getOrElse(defaults.errorThreshold),
+      latencyThresholdMs = req.latencyThresholdMs.orElse(defaults.latencyThresholdMs),
+      minRequests = req.minRequests.getOrElse(defaults.minRequests),
+      autoPromote = req.autoPromote.getOrElse(defaults.autoPromote)
+    )
+  }
+
+  /** Parse a duration string like "5m", "30s", "1h" to a FiniteDuration. */
+  private def parseDuration(s: String): Option[FiniteDuration] = {
+    val pattern = """(\d+)(s|ms|m|min|h)""".r
+    s.toLowerCase match {
+      case pattern(num, "s")   => num.toIntOption.map(_.seconds)
+      case pattern(num, "ms")  => num.toIntOption.map(_.milliseconds)
+      case pattern(num, "m")   => num.toIntOption.map(_.minutes)
+      case pattern(num, "min") => num.toIntOption.map(_.minutes)
+      case pattern(num, "h")   => num.toIntOption.map(_.hours)
+      case _                   => s.toIntOption.map(_.seconds)
+    }
+  }
+
+  /** Convert a CanaryState to its API response model. */
+  private def toCanaryStateResponse(state: CanaryState): CanaryStateResponse = {
+    def toMetricsResponse(vm: VersionMetrics): VersionMetricsResponse =
+      VersionMetricsResponse(
+        requests = vm.requests,
+        successes = vm.successes,
+        failures = vm.failures,
+        avgLatencyMs = vm.avgLatencyMs,
+        p99LatencyMs = vm.p99LatencyMs
+      )
+
+    CanaryStateResponse(
+      pipelineName = state.pipelineName,
+      oldVersion = CanaryVersionInfo(
+        version = state.oldVersion.version,
+        structuralHash = state.oldVersion.structuralHash
+      ),
+      newVersion = CanaryVersionInfo(
+        version = state.newVersion.version,
+        structuralHash = state.newVersion.structuralHash
+      ),
+      currentWeight = state.currentWeight,
+      currentStep = state.currentStep,
+      status = state.status match {
+        case CanaryStatus.Observing  => "observing"
+        case CanaryStatus.Promoting  => "promoting"
+        case CanaryStatus.RolledBack => "rolled_back"
+        case CanaryStatus.Complete   => "complete"
+      },
+      startedAt = state.startedAt.toString,
+      metrics = CanaryMetricsResponse(
+        oldVersion = toMetricsResponse(state.metrics.oldVersion),
+        newVersion = toMetricsResponse(state.metrics.newVersion)
+      )
+    )
+  }
 
   /** Build a Suspended DataSignature without executing the runtime.
     *

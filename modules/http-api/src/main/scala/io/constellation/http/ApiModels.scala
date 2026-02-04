@@ -331,8 +331,14 @@ object ApiModels {
     *
     * If `source` is provided, the pipeline is recompiled from that source. If omitted, the server
     * attempts to re-read the original file (if a file path is known from startup loading).
+    *
+    * If `canary` is provided and the reload produces a changed pipeline, a canary deployment is
+    * started to gradually shift traffic from the old version to the new one.
     */
-  case class ReloadRequest(source: Option[String] = None)
+  case class ReloadRequest(
+      source: Option[String] = None,
+      canary: Option[CanaryConfigRequest] = None
+  )
 
   object ReloadRequest {
     given Encoder[ReloadRequest] = deriveEncoder
@@ -346,7 +352,8 @@ object ApiModels {
       newHash: String,
       name: String,
       changed: Boolean,
-      version: Int
+      version: Int,
+      canary: Option[CanaryStateResponse] = None
   )
 
   object ReloadResponse {
@@ -391,5 +398,82 @@ object ApiModels {
   object RollbackResponse {
     given Encoder[RollbackResponse] = deriveEncoder
     given Decoder[RollbackResponse] = deriveDecoder
+  }
+
+  // ---------------------------------------------------------------------------
+  // Canary release models (Phase 4b)
+  // ---------------------------------------------------------------------------
+
+  /** Canary configuration for a reload request.
+    *
+    * All fields are optional — omitted fields use the defaults from [[CanaryConfig]].
+    * `observationWindow` is a duration string like "5m", "30s", "1h".
+    */
+  case class CanaryConfigRequest(
+      initialWeight: Option[Double] = None,
+      promotionSteps: Option[List[Double]] = None,
+      observationWindow: Option[String] = None,
+      errorThreshold: Option[Double] = None,
+      latencyThresholdMs: Option[Long] = None,
+      minRequests: Option[Int] = None,
+      autoPromote: Option[Boolean] = None
+  )
+
+  object CanaryConfigRequest {
+    given Encoder[CanaryConfigRequest] = deriveEncoder
+    given Decoder[CanaryConfigRequest] = deriveDecoder
+  }
+
+  /** Version info within a canary state response. */
+  case class CanaryVersionInfo(
+      version: Int,
+      structuralHash: String
+  )
+
+  object CanaryVersionInfo {
+    given Encoder[CanaryVersionInfo] = deriveEncoder
+    given Decoder[CanaryVersionInfo] = deriveDecoder
+  }
+
+  /** Per-version metrics in a canary state response. */
+  case class VersionMetricsResponse(
+      requests: Long,
+      successes: Long,
+      failures: Long,
+      avgLatencyMs: Double,
+      p99LatencyMs: Double
+  )
+
+  object VersionMetricsResponse {
+    given Encoder[VersionMetricsResponse] = deriveEncoder
+    given Decoder[VersionMetricsResponse] = deriveDecoder
+  }
+
+  /** Combined metrics for old and new versions. */
+  case class CanaryMetricsResponse(
+      oldVersion: VersionMetricsResponse,
+      newVersion: VersionMetricsResponse
+  )
+
+  object CanaryMetricsResponse {
+    given Encoder[CanaryMetricsResponse] = deriveEncoder
+    given Decoder[CanaryMetricsResponse] = deriveDecoder
+  }
+
+  /** API response representing the current state of a canary deployment. */
+  case class CanaryStateResponse(
+      pipelineName: String,
+      oldVersion: CanaryVersionInfo,
+      newVersion: CanaryVersionInfo,
+      currentWeight: Double,
+      currentStep: Int,
+      status: String,
+      startedAt: String,
+      metrics: CanaryMetricsResponse
+  )
+
+  object CanaryStateResponse {
+    given Encoder[CanaryStateResponse] = deriveEncoder
+    given Decoder[CanaryStateResponse] = deriveDecoder
   }
 }
