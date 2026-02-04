@@ -52,10 +52,10 @@ trait Constellation {
   // New API (Phase 1)
   // ---------------------------------------------------------------------------
 
-  /** Access the program store for managing compiled program images. */
+  /** Access the pipeline store for managing compiled pipeline images. */
   def PipelineStore: PipelineStore
 
-  /** Execute a loaded program with the given inputs.
+  /** Execute a loaded pipeline with the given inputs.
     *
     * @param loaded
     *   A LoadedPipeline (from compilation or rehydration)
@@ -72,13 +72,13 @@ trait Constellation {
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 
-  /** Execute a program by reference (alias name or "sha256:<hash>").
+  /** Execute a pipeline by reference (alias name or "sha256:<hash>").
     *
     * Resolves the reference via the PipelineStore, rehydrates the LoadedPipeline, and delegates to
     * `run(loaded, inputs, options)`.
     *
     * @param ref
-    *   A program alias name or "sha256:<hash>" structural hash
+    *   A pipeline alias name or "sha256:<hash>" structural hash
     * @param inputs
     *   Input values keyed by variable name
     * @param options

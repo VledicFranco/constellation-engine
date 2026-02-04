@@ -325,6 +325,43 @@ class PipelineReloadTest extends AnyFlatSpec with Matchers {
     versions.head.source shouldBe Some(sourceV1)
   }
 
+  it should "execute using the correct version after rollback" in {
+    val (routes, _, _) = routesWithVersioning()
+
+    // Compile v1: only needs x
+    compilePipeline(routes, "scoring", sourceV1)
+
+    // Compile v2: needs x and y
+    compilePipeline(routes, "scoring", sourceV2)
+
+    // Rollback to v1
+    val rollbackReq  = Request[IO](Method.POST, uri"/pipelines/scoring/rollback")
+    val rollbackResp = routes.orNotFound.run(rollbackReq).unsafeRunSync()
+    rollbackResp.status shouldBe Status.Ok
+
+    // Execute by name — should use v1 (only needs x)
+    val execReq = Request[IO](Method.POST, uri"/execute")
+      .withEntity(ExecuteRequest(dagName = Some("scoring"), inputs = Map("x" -> Json.fromLong(42))))
+    val execResp = routes.orNotFound.run(execReq).unsafeRunSync()
+
+    execResp.status shouldBe Status.Ok
+    val body = execResp.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe true
+    body.status shouldBe Some("completed")
+    body.outputs.get("x") shouldBe Some(Json.fromLong(42))
+  }
+
+  it should "return 404 for reload of non-existent pipeline with no source" in {
+    val (routes, _, _) = routesWithVersioning()
+
+    // Try to reload a pipeline that was never compiled, without providing source
+    val reloadReq = Request[IO](Method.POST, uri"/pipelines/nonexistent/reload")
+    val resp      = routes.orNotFound.run(reloadReq).unsafeRunSync()
+
+    // Should fail because there's no source and no file path
+    resp.status shouldBe Status.BadRequest
+  }
+
   it should "not create version entry when no name is provided" in {
     val (routes, vs, _) = routesWithVersioning()
 

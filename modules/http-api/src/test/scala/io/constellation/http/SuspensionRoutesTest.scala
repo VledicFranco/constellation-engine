@@ -354,6 +354,71 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
     listBody.executions should have size 1
   }
 
+  // ---------------------------------------------------------------------------
+  // Edge cases: unknown input, duplicate input, resume after completion
+  // ---------------------------------------------------------------------------
+
+  "Resume edge cases" should "return 400 for unknown input name" in {
+    val (routes, _) = routesWithStore
+
+    // Create a suspension
+    val runRequest = RunRequest(
+      source = """
+        in x: Int
+        in y: Int
+        out x
+      """,
+      inputs = Map("x" -> Json.fromLong(5))
+    )
+
+    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
+    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val executionId = runBody.executionId.get
+
+    // Resume with an input name that doesn't exist in the pipeline
+    val resumeReq = ResumeRequest(additionalInputs = Some(Map("nonexistent" -> Json.fromLong(10))))
+    val request = Request[IO](Method.POST, Uri.unsafeFromString(s"/executions/$executionId/resume"))
+      .withEntity(resumeReq)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    // UnknownNodeError is caught and returns 400
+    response.status shouldBe Status.BadRequest
+  }
+
+  it should "return 400 when re-providing an already-provided input with a different value" in {
+    val (routes, _) = routesWithStore
+
+    // Create a suspension (x provided, y missing)
+    val runRequest = RunRequest(
+      source = """
+        in x: Int
+        in y: Int
+        out x
+      """,
+      inputs = Map("x" -> Json.fromLong(5))
+    )
+
+    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
+    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val executionId = runBody.executionId.get
+
+    // Resume providing x again with a DIFFERENT value (5 → 99) plus y
+    val resumeReq = ResumeRequest(
+      additionalInputs = Some(Map("x" -> Json.fromLong(99), "y" -> Json.fromLong(10)))
+    )
+    val request = Request[IO](Method.POST, Uri.unsafeFromString(s"/executions/$executionId/resume"))
+      .withEntity(resumeReq)
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    // InputAlreadyProvidedError is caught and returns 400
+    response.status shouldBe Status.BadRequest
+    val body = response.as[ExecuteResponse].unsafeRunSync()
+    body.success shouldBe false
+    body.error.get should include("Input error")
+  }
+
   it should "not save completed executions to store" in {
     val (routes, _) = routesWithStore
 

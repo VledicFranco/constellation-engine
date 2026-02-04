@@ -8,7 +8,7 @@ import io.constellation.http.ConstellationServer
 /** Demo HTTP server with standard library functions pre-loaded
   *
   * This example demonstrates how to start a Constellation HTTP API server with the standard library
-  * functions available for use in constellation-lang programs.
+  * functions available for use in constellation-lang pipelines.
   *
   * Once started, you can:
   *   - Compile constellation-lang pipelines: POST /compile
@@ -22,7 +22,7 @@ import io.constellation.http.ConstellationServer
   * # Health check
   * curl http://localhost:8080/health
   *
-  * # Compile a program
+  * # Compile a pipeline
   * curl -X POST http://localhost:8080/compile \
   *   -H "Content-Type: application/json" \
   *   -d '{

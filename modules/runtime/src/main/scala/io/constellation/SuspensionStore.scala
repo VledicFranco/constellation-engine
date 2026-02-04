@@ -39,7 +39,7 @@ final case class SuspensionSummary(
   * All fields are optional; when set, they are combined with AND logic.
   *
   * @param structuralHash
-  *   Only include suspensions for this program hash
+  *   Only include suspensions for this pipeline hash
   * @param executionId
   *   Only include this specific execution
   * @param minResumptionCount

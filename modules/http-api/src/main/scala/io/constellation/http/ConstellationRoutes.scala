@@ -166,7 +166,7 @@ class ConstellationRoutes(
           } yield response
       }
 
-    // Execute a program by reference (name, structural hash, or legacy dagName)
+    // Execute a pipeline by reference (name, structural hash, or legacy dagName)
     case req @ POST -> Root / "execute" =>
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
@@ -1027,9 +1027,9 @@ class ConstellationRoutes(
         .flatMap {
           case Some(selectedHash) =>
             // Canary active — execute the selected version by hash and record metrics
-            val startTime = System.nanoTime()
             resolveImage(s"sha256:$selectedHash").flatMap {
               case Some(image) =>
+                val startTime = System.nanoTime()
                 executeImage(image, jsonInputs).flatMap { result =>
                   val latencyMs = (System.nanoTime() - startTime) / 1e6
                   val success = result.isRight && result.toOption.exists { case (sig, _) =>

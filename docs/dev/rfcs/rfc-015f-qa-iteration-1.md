@@ -243,16 +243,16 @@ Each RFC phase was audited by cross-referencing the RFC specification against th
 
 | ID | Severity | Phase | Component | Short Description | Status |
 |----|----------|-------|-----------|-------------------|--------|
-| F-0.1 | Low | 0 | Comments | 17 stale "program" references in Scaladoc | Open |
+| F-0.1 | Low | 0 | Comments | 17 stale "program" references in Scaladoc | Fixed |
 | F-1.1 | Critical | 1–2 | SuspensionStore | No TTL for stale suspensions — memory leak | Fixed in `a8cf31f` |
-| F-1.2 | Medium | 1–2 | Tests | Missing HTTP tests for suspension edge cases | Open |
+| F-1.2 | Medium | 1–2 | Tests | Missing HTTP tests for suspension edge cases | Fixed |
 | F-2.1 | Critical | 3–4a | PipelineLoader | Stores images before confirming overall success | Fixed in `a8cf31f` |
 | F-2.2 | Critical | 3–4a | VersionStore | Unbounded version history growth | Fixed in `a8cf31f` |
-| F-2.3 | Medium | 3–4a | Tests | Missing HTTP tests for reload/version endpoints | Open |
+| F-2.3 | Medium | 3–4a | Tests | Missing HTTP tests for reload/version endpoints | Fixed |
 | F-3.1 | High | 4b | CanaryRouter | Race condition in step evaluation timing | Fixed in `a8cf31f` |
 | F-3.2 | Medium | 4b | CanaryRouter | Unbounded latency vector growth | Fixed in `a8cf31f` |
 | F-3.3 | Medium | 4b | CanaryRouter | Completed canary state blocks new canaries | Fixed in `a8cf31f` |
-| F-3.4 | Medium | 4b | CanaryRouter | Latency includes pre-execution overhead | Open |
+| F-3.4 | Medium | 4b | CanaryRouter | Latency includes pre-execution overhead | Fixed |
 | F-4.1 | Critical | 5 | FileSystemStore | Non-atomic concurrent alias writes | Fixed in `a8cf31f` |
 | F-4.2 | High | 5 | FileSystemStore | Syntactic index loses registryHash | Fixed in `a8cf31f` |
 | F-4.3 | Medium | 5 | FileSystemStore | Path traversal (latent, defense-in-depth) | Fixed in `a8cf31f` |
@@ -266,9 +266,9 @@ Each RFC phase was audited by cross-referencing the RFC specification against th
 |----------|-------|-------|------|----------|
 | Critical | 4 | 4 | 0 | F-1.1, F-2.1, F-2.2, F-4.1 |
 | High | 3 | 3 | 0 | F-3.1, F-4.2, F-5.1 |
-| Medium | 8 | 5 | 3 | F-1.2, F-2.3, F-3.2, F-3.3, F-3.4, F-4.3, F-4.4, F-4.5 |
-| Low | 1 | 0 | 1 | F-0.1 |
-| **Total** | **16** | **12** | **4** | |
+| Medium | 8 | 8 | 0 | F-1.2, F-2.3, F-3.2, F-3.3, F-3.4, F-4.3, F-4.4, F-4.5 |
+| Low | 1 | 1 | 0 | F-0.1 |
+| **Total** | **16** | **16** | **0** | |
 
 ---
 
