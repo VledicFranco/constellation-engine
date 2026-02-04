@@ -6,7 +6,7 @@ import com.comcast.ip4s.*
 import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
-import io.constellation.Constellation
+import io.constellation.{CValue, Constellation, ExecutionOptions, DataSignature, LoadedPipeline, Module, ModuleNodeSpec, PipelineStore, SuspensionHandle, SuspensionStore}
 import io.constellation.execution.{GlobalScheduler, TokenBucketRateLimiter}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
@@ -121,7 +121,8 @@ object ConstellationServer {
       corsConfig: Option[CorsConfig] = None,
       rateLimitConfig: Option[RateLimitConfig] = None,
       healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default,
-      pipelineLoaderConfig: Option[PipelineLoaderConfig] = None
+      pipelineLoaderConfig: Option[PipelineLoaderConfig] = None,
+      persistentStorePath: Option[Path] = None
   )
 
   /** Builder for creating a Constellation HTTP server */
@@ -211,6 +212,22 @@ object ConstellationServer {
         config.copy(pipelineLoaderConfig = Some(pipelineLoaderConfig))
       )
 
+    /** Enable persistent filesystem-backed pipeline store.
+      *
+      * Wraps the constellation's existing PipelineStore with a filesystem-backed layer. Pipeline
+      * images, aliases, and syntactic indices are persisted to disk so they survive server restarts.
+      *
+      * @param directory
+      *   Root directory for the persistent store (e.g. `.constellation-store`)
+      */
+    def withPersistentPipelineStore(directory: Path): ServerBuilder =
+      new ServerBuilder(
+        constellation,
+        compiler,
+        functionRegistry,
+        config.copy(persistentStorePath = Some(directory))
+      )
+
     /** Build the HTTP server resource.
       *
       * Validates all configuration at startup. Fails fast with clear errors if any config is
@@ -260,6 +277,18 @@ object ConstellationServer {
         dashboardRoutesOpt <- Resource.eval(dashboardRoutesIO)
         rateLimitState     <- Resource.eval(rateLimitBucketsIO)
 
+        // Optionally wrap the constellation with a persistent pipeline store
+        effectiveConstellation <- Resource.eval(
+          config.persistentStorePath match {
+            case Some(storePath) =>
+              FileSystemPipelineStore.init(storePath, constellation.PipelineStore).map { fsStore =>
+                wrapWithStore(constellation, fsStore)
+              }
+            case None =>
+              IO.pure(constellation)
+          }
+        )
+
         // Create pipeline version store, file path map, and canary router
         versionStore <- Resource.eval(PipelineVersionStore.init)
         filePathRef  <- Resource.eval(Ref.of[IO, Map[String, java.nio.file.Path]](Map.empty))
@@ -269,13 +298,13 @@ object ConstellationServer {
         _ <- Resource.eval(
           config.pipelineLoaderConfig match {
             case Some(plConfig) =>
-              PipelineLoader.load(plConfig, constellation, compiler).flatMap { result =>
+              PipelineLoader.load(plConfig, effectiveConstellation, compiler).flatMap { result =>
                 for {
                   // Populate file path map from loader results
                   _ <- filePathRef.update(_ ++ result.filePaths)
                   // Record v1 in version store for each loaded pipeline
                   _ <- result.filePaths.toList.traverse_ { case (alias, _) =>
-                    constellation.PipelineStore.resolve(alias).flatMap {
+                    effectiveConstellation.PipelineStore.resolve(alias).flatMap {
                       case Some(hash) => versionStore.recordVersion(alias, hash, None).void
                       case None       => IO.unit
                     }
@@ -292,7 +321,7 @@ object ConstellationServer {
 
         // Create HTTP routes with version store and canary router wired in
         httpRoutes = new ConstellationRoutes(
-          constellation,
+          effectiveConstellation,
           compiler,
           functionRegistry,
           scheduler = None,
@@ -362,6 +391,31 @@ object ConstellationServer {
           IO.never
       }
   }
+
+  /** Wrap a Constellation with a different PipelineStore, delegating all other operations.
+    *
+    * Used by `withPersistentPipelineStore()` to transparently intercept store operations while
+    * keeping the rest of the Constellation behavior unchanged.
+    */
+  private def wrapWithStore(delegate: Constellation, store: PipelineStore): Constellation =
+    new Constellation {
+      def getModules: IO[List[ModuleNodeSpec]] = delegate.getModules
+      def getModuleByName(name: String): IO[Option[Module.Uninitialized]] = delegate.getModuleByName(name)
+      def setModule(module: Module.Uninitialized): IO[Unit] = delegate.setModule(module)
+      def PipelineStore: PipelineStore = store
+      def run(loaded: LoadedPipeline, inputs: Map[String, CValue], options: ExecutionOptions): IO[DataSignature] =
+        delegate.run(loaded, inputs, options)
+      def run(ref: String, inputs: Map[String, CValue], options: ExecutionOptions): IO[DataSignature] =
+        delegate.run(ref, inputs, options)
+      override def suspensionStore: Option[SuspensionStore] = delegate.suspensionStore
+      def resumeFromStore(
+          handle: SuspensionHandle,
+          additionalInputs: Map[String, CValue],
+          resolvedNodes: Map[String, CValue],
+          options: ExecutionOptions
+      ): IO[DataSignature] =
+        delegate.resumeFromStore(handle, additionalInputs, resolvedNodes, options)
+    }
 
   /** Create a new server builder
     *

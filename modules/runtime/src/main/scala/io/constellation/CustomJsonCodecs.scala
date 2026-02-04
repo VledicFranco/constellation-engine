@@ -355,4 +355,34 @@ trait CustomJsonCodecs {
       DagSpec(metadata, modules, data, inEdges, outEdges, declaredOutputs, outputBindings)
     }
   }
+
+  // Instant codec (ISO-8601 string format)
+  given instantEncoder: Encoder[java.time.Instant] =
+    Encoder.instance(i => i.toString.asJson)
+
+  given instantDecoder: Decoder[java.time.Instant] =
+    Decoder.instance(_.as[String].map(java.time.Instant.parse))
+
+  // PipelineImage codec
+  given pipelineImageEncoder: Encoder[PipelineImage] = Encoder.instance { img =>
+    Json.obj(
+      "structuralHash" -> img.structuralHash.asJson,
+      "syntacticHash"  -> img.syntacticHash.asJson,
+      "dagSpec"        -> img.dagSpec.asJson,
+      "moduleOptions"  -> img.moduleOptions.asJson,
+      "compiledAt"     -> img.compiledAt.asJson,
+      "sourceHash"     -> img.sourceHash.asJson
+    )
+  }
+
+  given pipelineImageDecoder: Decoder[PipelineImage] = Decoder.instance { c =>
+    for {
+      structuralHash <- c.downField("structuralHash").as[String]
+      syntacticHash  <- c.downField("syntacticHash").as[String]
+      dagSpec        <- c.downField("dagSpec").as[DagSpec]
+      moduleOptions  <- c.downField("moduleOptions").as[Map[UUID, ModuleCallOptions]]
+      compiledAt     <- c.downField("compiledAt").as[java.time.Instant]
+      sourceHash     <- c.downField("sourceHash").as[Option[String]]
+    } yield PipelineImage(structuralHash, syntacticHash, dagSpec, moduleOptions, compiledAt, sourceHash)
+  }
 }
