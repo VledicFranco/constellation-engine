@@ -229,7 +229,6 @@ object ConstellationServer {
         return Resource.eval(IO.raiseError(new IllegalArgumentException(msg)))
       }
 
-      val httpRoutes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
       val healthRoutes =
         HealthCheckRoutes.routes(config.healthCheckConfig, compiler = Some(compiler))
       val lspHandler = LspWebSocketHandler(constellation, compiler)
@@ -260,19 +259,47 @@ object ConstellationServer {
       for {
         dashboardRoutesOpt <- Resource.eval(dashboardRoutesIO)
         rateLimitState     <- Resource.eval(rateLimitBucketsIO)
+
+        // Create pipeline version store and file path map
+        versionStore <- Resource.eval(PipelineVersionStore.init)
+        filePathRef  <- Resource.eval(Ref.of[IO, Map[String, java.nio.file.Path]](Map.empty))
+
         // Load pipelines from directory if configured (before server starts listening)
         _ <- Resource.eval(
           config.pipelineLoaderConfig match {
             case Some(plConfig) =>
               PipelineLoader.load(plConfig, constellation, compiler).flatMap { result =>
-                logger.info(
-                  s"PipelineLoader: startup complete — loaded=${result.loaded}, " +
-                    s"failed=${result.failed}, skipped=${result.skipped}"
-                )
+                for {
+                  // Populate file path map from loader results
+                  _ <- filePathRef.update(_ ++ result.filePaths)
+                  // Record v1 in version store for each loaded pipeline
+                  _ <- result.filePaths.toList.traverse_ { case (alias, _) =>
+                    constellation.PipelineStore.resolve(alias).flatMap {
+                      case Some(hash) => versionStore.recordVersion(alias, hash, None).void
+                      case None       => IO.unit
+                    }
+                  }
+                  _ <- logger.info(
+                    s"PipelineLoader: startup complete — loaded=${result.loaded}, " +
+                      s"failed=${result.failed}, skipped=${result.skipped}"
+                  )
+                } yield ()
               }
             case None => IO.unit
           }
         )
+
+        // Create HTTP routes with version store wired in
+        httpRoutes = new ConstellationRoutes(
+          constellation,
+          compiler,
+          functionRegistry,
+          scheduler = None,
+          lifecycle = None,
+          versionStore = Some(versionStore),
+          filePathMap = Some(filePathRef)
+        ).routes
+
         server <- EmberServerBuilder
           .default[IO]
           .withHost(host)

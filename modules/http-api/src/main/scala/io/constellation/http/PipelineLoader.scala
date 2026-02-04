@@ -21,8 +21,19 @@ object PipelineLoader {
   private val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.PipelineLoader")
 
-  /** Result of a pipeline loading operation. */
-  case class LoadResult(loaded: Int, failed: Int, skipped: Int, errors: List[String])
+  /** Result of a pipeline loading operation.
+    *
+    * @param filePaths
+    *   Map of alias name to source file path, for pipelines that were successfully loaded or
+    *   skipped (i.e. already in store). Used by the reload endpoint to re-read files.
+    */
+  case class LoadResult(
+      loaded: Int,
+      failed: Int,
+      skipped: Int,
+      errors: List[String],
+      filePaths: Map[String, Path] = Map.empty
+  )
 
   /** Load all `.cst` files from the configured directory.
     *
@@ -100,10 +111,17 @@ object PipelineLoader {
       registryHash: String
   ): IO[LoadResult] = {
     // Track seen alias names for FileName collision detection
-    case class Acc(loaded: Int, failed: Int, skipped: Int, errors: List[String], seenAliases: Set[String])
+    case class Acc(
+        loaded: Int,
+        failed: Int,
+        skipped: Int,
+        errors: List[String],
+        seenAliases: Set[String],
+        filePaths: Map[String, Path]
+    )
 
     files
-      .foldLeftM(Acc(0, 0, 0, Nil, Set.empty)) { (acc, file) =>
+      .foldLeftM(Acc(0, 0, 0, Nil, Set.empty, Map.empty)) { (acc, file) =>
         val aliasName = deriveAlias(file, baseDir, config.aliasStrategy)
 
         // Check for FileName collision
@@ -119,12 +137,14 @@ object PipelineLoader {
               case FileResult.Loaded =>
                 acc.copy(
                   loaded = acc.loaded + 1,
-                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _)
+                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
+                  filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
                 )
               case FileResult.Skipped =>
                 acc.copy(
                   skipped = acc.skipped + 1,
-                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _)
+                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
+                  filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
                 )
               case FileResult.Failed(msg) =>
                 acc.copy(
@@ -135,7 +155,7 @@ object PipelineLoader {
             }
         }
       }
-      .map(acc => LoadResult(acc.loaded, acc.failed, acc.skipped, acc.errors))
+      .map(acc => LoadResult(acc.loaded, acc.failed, acc.skipped, acc.errors, acc.filePaths))
   }
 
   private enum FileResult {

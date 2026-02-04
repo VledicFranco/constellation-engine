@@ -15,9 +15,11 @@ import io.constellation.lang.semantic.FunctionRegistry
 import io.circe.syntax.*
 import io.circe.Json
 
+import java.nio.file.{Files, Path}
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
+import cats.effect.Ref
 import org.http4s.{
   DecodeFailure,
   DecodeResult,
@@ -39,7 +41,9 @@ class ConstellationRoutes(
     compiler: LangCompiler,
     functionRegistry: FunctionRegistry,
     scheduler: Option[GlobalScheduler] = None,
-    lifecycle: Option[ConstellationLifecycle] = None
+    lifecycle: Option[ConstellationLifecycle] = None,
+    versionStore: Option[PipelineVersionStore] = None,
+    filePathMap: Option[Ref[IO, Map[String, Path]]] = None
 ) {
 
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationRoutes])
@@ -136,6 +140,10 @@ class ConstellationRoutes(
                   _ <- effectiveName.traverse_(n =>
                     constellation.PipelineStore.alias(n, image.structuralHash)
                   )
+                  // Record version if versioning is enabled and a name was provided
+                  _ <- (versionStore, effectiveName).tupled.traverse_ { case (vs, n) =>
+                    vs.recordVersion(n, image.structuralHash, Some(compileReq.source))
+                  }
                   resp <- Ok(
                     CompileResponse(
                       success = true,
@@ -465,6 +473,85 @@ class ConstellationRoutes(
             }
         }
       } yield response
+
+    // ---------------------------------------------------------------------------
+    // Pipeline versioning endpoints (Phase 4a)
+    // ---------------------------------------------------------------------------
+
+    // Hot-reload a named pipeline
+    case req @ POST -> Root / "pipelines" / name / "reload" =>
+      versionStore match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "VersioningNotEnabled", message = "Versioning not enabled")
+          )
+        case Some(vs) =>
+          val reqId = requestId(req)
+          handleReload(name, req, vs, reqId)
+      }
+
+    // List version history for a named pipeline
+    case GET -> Root / "pipelines" / name / "versions" =>
+      versionStore match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "VersioningNotEnabled", message = "Versioning not enabled")
+          )
+        case Some(vs) =>
+          for {
+            versions  <- vs.listVersions(name)
+            activeOpt <- vs.activeVersion(name)
+            response <- versions match {
+              case Nil =>
+                NotFound(
+                  ErrorResponse(error = "NotFound", message = s"Pipeline '$name' not found")
+                )
+              case _ =>
+                val active = activeOpt.getOrElse(0)
+                val infos = versions.map { pv =>
+                  PipelineVersionInfo(
+                    version = pv.version,
+                    structuralHash = pv.structuralHash,
+                    createdAt = pv.createdAt.toString,
+                    active = pv.version == active
+                  )
+                }
+                Ok(PipelineVersionsResponse(name = name, versions = infos, activeVersion = active))
+            }
+          } yield response
+      }
+
+    // Rollback to previous version
+    case POST -> Root / "pipelines" / name / "rollback" =>
+      versionStore match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "VersioningNotEnabled", message = "Versioning not enabled")
+          )
+        case Some(vs) =>
+          handleRollback(name, None, vs)
+      }
+
+    // Rollback to specific version
+    case POST -> Root / "pipelines" / name / "rollback" / vStr =>
+      versionStore match {
+        case None =>
+          BadRequest(
+            ErrorResponse(error = "VersioningNotEnabled", message = "Versioning not enabled")
+          )
+        case Some(vs) =>
+          vStr.toIntOption match {
+            case None =>
+              BadRequest(
+                ErrorResponse(
+                  error = "InvalidVersion",
+                  message = s"Version must be an integer, got '$vStr'"
+                )
+              )
+            case Some(v) =>
+              handleRollback(name, Some(v), vs)
+          }
+      }
 
     // ---------------------------------------------------------------------------
     // Suspension management endpoints (Phase 2)
@@ -982,6 +1069,191 @@ class ConstellationRoutes(
       }
     }.map(_.toMap)
   }
+
+  /** Handle a pipeline reload request.
+    *
+    * Resolves the source (from request body or file path map), compiles, and records a new version
+    * if the structural hash changed.
+    */
+  private def handleReload(
+      name: String,
+      req: org.http4s.Request[IO],
+      vs: PipelineVersionStore,
+      reqId: String
+  ): IO[org.http4s.Response[IO]] = {
+    // Custom decoder: accept empty body as empty ReloadRequest
+    val parseBody: IO[ReloadRequest] =
+      req.headers.get[`Content-Length`] match {
+        case Some(cl) if cl.length == 0 => IO.pure(ReloadRequest(None))
+        case None =>
+          // No Content-Length header — check Content-Type to decide
+          req.headers.get[`Content-Type`] match {
+            case Some(ct) if ct.mediaType == MediaType.application.json =>
+              req.as[ReloadRequest]
+            case _ =>
+              IO.pure(ReloadRequest(None))
+          }
+        case _ => req.as[ReloadRequest]
+      }
+
+    parseBody.flatMap { reloadReq =>
+      // Determine source: from body, or re-read from file
+      val resolveSource: IO[Either[String, String]] = reloadReq.source match {
+        case Some(src) => IO.pure(Right(src))
+        case None =>
+          filePathMap match {
+            case None =>
+              IO.pure(Left("No source provided and no file path known for this pipeline"))
+            case Some(ref) =>
+              ref.get.flatMap { pathMap =>
+                pathMap.get(name) match {
+                  case None =>
+                    IO.pure(Left("No source provided and no file path known for this pipeline"))
+                  case Some(path) =>
+                    IO(Files.readString(path)).map(Right(_)).handleErrorWith { e =>
+                      IO.pure(Left(s"Failed to read file ${path}: ${safeMessage(e)}"))
+                    }
+                }
+              }
+          }
+      }
+
+      resolveSource.flatMap {
+        case Left(errMsg) =>
+          BadRequest(ErrorResponse(error = "NoSource", message = errMsg))
+
+        case Right(source) =>
+          compiler
+            .compileIO(source, name)
+            .timeoutTo(
+              compilationTimeout,
+              IO.raiseError(
+                new java.util.concurrent.TimeoutException(
+                  s"Compilation timed out after $compilationTimeout"
+                )
+              )
+            )
+            .flatMap {
+              case Left(errors) =>
+                BadRequest(
+                  ErrorResponse(
+                    error = "CompilationError",
+                    message = errors.map(_.message).mkString("; ")
+                  )
+                )
+
+              case Right(compiled) =>
+                val image    = compiled.pipeline.image
+                val newHash  = image.structuralHash
+
+                for {
+                  // Get the current alias hash
+                  currentHashOpt <- constellation.PipelineStore.resolve(name)
+                  changed = !currentHashOpt.contains(newHash)
+                  result <- if !changed then {
+                    // Hash unchanged — no new version needed
+                    vs.activeVersion(name).flatMap { activeOpt =>
+                      Ok(
+                        ReloadResponse(
+                          success = true,
+                          previousHash = currentHashOpt,
+                          newHash = newHash,
+                          name = name,
+                          changed = false,
+                          version = activeOpt.getOrElse(1)
+                        )
+                      )
+                    }
+                  } else {
+                    for {
+                      // Store new image
+                      _ <- constellation.PipelineStore.store(image)
+                      // Update alias
+                      _ <- constellation.PipelineStore.alias(name, newHash)
+                      // Record new version
+                      pv <- vs.recordVersion(name, newHash, Some(source))
+                      resp <- Ok(
+                        ReloadResponse(
+                          success = true,
+                          previousHash = currentHashOpt,
+                          newHash = newHash,
+                          name = name,
+                          changed = true,
+                          version = pv.version
+                        )
+                      )
+                    } yield resp
+                  }
+                } yield result
+            }
+      }
+    }.handleErrorWith { error =>
+      logger.error(error)(s"[$reqId] Unexpected error in /pipelines/$name/reload") *>
+        InternalServerError(
+          ErrorResponse(
+            error = "InternalError",
+            message = s"Unexpected error: ${safeMessage(error)}",
+            requestId = Some(reqId)
+          )
+        )
+    }
+  }
+
+  /** Handle a pipeline rollback request (to previous version or specific version). */
+  private def handleRollback(
+      name: String,
+      targetVersion: Option[Int],
+      vs: PipelineVersionStore
+  ): IO[org.http4s.Response[IO]] =
+    for {
+      activeOpt <- vs.activeVersion(name)
+      response <- activeOpt match {
+        case None =>
+          NotFound(ErrorResponse(error = "NotFound", message = s"Pipeline '$name' not found"))
+        case Some(currentActive) =>
+          val targetIO: IO[Option[PipelineVersion]] = targetVersion match {
+            case Some(v) => vs.getVersion(name, v)
+            case None    => vs.previousVersion(name)
+          }
+          targetIO.flatMap {
+            case None =>
+              val detail = targetVersion match {
+                case Some(v) => s"Version $v not found for pipeline '$name'"
+                case None    => s"No previous version exists for pipeline '$name'"
+              }
+              NotFound(ErrorResponse(error = "NotFound", message = detail))
+
+            case Some(pv) =>
+              // Verify the structural hash still exists in PipelineStore
+              constellation.PipelineStore.get(pv.structuralHash).flatMap {
+                case None =>
+                  NotFound(
+                    ErrorResponse(
+                      error = "NotFound",
+                      message =
+                        s"Pipeline image for version ${pv.version} (hash=${pv.structuralHash.take(12)}...) no longer exists"
+                    )
+                  )
+                case Some(_) =>
+                  for {
+                    // Set the target as active version
+                    _ <- vs.setActiveVersion(name, pv.version)
+                    // Update alias to point to the target hash
+                    _ <- constellation.PipelineStore.alias(name, pv.structuralHash)
+                    resp <- Ok(
+                      RollbackResponse(
+                        success = true,
+                        name = name,
+                        previousVersion = currentActive,
+                        activeVersion = pv.version,
+                        structuralHash = pv.structuralHash
+                      )
+                    )
+                  } yield resp
+              }
+          }
+      }
+    } yield response
 
   /** Auto-save a suspended execution to the SuspensionStore if configured.
     *

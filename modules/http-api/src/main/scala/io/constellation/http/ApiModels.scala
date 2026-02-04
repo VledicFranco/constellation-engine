@@ -322,4 +322,74 @@ object ApiModels {
     given Encoder[ExecutionListResponse] = deriveEncoder
     given Decoder[ExecutionListResponse] = deriveDecoder
   }
+
+  // ---------------------------------------------------------------------------
+  // Pipeline versioning models (Phase 4a)
+  // ---------------------------------------------------------------------------
+
+  /** Request to reload a named pipeline.
+    *
+    * If `source` is provided, the pipeline is recompiled from that source. If omitted, the server
+    * attempts to re-read the original file (if a file path is known from startup loading).
+    */
+  case class ReloadRequest(source: Option[String] = None)
+
+  object ReloadRequest {
+    given Encoder[ReloadRequest] = deriveEncoder
+    given Decoder[ReloadRequest] = deriveDecoder
+  }
+
+  /** Response from a pipeline reload operation. */
+  case class ReloadResponse(
+      success: Boolean,
+      previousHash: Option[String],
+      newHash: String,
+      name: String,
+      changed: Boolean,
+      version: Int
+  )
+
+  object ReloadResponse {
+    given Encoder[ReloadResponse] = deriveEncoder
+    given Decoder[ReloadResponse] = deriveDecoder
+  }
+
+  /** Version info entry for a single pipeline version. */
+  case class PipelineVersionInfo(
+      version: Int,
+      structuralHash: String,
+      createdAt: String,
+      active: Boolean
+  )
+
+  object PipelineVersionInfo {
+    given Encoder[PipelineVersionInfo] = deriveEncoder
+    given Decoder[PipelineVersionInfo] = deriveDecoder
+  }
+
+  /** Response listing all versions of a named pipeline. */
+  case class PipelineVersionsResponse(
+      name: String,
+      versions: List[PipelineVersionInfo],
+      activeVersion: Int
+  )
+
+  object PipelineVersionsResponse {
+    given Encoder[PipelineVersionsResponse] = deriveEncoder
+    given Decoder[PipelineVersionsResponse] = deriveDecoder
+  }
+
+  /** Response from a pipeline rollback operation. */
+  case class RollbackResponse(
+      success: Boolean,
+      name: String,
+      previousVersion: Int,
+      activeVersion: Int,
+      structuralHash: String
+  )
+
+  object RollbackResponse {
+    given Encoder[RollbackResponse] = deriveEncoder
+    given Decoder[RollbackResponse] = deriveDecoder
+  }
 }
