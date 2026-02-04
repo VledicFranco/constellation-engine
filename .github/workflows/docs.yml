@@ -7,6 +7,9 @@ on:
       - 'website/**'
       - 'docs/**'
       - 'brand/**'
+      - 'modules/**/src/main/**'
+      - 'build.sbt'
+      - 'project/**'
       - 'README.md'
       - 'CONTRIBUTING.md'
       - 'CHANGELOG.md'
@@ -27,6 +30,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'sbt'
+
+      - name: Generate Scaladoc
+        run: sbt doc
+
+      - name: Copy Scaladoc to website static directory
+        run: |
+          mkdir -p website/static/api
+          for module_dir in modules/*/; do
+            module_name=$(basename "$module_dir")
+            api_dir="$module_dir/target/scala-3.3.1/api"
+            if [ -d "$api_dir" ]; then
+              cp -r "$api_dir" "website/static/api/$module_name"
+              echo "Copied Scaladoc for $module_name"
+            fi
+          done
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

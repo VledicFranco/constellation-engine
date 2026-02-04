@@ -79,6 +79,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'architecture/technical-architecture',
         'architecture/security-model',
+        'architecture/api-stability',
       ],
     },
     {

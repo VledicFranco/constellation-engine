@@ -32,6 +32,11 @@ ThisBuild / coverageFailOnMinimum := false // Set to true in CI to enforce thres
 ThisBuild / coverageMinimumStmtTotal := 60
 ThisBuild / coverageMinimumBranchTotal := 50
 
+// Binary compatibility checking (MiMa)
+// Baseline will be set to v1.0.0 once released. Pre-1.0, binary compat is not promised.
+ThisBuild / mimaPreviousArtifacts := Set.empty
+ThisBuild / mimaFailOnProblem := true
+
 // Exclude benchmark, load, and Docker-dependent tests from default test execution
 // Run benchmarks:    sbt "runtime/testOnly *Benchmark"
 // Run memcached:     sbt "cacheMemcached/testOnly *MemcachedIntegrationTest"

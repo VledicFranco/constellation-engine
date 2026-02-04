@@ -18,3 +18,6 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.1.5")
 
 // Automated Maven Central publishing (GPG signing + Sonatype release)
 addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")
+
+// Binary compatibility checking (MiMa)
+addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
