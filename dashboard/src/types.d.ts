@@ -186,6 +186,133 @@ interface ExecutionListResponse {
 }
 
 // =============================================================================
+// Pipeline lifecycle types (from http-api ConstellationRoutes)
+// =============================================================================
+
+interface PipelineSummary {
+    structuralHash: string;
+    syntacticHash: string;
+    aliases: string[];
+    compiledAt: string;
+    moduleCount: number;
+    declaredOutputs: string[];
+}
+
+interface PipelineListResponse {
+    pipelines: PipelineSummary[];
+}
+
+interface PipelineDetailResponse {
+    structuralHash: string;
+    syntacticHash: string;
+    aliases: string[];
+    compiledAt: string;
+    modules: ModuleInfo[];
+    declaredOutputs: string[];
+    inputSchema: Record<string, string>;
+    outputSchema: Record<string, string>;
+}
+
+interface ModuleInfo {
+    name: string;
+    description: string;
+    version: string;
+    inputs: Record<string, string>;
+    outputs: Record<string, string>;
+}
+
+interface PipelineVersionInfo {
+    version: number;
+    structuralHash: string;
+    createdAt: string;
+    active: boolean;
+}
+
+interface PipelineVersionsResponse {
+    name: string;
+    versions: PipelineVersionInfo[];
+    activeVersion: number;
+}
+
+interface ReloadResponse {
+    success: boolean;
+    previousHash?: string;
+    newHash: string;
+    name: string;
+    changed: boolean;
+    version: number;
+    canary?: CanaryStateResponse;
+}
+
+interface RollbackResponse {
+    success: boolean;
+    name: string;
+    previousVersion: number;
+    activeVersion: number;
+    structuralHash: string;
+}
+
+// =============================================================================
+// Canary release types (from http-api CanaryRouter)
+// =============================================================================
+
+interface CanaryVersionInfo {
+    version: number;
+    structuralHash: string;
+}
+
+interface VersionMetricsResponse {
+    requests: number;
+    successes: number;
+    failures: number;
+    avgLatencyMs: number;
+    p99LatencyMs: number;
+}
+
+interface CanaryMetricsResponse {
+    oldVersion: VersionMetricsResponse;
+    newVersion: VersionMetricsResponse;
+}
+
+interface CanaryStateResponse {
+    pipelineName: string;
+    oldVersion: CanaryVersionInfo;
+    newVersion: CanaryVersionInfo;
+    currentWeight: number;
+    currentStep: number;
+    status: string;
+    startedAt: string;
+    metrics: CanaryMetricsResponse;
+}
+
+// =============================================================================
+// Suspended execution types (from http-api ConstellationRoutes)
+// =============================================================================
+
+interface SuspendedExecution {
+    executionId: string;
+    structuralHash: string;
+    resumptionCount: number;
+    missingInputs: Record<string, string>;
+    createdAt: string;
+}
+
+interface SuspendedExecutionListResponse {
+    executions: SuspendedExecution[];
+}
+
+interface CoreExecuteResponse {
+    success: boolean;
+    outputs: Record<string, unknown>;
+    error?: string;
+    status?: string;
+    executionId?: string;
+    missingInputs?: Record<string, string>;
+    pendingOutputs?: string[];
+    resumptionCount?: number;
+}
+
+// =============================================================================
 // Component option types
 // =============================================================================
 
@@ -217,6 +344,7 @@ interface NodeDetailData {
 
 interface DashboardElements {
     scriptsView: HTMLElement;
+    pipelinesView: HTMLElement;
     historyView: HTMLElement;
     runBtn: HTMLButtonElement;
     refreshBtn: HTMLButtonElement;
@@ -323,10 +451,18 @@ interface CytoscapeStatic {
 declare const cytoscape: CytoscapeStatic;
 declare const cytoscapeDagre: unknown;
 
+interface PipelinesPanelOptions {
+    pipelinesListId: string;
+    pipelineDetailId: string;
+    suspendedListId: string;
+    onPipelineExecute?: (name: string, inputs: Record<string, unknown>) => void;
+}
+
 interface Window {
     FileBrowser: typeof FileBrowser;
     DagVisualizer: typeof DagVisualizer;
     ExecutionPanel: typeof ExecutionPanel;
     CodeEditor: typeof CodeEditor;
+    PipelinesPanel: typeof PipelinesPanel;
     dashboard: ConstellationDashboard;
 }

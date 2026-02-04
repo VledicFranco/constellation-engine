@@ -28,6 +28,7 @@
             </div>
             <nav class="header-nav">
                 <button class="nav-btn active" data-view="scripts">Scripts</button>
+                <button class="nav-btn" data-view="pipelines">Pipelines</button>
                 <button class="nav-btn" data-view="history">History</button>
             </nav>
             <div class="header-actions">
@@ -149,6 +150,34 @@
                 </aside>
             </div>
 
+            <!-- Pipelines View -->
+            <div id="pipelines-view" class="view">
+                <div class="pipelines-list-panel">
+                    <div class="panel-header">
+                        <h2>Loaded Pipelines</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="pipelines-list" class="pipelines-list"></div>
+                    </div>
+                    <div class="panel-header suspended-header">
+                        <h2>Suspended Executions</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="suspended-list" class="suspended-list"></div>
+                    </div>
+                </div>
+                <div class="pipeline-detail-panel">
+                    <div class="panel-header">
+                        <h2>Pipeline Details</h2>
+                    </div>
+                    <div class="panel-content">
+                        <div id="pipeline-detail" class="pipeline-detail">
+                            <p class="placeholder-text">Select a pipeline to view details</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- History View -->
             <div id="history-view" class="view">
                 <div class="history-list-panel">
@@ -196,6 +225,7 @@
     <script src="/dashboard/static/js/components/dag-visualizer.js"></script>
     <script src="/dashboard/static/js/components/execution-panel.js"></script>
     <script src="/dashboard/static/js/components/code-editor.js"></script>
+    <script src="/dashboard/static/js/components/pipelines-panel.js"></script>
     <script src="/dashboard/static/js/main.js"></script>
 </body>
 </html>

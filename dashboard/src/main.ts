@@ -10,9 +10,10 @@ class ConstellationDashboard {
     private dagVisualizer: DagVisualizer | null;
     private executionPanel: ExecutionPanel | null;
     private codeEditor: CodeEditor | null;
+    private pipelinesPanel: PipelinesPanel | null;
 
     // State
-    private currentView: 'scripts' | 'history';
+    private currentView: 'scripts' | 'pipelines' | 'history';
     private currentScriptPath: string | null;
     private currentDagVizIR: DagVizIR | null;
 
@@ -25,6 +26,7 @@ class ConstellationDashboard {
         this.dagVisualizer = null;
         this.executionPanel = null;
         this.codeEditor = null;
+        this.pipelinesPanel = null;
 
         // State
         this.currentView = 'scripts';
@@ -34,6 +36,7 @@ class ConstellationDashboard {
         // DOM elements
         this.elements = {
             scriptsView: document.getElementById('scripts-view')!,
+            pipelinesView: document.getElementById('pipelines-view')!,
             historyView: document.getElementById('history-view')!,
             runBtn: document.getElementById('run-btn') as HTMLButtonElement,
             refreshBtn: document.getElementById('refresh-btn') as HTMLButtonElement,
@@ -66,6 +69,7 @@ class ConstellationDashboard {
             this.initDagVisualizer();
             this.initExecutionPanel();
             this.initCodeEditor();
+            this.initPipelinesPanel();
             this.initSplitHandle();
 
             // Set up event listeners
@@ -137,6 +141,17 @@ class ConstellationDashboard {
             }
         });
         this.codeEditor.init();
+    }
+
+    /**
+     * Initialize the pipelines panel component
+     */
+    private initPipelinesPanel(): void {
+        this.pipelinesPanel = new PipelinesPanel({
+            pipelinesListId: 'pipelines-list',
+            pipelineDetailId: 'pipeline-detail',
+            suspendedListId: 'suspended-list'
+        });
     }
 
     /**
@@ -227,7 +242,7 @@ class ConstellationDashboard {
         // Navigation buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.switchView((btn as HTMLElement).dataset.view as 'scripts' | 'history');
+                this.switchView((btn as HTMLElement).dataset.view as 'scripts' | 'pipelines' | 'history');
             });
         });
 
@@ -296,7 +311,7 @@ class ConstellationDashboard {
     /**
      * Switch between views
      */
-    private switchView(view: 'scripts' | 'history'): void {
+    private switchView(view: 'scripts' | 'pipelines' | 'history'): void {
         this.currentView = view;
 
         // Update nav buttons
@@ -306,11 +321,21 @@ class ConstellationDashboard {
 
         // Update view visibility
         this.elements.scriptsView.classList.toggle('active', view === 'scripts');
+        this.elements.pipelinesView.classList.toggle('active', view === 'pipelines');
         this.elements.historyView.classList.toggle('active', view === 'history');
 
         // Load data for view
         if (view === 'history') {
             this.executionPanel!.loadHistory();
+        } else if (view === 'pipelines') {
+            this.pipelinesPanel!.loadPipelines();
+            this.pipelinesPanel!.loadSuspended();
+            this.pipelinesPanel!.startPolling();
+        }
+
+        // Stop polling when leaving pipelines view
+        if (view !== 'pipelines') {
+            this.pipelinesPanel?.stopPolling();
         }
 
         // Update URL hash
@@ -323,7 +348,9 @@ class ConstellationDashboard {
     private handleHashNavigation(): void {
         const hash = window.location.hash;
 
-        if (hash.startsWith('#/history')) {
+        if (hash.startsWith('#/pipelines')) {
+            this.switchView('pipelines');
+        } else if (hash.startsWith('#/history')) {
             this.switchView('history');
         } else if (hash.startsWith('#/executions/')) {
             const executionId = hash.replace('#/executions/', '');
@@ -506,6 +533,9 @@ class ConstellationDashboard {
             if (this.currentScriptPath) {
                 await this.loadScript(this.currentScriptPath);
             }
+        } else if (this.currentView === 'pipelines') {
+            await this.pipelinesPanel!.loadPipelines();
+            await this.pipelinesPanel!.loadSuspended();
         } else if (this.currentView === 'history') {
             await this.executionPanel!.loadHistory(this.elements.historyFilter.value);
         }
