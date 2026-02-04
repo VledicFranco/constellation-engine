@@ -158,13 +158,15 @@ object RateLimitMiddleware {
     }
   }
 
-  /** Extract client IP from X-Forwarded-For header or remote address. */
+  /** Extract client IP from remote address.
+    *
+    * Uses `remoteAddr` directly rather than trusting `X-Forwarded-For`, which can be spoofed
+    * by any client to bypass rate limiting. In production deployments behind a reverse proxy,
+    * the proxy should set a trusted header and the server should be configured accordingly.
+    */
   private[http] def extractClientIp(req: Request[IO]): String =
-    req.headers
-      .get[org.http4s.headers.`X-Forwarded-For`]
-      .flatMap(_.values.head)
+    req.remoteAddr
       .map(_.toInetAddress.getHostAddress)
-      .orElse(req.remoteAddr.map(_.toInetAddress.getHostAddress))
       .getOrElse("unknown")
 
   /** Extract Bearer token from Authorization header (for per-key rate limiting). */

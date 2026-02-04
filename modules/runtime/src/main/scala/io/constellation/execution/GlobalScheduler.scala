@@ -313,11 +313,21 @@ private[execution] class BoundedGlobalScheduler private (
         case None       => IO.unit
       }
 
-  /** Shutdown the scheduler gracefully. */
+  /** Shutdown the scheduler gracefully.
+    *
+    * Sets the shuttingDown flag (preventing new submissions), cancels the aging fiber, then
+    * drains the pending queue by completing all outstanding gates so no waiting fibers deadlock.
+    */
   def shutdown: IO[Unit] =
     for {
       _ <- stateRef.update(_.copy(shuttingDown = true))
       _ <- agingFiber.cancel
+      // Drain pending queue: complete all gates so blocked fibers can proceed
+      pending <- stateRef.modify { state =>
+        val entries = state.queue.toList
+        (state.copy(queue = TreeSet.empty[QueueEntry]), entries)
+      }
+      _ <- pending.traverse_(_.gate.complete(()).attempt.void)
     } yield ()
 }
 

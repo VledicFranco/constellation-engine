@@ -73,16 +73,15 @@ class InMemoryCacheBackend(
   }
 
   override def set[A](key: String, value: A, ttl: FiniteDuration): IO[Unit] = IO {
-    // Check max size and evict if necessary
-    // Use synchronized block to prevent race conditions between size check and eviction
-    maxSize.foreach { max =>
-      this.synchronized {
+    val entry = CacheEntry.create(value, ttl)
+    // Synchronized block covers both eviction and put to prevent concurrent inserts
+    // from exceeding maxSize between the eviction check and the actual put.
+    this.synchronized {
+      maxSize.foreach { max =>
         while storage.size() >= max do evictLRU()
       }
+      storage.put(key, entry.asInstanceOf[CacheEntry[Any]])
     }
-
-    val entry = CacheEntry.create(value, ttl)
-    storage.put(key, entry.asInstanceOf[CacheEntry[Any]])
     accessTimes.put(key, System.currentTimeMillis())
   }
 

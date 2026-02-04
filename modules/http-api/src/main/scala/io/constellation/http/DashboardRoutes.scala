@@ -246,58 +246,86 @@ class DashboardRoutes(
     "brand"
   )
 
-  /** Recursive helper that tracks the base root for relative path computation */
-  private def buildFileTreeRec(baseRoot: Path, currentDir: Path): List[FileNode] = {
+  /** Maximum directory recursion depth to prevent stack overflow from deeply nested trees. */
+  private val MaxRecursionDepth = 20
+
+  /** Maximum file size (10MB) for content serving to prevent memory exhaustion. */
+  private val MaxFileSize: Long = 10L * 1024 * 1024
+
+  /** Recursive helper that tracks the base root for relative path computation.
+    *
+    * Bounded to [[MaxRecursionDepth]] levels to prevent stack overflow from adversarial
+    * directory structures. Uses try-finally to ensure `Files.list` streams are closed.
+    */
+  private def buildFileTreeRec(baseRoot: Path, currentDir: Path, depth: Int = 0): List[FileNode] = {
+    if depth > MaxRecursionDepth then return List.empty
     if !Files.exists(currentDir) || !Files.isDirectory(currentDir) then return List.empty
 
     Try {
-      Files
-        .list(currentDir)
-        .iterator()
-        .asScala
-        .toList
-        .filter(p => Files.isDirectory(p) || p.toString.endsWith(".cst"))
-        .filterNot(p => Files.isDirectory(p) && excludedDirs.contains(p.getFileName.toString))
-        .flatMap { path =>
-          val name         = path.getFileName.toString
-          val isDir        = Files.isDirectory(path)
-          val relativePath = baseRoot.relativize(path).toString.replace("\\", "/")
-          if isDir then
-            val children = buildFileTreeRec(baseRoot, path)
-            // Only include directories that have .cst files (directly or in subdirectories)
-            if children.nonEmpty then
+      val stream = Files.list(currentDir)
+      try {
+        stream
+          .iterator()
+          .asScala
+          .toList
+          .filter(p => Files.isDirectory(p) || p.toString.endsWith(".cst"))
+          .filterNot(p => Files.isDirectory(p) && excludedDirs.contains(p.getFileName.toString))
+          .flatMap { path =>
+            val name         = path.getFileName.toString
+            val isDir        = Files.isDirectory(path)
+            val relativePath = baseRoot.relativize(path).toString.replace("\\", "/")
+            if isDir then
+              val children = buildFileTreeRec(baseRoot, path, depth + 1)
+              // Only include directories that have .cst files (directly or in subdirectories)
+              if children.nonEmpty then
+                Some(
+                  FileNode(
+                    name = name,
+                    path = relativePath,
+                    fileType = FileType.Directory,
+                    children = Some(children)
+                  )
+                )
+              else None
+            else
               Some(
                 FileNode(
                   name = name,
                   path = relativePath,
-                  fileType = FileType.Directory,
-                  children = Some(children)
+                  fileType = FileType.File,
+                  size = Some(Files.size(path)),
+                  modifiedTime = Some(Files.getLastModifiedTime(path).toMillis)
                 )
               )
-            else None
-          else
-            Some(
-              FileNode(
-                name = name,
-                path = relativePath,
-                fileType = FileType.File,
-                size = Some(Files.size(path)),
-                modifiedTime = Some(Files.getLastModifiedTime(path).toMillis)
-              )
-            )
-        }
-        .sortBy(node => (node.fileType != FileType.Directory, node.name.toLowerCase))
+          }
+          .sortBy(node => (node.fileType != FileType.Directory, node.name.toLowerCase))
+      } finally {
+        stream.close()
+      }
     }.getOrElse(List.empty)
   }
 
-  /** Get file content and parse inputs/outputs */
+  /** Get file content and parse inputs/outputs.
+    *
+    * Validates that the resolved path stays within the configured CST directory (path traversal
+    * defense) and that the file doesn't exceed [[MaxFileSize]] (memory exhaustion defense).
+    */
   private def getFileContent(relativePath: String): IO[Response[IO]] = {
-    val fullPath = config.getCstDirectory.resolve(relativePath.replace("/", java.io.File.separator))
+    val baseDir  = config.getCstDirectory.normalize()
+    val fullPath = baseDir.resolve(relativePath.replace("/", java.io.File.separator)).normalize()
+
+    // Path traversal defense: ensure resolved path is within the base directory
+    if !fullPath.startsWith(baseDir) then
+      return BadRequest(DashboardError.invalidRequest("Invalid file path"))
 
     if !Files.exists(fullPath) then return NotFound(DashboardError.notFound("File", relativePath))
 
     if !fullPath.toString.endsWith(".cst") then
       return BadRequest(DashboardError.invalidRequest("Only .cst files are supported"))
+
+    // File size defense: prevent memory exhaustion from large files
+    if Files.size(fullPath) > MaxFileSize then
+      return BadRequest(DashboardError.invalidRequest(s"File exceeds maximum size of ${MaxFileSize / 1024 / 1024}MB"))
 
     IO {
       val content      = Files.readString(fullPath)
@@ -482,6 +510,16 @@ class DashboardRoutes(
       // Execute using the new API
       sig <- ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
         ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+      }.leftSemiflatTap { error =>
+        // Record failure in execution storage so dashboard doesn't show perpetually running
+        if shouldStore then
+          storage.update(executionId) { exec =>
+            exec.copy(
+              endTime = Some(System.currentTimeMillis()),
+              status = ExecutionStatus.Failed
+            )
+          }.void
+        else IO.unit
       }
 
       // Extract outputs from DataSignature
@@ -521,10 +559,12 @@ class DashboardRoutes(
       case _                                         => ExecutionSource.API
     }
 
-  /** Read a script file */
+  /** Read a script file. Validates path stays within the CST directory. */
   private def readScriptFile(scriptPath: String): IO[Either[ApiError, String]] = IO {
-    val fullPath = config.getCstDirectory.resolve(scriptPath.replace("/", java.io.File.separator))
-    if !Files.exists(fullPath) then Left(ApiError.NotFoundError("Script", scriptPath))
+    val baseDir  = config.getCstDirectory.normalize()
+    val fullPath = baseDir.resolve(scriptPath.replace("/", java.io.File.separator)).normalize()
+    if !fullPath.startsWith(baseDir) then Left(ApiError.InputError("Invalid file path"))
+    else if !Files.exists(fullPath) then Left(ApiError.NotFoundError("Script", scriptPath))
     else Right(Files.readString(fullPath))
   }
 

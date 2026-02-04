@@ -58,9 +58,11 @@ class ConstellationLanguageServer(
   private val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationLanguageServer])
 
-  // Cached completion tries for efficient prefix-based lookups
+  // Cached completion tries for efficient prefix-based lookups.
+  // Access is synchronized via completionTrieLock to prevent data races from concurrent requests.
   private var moduleCompletionTrie: CompletionTrie  = CompletionTrie.empty
   private var lastModuleNames: Set[String]          = Set.empty
+  private val completionTrieLock: AnyRef             = new Object()
   private val keywordCompletionTrie: CompletionTrie = buildKeywordTrie()
 
   // Semantic token provider for syntax highlighting
@@ -471,7 +473,11 @@ class ConstellationLanguageServer(
         case _ => None // Complex expressions not supported
       }
     catch {
-      case _: Exception => None // Fail gracefully
+      case e: Exception =>
+        // Log at debug level for troubleshooting example evaluation failures.
+        // Uses stderr since this is a pure method without IO context.
+        System.err.println(s"[DEBUG] evaluateExampleToJson failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        None
     }
 
   private def handleGetDagStructure(request: Request): IO[Response] =
@@ -636,12 +642,6 @@ class ConstellationLanguageServer(
         val layoutedVizIR = SugiyamaLayout.layout(vizIR, layoutConfig)
         val layoutTime    = System.currentTimeMillis() - layoutStart
 
-        logger
-          .info(
-            s"[TIMING] getDagVisualization: IR=${irTime}ms, vizCompile=${vizTime}ms, layout=${layoutTime}ms"
-          )
-          .unsafeRunSync()
-
         // Get execution trace if executionId provided and tracker available
         val executionTraceIO: IO[Option[ExecutionTrace]] =
           (params.executionId, executionTracker) match {
@@ -649,7 +649,10 @@ class ConstellationLanguageServer(
             case _                             => IO.pure(None)
           }
 
-        executionTraceIO.map { traceOpt =>
+        logger
+          .info(
+            s"[TIMING] getDagVisualization: IR=${irTime}ms, vizCompile=${vizTime}ms, layout=${layoutTime}ms"
+          ) *> executionTraceIO.map { traceOpt =>
           // Convert to LSP message types, enriching with execution state if available
           val nodes = layoutedVizIR.nodes.map { n =>
             // Look up execution state from trace by node ID
@@ -1295,7 +1298,7 @@ class ConstellationLanguageServer(
         // Use trie-based prefix lookup for O(k) instead of O(n) filtering
         // where k = prefix length and n = number of items
         val keywordMatches = keywordCompletionTrie.findByPrefix(wordAtCursor)
-        val moduleMatches  = moduleCompletionTrie.findByPrefix(wordAtCursor)
+        val moduleMatches  = completionTrieLock.synchronized { moduleCompletionTrie.findByPrefix(wordAtCursor) }
         keywordMatches ++ moduleMatches
       }
 
@@ -1401,34 +1404,36 @@ class ConstellationLanguageServer(
     */
   private def updateModuleCompletionTrie(modules: List[io.constellation.ModuleNodeSpec]): Unit = {
     val currentNames = modules.map(_.name).toSet
-    if currentNames != lastModuleNames then {
-      val moduleItems = modules.map { module =>
-        val signature = TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
-        val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
-          val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
-          val returnsDoc = TypeFormatter.formatReturns(module.produces)
-          s"""${module.metadata.description}
-             |
-             |**Parameters:**
-             |$paramsDoc
-             |
-             |**Returns:** $returnsDoc
-             |""".stripMargin
-        } else {
-          module.metadata.description
+    completionTrieLock.synchronized {
+      if currentNames != lastModuleNames then {
+        val moduleItems = modules.map { module =>
+          val signature = TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
+          val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
+            val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
+            val returnsDoc = TypeFormatter.formatReturns(module.produces)
+            s"""${module.metadata.description}
+               |
+               |**Parameters:**
+               |$paramsDoc
+               |
+               |**Returns:** $returnsDoc
+               |""".stripMargin
+          } else {
+            module.metadata.description
+          }
+          CompletionItem(
+            label = module.name,
+            kind = Some(CompletionItemKind.Function),
+            detail = Some(signature),
+            documentation = Some(enhancedDoc),
+            insertText = Some(s"${module.name}()"),
+            filterText = Some(module.name),
+            sortText = Some(module.name)
+          )
         }
-        CompletionItem(
-          label = module.name,
-          kind = Some(CompletionItemKind.Function),
-          detail = Some(signature),
-          documentation = Some(enhancedDoc),
-          insertText = Some(s"${module.name}()"),
-          filterText = Some(module.name),
-          sortText = Some(module.name)
-        )
+        moduleCompletionTrie = CompletionTrie(moduleItems)
+        lastModuleNames = currentNames
       }
-      moduleCompletionTrie = CompletionTrie(moduleItems)
-      lastModuleNames = currentNames
     }
   }
 
@@ -1524,9 +1529,7 @@ class ConstellationLanguageServer(
         logger
           .info(
             s"[TIMING] validateDocument compile took ${compileTime}ms for ${uri.split('/').lastOption.getOrElse(uri)}"
-          )
-          .unsafeRunSync()
-        result match {
+          ) *> (result match {
           case Right(compileResult) =>
             // Convert warnings to diagnostics
             val warningDiagnostics = compileResult.warnings.flatMap { warning =>
@@ -1575,7 +1578,7 @@ class ConstellationLanguageServer(
               }
             }
             publishDiagnostics(PublishDiagnosticsParams(uri, diagnostics))
-        }
+        })
 
       case None =>
         IO.unit

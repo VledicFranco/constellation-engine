@@ -207,9 +207,11 @@ object ExecutionTracker {
         case None => this
       }
 
-    def evictIfNeeded(maxTraces: Int): TrackerState =
-      if traces.size > maxTraces then evictOldest.evictIfNeeded(maxTraces)
-      else this
+    def evictIfNeeded(maxTraces: Int): TrackerState = {
+      var current = this
+      while current.traces.size > maxTraces do current = current.evictOldest
+      current
+    }
   }
 
   private object TrackerState {

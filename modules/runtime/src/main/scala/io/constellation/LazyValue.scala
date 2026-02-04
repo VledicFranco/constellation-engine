@@ -1,6 +1,7 @@
 package io.constellation
 
 import io.circe.Json
+import java.util.concurrent.atomic.AtomicReference
 import scala.collection.mutable
 
 /** Lazy CValue that defers JSON conversion until value is accessed. Provides significant
@@ -43,21 +44,23 @@ final class LazyJsonValue(
     val expectedType: CType
 ) extends LazyCValue {
 
-  @volatile private var cached: Option[Either[String, CValue]] = None
+  private val cached: AtomicReference[Option[Either[String, CValue]]] =
+    new AtomicReference(None)
 
   def materialize: Either[String, CValue] =
-    cached match {
+    cached.get() match {
       case Some(result) => result
       case None =>
         val result = JsonCValueConverter.jsonToCValue(json, expectedType)
-        cached = Some(result)
-        result
+        cached.compareAndSet(None, Some(result))
+        // Return whatever is in the AtomicReference (may be from another thread)
+        cached.get().getOrElse(result)
     }
 
   def cType: CType = expectedType
 
   /** Check if value has been materialized */
-  def isMaterialized: Boolean = cached.isDefined
+  def isMaterialized: Boolean = cached.get().isDefined
 }
 
 object LazyJsonValue {

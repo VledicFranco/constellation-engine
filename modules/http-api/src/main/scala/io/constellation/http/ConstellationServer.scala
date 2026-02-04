@@ -335,7 +335,7 @@ object ConstellationServer {
           .default[IO]
           .withHost(host)
           .withPort(port)
-          .withIdleTimeout(scala.concurrent.duration.Duration.Inf) // Disable WebSocket idle timeout
+          .withIdleTimeout(10.minutes) // Allow long-running LSP sessions but prevent resource exhaustion
           .withHttpWebSocketApp { wsb =>
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
             val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)

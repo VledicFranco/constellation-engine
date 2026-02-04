@@ -196,19 +196,20 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CInt(42)
   }
 
-  "Math divide" should "return 0 for division by zero (safe default)" in {
+  "Math divide" should "raise error for division by zero" in {
     val source = """
       in a: Int
       in b: Int
       result = divide(a, b)
       out result
     """
-    val result = runProgram(
-      source,
-      Map("a" -> CValue.CInt(100), "b" -> CValue.CInt(0)),
-      "result"
-    )
-    result shouldBe CValue.CInt(0)
+    an[Exception] should be thrownBy {
+      runProgram(
+        source,
+        Map("a" -> CValue.CInt(100), "b" -> CValue.CInt(0)),
+        "result"
+      )
+    }
   }
 
   it should "handle zero dividend" in {
@@ -762,18 +763,19 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CInt(5)
   }
 
-  "List first" should "return 0 for empty list (safe default)" in {
+  "List first" should "raise error for empty list" in {
     val source = """
       in list: List<Int>
       result = list-first(list)
       out result
     """
-    val result = runProgram(
-      source,
-      Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
-      "result"
-    )
-    result shouldBe CValue.CInt(0)
+    an[Exception] should be thrownBy {
+      runProgram(
+        source,
+        Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
+        "result"
+      )
+    }
   }
 
   it should "return first element" in {
@@ -818,18 +820,19 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CInt(-5)
   }
 
-  "List last" should "return 0 for empty list (safe default)" in {
+  "List last" should "raise error for empty list" in {
     val source = """
       in list: List<Int>
       result = list-last(list)
       out result
     """
-    val result = runProgram(
-      source,
-      Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
-      "result"
-    )
-    result shouldBe CValue.CInt(0)
+    an[Exception] should be thrownBy {
+      runProgram(
+        source,
+        Map("list" -> CValue.CList(Vector.empty, CType.CInt)),
+        "result"
+      )
+    }
   }
 
   it should "return last element" in {
@@ -1419,19 +1422,20 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     result shouldBe CValue.CInt(1)
   }
 
-  it should "handle division by zero (safe default)" in {
+  it should "raise error for division by zero" in {
     val source = """
       in a: Int
       in b: Int
       result = modulo(a, b)
       out result
     """
-    val result = runProgram(
-      source,
-      Map("a" -> CValue.CInt(5), "b" -> CValue.CInt(0)),
-      "result"
-    )
-    result shouldBe CValue.CInt(0)
+    an[Exception] should be thrownBy {
+      runProgram(
+        source,
+        Map("a" -> CValue.CInt(5), "b" -> CValue.CInt(0)),
+        "result"
+      )
+    }
   }
 
   it should "handle exact divisibility" in {

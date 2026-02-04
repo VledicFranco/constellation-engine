@@ -51,16 +51,21 @@ class DebugSessionManager private (
     } yield initializedSession
   }
 
-  /** Get a session by ID, updating last accessed time.
+  /** Get a session by ID, updating last accessed time. Also cleans up stale sessions on access to
+    * prevent memory leaks when no new sessions are created for extended periods.
     */
   def getSession(sessionId: String): IO[Option[SteppedExecution.SessionState]] =
     sessionsRef.modify { sessions =>
-      sessions.get(sessionId) match {
+      val now    = System.currentTimeMillis()
+      val cutoff = now - sessionTimeout.toMillis
+      // Clean up stale sessions during access
+      val cleaned = sessions.filter { case (_, m) => m.lastAccessed > cutoff }
+      cleaned.get(sessionId) match {
         case Some(managed) =>
-          val updated = managed.copy(lastAccessed = System.currentTimeMillis())
-          (sessions + (sessionId -> updated), Some(managed.session))
+          val updated = managed.copy(lastAccessed = now)
+          (cleaned + (sessionId -> updated), Some(managed.session))
         case None =>
-          (sessions, None)
+          (cleaned, None)
       }
     }
 

@@ -352,9 +352,10 @@ final case class IRPipeline(
       val currentLayer = remaining.filter(n => inDegree(n) == 0)
 
       if currentLayer.isEmpty && remaining.nonEmpty then {
-        // Cycle detected - fall back to processing remaining nodes as single layer
-        layers += remaining
-        remaining = Set.empty
+        // Cycle detected - this should not happen if earlier validation is correct
+        throw new IllegalStateException(
+          s"Cycle detected in DAG during topological sort. Remaining node count: ${remaining.size}"
+        )
       } else {
         layers += currentLayer
 

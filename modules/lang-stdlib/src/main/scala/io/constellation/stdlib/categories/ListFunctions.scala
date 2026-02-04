@@ -1,5 +1,6 @@
 package io.constellation.stdlib.categories
 
+import cats.effect.IO
 import io.constellation.*
 import io.constellation.lang.semantic.*
 
@@ -24,13 +25,23 @@ trait ListFunctions {
   val listFirstModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.list-first", "Get the first element of a list", 1, 0)
     .tags("stdlib", "list")
-    .implementationPure[ListIntIn, ListIntOut](in => ListIntOut(in.list.headOption.getOrElse(0L)))
+    .implementation[ListIntIn, ListIntOut] { in =>
+      in.list.headOption match {
+        case Some(v) => IO.pure(ListIntOut(v))
+        case None    => IO.raiseError(new NoSuchElementException("stdlib.list-first: list is empty"))
+      }
+    }
     .build
 
   val listLastModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.list-last", "Get the last element of a list", 1, 0)
     .tags("stdlib", "list")
-    .implementationPure[ListIntIn, ListIntOut](in => ListIntOut(in.list.lastOption.getOrElse(0L)))
+    .implementation[ListIntIn, ListIntOut] { in =>
+      in.list.lastOption match {
+        case Some(v) => IO.pure(ListIntOut(v))
+        case None    => IO.raiseError(new NoSuchElementException("stdlib.list-last: list is empty"))
+      }
+    }
     .build
 
   val listIsEmptyModule: Module.Uninitialized = ModuleBuilder

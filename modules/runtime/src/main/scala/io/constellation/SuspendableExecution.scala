@@ -98,7 +98,12 @@ object SuspendableExecution {
           backends,
           Instant.now()
         )
-          .guarantee(IO.delay { inFlightResumes.remove(executionId); () })
+          .guaranteeCase { _ =>
+            // Use guaranteeCase instead of guarantee to ensure cleanup runs
+            // even when the fiber is cancelled (guarantee may be skipped in
+            // certain cancellation scenarios with Cats Effect).
+            IO.delay { inFlightResumes.remove(executionId); () }
+          }
     }
   }
 

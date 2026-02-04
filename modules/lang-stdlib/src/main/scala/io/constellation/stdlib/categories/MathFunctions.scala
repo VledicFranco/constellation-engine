@@ -1,5 +1,6 @@
 package io.constellation.stdlib.categories
 
+import cats.effect.IO
 import io.constellation.*
 import io.constellation.lang.semantic.*
 
@@ -34,7 +35,10 @@ trait MathFunctions {
   val divideModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.divide", "Divide two integers", 1, 0)
     .tags("stdlib", "math")
-    .implementationPure[TwoInts, MathIntOut](in => MathIntOut(if in.b != 0 then in.a / in.b else 0))
+    .implementation[TwoInts, MathIntOut] { in =>
+      if in.b != 0 then IO.pure(MathIntOut(in.a / in.b))
+      else IO.raiseError(new ArithmeticException("Division by zero in stdlib.divide"))
+    }
     .build
 
   val maxModule: Module.Uninitialized = ModuleBuilder
@@ -58,7 +62,10 @@ trait MathFunctions {
   val moduloModule: Module.Uninitialized = ModuleBuilder
     .metadata("stdlib.modulo", "Remainder after division", 1, 0)
     .tags("stdlib", "math")
-    .implementationPure[TwoInts, MathIntOut](in => MathIntOut(if in.b != 0 then in.a % in.b else 0))
+    .implementation[TwoInts, MathIntOut] { in =>
+      if in.b != 0 then IO.pure(MathIntOut(in.a % in.b))
+      else IO.raiseError(new ArithmeticException("Division by zero in stdlib.modulo"))
+    }
     .build
 
   val roundModule: Module.Uninitialized = ModuleBuilder
