@@ -57,8 +57,16 @@ trait PipelineVersionStore {
 
 object PipelineVersionStore {
 
-  /** Create a new in-memory version store backed by `Ref`. */
-  def init: IO[PipelineVersionStore] =
+  /** Create a new in-memory version store backed by `Ref` with no version limit. */
+  def init: IO[PipelineVersionStore] = initWithLimit(None)
+
+  /** Create a new in-memory version store backed by `Ref`.
+    *
+    * @param maxVersionsPerPipeline
+    *   Optional maximum number of versions to retain per pipeline. When exceeded, the oldest
+    *   non-active versions are pruned. None means unlimited.
+    */
+  def initWithLimit(maxVersionsPerPipeline: Option[Int]): IO[PipelineVersionStore] =
     for {
       versionsRef <- Ref.of[IO, Map[String, List[PipelineVersion]]](Map.empty)
       activeRef   <- Ref.of[IO, Map[String, Int]](Map.empty)
@@ -79,7 +87,28 @@ object PipelineVersionStore {
             (versions.updated(name, updated), newEntry)
           }
           _ <- activeRef.update(_.updated(name, pv.version))
+          _ <- pruneVersions(name)
         } yield pv
+
+      /** Prune oldest non-active versions if the count exceeds maxVersionsPerPipeline. */
+      private def pruneVersions(name: String): IO[Unit] = maxVersionsPerPipeline match {
+        case None => IO.unit
+        case Some(max) =>
+          activeRef.get.flatMap { activeMap =>
+            val activeVer = activeMap.get(name)
+            versionsRef.update { versions =>
+              versions.get(name) match {
+                case None => versions
+                case Some(versionList) if versionList.size <= max => versions
+                case Some(versionList) =>
+                  // Keep the newest `max` versions, but always retain the active version
+                  val (keep, candidates) = versionList.splitAt(max)
+                  val mustKeep = candidates.filter(v => activeVer.contains(v.version))
+                  versions.updated(name, keep ++ mustKeep)
+              }
+            }
+          }
+      }
 
       def listVersions(name: String): IO[List[PipelineVersion]] =
         versionsRef.get.map(_.getOrElse(name, Nil))

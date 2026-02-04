@@ -3,8 +3,9 @@ package io.constellation.impl
 import cats.effect.{IO, Ref}
 import io.constellation.*
 
-import java.time.Instant
+import java.time.{Duration, Instant}
 import java.util.UUID
+import scala.concurrent.duration.FiniteDuration
 
 /** In-memory implementation of [[SuspensionStore]] backed by a concurrent `Ref`.
   *
@@ -14,13 +15,31 @@ import java.util.UUID
   *   Concurrent map of handle ID -> stored entry
   * @param codecOpt
   *   Optional codec for round-trip validation on save
+  * @param ttl
+  *   Optional TTL for stored entries. Entries older than the TTL are lazily evicted on save/load
+  *   operations. Default: None (entries live forever).
   */
 final class InMemorySuspensionStore private (
     store: Ref[IO, Map[String, InMemorySuspensionStore.StoredEntry]],
-    codecOpt: Option[SuspensionCodec]
+    codecOpt: Option[SuspensionCodec],
+    ttl: Option[Duration] = None
 ) extends SuspensionStore {
 
   import InMemorySuspensionStore.StoredEntry
+
+  /** Evict entries older than the configured TTL (if set). Returns the number of evicted entries. */
+  private def evictExpired(): IO[Int] = ttl match {
+    case None => IO.pure(0)
+    case Some(ttlDuration) =>
+      IO.realTimeInstant.flatMap { now =>
+        store.modify { entries =>
+          val (live, expired) = entries.partition { case (_, entry) =>
+            Duration.between(entry.createdAt, now).compareTo(ttlDuration) < 0
+          }
+          (live, expired.size)
+        }
+      }
+  }
 
   def save(suspended: SuspendedExecution): IO[SuspensionHandle] = {
     // Optional codec round-trip validation
@@ -32,7 +51,7 @@ final class InMemorySuspensionStore private (
       case None => IO.unit
     }
 
-    validate *> {
+    validate *> evictExpired() *> {
       val handleId = UUID.randomUUID().toString
       val now      = Instant.now()
       val entry    = StoredEntry(suspended, createdAt = now, lastResumedAt = None)
@@ -41,7 +60,7 @@ final class InMemorySuspensionStore private (
   }
 
   def load(handle: SuspensionHandle): IO[Option[SuspendedExecution]] =
-    store.get.map(_.get(handle.id).map(_.suspended))
+    evictExpired() *> store.get.map(_.get(handle.id).map(_.suspended))
 
   def delete(handle: SuspensionHandle): IO[Boolean] =
     store.modify { entries =>
@@ -50,7 +69,7 @@ final class InMemorySuspensionStore private (
     }
 
   def list(filter: SuspensionFilter): IO[List[SuspensionSummary]] =
-    store.get.map { entries =>
+    evictExpired() *> store.get.map { entries =>
       entries.toList.flatMap { case (handleId, entry) =>
         val suspended = entry.suspended
         val matches =
@@ -105,6 +124,18 @@ object InMemorySuspensionStore {
   def init: IO[SuspensionStore] =
     Ref.of[IO, Map[String, StoredEntry]](Map.empty).map { store =>
       new InMemorySuspensionStore(store, codecOpt = None)
+    }
+
+  /** Create a new empty in-memory suspension store with a TTL.
+    *
+    * Entries older than the TTL are lazily evicted during save/load/list operations.
+    *
+    * @param ttl
+    *   Maximum age of stored entries. Entries older than this are evicted.
+    */
+  def initWithTTL(ttl: FiniteDuration): IO[SuspensionStore] =
+    Ref.of[IO, Map[String, StoredEntry]](Map.empty).map { store =>
+      new InMemorySuspensionStore(store, codecOpt = None, ttl = Some(Duration.ofMillis(ttl.toMillis)))
     }
 
   /** Create a new empty in-memory suspension store with codec validation.

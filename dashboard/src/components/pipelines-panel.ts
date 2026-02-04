@@ -551,22 +551,25 @@ class PipelinesPanel {
     }
 
     /**
-     * Check for active canary deployments on all aliased pipelines
+     * Check for active canary deployments on all aliased pipelines.
+     * Fetches canary status in parallel using Promise.all for performance.
      */
     private async checkCanaries(): Promise<void> {
-        for (const pipeline of this.pipelines) {
-            for (const alias of pipeline.aliases) {
-                try {
-                    const response = await fetch(`/pipelines/${encodeURIComponent(alias)}/canary`);
-                    if (response.ok) {
-                        const state: CanaryStateResponse = await response.json();
-                        this.showCanary(alias, state);
-                    }
-                } catch {
-                    // No canary or router not configured — ignore
-                }
-            }
-        }
+        const checks = this.pipelines.flatMap(pipeline =>
+            pipeline.aliases.map(alias =>
+                fetch(`/pipelines/${encodeURIComponent(alias)}/canary`)
+                    .then(async response => {
+                        if (response.ok) {
+                            const state: CanaryStateResponse = await response.json();
+                            this.showCanary(alias, state);
+                        }
+                    })
+                    .catch(() => {
+                        // No canary or router not configured — ignore
+                    })
+            )
+        );
+        await Promise.all(checks);
     }
 
     /**

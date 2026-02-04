@@ -22,16 +22,22 @@ enum CanaryStatus {
   case Observing, Promoting, RolledBack, Complete
 }
 
-/** Per-version metrics collected during a canary deployment. */
+/** Per-version metrics collected during a canary deployment.
+  *
+  * The latency buffer is bounded to [[VersionMetrics.MaxLatencySamples]] entries using reservoir
+  * sampling. This prevents unbounded memory growth during long observation windows with
+  * high-traffic pipelines while preserving statistical accuracy for p99 estimation.
+  */
 case class VersionMetrics(
     requests: Long = 0,
     successes: Long = 0,
     failures: Long = 0,
-    latencies: Vector[Double] = Vector.empty
+    latencies: Vector[Double] = Vector.empty,
+    latencySum: Double = 0.0
 ) {
   def errorRate: Double = if requests == 0 then 0.0 else failures.toDouble / requests
 
-  def avgLatencyMs: Double = if latencies.isEmpty then 0.0 else latencies.sum / latencies.size
+  def avgLatencyMs: Double = if requests == 0 then 0.0 else latencySum / requests
 
   def p99LatencyMs: Double =
     if latencies.isEmpty then 0.0
@@ -41,13 +47,31 @@ case class VersionMetrics(
       sorted(math.max(0, math.min(idx, sorted.size - 1)))
     }
 
-  def record(success: Boolean, latencyMs: Double): VersionMetrics =
+  def record(success: Boolean, latencyMs: Double): VersionMetrics = {
+    val newRequests = requests + 1
+    // Reservoir sampling: keep up to MaxLatencySamples entries
+    val newLatencies =
+      if latencies.size < VersionMetrics.MaxLatencySamples then
+        latencies :+ latencyMs
+      else {
+        // Replace a random existing entry with probability MaxLatencySamples/newRequests
+        val idx = Random.nextInt(newRequests.toInt)
+        if idx < VersionMetrics.MaxLatencySamples then latencies.updated(idx, latencyMs)
+        else latencies
+      }
     copy(
-      requests = requests + 1,
+      requests = newRequests,
       successes = if success then successes + 1 else successes,
       failures = if success then failures else failures + 1,
-      latencies = latencies :+ latencyMs
+      latencies = newLatencies,
+      latencySum = latencySum + latencyMs
     )
+  }
+}
+
+object VersionMetrics {
+  /** Maximum number of latency samples retained for p99 calculation. */
+  val MaxLatencySamples: Int = 10000
 }
 
 /** Metrics for both old and new versions in a canary deployment. */
@@ -129,6 +153,7 @@ object CanaryRouter {
               case Some(existing) if existing.status == CanaryStatus.Observing =>
                 (states, Left(s"Canary deployment already active for pipeline '$name'"))
               case _ =>
+                // Replace any terminal state (Complete/RolledBack) with the new canary
                 val state = CanaryState(
                   pipelineName = name,
                   oldVersion = oldVersion,
@@ -164,26 +189,30 @@ object CanaryRouter {
           success: Boolean,
           latencyMs: Double
       ): IO[Option[CanaryState]] =
-        IO.realTimeInstant.flatMap { now =>
-          stateRef.modify { states =>
-            states.get(name) match {
-              case None => (states, None)
-              case Some(state) if state.status != CanaryStatus.Observing =>
-                (states, Some(state))
-              case Some(state) =>
-                val isNewVersion = structuralHash == state.newVersion.structuralHash
-                val updatedMetrics =
-                  if isNewVersion then
-                    state.metrics.copy(newVersion = state.metrics.newVersion.record(success, latencyMs))
-                  else
-                    state.metrics.copy(oldVersion = state.metrics.oldVersion.record(success, latencyMs))
+        stateRef.modify { states =>
+          // Capture timestamp inside modify so it's fresh on CAS retry
+          val now = Instant.now()
+          states.get(name) match {
+            case None => (states, None)
+            case Some(state) if state.status != CanaryStatus.Observing =>
+              (states, Some(state))
+            case Some(state) =>
+              val isNewVersion = structuralHash == state.newVersion.structuralHash
+              val updatedMetrics =
+                if isNewVersion then
+                  state.metrics.copy(newVersion = state.metrics.newVersion.record(success, latencyMs))
+                else
+                  state.metrics.copy(oldVersion = state.metrics.oldVersion.record(success, latencyMs))
 
-                val updatedState = state.copy(metrics = updatedMetrics)
+              val updatedState = state.copy(metrics = updatedMetrics)
 
-                // Evaluate auto-promotion/rollback
-                val evaluated = evaluateCanary(updatedState, now)
+              // Evaluate auto-promotion/rollback
+              val evaluated = evaluateCanary(updatedState, now)
+              // Remove from map if terminal state (Complete/RolledBack) — F-3.3
+              if evaluated.status == CanaryStatus.Complete || evaluated.status == CanaryStatus.RolledBack then
+                (states - name, Some(evaluated))
+              else
                 (states.updated(name, evaluated), Some(evaluated))
-            }
           }
         }
 
@@ -191,16 +220,18 @@ object CanaryRouter {
         stateRef.get.map(_.get(name))
 
       def promote(name: String): IO[Option[CanaryState]] =
-        IO.realTimeInstant.flatMap { now =>
-          stateRef.modify { states =>
-            states.get(name) match {
-              case None => (states, None)
-              case Some(state) if state.status != CanaryStatus.Observing =>
-                (states, Some(state))
-              case Some(state) =>
-                val advanced = advanceStep(state, now)
+        stateRef.modify { states =>
+          val now = Instant.now()
+          states.get(name) match {
+            case None => (states, None)
+            case Some(state) if state.status != CanaryStatus.Observing =>
+              (states, Some(state))
+            case Some(state) =>
+              val advanced = advanceStep(state, now)
+              if advanced.status == CanaryStatus.Complete then
+                (states - name, Some(advanced))
+              else
                 (states.updated(name, advanced), Some(advanced))
-            }
           }
         }
 
@@ -210,7 +241,7 @@ object CanaryRouter {
             case None => (states, None)
             case Some(state) =>
               val rolledBack = state.copy(status = CanaryStatus.RolledBack)
-              (states.updated(name, rolledBack), Some(rolledBack))
+              (states - name, Some(rolledBack))
           }
         }
 

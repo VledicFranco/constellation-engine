@@ -2,7 +2,7 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.implicits.*
-import io.constellation.{Constellation, ContentHash}
+import io.constellation.{Constellation, ContentHash, PipelineImage}
 import io.constellation.lang.LangCompiler
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -71,7 +71,13 @@ object PipelineLoader {
     for {
       files <- IO(scanForCstFiles(dir, config.recursive))
       _     <- logger.info(s"PipelineLoader: found ${files.size} .cst file(s) in $dir")
-      result <- processFiles(files, dir, config, constellation, compiler, registryHash)
+      result <-
+        if config.failOnError then
+          // Compile all first, store only if all succeed (all-or-nothing semantics)
+          processFilesBatched(files, dir, config, constellation, compiler, registryHash)
+        else
+          // Store as we go, log warnings for failures
+          processFiles(files, dir, config, constellation, compiler, registryHash)
       _ <- logger.info(
         s"PipelineLoader: loaded=${result.loaded}, failed=${result.failed}, skipped=${result.skipped}"
       )
@@ -156,6 +162,86 @@ object PipelineLoader {
         }
       }
       .map(acc => LoadResult(acc.loaded, acc.failed, acc.skipped, acc.errors, acc.filePaths))
+  }
+
+  /** Batched processing: compile all files first, store only if all succeed.
+    *
+    * Used when `failOnError = true` to provide all-or-nothing semantics.
+    * Prevents partial pipeline loading when some files fail to compile.
+    */
+  private def processFilesBatched(
+      files: List[Path],
+      baseDir: Path,
+      config: PipelineLoaderConfig,
+      constellation: Constellation,
+      compiler: LangCompiler,
+      registryHash: String
+  ): IO[LoadResult] = {
+    case class CompileResult(
+        aliasName: Option[String],
+        file: Path,
+        result: Either[String, Option[PipelineImage]]  // Left = error, Right(None) = skipped, Right(Some) = compiled
+    )
+
+    // Phase 1: Compile all files (no storage)
+    val seenAliases = scala.collection.mutable.Set.empty[String]
+    files.traverse { file =>
+      val aliasName = deriveAlias(file, baseDir, config.aliasStrategy)
+      val dagName   = aliasName.getOrElse(file.getFileName.toString.stripSuffix(".cst"))
+
+      // Check alias collisions
+      aliasName match {
+        case Some(name) if seenAliases.contains(name) =>
+          IO.pure(CompileResult(aliasName, file, Left(s"Alias collision: '$name' already loaded, skipping $file")))
+        case _ =>
+          aliasName.foreach(seenAliases.add)
+          for {
+            source     <- IO(Files.readString(file))
+            sourceHash <- IO(ContentHash.computeSHA256(source.getBytes("UTF-8")))
+            existing   <- constellation.PipelineStore.lookupSyntactic(sourceHash, registryHash)
+            result <- existing match {
+              case Some(_) => IO.pure(CompileResult(aliasName, file, Right(None)))  // skip
+              case None =>
+                compiler.compileIO(source, dagName).map {
+                  case Right(compiled) => CompileResult(aliasName, file, Right(Some(compiled.pipeline.image)))
+                  case Left(errors) =>
+                    val msg = s"$file: ${errors.map(_.message).mkString("; ")}"
+                    CompileResult(aliasName, file, Left(msg))
+                }
+            }
+          } yield result
+      }
+    }.flatMap { results =>
+      val errors  = results.collect { case CompileResult(_, _, Left(msg)) => msg }
+      val skipped = results.count(_.result == Right(None))
+
+      if errors.nonEmpty then {
+        // Abort — don't store anything
+        IO.pure(LoadResult(0, errors.size, skipped, errors.toList))
+      } else {
+        // Phase 2: All compilations succeeded — store everything
+        val compiled: List[(Option[String], Path, PipelineImage)] = results.collect {
+          case CompileResult(alias, file, Right(Some(image))) => (alias, file, image)
+        }
+        compiled.traverse_ { case (aliasName, file, image) =>
+          val sourceHash = ContentHash.computeSHA256(Files.readString(file).getBytes("UTF-8"))
+          for {
+            _ <- constellation.PipelineStore.store(image)
+            _ <- constellation.PipelineStore.indexSyntactic(sourceHash, registryHash, image.structuralHash)
+            _ <- aliasName.traverse_(name => constellation.PipelineStore.alias(name, image.structuralHash))
+            _ <- logger.info(
+              s"PipelineLoader: loaded $file -> hash=${image.structuralHash.take(12)}..." +
+                aliasName.fold("")(n => s", alias='$n'")
+            )
+          } yield ()
+        }.map { _ =>
+          val filePaths = results.flatMap { r =>
+            r.aliasName.map(_ -> r.file)
+          }.toMap
+          LoadResult(compiled.size, 0, skipped, Nil, filePaths)
+        }
+      }
+    }
   }
 
   private enum FileResult {
