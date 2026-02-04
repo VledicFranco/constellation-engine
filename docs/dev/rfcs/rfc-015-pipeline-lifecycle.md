@@ -20,6 +20,7 @@ This is a **master RFC** that defines shared terminology and architecture. The i
 | [RFC-015c](./rfc-015c-canary-releases.md) | Canary releases with observability | RFC-015b |
 | [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore (filesystem-backed) | RFC-015 |
 | [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard integration (pipelines panel, suspend/resume UI, canary UI) | RFC-015a, RFC-015b |
+| [RFC-015f](./rfc-015f-qa-iteration-1.md) | QA Iteration 1 — post-implementation audit (16 findings) | RFC-015a through RFC-015e |
 
 ---
 
