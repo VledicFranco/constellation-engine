@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -13,7 +13,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
 
   "CommonSubexpressionElimination" should "deduplicate identical module calls" in {
     // Two identical add(x, y) calls should be deduplicated
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x") -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         uuid("y") -> IRNode.Input(uuid("y"), "y", SemanticType.SInt, None),
@@ -72,7 +72,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "not deduplicate different module calls" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x") -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         uuid("y") -> IRNode.Input(uuid("y"), "y", SemanticType.SInt, None),
@@ -112,7 +112,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "not deduplicate input nodes" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x1") -> IRNode.Input(uuid("x1"), "x", SemanticType.SInt, None),
         uuid("x2") -> IRNode.Input(uuid("x2"), "x", SemanticType.SInt, None)
@@ -129,7 +129,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "not deduplicate literal nodes" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 5, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 5, SemanticType.SInt, None)
@@ -148,7 +148,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   it should "deduplicate identical field access nodes" in {
     val recordType = SemanticType.SRecord(Map("x" -> SemanticType.SInt, "y" -> SemanticType.SInt))
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("record") -> IRNode.Input(uuid("record"), "r", recordType, None),
         uuid("field1") -> IRNode.FieldAccessNode(
@@ -196,7 +196,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty programs" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map.empty,
       inputs = List.empty,
       declaredOutputs = List.empty,
@@ -209,7 +209,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "deduplicate boolean operations" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a")    -> IRNode.Input(uuid("a"), "a", SemanticType.SBoolean, None),
         uuid("b")    -> IRNode.Input(uuid("b"), "b", SemanticType.SBoolean, None),
@@ -237,7 +237,7 @@ class CommonSubexpressionEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "update references when deduplicating" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x") -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         uuid("y") -> IRNode.Input(uuid("y"), "y", SemanticType.SInt, None),

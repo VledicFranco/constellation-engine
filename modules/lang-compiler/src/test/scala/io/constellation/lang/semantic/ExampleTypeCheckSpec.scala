@@ -21,13 +21,13 @@ import org.scalatest.matchers.should.Matchers
   */
 class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
 
-  private def parse(source: String): Program =
+  private def parse(source: String): Pipeline =
     ConstellationParser.parse(source).getOrElse(fail("Parse failed"))
 
   private def check(
       source: String,
       registry: FunctionRegistry = FunctionRegistry.empty
-  ): Either[List[CompileError], TypedProgram] =
+  ): Either[List[CompileError], TypedPipeline] =
     TypeChecker.check(parse(source), registry)
 
   // ==========================================================================

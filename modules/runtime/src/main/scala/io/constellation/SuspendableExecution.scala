@@ -25,11 +25,11 @@ final case class NodeTypeMismatchError(name: String, expected: CType, actual: CT
 final case class NodeAlreadyResolvedError(name: String)
     extends RuntimeException(s"Node '$name' has already been computed")
 
-final case class ProgramChangedError(expected: String, actual: String)
-    extends RuntimeException(s"Program structural hash changed: expected $expected, got $actual")
+final case class PipelineChangedError(expected: String, actual: String)
+    extends RuntimeException(s"Pipeline structural hash changed: expected $expected, got $actual")
 
-final case class ProgramNotFoundError(ref: String)
-    extends RuntimeException(s"Program not found: $ref")
+final case class PipelineNotFoundError(ref: String)
+    extends RuntimeException(s"Pipeline not found: $ref")
 
 final case class ResumeInProgressError(executionId: UUID)
     extends RuntimeException(s"Resume operation already in progress for execution $executionId")

@@ -1,17 +1,17 @@
 # API Guide
 
-This guide covers programmatic usage of Constellation Engine, including compiling constellation-lang programs and creating custom modules.
+This guide covers programmatic usage of Constellation Engine, including compiling constellation-lang pipelines and creating custom modules.
 
 ## Table of Contents
 
-- [Compiling Programs](#compiling-programs)
+- [Compiling Pipelines](#compiling-pipelines)
 - [Registering Functions](#registering-functions)
 - [Creating Modules](#creating-modules)
-- [Running Programs](#running-programs)
+- [Running Pipelines](#running-pipelines)
 - [Working with Types](#working-with-types)
 - [Error Handling](#error-handling)
 
-## Compiling Programs
+## Compiling Pipelines
 
 ### Basic Compilation
 
@@ -30,7 +30,7 @@ val result = compiler.compile(source, "my-dag")
 
 result match {
   case Right(compiled) =>
-    val dagSpec = compiled.program.image.dagSpec
+    val dagSpec = compiled.pipeline.image.dagSpec
     println(s"DAG name: ${dagSpec.name}")
     println(s"Modules: ${dagSpec.modules.size}")
     println(s"Data nodes: ${dagSpec.data.size}")
@@ -73,12 +73,12 @@ val compiler = LangCompiler.builder
 
 ```scala
 final case class CompilationOutput(
-  program: LoadedProgram,        // The compiled program
-  warnings: List[CompileWarning] // Non-fatal warnings
+  pipeline: LoadedPipeline,        // The compiled pipeline
+  warnings: List[CompileWarning]   // Non-fatal warnings
 )
 
-final case class LoadedProgram(
-  image: ProgramImage,                           // Contains dagSpec + metadata
+final case class LoadedPipeline(
+  image: PipelineImage,                           // Contains dagSpec + metadata
   syntheticModules: Map[UUID, Module.Uninitialized]  // Generated modules
 )
 ```
@@ -209,7 +209,7 @@ val module = ModuleBuilder
   .build
 ```
 
-## Running Programs
+## Running Pipelines
 
 ### Basic Execution
 
@@ -221,7 +221,7 @@ val result = for {
   constellation <- impl.ConstellationImpl.init
   _ <- modules.traverse(constellation.setModule)
 
-  // Compile the program
+  // Compile the pipeline
   compiled <- IO.fromEither(
     compiler.compile(source, "my-dag").left.map(e => new Exception(e.head.format))
   )
@@ -232,8 +232,8 @@ val result = for {
     "y" -> CValue.CString("hello")
   )
 
-  // Run the program
-  sig <- constellation.run(compiled.program, inputs)
+  // Run the pipeline
+  sig <- constellation.run(compiled.pipeline, inputs)
 } yield sig
 
 val signature = result.unsafeRunSync()
@@ -390,7 +390,7 @@ compiler.compile(source, "dag") match {
 ```scala
 import cats.effect.IO
 
-val result: IO[DataSignature] = constellation.run(compiled.program, inputs)
+val result: IO[DataSignature] = constellation.run(compiled.pipeline, inputs)
 
 result.attempt.map {
   case Right(sig) =>
@@ -461,7 +461,7 @@ object MyPipeline extends IOApp.Simple {
 
     // Run
     sig <- constellation.run(
-      compiled.program,
+      compiled.pipeline,
       Map("data" -> TypeSystem.CValue.VString("hello world"))
     )
 

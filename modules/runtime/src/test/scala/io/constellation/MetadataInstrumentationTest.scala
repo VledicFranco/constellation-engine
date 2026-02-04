@@ -117,14 +117,14 @@ class MetadataInstrumentationTest extends AnyFlatSpec with Matchers {
 
   /** Run a complete pipeline via ConstellationImpl.run with the given options. */
   private def runComplete(options: ExecutionOptions): DataSignature = {
-    val image = ProgramImage(
+    val image = PipelineImage(
       structuralHash = "test-hash",
       syntacticHash = "test-syntactic",
       dagSpec = simpleDag,
       moduleOptions = Map.empty,
       compiledAt = java.time.Instant.now()
     )
-    val loaded = LoadedProgram(image, Map.empty)
+    val loaded = LoadedPipeline(image, Map.empty)
 
     (for {
       constellation <- impl.ConstellationImpl.init

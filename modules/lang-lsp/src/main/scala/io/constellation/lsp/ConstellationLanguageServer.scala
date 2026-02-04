@@ -522,7 +522,7 @@ class ConstellationLanguageServer(
 
     compiler.compile(document.text, dagName) match {
       case Right(compiled) =>
-        val dagSpec = compiled.program.image.dagSpec
+        val dagSpec = compiled.pipeline.image.dagSpec
 
         val modules = dagSpec.modules.map { case (uuid, spec) =>
           uuid.toString -> ModuleNode(
@@ -621,12 +621,12 @@ class ConstellationLanguageServer(
 
     val irStart = System.currentTimeMillis()
     compiler.compileToIR(document.text, dagName) match {
-      case Right(irProgram) =>
+      case Right(irPipeline) =>
         val irTime = System.currentTimeMillis() - irStart
 
         // Compile IR to visualization IR
         val vizStart = System.currentTimeMillis()
-        val vizIR    = DagVizCompiler.compile(irProgram, title = Some(dagName))
+        val vizIR    = DagVizCompiler.compile(irPipeline, title = Some(dagName))
         val vizTime  = System.currentTimeMillis() - vizStart
 
         // Apply layout
@@ -967,10 +967,10 @@ class ConstellationLanguageServer(
         // Build module map from compiled DAG
         // First, merge synthetic modules with registered modules looked up by name
         val moduleMapIO: IO[Map[java.util.UUID, Module.Uninitialized]] =
-          compiled.program.image.dagSpec.modules.toList
+          compiled.pipeline.image.dagSpec.modules.toList
             .traverse { case (uuid, spec) =>
               // First check if this is a synthetic module (keyed by uuid)
-              compiled.program.syntheticModules.get(uuid) match {
+              compiled.pipeline.syntheticModules.get(uuid) match {
                 case Some(mod) => IO.pure(uuid -> mod)
                 case None      =>
                   // Otherwise look up by name from constellation's registered modules
@@ -986,8 +986,8 @@ class ConstellationLanguageServer(
         (for {
           moduleMap <- moduleMapIO
           session <- debugSessionManager.createSession(
-            compiled.program.image.dagSpec,
-            compiled.program.syntheticModules,
+            compiled.pipeline.image.dagSpec,
+            compiled.pipeline.syntheticModules,
             moduleMap,
             cvalueInputs
           )
@@ -1639,9 +1639,9 @@ class ConstellationLanguageServer(
         }
 
         for {
-          // Use the new API: constellation.run with LoadedProgram
+          // Use the new API: constellation.run with LoadedPipeline
           result <- constellation
-            .run(compiled.program, cvalueInputs)
+            .run(compiled.pipeline, cvalueInputs)
             .attempt
           endTime = System.currentTimeMillis()
           execResult = result match {

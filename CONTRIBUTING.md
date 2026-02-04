@@ -329,11 +329,11 @@ import io.constellation.errors.{ApiError, ErrorHandling}
 // Define a chain of operations using EitherT
 private def executeByRef(req: ExecuteRequest): EitherT[IO, ApiError, DataSignature] =
   for {
-    image   <- EitherT(constellation.programStore.getByName(req.ref).map {
+    image   <- EitherT(constellation.pipelineStore.getByName(req.ref).map {
       case Some(img) => Right(img)
-      case None      => Left(ApiError.NotFoundError("Program", req.ref))
+      case None      => Left(ApiError.NotFoundError("Pipeline", req.ref))
     })
-    loaded  = LoadedProgram(image, Map.empty)
+    loaded  = LoadedPipeline(image, Map.empty)
     inputs  <- ErrorHandling.liftIO(convertInputs(req.inputs))(t => ApiError.InputError(t.getMessage))
     sig     <- ErrorHandling.liftIO(constellation.run(loaded, inputs))(t => ApiError.ExecutionError(t.getMessage))
   } yield sig

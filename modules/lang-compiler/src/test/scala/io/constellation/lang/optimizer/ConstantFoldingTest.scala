@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,7 +12,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   private def uuid(name: String): UUID = UUID.nameUUIDFromBytes(name.getBytes)
 
   "ConstantFolding" should "fold constant addition" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 5, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 3, SemanticType.SInt, None),
@@ -41,7 +41,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold constant subtraction" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 10, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 4, SemanticType.SInt, None),
@@ -69,7 +69,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold constant multiplication" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 6, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 7, SemanticType.SInt, None),
@@ -97,7 +97,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold constant division" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 20, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 4, SemanticType.SInt, None),
@@ -125,7 +125,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "not fold division by zero" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 10, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 0, SemanticType.SInt, None),
@@ -151,7 +151,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold boolean AND" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
         uuid("b")   -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),
@@ -171,7 +171,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold boolean OR" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a")  -> IRNode.LiteralNode(uuid("a"), false, SemanticType.SBoolean, None),
         uuid("b")  -> IRNode.LiteralNode(uuid("b"), true, SemanticType.SBoolean, None),
@@ -191,7 +191,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold boolean NOT" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
         uuid("not") -> IRNode.NotNode(uuid("not"), uuid("a"), None)
@@ -210,7 +210,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold string concatenation" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), "Hello, ", SemanticType.SString, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), "World!", SemanticType.SString, None),
@@ -238,7 +238,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold string interpolation with constants" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("name") -> IRNode.LiteralNode(uuid("name"), "Alice", SemanticType.SString, None),
         uuid("interp") -> IRNode.StringInterpolationNode(
@@ -262,7 +262,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold conditional with constant condition (true)" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("cond") -> IRNode.LiteralNode(uuid("cond"), true, SemanticType.SBoolean, None),
         uuid("then") -> IRNode.LiteralNode(uuid("then"), 1, SemanticType.SInt, None),
@@ -290,7 +290,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fold conditional with constant condition (false)" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("cond") -> IRNode.LiteralNode(uuid("cond"), false, SemanticType.SBoolean, None),
         uuid("then") -> IRNode.LiteralNode(uuid("then"), 1, SemanticType.SInt, None),
@@ -318,7 +318,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "not fold when inputs are non-constant" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input")   -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal") -> IRNode.LiteralNode(uuid("literal"), 5, SemanticType.SInt, None),
@@ -345,7 +345,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
 
   it should "fold chained constant operations" in {
     // (2 + 3) * 4 = 20
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 2, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 3, SemanticType.SInt, None),
@@ -390,7 +390,7 @@ class ConstantFoldingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty programs" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map.empty,
       inputs = List.empty,
       declaredOutputs = List.empty,

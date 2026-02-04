@@ -36,7 +36,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- createConstellation
       compiled = compiler.compile(source, dagName).toOption.get
-      sig <- constellation.run(compiled.program, inputs)
+      sig <- constellation.run(compiled.pipeline, inputs)
     } yield sig.outputs.get(outputName)
 
     val result = test.unsafeRunSync()

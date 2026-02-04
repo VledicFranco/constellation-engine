@@ -301,10 +301,10 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
     parsed shouldBe Right(original)
   }
 
-  // ========== ProgramSummary Tests ==========
+  // ========== PipelineSummary Tests ==========
 
-  "ProgramSummary" should "serialize all fields" in {
-    val summary = ProgramSummary(
+  "PipelineSummary" should "serialize all fields" in {
+    val summary = PipelineSummary(
       structuralHash = "abc123",
       syntacticHash = "def456",
       aliases = List("my-program", "prod"),
@@ -321,9 +321,9 @@ class ApiModelsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip through JSON" in {
-    val original = ProgramSummary("h1", "h2", List("a"), "2026-01-01T00:00:00Z", 1, List("out"))
+    val original = PipelineSummary("h1", "h2", List("a"), "2026-01-01T00:00:00Z", 1, List("out"))
     val json     = original.asJson
-    val parsed   = json.as[ProgramSummary]
+    val parsed   = json.as[PipelineSummary]
 
     parsed shouldBe Right(original)
   }

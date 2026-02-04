@@ -2,7 +2,7 @@ package io.constellation.lang.benchmark
 
 import io.constellation.lang.*
 import io.constellation.lang.ast.CompileError
-import io.constellation.lang.compiler.{DagCompiler, IRGenerator, IRProgram}
+import io.constellation.lang.compiler.{DagCompiler, IRGenerator, IRPipeline}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}

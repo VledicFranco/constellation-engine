@@ -20,7 +20,7 @@ class StdLibEdgeCasesTest extends AnyFlatSpec with Matchers {
     val test = for {
       constellation <- ConstellationImpl.init
       compiled = StdLib.compiler.compile(source, "test-dag").toOption.get
-      sig <- constellation.run(compiled.program, inputs)
+      sig <- constellation.run(compiled.pipeline, inputs)
     } yield sig.outputs(outputName)
 
     test.unsafeRunSync()

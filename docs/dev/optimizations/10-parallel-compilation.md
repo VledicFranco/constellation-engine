@@ -8,14 +8,14 @@
 ## Implementation Status
 
 ### Completed
-- [x] `IRProgram.topologicalLayers()` - Computes dependency-aware layers for parallel processing
-- [x] `IRProgram.maxParallelism` - Returns maximum nodes processable in parallel
-- [x] `IRProgram.criticalPathLength` - Returns minimum sequential steps required
+- [x] `IRPipeline.topologicalLayers()` - Computes dependency-aware layers for parallel processing
+- [x] `IRPipeline.maxParallelism` - Returns maximum nodes processable in parallel
+- [x] `IRPipeline.criticalPathLength` - Returns minimum sequential steps required
 - [x] `ParallelCompilationBenchmark` - Measures parallelism potential and baselines
 
 ### Benchmark Results (January 2026)
 
-| Program | Nodes | Layers | Max Parallel | Avg Layer Size | Sequential Ratio |
+| Pipeline | Nodes | Layers | Max Parallel | Avg Layer Size | Sequential Ratio |
 |---------|-------|--------|--------------|----------------|------------------|
 | Small | 7 | 4 | 2 | 1.75 | 0.57 |
 | Medium | 44 | 7 | 12 | 6.29 | 0.16 |
@@ -97,7 +97,7 @@ Type check independent top-level functions in parallel:
 ```scala
 // TypeChecker.scala modifications
 
-def check(ast: Program, modules: Map[String, FunctionSignature]): Either[TypeError, TypedProgram] = {
+def check(ast: Pipeline, modules: Map[String, FunctionSignature]): Either[TypeError, TypedPipeline] = {
   // 1. Build dependency graph between functions
   val dependencies = buildDependencyGraph(ast)
 
@@ -112,7 +112,7 @@ def check(ast: Program, modules: Map[String, FunctionSignature]): Either[TypeErr
   }
 }
 
-private def buildDependencyGraph(ast: Program): DependencyGraph = {
+private def buildDependencyGraph(ast: Pipeline): DependencyGraph = {
   // Function A depends on B if A calls B
   val graph = new DependencyGraph()
 
@@ -141,7 +141,7 @@ Generate IR for independent AST nodes in parallel:
 ```scala
 // IRGenerator.scala modifications
 
-def generate(typed: TypedProgram): Either[IRError, IRProgram] = {
+def generate(typed: TypedPipeline): Either[IRError, IRPipeline] = {
   // 1. Identify independent statement groups
   val groups = partitionByDependency(typed.statements)
 
@@ -215,7 +215,7 @@ The most impactful parallelization is in DAG compilation:
 ```scala
 // DagCompiler.scala modifications
 
-def compile(ir: IRProgram, modules: ...): Either[CompileError, DagSpec] = {
+def compile(ir: IRPipeline, modules: ...): Either[CompileError, DagSpec] = {
   // 1. Process IR nodes in topological layers
   val layers = ir.topologicalLayers()
 
@@ -298,7 +298,7 @@ val large = /* ... */
 
 ### Expected Results
 
-| Program Size | Sequential | Parallel | Improvement |
+| Pipeline Size | Sequential | Parallel | Improvement |
 |--------------|------------|----------|-------------|
 | Small | 20ms | 18ms | 10% |
 | Medium | 80ms | 60ms | 25% |
@@ -320,7 +320,7 @@ Some phases cannot be parallelized:
 
 ### Overhead Considerations
 
-| Program Size | Parallelism Overhead | Net Benefit |
+| Pipeline Size | Parallelism Overhead | Net Benefit |
 |--------------|---------------------|-------------|
 | Very small (<10ms) | ~5ms | Negative |
 | Small (10-50ms) | ~5ms | Marginal |
@@ -347,7 +347,7 @@ constellation.compiler {
 
 ## Implementation Checklist
 
-- [x] Add topological layering to IRProgram (`topologicalLayers`, `maxParallelism`, `criticalPathLength`)
+- [x] Add topological layering to IRPipeline (`topologicalLayers`, `maxParallelism`, `criticalPathLength`)
 - [x] Create parallelism analysis benchmark (`ParallelCompilationBenchmark.scala`)
 - [ ] Add dependency graph builder for AST
 - [ ] Implement parallel type checking for independent functions

@@ -11,11 +11,11 @@ import cats.effect.IO
   * for {
   *   constellation <- ConstellationImpl.init
   *   _             <- constellation.setModule(myModule)
-  *   // Use LoadedProgram + run
-  *   result        <- constellation.run(loadedProgram, inputs)
-  *   // Or use ProgramStore ref + run
-  *   _             <- constellation.programStore.store(image)
-  *   _             <- constellation.programStore.alias("pipeline", image.structuralHash)
+  *   // Use LoadedPipeline + run
+  *   result        <- constellation.run(LoadedPipeline, inputs)
+  *   // Or use PipelineStore ref + run
+  *   _             <- constellation.PipelineStore.store(image)
+  *   _             <- constellation.PipelineStore.alias("pipeline", image.structuralHash)
   *   result        <- constellation.run("pipeline", inputs)
   * } yield result
   * }}}
@@ -53,12 +53,12 @@ trait Constellation {
   // ---------------------------------------------------------------------------
 
   /** Access the program store for managing compiled program images. */
-  def programStore: ProgramStore
+  def PipelineStore: PipelineStore
 
   /** Execute a loaded program with the given inputs.
     *
     * @param loaded
-    *   A LoadedProgram (from compilation or rehydration)
+    *   A LoadedPipeline (from compilation or rehydration)
     * @param inputs
     *   Input values keyed by variable name
     * @param options
@@ -67,14 +67,14 @@ trait Constellation {
     *   A DataSignature describing the execution outcome
     */
   def run(
-      loaded: LoadedProgram,
+      loaded: LoadedPipeline,
       inputs: Map[String, CValue],
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 
   /** Execute a program by reference (alias name or "sha256:<hash>").
     *
-    * Resolves the reference via the ProgramStore, rehydrates the LoadedProgram, and delegates to
+    * Resolves the reference via the PipelineStore, rehydrates the LoadedPipeline, and delegates to
     * `run(loaded, inputs, options)`.
     *
     * @param ref

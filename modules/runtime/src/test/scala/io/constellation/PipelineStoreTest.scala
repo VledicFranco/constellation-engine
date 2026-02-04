@@ -2,18 +2,18 @@ package io.constellation
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation.impl.ProgramStoreImpl
+import io.constellation.impl.PipelineStoreImpl
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
 import java.util.UUID
 
-class ProgramStoreTest extends AnyFlatSpec with Matchers {
+class PipelineStoreTest extends AnyFlatSpec with Matchers {
 
-  private def mkImage(name: String): ProgramImage = {
+  private def mkImage(name: String): PipelineImage = {
     val dag = DagSpec.empty(name)
-    ProgramImage(
+    PipelineImage(
       structuralHash = ContentHash.computeStructuralHash(dag),
       syntacticHash = "",
       dagSpec = dag,
@@ -22,9 +22,9 @@ class ProgramStoreTest extends AnyFlatSpec with Matchers {
     )
   }
 
-  private def mkStore: ProgramStore = ProgramStoreImpl.init.unsafeRunSync()
+  private def mkStore: PipelineStore = PipelineStoreImpl.init.unsafeRunSync()
 
-  "ProgramStore" should "store and retrieve an image" in {
+  "PipelineStore" should "store and retrieve an image" in {
     val store = mkStore
     val image = mkImage("test")
 

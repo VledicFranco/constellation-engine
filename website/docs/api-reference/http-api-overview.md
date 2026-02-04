@@ -27,9 +27,9 @@ The port is configurable via the `CONSTELLATION_PORT` environment variable.
 | `/modules` | GET | List registered modules with type signatures |
 | `/compile` | POST | Compile constellation-lang source, return DAG |
 | `/run` | POST | Compile and execute in one call |
-| `/programs` | GET | List stored programs |
-| `/programs/{ref}` | GET | Get program metadata |
-| `/execute` | POST | Execute a previously stored program |
+| `/pipelines` | GET | List stored pipelines |
+| `/pipelines/{ref}` | GET | Get pipeline metadata |
+| `/execute` | POST | Execute a previously stored pipeline |
 | `/metrics` | GET | Runtime metrics (cache stats, execution counts) |
 | `/lsp` | WebSocket | Language Server Protocol for IDE support |
 

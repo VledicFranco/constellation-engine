@@ -1,4 +1,4 @@
-# Small benchmark program
+# Small benchmark pipeline
 # Matches: TestFixtures.smallProgram (~15 lines)
 # Purpose: Quick sanity checks
 # Target: <5ms parse, <50ms full pipeline

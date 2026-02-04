@@ -11,7 +11,7 @@ import io.constellation.http.ConstellationServer
   * functions available for use in constellation-lang programs.
   *
   * Once started, you can:
-  *   - Compile constellation-lang programs: POST /compile
+  *   - Compile constellation-lang pipelines: POST /compile
   *   - Execute compiled DAGs: POST /execute
   *   - List available DAGs: GET /dags
   *   - List available modules: GET /modules

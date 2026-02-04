@@ -197,7 +197,7 @@ The IR is directly compiled to DAG without optimization:
 
 ```scala
 // IRGenerator.scala
-def generate(typedProgram: TypedProgram): IRProgram = {
+def generate(TypedPipeline: TypedPipeline): IRPipeline = {
   // Direct translation, no optimization
   declarations.foldLeft(GenContext.empty) { (ctx, decl) =>
     generateDeclaration(decl, ctx)
@@ -220,7 +220,7 @@ def generate(typedProgram: TypedProgram): IRProgram = {
 ```scala
 // New file: IROptimizer.scala
 object IROptimizer {
-  def optimize(ir: IRProgram): IRProgram = {
+  def optimize(ir: IRPipeline): IRPipeline = {
     val passes = List(
       DeadCodeElimination,
       ConstantFolding,
@@ -232,11 +232,11 @@ object IROptimizer {
 }
 
 trait OptimizationPass {
-  def run(ir: IRProgram): IRProgram
+  def run(ir: IRPipeline): IRPipeline
 }
 
 object DeadCodeElimination extends OptimizationPass {
-  def run(ir: IRProgram): IRProgram = {
+  def run(ir: IRPipeline): IRPipeline = {
     // 1. Build dependency graph from outputs
     // 2. Mark reachable nodes via DFS from outputs
     // 3. Remove unreachable nodes
@@ -254,7 +254,7 @@ Each compilation starts from scratch:
 def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
   for {
     program <- ConstellationParser.parse(source)  // Full re-parse
-    typedProgram <- TypeChecker.check(program, registry)  // Full re-check
+    TypedPipeline <- TypeChecker.check(program, registry)  // Full re-check
     // ...
   } yield result
 }
@@ -268,8 +268,8 @@ def compile(source: String, dagName: String): Either[List[CompileError], Compila
 case class CompilationCache(
   sourceHash: Int,
   parseResult: Option[Program],
-  typeCheckResult: Option[TypedProgram],
-  irResult: Option[IRProgram],
+  typeCheckResult: Option[TypedPipeline],
+  irResult: Option[IRPipeline],
   dagResult: Option[DagSpec]
 )
 
@@ -531,7 +531,7 @@ compiler.compile(document.text, "validation")
 ```scala
 class IncrementalAnalyzer {
   private var lastAst: Option[Program] = None
-  private var lastTypes: Option[TypedProgram] = None
+  private var lastTypes: Option[TypedPipeline] = None
 
   def analyze(change: TextDocumentChange): IO[List[Diagnostic]] = {
     // 1. Parse only changed region
@@ -575,7 +575,7 @@ Completion, hover, and diagnostics all re-parse:
 case class DocumentCache(
   version: Int,
   ast: Option[Program],
-  typedAst: Option[TypedProgram],
+  typedAst: Option[TypedPipeline],
   diagnostics: List[Diagnostic]
 )
 
@@ -795,7 +795,7 @@ Currently, adding new features requires modifying core modules.
 ```scala
 trait CompilerPlugin {
   def transformAst(ast: Program): Program = ast
-  def transformIR(ir: IRProgram): IRProgram = ir
+  def transformIR(ir: IRPipeline): IRPipeline = ir
   def transformDag(dag: DagSpec): DagSpec = dag
 }
 

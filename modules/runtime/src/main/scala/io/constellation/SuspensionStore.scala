@@ -14,7 +14,7 @@ final case class SuspensionHandle(id: String)
   * @param executionId
   *   The original execution ID
   * @param structuralHash
-  *   Program structural hash (links to ProgramStore)
+  *   Pipeline structural hash (links to PipelineStore)
   * @param resumptionCount
   *   How many times this execution has been resumed
   * @param missingInputs

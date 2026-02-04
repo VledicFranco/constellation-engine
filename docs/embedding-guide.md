@@ -18,8 +18,8 @@ All interactions go through two main entry points:
 
 | Entry Point | Purpose |
 |-------------|---------|
-| `Constellation` trait | Register modules, store programs, execute pipelines |
-| `LangCompiler` | Compile constellation-lang source into `LoadedProgram` |
+| `Constellation` trait | Register modules, store pipelines, execute pipelines |
+| `LangCompiler` | Compile constellation-lang source into `LoadedPipeline` |
 
 ## Add Dependencies
 
@@ -88,7 +88,7 @@ object MinimalExample extends IOApp.Simple {
 
       // 5. Execute the pipeline
       sig <- constellation.run(
-        compiled.program,
+        compiled.pipeline,
         inputs = Map("text" -> io.constellation.TypeSystem.CValue.VString("hello world"))
       )
 
@@ -113,16 +113,16 @@ val result: Either[List[CompileError], CompilationOutput] =
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `program` | `LoadedProgram` | The compiled program (includes `image.dagSpec` and `syntheticModules`) |
+| `pipeline` | `LoadedPipeline` | The compiled pipeline (includes `image.dagSpec` and `syntheticModules`) |
 | `warnings` | `List[CompileWarning]` | Non-fatal compilation warnings |
 
 ### Execution
 
-Pass the compiled program and inputs to the runtime:
+Pass the compiled pipeline and inputs to the runtime:
 
 ```scala
 val sig: IO[DataSignature] = constellation.run(
-  compiled.program,
+  compiled.pipeline,
   inputs           // Map[String, CValue]
 )
 ```
@@ -136,16 +136,16 @@ val sig: IO[DataSignature] = constellation.run(
 | `status` | `PipelineStatus` — Completed, Suspended, or Failed |
 | `missingInputs` | `List[String]` — inputs that were not provided |
 
-### Reusing Compiled Programs
+### Reusing Compiled Pipelines
 
 Compile once, execute many times:
 
 ```scala
-// Store the program image for later execution
-val hash = constellation.programStore.store(compiled.program.image)
+// Store the pipeline image for later execution
+val hash = constellation.pipelineStore.store(compiled.pipeline.image)
 
 // Optionally give it a human-readable alias
-constellation.programStore.alias("my-pipeline", hash)
+constellation.pipelineStore.alias("my-pipeline", hash)
 
 // Execute by name or hash
 val sig = constellation.run("my-pipeline", inputs, ExecutionOptions())
@@ -191,7 +191,7 @@ object TextPipeline extends IOApp.Simple {
       )
 
       sig <- constellation.run(
-        compiled.program,
+        compiled.pipeline,
         Map("text" -> VString("  hello world  "))
       )
 
@@ -382,7 +382,7 @@ For long-running pipelines, use `IO.timeout`:
 
 ```scala
 val sig: IO[DataSignature] =
-  constellation.run(compiled.program, inputs)
+  constellation.run(compiled.pipeline, inputs)
     .timeout(30.seconds)
 ```
 

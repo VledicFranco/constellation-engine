@@ -5,7 +5,7 @@ import java.util.UUID
 
 /** Utilities for computing deterministic content hashes of DAG specifications.
   *
-  * Used by [[ProgramImage]] to derive structural and syntactic hashes that enable deduplication,
+  * Used by [[PipelineImage]] to derive structural and syntactic hashes that enable deduplication,
   * caching, and change detection.
   */
 object ContentHash {

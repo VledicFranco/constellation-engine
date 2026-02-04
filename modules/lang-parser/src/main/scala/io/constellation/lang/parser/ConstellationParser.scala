@@ -701,8 +701,8 @@ object ConstellationParser extends MemoizationSupport {
       )
     )
 
-  // Full program: sequence of declarations with at least one output declaration
-  val program: Parser0[Program] =
+  // Full pipeline: sequence of declarations with at least one output declaration
+  val pipeline: Parser0[Pipeline] =
     (ws *> declaration.repSep0(ws) <* ws).flatMap { declarations =>
       // Collect output declarations
       val outputs = declarations.collect { case Declaration.OutputDecl(name) =>
@@ -711,16 +711,16 @@ object ConstellationParser extends MemoizationSupport {
       if outputs.isEmpty then {
         P.fail // At least one output required
       } else {
-        P.pure(Program(declarations, outputs))
+        P.pure(Pipeline(declarations, outputs))
       }
     }
 
-  /** Parse a constellation-lang program. Clears the memoization cache before parsing to ensure
+  /** Parse a constellation-lang pipeline. Clears the memoization cache before parsing to ensure
     * fresh state.
     */
-  def parse(source: String): Either[CompileError.ParseError, Program] = {
+  def parse(source: String): Either[CompileError.ParseError, Pipeline] = {
     clearMemoCache() // Clear cache for fresh parse
-    program.parseAll(source).left.map { err =>
+    pipeline.parseAll(source).left.map { err =>
       val offset = err.failedAtOffset
       CompileError.ParseError(
         s"Parse error: ${err.expected.toList.map(_.toString).mkString(", ")}",
@@ -731,11 +731,11 @@ object ConstellationParser extends MemoizationSupport {
 
   /** Parse with cache statistics for benchmarking.
     * @return
-    *   Either parse error or (program, (cache hits, cache misses))
+    *   Either parse error or (Pipeline, (cache hits, cache misses))
     */
-  def parseWithStats(source: String): Either[CompileError.ParseError, (Program, (Int, Int))] = {
+  def parseWithStats(source: String): Either[CompileError.ParseError, (Pipeline, (Int, Int))] = {
     clearMemoCache()
-    program.parseAll(source) match {
+    pipeline.parseAll(source) match {
       case Right(prog) =>
         val stats = getCacheStats
         Right((prog, stats))

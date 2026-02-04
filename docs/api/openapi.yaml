@@ -6,8 +6,8 @@ info:
     REST API for the Constellation Engine - a type-safe, composable ML orchestration framework.
 
     This API allows you to:
-    - Compile constellation-lang source code into executable programs
-    - Execute compiled programs with input data
+    - Compile constellation-lang source code into executable pipelines
+    - Execute compiled pipelines with input data
     - Compile and run scripts in a single request
     - Query available modules and namespaces
 
@@ -38,8 +38,8 @@ tags:
     description: Compile constellation-lang source code
   - name: Execution
     description: Execute compiled DAGs
-  - name: Programs
-    description: Manage stored programs (content-addressed)
+  - name: Pipelines
+    description: Manage stored pipelines (content-addressed)
   - name: Modules
     description: Query available modules
   - name: Namespaces
@@ -474,24 +474,24 @@ paths:
                 error: "NotFound"
                 message: "Detail endpoint is not enabled"
 
-  /programs:
+  /pipelines:
     get:
       tags:
-        - Programs
-      summary: List all stored programs
+        - Pipelines
+      summary: List all stored pipelines
       description: |
-        Returns all programs stored in the ProgramStore, including their
+        Returns all pipelines stored in the PipelineStore, including their
         structural hash, syntactic hash, name, and metadata.
-      operationId: listPrograms
+      operationId: listPipelines
       responses:
         '200':
-          description: List of stored programs
+          description: List of stored pipelines
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  programs:
+                  pipelines:
                     type: array
                     items:
                       type: object
@@ -503,41 +503,41 @@ paths:
                         syntacticHash:
                           type: string
 
-  /programs/{ref}:
+  /pipelines/{ref}:
     get:
       tags:
-        - Programs
-      summary: Get a program by reference
+        - Pipelines
+      summary: Get a pipeline by reference
       description: |
-        Retrieve a stored program by name, structural hash, or syntactic hash.
-        Returns program details including modules, inputs, and outputs.
-      operationId: getProgram
+        Retrieve a stored pipeline by name, structural hash, or syntactic hash.
+        Returns pipeline details including modules, inputs, and outputs.
+      operationId: getPipeline
       parameters:
         - name: ref
           in: path
           required: true
-          description: Program reference (name, structural hash, or syntactic hash)
+          description: Pipeline reference (name, structural hash, or syntactic hash)
           schema:
             type: string
       responses:
         '200':
-          description: Program found
+          description: Pipeline found
           content:
             application/json:
               schema:
                 type: object
         '404':
-          description: Program not found
+          description: Pipeline not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags:
-        - Programs
-      summary: Delete a program
-      description: Remove a stored program by reference.
-      operationId: deleteProgram
+        - Pipelines
+      summary: Delete a pipeline
+      description: Remove a stored pipeline by reference.
+      operationId: deletePipeline
       security:
         - bearerAuth: []
       parameters:
@@ -548,7 +548,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Program deleted
+          description: Pipeline deleted
           content:
             application/json:
               schema:
@@ -559,21 +559,21 @@ paths:
                   ref:
                     type: string
         '404':
-          description: Program not found
+          description: Pipeline not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /programs/{name}/alias:
+  /pipelines/{name}/alias:
     put:
       tags:
-        - Programs
-      summary: Repoint a program alias
+        - Pipelines
+      summary: Repoint a pipeline alias
       description: |
-        Update a named program alias to point to a different structural hash.
+        Update a named pipeline alias to point to a different structural hash.
         Allows blue-green deployments by atomically switching which version a name resolves to.
-      operationId: updateProgramAlias
+      operationId: updatePipelineAlias
       security:
         - bearerAuth: []
       parameters:

@@ -1,11 +1,6 @@
----
-title: "Program Structure"
-sidebar_position: 2
----
+# Pipeline Structure
 
-# Program Structure
-
-A constellation-lang program consists of:
+A constellation-lang pipeline consists of:
 
 1. **Type definitions** (optional) - Define custom record types
 2. **Input declarations** - Declare external inputs to the pipeline

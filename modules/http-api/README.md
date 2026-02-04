@@ -1,6 +1,6 @@
 # Constellation HTTP API
 
-HTTP server module for the Constellation Engine, providing a REST API for compiling constellation-lang programs, managing DAGs and modules, and executing computational pipelines.
+HTTP server module for the Constellation Engine, providing a REST API for compiling constellation-lang pipelines, managing DAGs and modules, and executing computational pipelines.
 
 ## Features
 
@@ -99,7 +99,7 @@ GET /health
 # Response: {"status": "ok"}
 ```
 
-### Compile Program
+### Compile Pipeline
 ```bash
 POST /compile
 Content-Type: application/json
@@ -348,7 +348,7 @@ curl http://localhost:8080/health/live
 # Readiness probe
 curl http://localhost:8080/health/ready
 
-# Compile a program
+# Compile a pipeline
 curl -X POST http://localhost:8080/compile \
   -H "Content-Type: application/json" \
   -d '{
@@ -382,7 +382,7 @@ curl -X POST http://localhost:8080/execute \
 ### Using httpie
 
 ```bash
-# Compile a program
+# Compile a pipeline
 http POST localhost:8080/compile \
   source="in x: Int\nout x" \
   dagName="simple-dag"
@@ -428,7 +428,7 @@ sbt httpApi/test
 
 The tests cover:
 - Health check endpoints (liveness, readiness, detail)
-- Program compilation (success and error cases)
+- Pipeline compilation (success and error cases)
 - DAG listing and retrieval
 - Module listing
 - Authentication middleware (valid/invalid keys, roles, public paths)

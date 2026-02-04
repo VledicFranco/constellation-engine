@@ -115,7 +115,7 @@ After this RFC and its children:
 
 ---
 
-## Phase 0: Terminology Standardization
+## Phase 0: Terminology Standardization ✅ Implemented
 
 ### Core Definitions
 
@@ -295,7 +295,7 @@ The library has no external consumers yet — all usage is internal (example-app
 |-----------|--------|
 | `runtime` module | Rename 6 types + their files, update all references |
 | `lang-ast` module | Rename `Program` → `Pipeline` |
-| `lang-compiler` module | Rename `IRProgram`, `TypedProgram`, update compiler pipeline |
+| `lang-compiler` module | Rename `IRPipeline`, `TypedPipeline`, update compiler pipeline |
 | `lang-parser` module | Rename parser combinator (`val program` → `val pipeline`), update ~50 test variables |
 | `http-api` module | Rename API model types, endpoint paths |
 | `lang-lsp` module | Update references to `Program` AST type |
@@ -434,7 +434,7 @@ Client                          Server
 
 | Phase | RFC | Depends On | Scope |
 |-------|-----|-----------|-------|
-| Phase 0: Terminology rename | RFC-015 (this RFC) | Nothing | Large: mechanical rename across codebase, well-defined |
+| Phase 0: Terminology rename ✅ | RFC-015 (this RFC) | Nothing | Large: mechanical rename across codebase, well-defined |
 | Phase 1: Suspension-aware responses | [RFC-015a](./rfc-015a-suspension-http.md) | Phase 0 | Small: extend 2 response models, map fields |
 | Phase 2: Resume endpoint | [RFC-015a](./rfc-015a-suspension-http.md) | Phase 1 | Medium: new routes, SuspensionStore wiring |
 | Phase 3: Startup loader | [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Phase 0 | Medium: new component, env vars, logging |

@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 
 /** IR Optimizer that orchestrates optimization passes.
   *
@@ -19,7 +19,7 @@ object IROptimizer {
     *   The optimized IR program and statistics
     */
   def optimize(
-      ir: IRProgram,
+      ir: IRPipeline,
       config: OptimizationConfig = OptimizationConfig.default
   ): OptimizationResult = {
     if !config.hasOptimizationsEnabled then {
@@ -61,9 +61,9 @@ object IROptimizer {
     * Convenience method for when statistics are not needed.
     */
   def optimizeIR(
-      ir: IRProgram,
+      ir: IRPipeline,
       config: OptimizationConfig = OptimizationConfig.default
-  ): IRProgram = optimize(ir, config).optimizedIR
+  ): IRPipeline = optimize(ir, config).optimizedIR
 
   /** Build the list of enabled optimization passes */
   private def buildPassList(config: OptimizationConfig): List[OptimizationPass] =
@@ -75,7 +75,7 @@ object IROptimizer {
     ).flatten
 
   /** Analyze an IR program and return statistics */
-  def analyze(ir: IRProgram): IRAnalysis = {
+  def analyze(ir: IRPipeline): IRAnalysis = {
     val nodesByType = ir.nodes.values.groupBy(_.getClass.getSimpleName)
 
     IRAnalysis(
@@ -97,7 +97,7 @@ object IROptimizer {
 
 /** Result of optimization including the optimized IR and statistics */
 final case class OptimizationResult(
-    optimizedIR: IRProgram,
+    optimizedIR: IRPipeline,
     stats: OptimizationStats,
     iterations: Int
 )

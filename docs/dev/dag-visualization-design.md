@@ -315,13 +315,13 @@ Lists (count + preview):
 
 **Files to create/modify:**
 - `modules/lang-compiler/src/.../viz/DagVizIR.scala` - New IR types
-- `modules/lang-compiler/src/.../viz/DagVizCompiler.scala` - IRProgram → DagVizIR
+- `modules/lang-compiler/src/.../viz/DagVizCompiler.scala` - IRPipeline → DagVizIR
 - `modules/lang-compiler/src/.../viz/SugiyamaLayout.scala` - Layout algorithm
 - `modules/lang-lsp/src/.../protocol/LspMessages.scala` - Add new message types
 
 **Deliverables:**
 - [x] DagVizIR case classes with JSON encoders
-- [ ] Compiler from IRProgram to DagVizIR
+- [ ] Compiler from IRPipeline to DagVizIR
 - [ ] Sugiyama layout with edge crossing minimization
 - [ ] LSP endpoint `getDagVisualization` returning laid-out IR
 

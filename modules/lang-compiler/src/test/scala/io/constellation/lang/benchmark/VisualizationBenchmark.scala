@@ -1,7 +1,7 @@
 package io.constellation.lang.benchmark
 
 import io.constellation.lang.*
-import io.constellation.lang.compiler.{IRGenerator, IRProgram}
+import io.constellation.lang.compiler.{IRGenerator, IRPipeline}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
@@ -33,14 +33,14 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
   val emptyRegistry: FunctionRegistry = FunctionRegistry.empty
 
   // Pre-compile IR for each fixture size to isolate visualization benchmarks
-  lazy val smallIR: IRProgram      = compileToIR(TestFixtures.smallProgram)
-  lazy val mediumIR: IRProgram     = compileToIR(TestFixtures.mediumProgram)
-  lazy val largeIR: IRProgram      = compileToIR(TestFixtures.largeProgram)
-  lazy val stress100IR: IRProgram  = compileToIR(TestFixtures.stressProgram100)
-  lazy val stress500IR: IRProgram  = compileToIR(TestFixtures.stressProgram500)
-  lazy val stress1000IR: IRProgram = compileToIR(TestFixtures.stressProgram1000)
+  lazy val smallIR: IRPipeline      = compileToIR(TestFixtures.smallProgram)
+  lazy val mediumIR: IRPipeline     = compileToIR(TestFixtures.mediumProgram)
+  lazy val largeIR: IRPipeline      = compileToIR(TestFixtures.largeProgram)
+  lazy val stress100IR: IRPipeline  = compileToIR(TestFixtures.stressProgram100)
+  lazy val stress500IR: IRPipeline  = compileToIR(TestFixtures.stressProgram500)
+  lazy val stress1000IR: IRPipeline = compileToIR(TestFixtures.stressProgram1000)
 
-  private def compileToIR(source: String): IRProgram = {
+  private def compileToIR(source: String): IRPipeline = {
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
     IRGenerator.generate(typed)

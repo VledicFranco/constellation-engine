@@ -29,20 +29,20 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       .implementationPure[IntInput, IntOutput](in => IntOutput(in.x * 2))
       .build
 
-  /** Helper to build a LoadedProgram from a hand-built DagSpec */
+  /** Helper to build a LoadedPipeline from a hand-built DagSpec */
   private def loadedFromDag(
       dag: DagSpec,
       syntheticModules: Map[UUID, Module.Uninitialized] = Map.empty
-  ): LoadedProgram = {
-    val structuralHash = ProgramImage.computeStructuralHash(dag)
-    val image = ProgramImage(
+  ): LoadedPipeline = {
+    val structuralHash = PipelineImage.computeStructuralHash(dag)
+    val image = PipelineImage(
       structuralHash = structuralHash,
       syntacticHash = "",
       dagSpec = dag,
       moduleOptions = Map.empty,
       compiledAt = Instant.now()
     )
-    LoadedProgram(image, syntheticModules)
+    LoadedPipeline(image, syntheticModules)
   }
 
   "Constellation" should "initialize successfully" in {
@@ -94,7 +94,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     retrieved shouldBe None
   }
 
-  // DAG execution via LoadedProgram
+  // DAG execution via LoadedPipeline
   "run" should "execute a simple DAG" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
@@ -147,7 +147,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
     result.left.exists(_.getMessage.contains("not found")) shouldBe true
   }
 
-  it should "execute a DAG spec directly via LoadedProgram" in {
+  it should "execute a DAG spec directly via LoadedPipeline" in {
     val constellation = ConstellationImpl.init.unsafeRunSync()
 
     // Register the module
@@ -213,7 +213,7 @@ class ConstellationTest extends AnyFlatSpec with Matchers {
       outputBindings = Map("result" -> outputDataId)
     )
 
-    // Pass modules as synthetic modules in LoadedProgram
+    // Pass modules as synthetic modules in LoadedPipeline
     val syntheticModules = Map(moduleId -> createUppercaseModule())
     val loaded           = loadedFromDag(dag, syntheticModules)
 

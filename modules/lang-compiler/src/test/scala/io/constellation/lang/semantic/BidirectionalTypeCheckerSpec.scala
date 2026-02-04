@@ -128,7 +128,7 @@ class BidirectionalTypeCheckerSpec extends AnyFlatSpec with Matchers {
 
   private def parse(source: String) = ConstellationParser.parse(source)
 
-  private def typeCheck(source: String): Either[List[CompileError], TypedProgram] =
+  private def typeCheck(source: String): Either[List[CompileError], TypedPipeline] =
     parse(source) match {
       case Left(err)      => Left(List(err))
       case Right(program) => TypeChecker.check(program, createRegistry)

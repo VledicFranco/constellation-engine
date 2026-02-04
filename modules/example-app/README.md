@@ -280,7 +280,7 @@ object MyApp extends IOApp.Simple {
 
 ### Step 3: Define Your Pipelines
 
-Create `.cst` files with your constellation-lang programs:
+Create `.cst` files with your constellation-lang pipelines:
 
 ```constellation
 # my-pipeline.cst

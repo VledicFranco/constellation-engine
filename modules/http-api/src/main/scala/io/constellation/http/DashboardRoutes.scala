@@ -214,11 +214,11 @@ class DashboardRoutes(
     EitherT.fromEither[IO] {
       for {
         // First compile to IR
-        irProgram <- compiler
+        irPipeline <- compiler
           .compileToIR(source, "preview")
           .leftMap(errors => errors.map(_.message))
         // Then generate visualization
-        dagVizIR <- Try(DagVizCompiler.compile(irProgram, Some("preview"))).toEither.leftMap(e =>
+        dagVizIR <- Try(DagVizCompiler.compile(irPipeline, Some("preview"))).toEither.leftMap(e =>
           List(e.getMessage)
         )
       } yield dagVizIR
@@ -447,15 +447,15 @@ class DashboardRoutes(
       )
 
       // Also compile to IR for DAG visualization (best effort)
-      irProgram = compiler.compileToIR(content, "dashboard_exec").toOption
+      irPipeline = compiler.compileToIR(content, "dashboard_exec").toOption
 
       // Create execution record
       startTime   = System.currentTimeMillis()
       executionId = UUID.randomUUID().toString
 
       // Optionally compile the DAG visualization
-      dagVizIR = irProgram.flatMap(ir =>
-        Try(DagVizCompiler.compile(ir, Some(compiled.program.image.dagSpec.metadata.name))).toOption
+      dagVizIR = irPipeline.flatMap(ir =>
+        Try(DagVizCompiler.compile(ir, Some(compiled.pipeline.image.dagSpec.metadata.name))).toOption
       )
 
       // Create initial execution record if sampling
@@ -465,7 +465,7 @@ class DashboardRoutes(
             storage.store(
               ExecutionStorage
                 .createExecution(
-                  dagName = compiled.program.image.dagSpec.metadata.name,
+                  dagName = compiled.pipeline.image.dagSpec.metadata.name,
                   scriptPath = Some(req.scriptPath),
                   inputs = req.inputs,
                   source = source,
@@ -477,10 +477,10 @@ class DashboardRoutes(
         else EitherT.pure[IO, ApiError](())
 
       // Convert inputs
-      inputs <- convertInputs(req.inputs, compiled.program.image.dagSpec)
+      inputs <- convertInputs(req.inputs, compiled.pipeline.image.dagSpec)
 
       // Execute using the new API
-      sig <- ErrorHandling.liftIO(constellation.run(compiled.program, inputs)) { t =>
+      sig <- ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
         ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
       }
 

@@ -6,7 +6,7 @@ import cats.implicits.*
 import org.http4s.HttpRoutes
 import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, JsonCValueConverter, ProgramImage}
+import io.constellation.{CValue, Constellation, JsonCValueConverter, PipelineImage}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
 import io.constellation.http.ApiModels.*
 import io.constellation.errors.{ApiError, ErrorHandling}
@@ -81,33 +81,33 @@ class ConstellationRoutes(
       } else None
     }
 
-  /** Validate a program reference (name or hash).
+  /** Validate a pipeline reference (name or hash).
     *
     * Refs can be:
-    *   - Program name (any non-empty string, max 256 chars)
+    *   - Pipeline name (any non-empty string, max 256 chars)
     *   - SHA-256 structural hash (exactly 64 hex characters)
     *
     * If a ref is exactly 64 chars, it MUST be valid hex (treated as hash).
     */
   private def validateRef(ref: String): Either[String, String] =
     if ref.isBlank then {
-      Left("Program reference cannot be blank")
+      Left("Pipeline reference cannot be blank")
     } else if ref.length == 64 then {
       // Must be a SHA-256 hash - validate it's valid hex
       if ref.matches("[a-fA-F0-9]{64}") then Right(ref)
       else Left(s"Invalid hash format: '$ref' (expected 64 hex characters)")
     } else if ref.length > 256 then {
       // Prevent excessively long names
-      Left(s"Program reference too long: ${ref.length} characters (max 256)")
+      Left(s"Pipeline reference too long: ${ref.length} characters (max 256)")
     } else {
-      // Treat as program name
+      // Treat as pipeline name
       Right(ref)
     }
 
   val routes: HttpRoutes[IO] = HttpRoutes.of[IO] {
 
     // Compile constellation-lang source code
-    // Now stores ProgramImage in ProgramStore and returns structuralHash/syntacticHash
+    // Now stores PipelineImage in PipelineStore and returns structuralHash/syntacticHash
     case req @ POST -> Root / "compile" =>
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
@@ -128,13 +128,13 @@ class ConstellationRoutes(
             )
             response <- result match {
               case Right(compiled) =>
-                val image = compiled.program.image
+                val image = compiled.pipeline.image
                 for {
-                  // Store the image in ProgramStore (content-addressed)
-                  _ <- constellation.programStore.store(image)
+                  // Store the image in PipelineStore (content-addressed)
+                  _ <- constellation.PipelineStore.store(image)
                   // Create alias if name was provided
                   _ <- effectiveName.traverse_(n =>
-                    constellation.programStore.alias(n, image.structuralHash)
+                    constellation.PipelineStore.alias(n, image.structuralHash)
                   )
                   resp <- Ok(
                     CompileResponse(
@@ -188,7 +188,7 @@ class ConstellationRoutes(
                         NotFound(
                           ErrorResponse(
                             error = "NotFound",
-                            message = s"Program '$name' not found",
+                            message = s"Pipeline '$name' not found",
                             requestId = Some(reqId)
                           )
                         )
@@ -288,18 +288,18 @@ class ConstellationRoutes(
       }
 
     // ---------------------------------------------------------------------------
-    // Program management endpoints (Phase 5)
+    // Pipeline management endpoints (Phase 5)
     // ---------------------------------------------------------------------------
 
-    // List all stored programs
-    case GET -> Root / "programs" =>
+    // List all stored pipelines
+    case GET -> Root / "pipelines" =>
       for {
-        images  <- constellation.programStore.listImages
-        aliases <- constellation.programStore.listAliases
+        images  <- constellation.PipelineStore.listImages
+        aliases <- constellation.PipelineStore.listAliases
         // Build reverse map: structuralHash -> List[alias]
         aliasMap = aliases.toList.groupMap(_._2)(_._1)
         summaries = images.map { img =>
-          ProgramSummary(
+          PipelineSummary(
             structuralHash = img.structuralHash,
             syntacticHash = img.syntacticHash,
             aliases = aliasMap.getOrElse(img.structuralHash, Nil),
@@ -308,14 +308,14 @@ class ConstellationRoutes(
             declaredOutputs = img.dagSpec.declaredOutputs
           )
         }
-        response <- Ok(ProgramListResponse(summaries))
+        response <- Ok(PipelineListResponse(summaries))
       } yield response
 
-    // Get program metadata by reference (name or structural hash)
-    case GET -> Root / "programs" / ref =>
+    // Get pipeline metadata by reference (name or structural hash)
+    case GET -> Root / "pipelines" / ref =>
       for {
         imageOpt <- resolveImage(ref)
-        aliases  <- constellation.programStore.listAliases
+        aliases  <- constellation.PipelineStore.listAliases
         response <- imageOpt match {
           case Some(img) =>
             val imageAliases = aliases.toList.collect {
@@ -339,7 +339,7 @@ class ConstellationRoutes(
               }
             }.toMap
             Ok(
-              ProgramDetailResponse(
+              PipelineDetailResponse(
                 structuralHash = img.structuralHash,
                 syntacticHash = img.syntacticHash,
                 aliases = imageAliases,
@@ -351,20 +351,20 @@ class ConstellationRoutes(
               )
             )
           case None =>
-            NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+            NotFound(ErrorResponse(error = "NotFound", message = s"Pipeline '$ref' not found"))
         }
       } yield response
 
-    // Delete a program by reference
-    case DELETE -> Root / "programs" / ref =>
+    // Delete a pipeline by reference
+    case DELETE -> Root / "pipelines" / ref =>
       for {
         imageOpt <- resolveImage(ref)
         response <- imageOpt match {
           case None =>
-            NotFound(ErrorResponse(error = "NotFound", message = s"Program '$ref' not found"))
+            NotFound(ErrorResponse(error = "NotFound", message = s"Pipeline '$ref' not found"))
           case Some(img) =>
             for {
-              aliases <- constellation.programStore.listAliases
+              aliases <- constellation.PipelineStore.listAliases
               pointingAliases = aliases.toList.collect {
                 case (name, hash) if hash == img.structuralHash => name
               }
@@ -374,15 +374,15 @@ class ConstellationRoutes(
                     ErrorResponse(
                       error = "AliasConflict",
                       message =
-                        s"Cannot delete program: aliases [${pointingAliases.mkString(", ")}] point to it"
+                        s"Cannot delete pipeline: aliases [${pointingAliases.mkString(", ")}] point to it"
                     )
                   )
                 } else {
-                  constellation.programStore.remove(img.structuralHash).flatMap { removed =>
+                  constellation.PipelineStore.remove(img.structuralHash).flatMap { removed =>
                     if removed then Ok(Json.obj("deleted" -> Json.fromBoolean(true)))
                     else
                       NotFound(
-                        ErrorResponse(error = "NotFound", message = s"Program '$ref' not found")
+                        ErrorResponse(error = "NotFound", message = s"Pipeline '$ref' not found")
                       )
                   }
                 }
@@ -391,20 +391,20 @@ class ConstellationRoutes(
       } yield response
 
     // Repoint an alias to a different structural hash
-    case req @ PUT -> Root / "programs" / name / "alias" =>
+    case req @ PUT -> Root / "pipelines" / name / "alias" =>
       for {
         aliasReq <- req.as[AliasRequest]
-        imageOpt <- constellation.programStore.get(aliasReq.structuralHash)
+        imageOpt <- constellation.PipelineStore.get(aliasReq.structuralHash)
         response <- imageOpt match {
           case None =>
             NotFound(
               ErrorResponse(
                 error = "NotFound",
-                message = s"Program with hash '${aliasReq.structuralHash}' not found"
+                message = s"Pipeline with hash '${aliasReq.structuralHash}' not found"
               )
             )
           case Some(_) =>
-            constellation.programStore.alias(name, aliasReq.structuralHash).flatMap { _ =>
+            constellation.PipelineStore.alias(name, aliasReq.structuralHash).flatMap { _ =>
               Ok(
                 Json.obj(
                   "name"           -> Json.fromString(name),
@@ -537,12 +537,12 @@ class ConstellationRoutes(
 
   // ========== Private Helper Methods ==========
 
-  /** Resolve a program image from a reference (name or "sha256:<hash>"). */
-  private def resolveImage(ref: String): IO[Option[ProgramImage]] =
-    if ref.startsWith("sha256:") then constellation.programStore.get(ref.stripPrefix("sha256:"))
-    else constellation.programStore.getByName(ref)
+  /** Resolve a pipeline image from a reference (name or "sha256:<hash>"). */
+  private def resolveImage(ref: String): IO[Option[PipelineImage]] =
+    if ref.startsWith("sha256:") then constellation.PipelineStore.get(ref.stripPrefix("sha256:"))
+    else constellation.PipelineStore.getByName(ref)
 
-  /** Execute a program by reference using the ProgramStore. */
+  /** Execute a pipeline by reference using the PipelineStore. */
   private def executeByRef(
       ref: String,
       jsonInputs: Map[String, Json]
@@ -554,7 +554,7 @@ class ConstellationRoutes(
           convertInputs(jsonInputs, dagSpec).value.flatMap {
             case Left(err) => IO.pure(Left(err))
             case Right(inputs) =>
-              val loaded = io.constellation.ProgramImage.rehydrate(image)
+              val loaded = io.constellation.PipelineImage.rehydrate(image)
               constellation.run(loaded, inputs).attempt.map {
                 case Right(sig) =>
                   val outputs = sig.outputs.map { case (k, v) =>
@@ -566,7 +566,7 @@ class ConstellationRoutes(
               }
           }
         case None =>
-          IO.pure(Left(ApiError.NotFoundError("Program", ref)))
+          IO.pure(Left(ApiError.NotFoundError("Pipeline", ref)))
       }
     )
 
@@ -582,12 +582,12 @@ class ConstellationRoutes(
             ApiError.CompilationError(errors.map(_.message))
           })
       )
-      image = compiled.program.image
-      // Store image in ProgramStore for dedup and future reference
-      _      <- EitherT.liftF(constellation.programStore.store(image))
-      inputs <- convertInputs(req.inputs, compiled.program.image.dagSpec)
-      // Use new API: constellation.run with LoadedProgram
-      sig <- ErrorHandling.liftIO(constellation.run(compiled.program, inputs)) { t =>
+      image = compiled.pipeline.image
+      // Store image in PipelineStore for dedup and future reference
+      _      <- EitherT.liftF(constellation.PipelineStore.store(image))
+      inputs <- convertInputs(req.inputs, compiled.pipeline.image.dagSpec)
+      // Use new API: constellation.run with LoadedPipeline
+      sig <- ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
         ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
       }
     } yield {

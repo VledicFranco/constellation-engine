@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
@@ -15,7 +15,7 @@ object ConstantFolding extends OptimizationPass {
 
   val name: String = "constant-folding"
 
-  def run(ir: IRProgram): IRProgram = {
+  def run(ir: IRPipeline): IRPipeline = {
     // Map of node ID -> folded constant value (if foldable)
     val folded = mutable.Map[UUID, FoldedValue]()
 
@@ -54,7 +54,7 @@ object ConstantFolding extends OptimizationPass {
   private def tryFold(
       node: IRNode,
       folded: Map[UUID, FoldedValue],
-      ir: IRProgram
+      ir: IRPipeline
   ): Option[FoldedValue] = node match {
 
     // Literals are already constants

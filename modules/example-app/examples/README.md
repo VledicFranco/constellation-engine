@@ -1,6 +1,6 @@
 # Constellation-Lang Examples
 
-This directory contains example programs demonstrating all supported constellation-lang features. The examples are organized in a progressive learning path, from basic concepts to advanced features.
+This directory contains example pipelines demonstrating all supported constellation-lang features. The examples are organized in a progressive learning path, from basic concepts to advanced features.
 
 ## Quick Start
 

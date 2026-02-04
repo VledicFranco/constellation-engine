@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,8 +12,8 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   private def uuid(name: String): UUID = UUID.nameUUIDFromBytes(name.getBytes)
 
   "IROptimizer" should "apply all enabled passes" in {
-    // Program with dead code, constants, and duplicates
-    val ir = IRProgram(
+    // Pipeline with dead code, constants, and duplicates
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x") -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         // Constant folding target
@@ -64,7 +64,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "respect disabled passes" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 2, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 3, SemanticType.SInt, None),
@@ -97,7 +97,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return unchanged IR when no optimizations enabled" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 2, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 3, SemanticType.SInt, None),
@@ -126,7 +126,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   it should "iterate until fixpoint" in {
     // Create a program that needs multiple passes to fully optimize
     // First pass: fold constant -> Second pass: eliminate now-dead literal dependencies
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 2, SemanticType.SInt, None),
         uuid("b") -> IRNode.LiteralNode(uuid("b"), 3, SemanticType.SInt, None),
@@ -159,7 +159,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "respect maxIterations" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a") -> IRNode.LiteralNode(uuid("a"), 1, SemanticType.SInt, None)
       ),
@@ -175,7 +175,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   }
 
   it should "provide accurate statistics" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("x")     -> IRNode.Input(uuid("x"), "x", SemanticType.SInt, None),
         uuid("dead1") -> IRNode.LiteralNode(uuid("dead1"), 1, SemanticType.SInt, None),
@@ -231,7 +231,7 @@ class IROptimizerTest extends AnyFlatSpec with Matchers {
   }
 
   "IROptimizer.analyze" should "correctly count node types" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("lit")   -> IRNode.LiteralNode(uuid("lit"), 5, SemanticType.SInt, None),

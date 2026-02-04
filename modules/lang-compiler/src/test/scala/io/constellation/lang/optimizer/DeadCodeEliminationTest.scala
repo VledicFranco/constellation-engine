@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -12,8 +12,8 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   private def uuid(name: String): UUID = UUID.nameUUIDFromBytes(name.getBytes)
 
   "DeadCodeElimination" should "remove unused nodes" in {
-    // Program: x + 1 (unused), x * 2 (used as output)
-    val ir = IRProgram(
+    // Pipeline: x + 1 (unused), x * 2 (used as output)
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input")    -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal1") -> IRNode.LiteralNode(uuid("literal1"), 1, SemanticType.SInt, None),
@@ -59,7 +59,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve all nodes when all are reachable" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input")   -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("literal") -> IRNode.LiteralNode(uuid("literal"), 1, SemanticType.SInt, None),
@@ -91,7 +91,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle empty programs" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map.empty,
       inputs = List.empty,
       declaredOutputs = List.empty,
@@ -104,7 +104,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle programs with no outputs" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("add") -> IRNode.ModuleCall(
@@ -129,8 +129,8 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "remove dead code in a chain" in {
-    // Program: a -> b -> c (unused), d (used as output)
-    val ir = IRProgram(
+    // Pipeline: a -> b -> c (unused), d (used as output)
+    val ir = IRPipeline(
       nodes = Map(
         uuid("input") -> IRNode.Input(uuid("input"), "x", SemanticType.SInt, None),
         uuid("a")     -> IRNode.LiteralNode(uuid("a"), 1, SemanticType.SInt, None),
@@ -175,7 +175,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle conditionals correctly" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("cond") -> IRNode.LiteralNode(uuid("cond"), true, SemanticType.SBoolean, None),
         uuid("then") -> IRNode.LiteralNode(uuid("then"), 1, SemanticType.SInt, None),
@@ -201,7 +201,7 @@ class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle boolean expressions" in {
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         uuid("a")   -> IRNode.LiteralNode(uuid("a"), true, SemanticType.SBoolean, None),
         uuid("b")   -> IRNode.LiteralNode(uuid("b"), false, SemanticType.SBoolean, None),

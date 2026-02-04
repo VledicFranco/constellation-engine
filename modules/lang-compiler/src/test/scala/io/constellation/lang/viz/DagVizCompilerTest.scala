@@ -1,6 +1,6 @@
 package io.constellation.lang.viz
 
-import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
@@ -11,7 +11,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
 
   test("compile simple input node") {
     val inputId = UUID.randomUUID()
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         inputId -> IRNode.Input(inputId, "data", SemanticType.SString, None)
       ),
@@ -34,7 +34,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val moduleId      = UUID.randomUUID()
     val fieldAccessId = UUID.randomUUID()
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         inputId -> IRNode.Input(inputId, "input", SemanticType.SString, None),
         moduleId -> IRNode.ModuleCall(
@@ -83,7 +83,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val bId   = UUID.randomUUID()
     val addId = UUID.randomUUID()
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         aId -> IRNode.Input(aId, "a", SemanticType.SInt, None),
         bId -> IRNode.Input(bId, "b", SemanticType.SInt, None),
@@ -138,7 +138,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val cId = UUID.randomUUID()
     val dId = UUID.randomUUID()
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         aId -> IRNode.Input(aId, "a", SemanticType.SString, None),
         bId -> IRNode.ModuleCall(
@@ -186,7 +186,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
 
   test("compile with literal node") {
     val literalId = UUID.randomUUID()
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         literalId -> IRNode.LiteralNode(literalId, 42, SemanticType.SInt, None)
       ),
@@ -207,7 +207,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val condId  = UUID.randomUUID()
     val guardId = UUID.randomUUID()
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         inputId -> IRNode.Input(inputId, "value", SemanticType.SInt, None),
         condId  -> IRNode.LiteralNode(condId, true, SemanticType.SBoolean, None),
@@ -238,7 +238,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
       )
     )
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         inputId -> IRNode.Input(inputId, "data", recordType, None)
       ),
@@ -259,7 +259,7 @@ class DagVizCompilerTest extends AnyFunSuite with Matchers {
     val input2Id = UUID.randomUUID()
     val moduleId = UUID.randomUUID()
 
-    val ir = IRProgram(
+    val ir = IRPipeline(
       nodes = Map(
         input1Id -> IRNode.Input(input1Id, "a", SemanticType.SInt, None),
         input2Id -> IRNode.Input(input2Id, "b", SemanticType.SInt, None),

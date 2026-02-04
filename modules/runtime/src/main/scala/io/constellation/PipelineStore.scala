@@ -7,10 +7,10 @@ import cats.effect.IO
   * Supports storage, retrieval, aliasing (human-readable names), and a syntactic index that maps
   * (syntacticHash, registryHash) pairs to structural hashes for cache-hit detection.
   */
-trait ProgramStore {
+trait PipelineStore {
 
   /** Store a program image. Returns the structural hash as the key. */
-  def store(image: ProgramImage): IO[String]
+  def store(image: PipelineImage): IO[String]
 
   /** Create or update a human-readable alias for a structural hash. */
   def alias(name: String, structuralHash: String): IO[Unit]
@@ -22,10 +22,10 @@ trait ProgramStore {
   def listAliases: IO[Map[String, String]]
 
   /** Retrieve a program image by structural hash. */
-  def get(structuralHash: String): IO[Option[ProgramImage]]
+  def get(structuralHash: String): IO[Option[PipelineImage]]
 
   /** Retrieve a program image by alias name. */
-  def getByName(name: String): IO[Option[ProgramImage]]
+  def getByName(name: String): IO[Option[PipelineImage]]
 
   /** Index a syntactic hash to a structural hash for cache lookups.
     *
@@ -42,7 +42,7 @@ trait ProgramStore {
   def lookupSyntactic(syntacticHash: String, registryHash: String): IO[Option[String]]
 
   /** List all stored program images. */
-  def listImages: IO[List[ProgramImage]]
+  def listImages: IO[List[PipelineImage]]
 
   /** Remove a program image by structural hash. Returns true if found. */
   def remove(structuralHash: String): IO[Boolean]

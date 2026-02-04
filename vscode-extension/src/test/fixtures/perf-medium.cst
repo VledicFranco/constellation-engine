@@ -1,4 +1,4 @@
-# Medium benchmark program - Flag Processing
+# Medium benchmark pipeline - Flag Processing
 # Matches: TestFixtures.mediumProgram (~80 lines)
 # Purpose: Realistic small file
 # Target: <50ms parse, <150ms full pipeline

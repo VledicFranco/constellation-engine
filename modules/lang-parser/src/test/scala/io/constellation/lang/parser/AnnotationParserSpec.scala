@@ -443,7 +443,7 @@ class AnnotationParserSpec extends AnyFlatSpec with Matchers {
   }
 
   // ==========================================================================
-  // Full Program Integration
+  // Full Pipeline Integration
   // ==========================================================================
 
   it should "parse complex program with multiple annotated inputs" in {

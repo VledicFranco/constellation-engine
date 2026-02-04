@@ -1,4 +1,4 @@
-# Stress test program - 100 chained boolean operations
+# Stress test pipeline - 100 chained boolean operations
 # Matches: TestFixtures.stressProgram100
 # Purpose: Stress test, verify O(n) scaling
 # Target: Tests scalability of compiler

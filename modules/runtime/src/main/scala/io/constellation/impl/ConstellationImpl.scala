@@ -41,8 +41,8 @@ import scala.concurrent.duration.FiniteDuration
   *
   * @param moduleRegistry
   *   Registry for module definitions
-  * @param programStoreInstance
-  *   Program image store
+  * @param PipelineStoreInstance
+  *   Pipeline image store
   * @param scheduler
   *   Global scheduler for task ordering and concurrency control
   * @param backends
@@ -57,7 +57,7 @@ import scala.concurrent.duration.FiniteDuration
   */
 final class ConstellationImpl(
     moduleRegistry: ModuleRegistry,
-    programStoreInstance: ProgramStore,
+    PipelineStoreInstance: PipelineStore,
     scheduler: GlobalScheduler = GlobalScheduler.unbounded,
     backends: ConstellationBackends = ConstellationBackends.defaults,
     defaultTimeout: Option[FiniteDuration] = None,
@@ -78,10 +78,10 @@ final class ConstellationImpl(
   // New API
   // ---------------------------------------------------------------------------
 
-  def programStore: ProgramStore = programStoreInstance
+  def PipelineStore: PipelineStore = PipelineStoreInstance
 
   def run(
-      loaded: LoadedProgram,
+      loaded: LoadedPipeline,
       inputs: Map[String, CValue],
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature] = {
@@ -109,16 +109,16 @@ final class ConstellationImpl(
       inputs: Map[String, CValue],
       options: ExecutionOptions
   ): IO[DataSignature] = {
-    val hashLookup: IO[Option[ProgramImage]] =
-      if ref.startsWith("sha256:") then programStoreInstance.get(ref.stripPrefix("sha256:"))
-      else programStoreInstance.getByName(ref)
+    val hashLookup: IO[Option[PipelineImage]] =
+      if ref.startsWith("sha256:") then PipelineStoreInstance.get(ref.stripPrefix("sha256:"))
+      else PipelineStoreInstance.getByName(ref)
 
     hashLookup.flatMap {
       case Some(image) =>
-        val loaded = ProgramImage.rehydrate(image)
+        val loaded = PipelineImage.rehydrate(image)
         run(loaded, inputs, options)
       case None =>
-        IO.raiseError(new Exception(s"Program not found: $ref"))
+        IO.raiseError(new Exception(s"Pipeline not found: $ref"))
     }
   }
 
@@ -161,7 +161,7 @@ final class ConstellationImpl(
   /** Build a DataSignature from a Runtime.State. */
   private def buildDataSignature(
       state: Runtime.State,
-      loaded: LoadedProgram,
+      loaded: LoadedPipeline,
       inputs: Map[String, CValue],
       options: ExecutionOptions,
       startedAt: Instant,
@@ -285,10 +285,10 @@ object ConstellationImpl {
   def init: IO[ConstellationImpl] =
     for {
       moduleRegistry <- ModuleRegistryImpl.init
-      ps             <- ProgramStoreImpl.init
+      ps             <- PipelineStoreImpl.init
     } yield new ConstellationImpl(
       moduleRegistry = moduleRegistry,
-      programStoreInstance = ps
+      PipelineStoreInstance = ps
     )
 
   /** Initialize with a custom scheduler for priority-based execution.
@@ -301,10 +301,10 @@ object ConstellationImpl {
   def initWithScheduler(scheduler: GlobalScheduler): IO[ConstellationImpl] =
     for {
       moduleRegistry <- ModuleRegistryImpl.init
-      ps             <- ProgramStoreImpl.init
+      ps             <- PipelineStoreImpl.init
     } yield new ConstellationImpl(
       moduleRegistry = moduleRegistry,
-      programStoreInstance = ps,
+      PipelineStoreInstance = ps,
       scheduler = scheduler
     )
 
@@ -321,8 +321,8 @@ object ConstellationImpl {
     *   Optional default timeout for DAG executions
     * @param lifecycle
     *   Optional lifecycle manager for graceful shutdown
-    * @param programStoreOpt
-    *   Optional pre-configured ProgramStore
+    * @param PipelineStoreOpt
+    *   Optional pre-configured PipelineStore
     * @param suspensionStoreOpt
     *   Optional SuspensionStore for persist/resume of suspended executions
     */
@@ -331,7 +331,7 @@ object ConstellationImpl {
       backends: ConstellationBackends = ConstellationBackends.defaults,
       defaultTimeout: Option[FiniteDuration] = None,
       lifecycle: Option[ConstellationLifecycle] = None,
-      programStoreOpt: Option[ProgramStore] = None,
+      PipelineStoreOpt: Option[PipelineStore] = None,
       suspensionStoreOpt: Option[SuspensionStore] = None
   ) {
 
@@ -363,8 +363,8 @@ object ConstellationImpl {
     /** Set the lifecycle manager for graceful shutdown support. */
     def withLifecycle(lc: ConstellationLifecycle): ConstellationBuilder = copy(lifecycle = Some(lc))
 
-    /** Set a pre-configured ProgramStore instance. */
-    def withProgramStore(ps: ProgramStore): ConstellationBuilder = copy(programStoreOpt = Some(ps))
+    /** Set a pre-configured PipelineStore instance. */
+    def withPipelineStore(ps: PipelineStore): ConstellationBuilder = copy(PipelineStoreOpt = Some(ps))
 
     /** Set a SuspensionStore for persisting and resuming suspended executions. */
     def withSuspensionStore(ss: SuspensionStore): ConstellationBuilder =
@@ -387,10 +387,10 @@ object ConstellationImpl {
     def build(): IO[ConstellationImpl] =
       for {
         moduleRegistry <- ModuleRegistryImpl.init
-        ps             <- programStoreOpt.map(IO.pure).getOrElse(ProgramStoreImpl.init)
+        ps             <- PipelineStoreOpt.map(IO.pure).getOrElse(PipelineStoreImpl.init)
       } yield new ConstellationImpl(
         moduleRegistry = moduleRegistry,
-        programStoreInstance = ps,
+        PipelineStoreInstance = ps,
         scheduler = scheduler,
         backends = backends,
         defaultTimeout = defaultTimeout,

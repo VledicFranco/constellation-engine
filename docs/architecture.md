@@ -13,7 +13,7 @@ Constellation Engine is organized into two main subsystems:
 │  │ Parser  │ → │ TypeChecker │ → │   IR    │ → │ DagCompiler │  │
 │  └─────────┘   └─────────────┘   └─────────┘   └─────────────┘  │
 │       ↓              ↓                ↓              ↓          │
-│      AST         TypedAST        IRProgram    CompilationOutput  │
+│      AST         TypedAST        IRPipeline   CompilationOutput  │
 └─────────────────────────────────────────────────────────────────┘
                                                       │
                                                       ↓
@@ -108,7 +108,7 @@ object Module {
 
 ```scala
 // High-level API:
-constellation.run(compiled.program, inputs): IO[DataSignature]
+constellation.run(compiled.pipeline, inputs): IO[DataSignature]
 // Low-level (internal):
 Runtime.run(dagSpec, initData, modules): IO[Runtime.State]
 ```
@@ -197,10 +197,10 @@ object IRNode {
 }
 ```
 
-**IRProgram** provides dependency analysis and topological sorting:
+**IRPipeline** provides dependency analysis and topological sorting:
 
 ```scala
-case class IRProgram(
+case class IRPipeline(
   nodes: Map[UUID, IRNode],
   inputs: List[UUID],
   output: UUID,
@@ -226,7 +226,7 @@ Converts IR to DagSpec with synthetic modules.
 ```scala
 // Public API (returned by LangCompiler.compile):
 final case class CompilationOutput(
-  program: LoadedProgram,
+  pipeline: LoadedPipeline,
   warnings: List[CompileWarning]
 )
 
@@ -380,7 +380,7 @@ val constellation = ConstellationImpl.builder()
 Pipelines can be cancelled or timed out using `IO.timeout`:
 
 ```scala
-constellation.run(compiled.program, inputs)
+constellation.run(compiled.pipeline, inputs)
   .timeout(30.seconds)
 ```
 

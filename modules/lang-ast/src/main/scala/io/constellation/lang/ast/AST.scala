@@ -110,8 +110,8 @@ object QualifiedName {
   def fromString(s: String): QualifiedName = QualifiedName(s.split("\\.").toList)
 }
 
-/** A complete constellation-lang program */
-final case class Program(
+/** A complete constellation-lang pipeline */
+final case class Pipeline(
     declarations: List[Declaration],
     outputs: List[Located[String]] // List of declared output variable names
 )

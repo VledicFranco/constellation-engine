@@ -44,7 +44,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     body.dagName shouldBe Some("hash-test")
   }
 
-  it should "store image in ProgramStore accessible by name" in {
+  it should "store image in PipelineStore accessible by name" in {
     val compileRequest = CompileRequest(
       source = "in y: String\nout y",
       name = Some("store-test")
@@ -53,13 +53,13 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     val request = Request[IO](Method.POST, uri"/compile").withEntity(compileRequest)
     routes.orNotFound.run(request).unsafeRunSync()
 
-    // The program should be retrievable by name from ProgramStore
-    val image = constellation.programStore.getByName("store-test").unsafeRunSync()
+    // The pipeline should be retrievable by name from PipelineStore
+    val image = constellation.PipelineStore.getByName("store-test").unsafeRunSync()
     image shouldBe defined
     image.get.dagSpec.declaredOutputs should contain("y")
   }
 
-  it should "store image in ProgramStore accessible by hash" in {
+  it should "store image in PipelineStore accessible by hash" in {
     val compileRequest = CompileRequest(
       source = "in z: Boolean\nout z",
       name = Some("hash-lookup-test")
@@ -70,7 +70,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     val body    = resp.as[CompileResponse].unsafeRunSync()
 
     val hash  = body.structuralHash.get
-    val image = constellation.programStore.get(hash).unsafeRunSync()
+    val image = constellation.PipelineStore.get(hash).unsafeRunSync()
     image shouldBe defined
     image.get.structuralHash shouldBe hash
   }
@@ -235,15 +235,15 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
       .unsafeRunSync()
 
     val hash  = body.structuralHash.get
-    val image = constellation.programStore.get(hash).unsafeRunSync()
+    val image = constellation.PipelineStore.get(hash).unsafeRunSync()
     image shouldBe defined
   }
 
   // ---------------------------------------------------------------------------
-  // GET /programs — list stored programs
+  // GET /pipelines — list stored pipelines
   // ---------------------------------------------------------------------------
 
-  "GET /programs" should "list stored programs" in {
+  "GET /pipelines" should "list stored pipelines" in {
     // Compile a program with a name
     val compileReq = CompileRequest(
       source = "in w: Int\nout w",
@@ -257,23 +257,23 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
 
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.GET, uri"/programs")
+        Request[IO](Method.GET, uri"/pipelines")
       )
       .unsafeRunSync()
 
     response.status shouldBe Status.Ok
-    val body = response.as[ProgramListResponse].unsafeRunSync()
-    body.programs should not be empty
-    // At least one program should have our alias
-    val hasAlias = body.programs.exists(_.aliases.contains("list-prog-test"))
+    val body = response.as[PipelineListResponse].unsafeRunSync()
+    body.pipelines should not be empty
+    // At least one pipeline should have our alias
+    val hasAlias = body.pipelines.exists(_.aliases.contains("list-prog-test"))
     hasAlias shouldBe true
   }
 
   // ---------------------------------------------------------------------------
-  // GET /programs/:ref — program metadata
+  // GET /pipelines/:ref — pipeline metadata
   // ---------------------------------------------------------------------------
 
-  "GET /programs/:ref" should "return program details by name" in {
+  "GET /pipelines/:ref" should "return pipeline details by name" in {
     val compileReq = CompileRequest(
       source = "in q: String\nout q",
       name = Some("detail-test")
@@ -286,21 +286,21 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
 
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.GET, uri"/programs/detail-test")
+        Request[IO](Method.GET, uri"/pipelines/detail-test")
       )
       .unsafeRunSync()
 
     response.status shouldBe Status.Ok
-    val body = response.as[ProgramDetailResponse].unsafeRunSync()
+    val body = response.as[PipelineDetailResponse].unsafeRunSync()
     body.aliases should contain("detail-test")
     body.declaredOutputs should contain("q")
     body.inputSchema should contain key "q"
   }
 
-  it should "return 404 for unknown program" in {
+  it should "return 404 for unknown pipeline" in {
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.GET, uri"/programs/nonexistent")
+        Request[IO](Method.GET, uri"/pipelines/nonexistent")
       )
       .unsafeRunSync()
 
@@ -308,10 +308,10 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   // ---------------------------------------------------------------------------
-  // DELETE /programs/:ref — remove program
+  // DELETE /pipelines/:ref — remove pipeline
   // ---------------------------------------------------------------------------
 
-  "DELETE /programs/:ref" should "delete a program without aliases" in {
+  "DELETE /pipelines/:ref" should "delete a pipeline without aliases" in {
     // Compile without a name (no alias)
     val runReq = RunRequest(
       source = "in del: Int\nout del",
@@ -330,18 +330,18 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     // Delete by hash
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
+        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/pipelines/sha256:$hash"))
       )
       .unsafeRunSync()
 
     response.status shouldBe Status.Ok
 
     // Verify it's gone
-    val image = constellation.programStore.get(hash).unsafeRunSync()
+    val image = constellation.PipelineStore.get(hash).unsafeRunSync()
     image shouldBe None
   }
 
-  it should "fail to delete program with active aliases" in {
+  it should "fail to delete pipeline with active aliases" in {
     val compileReq = CompileRequest(
       source = "in keep: String\nout keep",
       name = Some("cannot-delete-alias")
@@ -358,7 +358,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
 
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/programs/sha256:$hash"))
+        Request[IO](Method.DELETE, Uri.unsafeFromString(s"/pipelines/sha256:$hash"))
       )
       .unsafeRunSync()
 
@@ -367,10 +367,10 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     body.error shouldBe "AliasConflict"
   }
 
-  it should "return 404 for deleting unknown program" in {
+  it should "return 404 for deleting unknown pipeline" in {
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.DELETE, uri"/programs/sha256:nonexistent")
+        Request[IO](Method.DELETE, uri"/pipelines/sha256:nonexistent")
       )
       .unsafeRunSync()
 
@@ -378,10 +378,10 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
   }
 
   // ---------------------------------------------------------------------------
-  // PUT /programs/:name/alias — repoint alias
+  // PUT /pipelines/:name/alias — repoint alias
   // ---------------------------------------------------------------------------
 
-  "PUT /programs/:name/alias" should "repoint alias to different hash" in {
+  "PUT /pipelines/:name/alias" should "repoint alias to different hash" in {
     // Compile v1
     val v1 = CompileRequest(source = "in x: Int\nout x", name = Some("aliased-prog"))
     val v1Body = routes.orNotFound
@@ -413,14 +413,14 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     val aliasReq = AliasRequest(structuralHash = hash2)
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.PUT, uri"/programs/aliased-prog/alias").withEntity(aliasReq)
+        Request[IO](Method.PUT, uri"/pipelines/aliased-prog/alias").withEntity(aliasReq)
       )
       .unsafeRunSync()
 
     response.status shouldBe Status.Ok
 
     // Verify alias now points to v2
-    val resolved = constellation.programStore.resolve("aliased-prog").unsafeRunSync()
+    val resolved = constellation.PipelineStore.resolve("aliased-prog").unsafeRunSync()
     resolved shouldBe Some(hash2)
   }
 
@@ -428,7 +428,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     val aliasReq = AliasRequest(structuralHash = "nonexistent-hash")
     val response = routes.orNotFound
       .run(
-        Request[IO](Method.PUT, uri"/programs/some-name/alias").withEntity(aliasReq)
+        Request[IO](Method.PUT, uri"/pipelines/some-name/alias").withEntity(aliasReq)
       )
       .unsafeRunSync()
 
@@ -477,7 +477,7 @@ class ContentAddressedRoutesTest extends AnyFlatSpec with Matchers {
     // Repoint alias to v2
     routes.orNotFound
       .run(
-        Request[IO](Method.PUT, uri"/programs/hotload-prog/alias")
+        Request[IO](Method.PUT, uri"/pipelines/hotload-prog/alias")
           .withEntity(AliasRequest(hash2))
       )
       .unsafeRunSync()

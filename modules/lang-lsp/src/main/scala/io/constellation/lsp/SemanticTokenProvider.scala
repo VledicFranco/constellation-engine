@@ -45,7 +45,7 @@ class SemanticTokenProvider {
     }
 
   /** Extract raw tokens from the AST */
-  private def extractTokens(program: Program): List[RawToken] = {
+  private def extractTokens(program: Pipeline): List[RawToken] = {
     val tokens = mutable.ListBuffer[RawToken]()
 
     // Process all declarations

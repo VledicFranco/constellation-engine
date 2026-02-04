@@ -89,7 +89,7 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
   private def check(
       source: String,
       registry: FunctionRegistry = createTestRegistry()
-  ): Either[List[CompileError], TypedProgram] =
+  ): Either[List[CompileError], TypedPipeline] =
     TypeChecker.check(parse(source), registry)
 
   // ===========================================================================
@@ -276,8 +276,8 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val typedProgram = result.toOption.get
-    val outputs      = typedProgram.outputs
+    val typedPipeline = result.toOption.get
+    val outputs      = typedPipeline.outputs
 
     // Find name output - should be String
     val nameOutput = outputs.find(_._1 == "name")
@@ -308,8 +308,8 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val typedProgram = result.toOption.get
-    val outputs      = typedProgram.outputs
+    val typedPipeline = result.toOption.get
+    val outputs      = typedPipeline.outputs
 
     // nameLen should be Int
     val nameLenOutput = outputs.find(_._1 == "nameLen")

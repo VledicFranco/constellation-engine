@@ -9,32 +9,32 @@
 
 ## Summary
 
-Add suspend/resume semantics to DAG execution and introduce a content-addressed program lifecycle model. When a program is executed with a subset of its declared inputs, the runtime executes as far as the dependency graph allows, then suspends — returning a `DataSignature` containing all computed values, execution metadata, and a structured `SuspendedExecution` IR that can be inspected, serialized, and used to resume execution later when additional inputs are provided. This enables long-lived, human-paced workflows (e.g. multi-step onboarding, approval gates) where execution spans hours or days and pauses for external input at each step.
+Add suspend/resume semantics to DAG execution and introduce a content-addressed pipeline lifecycle model. When a pipeline is executed with a subset of its declared inputs, the runtime executes as far as the dependency graph allows, then suspends — returning a `DataSignature` containing all computed values, execution metadata, and a structured `SuspendedExecution` IR that can be inspected, serialized, and used to resume execution later when additional inputs are provided. This enables long-lived, human-paced workflows (e.g. multi-step onboarding, approval gates) where execution spans hours or days and pauses for external input at each step.
 
-To support this, the RFC also introduces a unified program lifecycle: compiled programs are split into serializable artifacts (`ProgramImage` — content-addressed, distributable) and executable runtime forms (`LoadedProgram` — with live synthetic modules). Programs are stored by structural hash with mutable name aliases, enabling run-by-reference, hot-loading, deduplication, and versioned rollback.
+To support this, the RFC also introduces a unified pipeline lifecycle: compiled pipelines are split into serializable artifacts (`PipelineImage` — content-addressed, distributable) and executable runtime forms (`LoadedPipeline` — with live synthetic modules). Pipelines are stored by structural hash with mutable name aliases, enabling run-by-reference, hot-loading, deduplication, and versioned rollback.
 
 ---
 
 ## Motivation
 
-Constellation programs currently execute in a single pass: all inputs must be provided upfront, and execution either succeeds or fails. This works well for request/response pipelines but cannot model workflows where:
+Constellation pipelines currently execute in a single pass: all inputs must be provided upfront, and execution either succeeds or fails. This works well for request/response pipelines but cannot model workflows where:
 
 - A process requires **incremental human input** over time (e.g. a bank account opening that collects identity, address, employment, and funding information across separate sessions)
 - A step requires **human approval** before the pipeline can proceed (e.g. a manager signs off on a computed risk score before the account is provisioned)
-- The workflow is defined as a **single logical program** but its execution spans minutes, hours, or days
+- The workflow is defined as a **single logical pipeline** but its execution spans minutes, hours, or days
 
-Today, library consumers who need this pattern must decompose their constellation program into multiple independent programs and manually stitch them together with application-level orchestration. This defeats the purpose of expressing the workflow as a single DAG — the dependency relationships, type safety, and execution optimizations are lost.
+Today, library consumers who need this pattern must decompose their constellation pipeline into multiple independent pipelines and manually stitch them together with application-level orchestration. This defeats the purpose of expressing the workflow as a single DAG — the dependency relationships, type safety, and execution optimizations are lost.
 
 ### What This Enables
 
 A Scala developer embedding constellation can:
 
-1. Define a complete multi-step workflow as a single `.cst` program with all inputs declared upfront
-2. Execute the program with only the first step's inputs
+1. Define a complete multi-step workflow as a single `.cst` pipeline with all inputs declared upfront
+2. Execute the pipeline with only the first step's inputs
 3. Receive a `DataSignature` showing what was computed and what inputs are still missing
 4. Inspect, serialize, and store the suspension state (in their database, Redis, S3 — wherever they choose, using whatever serialization format they prefer)
 5. When the user returns with the next step's data, resume from the saved state
-6. Repeat until all inputs are satisfied and the program completes
+6. Repeat until all inputs are satisfied and the pipeline completes
 
 The DAG structure determines what can execute at each step — no explicit step annotations needed.
 
@@ -48,8 +48,8 @@ The DAG structure determines what can execute at each step — no explicit step 
 | **Incremental resumption** | Each resume provides some inputs, execution progresses as far as possible, suspends again if needed. |
 | **Structured state** | The suspension state is a structured IR (`SuspendedExecution` case class) that the consumer can inspect, transform, and serialize using their preferred codec. The runtime does not manage persistence. |
 | **Unified return type** | Every execution — whether it completes or suspends — returns a `DataSignature`. The consumer always handles the same type. |
-| **Content-addressed identity** | Compiled programs are identified by the structural hash of their DagSpec (SHA-256). Names are mutable aliases. This enables deduplication, immutable references, and versioned rollback. |
-| **Serializable vs executable** | `ProgramImage` (serializable artifact) and `LoadedProgram` (executable form) are distinct types. The serialization boundary is enforced at the type level. |
+| **Content-addressed identity** | Compiled pipelines are identified by the structural hash of their DagSpec (SHA-256). Names are mutable aliases. This enables deduplication, immutable references, and versioned rollback. |
+| **Serializable vs executable** | `PipelineImage` (serializable artifact) and `LoadedPipeline` (executable form) are distinct types. The serialization boundary is enforced at the type level. |
 | **Consumer responsibilities** | Step validation/ordering, idempotency of side effects, state lifecycle (TTL, cleanup), and persistence are all consumer concerns. |
 
 ---
@@ -151,21 +151,21 @@ The baseline metadata (identity, status, timing totals) is always present with n
 
 ### Executing with Suspension Support
 
-Execution always goes through `Constellation`, which owns the module registry and merges registered modules (from `ModuleBuilder`) with synthetic modules (from compilation) internally. `LoadedProgram` is a pure data holder — it does not have a standalone `run` method.
+Execution always goes through `Constellation`, which owns the module registry and merges registered modules (from `ModuleBuilder`) with synthetic modules (from compilation) internally. `LoadedPipeline` is a pure data holder — it does not have a standalone `run` method.
 
 ```scala
 trait Constellation {
   // --- Suspendable execution ---
 
-  /** Execute a LoadedProgram. Merges registered + synthetic modules internally. */
+  /** Execute a LoadedPipeline. Merges registered + synthetic modules internally. */
   def run(
-    loaded: LoadedProgram,
+    loaded: LoadedPipeline,
     inputs: Map[String, CValue],
     options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 
   /** Execute by reference (name alias or structural hash).
-    * Resolves from ProgramStore, rehydrates, merges modules, executes.
+    * Resolves from PipelineStore, rehydrates, merges modules, executes.
     *
     * Convention: refs starting with "sha256:" are resolved as structural hashes
     * (prefix stripped, looked up by hash). All other refs are resolved as name aliases.
@@ -177,9 +177,9 @@ trait Constellation {
     options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature]
 
-  /** Convenience: load from SuspensionStore, rehydrate program, merge modules, resume.
-    * Requires both a SuspensionStore and ProgramStore to be configured via builder.
-    * Loads SuspendedExecution from SuspensionStore, resolves ProgramImage from ProgramStore
+  /** Convenience: load from SuspensionStore, rehydrate pipeline, merge modules, resume.
+    * Requires both a SuspensionStore and PipelineStore to be configured via builder.
+    * Loads SuspendedExecution from SuspensionStore, resolves PipelineImage from PipelineStore
     * (using the suspension's structuralHash), rehydrates to get synthetic modules, then resumes.
     */
   def resumeFromStore(
@@ -201,7 +201,7 @@ object SuspendableExecution {
     * @param additionalInputs New inputs to provide for this resumption
     * @param resolvedNodes Manually provided values for unresolved data nodes (by variable name).
     *                      Typically used to heal failed modules or skip slow ones.
-    * @param modules Synthetic modules from LoadedProgram (not stored in IR — see design note)
+    * @param modules Synthetic modules from LoadedPipeline (not stored in IR — see design note)
     * @param options Metadata flags for this execution
     */
   def resume(
@@ -214,7 +214,7 @@ object SuspendableExecution {
 }
 ```
 
-The `modules` parameter provides the synthetic modules (inline transforms, conditionals) generated by the compiler. These are Scala functions that cannot be serialized, so they are not part of the `SuspendedExecution` IR. Consumers obtain them from a `LoadedProgram` — either from the original compilation or by rehydrating a stored `ProgramImage` via `ProgramImage.rehydrate(image).syntheticModules`.
+The `modules` parameter provides the synthetic modules (inline transforms, conditionals) generated by the compiler. These are Scala functions that cannot be serialized, so they are not part of the `SuspendedExecution` IR. Consumers obtain them from a `LoadedPipeline` — either from the original compilation or by rehydrating a stored `PipelineImage` via `PipelineImage.rehydrate(image).syntheticModules`.
 
 The `resolvedNodes` parameter allows the consumer to manually provide values for any unresolved data node by variable name. This serves two purposes:
 
@@ -224,14 +224,14 @@ The `resolvedNodes` parameter allows the consumer to manually provide values for
 ### Consumer Flow
 
 ```scala
-// Compile the program once → get a CompilationOutput (program + warnings)
+// Compile the pipeline once → get a CompilationOutput (pipeline + warnings)
 val output = compiler.compile(onboardingSource, "onboarding").toOption.get
 output.warnings.foreach(w => logger.warn(w.message))  // Log warnings
-val loaded: LoadedProgram = output.program
+val loaded: LoadedPipeline = output.pipeline
 
 // Optionally store the image for future reference / other instances
-val hash = programStore.store(loaded.image).unsafeRunSync()
-programStore.alias("onboarding", hash).unsafeRunSync()
+val hash = pipelineStore.store(loaded.image).unsafeRunSync()
+pipelineStore.alias("onboarding", hash).unsafeRunSync()
 
 // Step 1: Initial execution with partial inputs
 val sig1 = constellation.run(
@@ -258,9 +258,9 @@ saveToDatabase(userId, bytes)
 
 // --- Hours later, user returns (possibly on a different JVM instance) ---
 
-// Step 2: Restore the LoadedProgram from stored image
-val image = programStore.get(structuralHash).unsafeRunSync().get
-val loaded = ProgramImage.rehydrate(image)   // Cheap — no compilation, no source needed
+// Step 2: Restore the LoadedPipeline from stored image
+val image = pipelineStore.get(structuralHash).unsafeRunSync().get
+val loaded = PipelineImage.rehydrate(image)   // Cheap — no compilation, no source needed
 
 // Deserialize suspension state and resume
 val bytes = loadFromDatabase(userId)
@@ -269,7 +269,7 @@ val suspended = SuspendedExecution.deserialize(bytes).toOption.get
 val sig2 = SuspendableExecution.resume(
   suspended,
   additionalInputs = Map("address" -> CValue.CString("123 Main St")),
-  modules = loaded.syntheticModules  // From rehydrated LoadedProgram
+  modules = loaded.syntheticModules  // From rehydrated LoadedPipeline
 ).unsafeRunSync()
 
 sig2.status          // Suspended (still missing ssn, funding_source, ...)
@@ -349,7 +349,7 @@ The suspension state is a structured case class, not an opaque blob. This gives 
 final case class SuspendedExecution(
   // --- Identity ---
   executionId: UUID,                                // Continuity across resumptions
-  structuralHash: String,                           // Structural hash — detect program changes since suspension
+  structuralHash: String,                           // Structural hash — detect pipeline changes since suspension
   resumptionCount: Int,                             // How many times execution has been resumed
 
   // --- DAG ---
@@ -368,15 +368,15 @@ final case class SuspendedExecution(
 | Field | Purpose |
 |-------|---------|
 | `executionId` | Stable ID linking all resumptions of the same execution |
-| `structuralHash` | Detect if the program semantically changed since suspension |
+| `structuralHash` | Detect if the pipeline semantically changed since suspension |
 | `resumptionCount` | Track how many times execution has been resumed |
-| `dagSpec` | The compiled DAG — needed to determine what to execute next. Intentionally embedded (not referenced by hash) so the IR is self-contained and resumable without a ProgramStore lookup. |
-| `moduleOptions` | Runtime execution options (retry, timeout, cache, priority, etc.) for each module. Embedded so that `resume()` can apply correct options to newly-firing modules without requiring a `ProgramImage` lookup. Serializable data — same rationale as embedding `dagSpec`. |
+| `dagSpec` | The compiled DAG — needed to determine what to execute next. Intentionally embedded (not referenced by hash) so the IR is self-contained and resumable without a PipelineStore lookup. |
+| `moduleOptions` | Runtime execution options (retry, timeout, cache, priority, etc.) for each module. Embedded so that `resume()` can apply correct options to newly-firing modules without requiring a `PipelineImage` lookup. Serializable data — same rationale as embedding `dagSpec`. |
 | `providedInputs` | Cumulative inputs across all resumptions |
 | `computedValues` | `CValue` results for every data node that has been computed |
 | `moduleStatuses` | Which modules have fired and their execution outcomes |
 
-**Note:** Synthetic modules (compiler-generated functions for inline transforms and conditionals) are **not** stored in the IR. They are Scala functions that cannot be meaningfully serialized. The consumer provides them when calling `resume()` — typically from the same `LoadedProgram` used for the initial execution, or by rehydrating a stored `ProgramImage`. This keeps the IR fully serializable as pure data.
+**Note:** Synthetic modules (compiler-generated functions for inline transforms and conditionals) are **not** stored in the IR. They are Scala functions that cannot be meaningfully serialized. The consumer provides them when calling `resume()` — typically from the same `LoadedPipeline` used for the initial execution, or by rehydrating a stored `PipelineImage`. This keeps the IR fully serializable as pure data.
 
 ### Serialization
 
@@ -444,20 +444,20 @@ val store = InMemorySuspensionStore(codec = FurySuspensionCodec)
 
 The `SuspensionCodec` trait is intentionally minimal — encode and decode. No versioning, streaming, or schema evolution concerns are baked into the trait. Implementations handle those concerns internally if needed.
 
-### Program Change Detection
+### Pipeline Change Detection
 
-When resuming, the runtime compares the stored `structuralHash` with the current program's structural hash. If they differ, the resume fails with a clear error:
+When resuming, the runtime compares the stored `structuralHash` with the current pipeline's structural hash. If they differ, the resume fails with a clear error:
 
 ```scala
-case class ProgramChangedError(
+case class PipelineChangedError(
   expectedStructuralHash: String,
   actualStructuralHash: String
 ) extends RuntimeException(
-  s"Cannot resume: program has changed since suspension (expected=$expectedStructuralHash, actual=$actualStructuralHash)"
+  s"Cannot resume: pipeline has changed since suspension (expected=$expectedStructuralHash, actual=$actualStructuralHash)"
 )
 ```
 
-This prevents silently corrupting execution state when the program is modified between suspension and resumption.
+This prevents silently corrupting execution state when the pipeline is modified between suspension and resumption.
 
 ---
 
@@ -520,7 +520,7 @@ When `resolvedNodes` are provided to `resume`, the runtime validates before exec
 case class UnknownNodeError(
   nodeName: String
 ) extends RuntimeException(
-  s"Node '$nodeName' does not exist in the program."
+  s"Node '$nodeName' does not exist in the pipeline."
 )
 
 case class NodeTypeMismatchError(
@@ -538,15 +538,15 @@ case class NodeAlreadyResolvedError(
 )
 ```
 
-### Program Resolution Errors
+### Pipeline Resolution Errors
 
-When `Constellation.run(ref, ...)` cannot resolve a program reference:
+When `Constellation.run(ref, ...)` cannot resolve a pipeline reference:
 
 ```scala
-case class ProgramNotFoundError(
+case class PipelineNotFoundError(
   ref: String
 ) extends RuntimeException(
-  s"No program found for ref '$ref'. Checked as name alias and structural hash."
+  s"No pipeline found for ref '$ref'. Checked as name alias and structural hash."
 )
 ```
 
@@ -564,25 +564,25 @@ case class ProgramNotFoundError(
 
 ---
 
-## Program Lifecycle & Content-Addressed Storage
+## Pipeline Lifecycle & Content-Addressed Storage
 
 ### Why This Refactor Is Needed
 
-The suspension feature reveals a deeper insight: **an un-run DAG is structurally identical to a suspended execution at resumption 0** — no inputs provided, no nodes computed, all modules pending. Compiled programs and suspended executions are points on the same lifecycle continuum, not separate concepts.
+The suspension feature reveals a deeper insight: **an un-run DAG is structurally identical to a suspended execution at resumption 0** — no inputs provided, no nodes computed, all modules pending. Compiled pipelines and suspended executions are points on the same lifecycle continuum, not separate concepts.
 
 The current implementation doesn't reflect this:
 
 | Problem | Current State | Consequence |
 |---------|--------------|-------------|
-| **Mixed serializability** | `CompileResult` bundles serializable data (`DagSpec`) with non-serializable Scala functions (`syntheticModules`) in one type | Consumers can't store or transfer compiled programs without losing the ability to execute them |
-| **No content addressing** | `DagRegistry` is `Map[String, DagSpec]` — name-only lookup | Two identical programs compiled under different names are stored twice; no deduplication, no immutable references |
+| **Mixed serializability** | `CompileResult` bundles serializable data (`DagSpec`) with non-serializable Scala functions (`syntheticModules`) in one type | Consumers can't store or transfer compiled pipelines without losing the ability to execute them |
+| **No content addressing** | `DagRegistry` is `Map[String, DagSpec]` — name-only lookup | Two identical pipelines compiled under different names are stored twice; no deduplication, no immutable references |
 | **Weak hashing** | Compilation cache uses `source.hashCode()` (Scala `hashCode`, not cryptographic) | Not portable across JVM versions, collisions possible, no meaningful identity |
 | **Fragile cache** | `CachingLangCompiler` maintains a separate TTL-based cache, eviction loses synthetic modules | Cache miss after eviction requires full recompilation even when the DagSpec is still stored |
-| **No run-by-reference** | HTTP API requires either sending source every time or pre-compiling by name | No immutable program references; name-based lookup can silently change when recompiled |
+| **No run-by-reference** | HTTP API requires either sending source every time or pre-compiling by name | No immutable pipeline references; name-based lookup can silently change when recompiled |
 
 Building suspension on top of this model would propagate these problems into the suspension layer — `SuspendedExecution` would inherit the same mixed serializability, the same lack of content addressing, and the same fragile relationship with synthetic modules.
 
-Instead of patching around these issues, this RFC introduces a unified program lifecycle model that cleanly separates serializable artifacts from executable runtime forms, and replaces name-only storage with content-addressed identity.
+Instead of patching around these issues, this RFC introduces a unified pipeline lifecycle model that cleanly separates serializable artifacts from executable runtime forms, and replaces name-only storage with content-addressed identity.
 
 ### Previous vs New Ontological Structure
 
@@ -604,17 +604,17 @@ Runtime.State                                    ← Single-shot result, no susp
 
 **Pain points for the consumer:**
 - Must hold onto `CompileResult` in memory to access `syntheticModules` for `runDagWithModules`
-- Cannot persist a compiled program and re-execute it later without recompilation
-- Cannot reference a program by content — only by a mutable name
-- No way to detect if a name was silently recompiled to a different program
+- Cannot persist a compiled pipeline and re-execute it later without recompilation
+- Cannot reference a pipeline by content — only by a mutable name
+- No way to detect if a name was silently recompiled to a different pipeline
 
 #### After (New Model)
 
 ```
 Source String
     ↓ compile()
-LoadedProgram                                    ← CLEAR SPLIT: serializable image + runtime modules
-├── image: ProgramImage                          (serializable — the distributable artifact)
+LoadedPipeline                                    ← CLEAR SPLIT: serializable image + runtime modules
+├── image: PipelineImage                          (serializable — the distributable artifact)
 │   ├── structuralHash: String                   (SHA-256 of canonical DagSpec — true identity)
 │   ├── syntacticHash: String                    (normalized AST hash — cheap cache key)
 │   ├── dagSpec: DagSpec
@@ -623,16 +623,16 @@ LoadedProgram                                    ← CLEAR SPLIT: serializable i
 │   └── sourceHash: Option[String]               (provenance — hash of original source)
 └── syntheticModules: Map[UUID, Module.Uninitialized]   (runtime-only — NOT in image)
     ↓ store.store(loaded.image)
-ProgramStore                                     ← CONTENT-ADDRESSED with name aliases
-├── images: Map[StructuralHash, ProgramImage]    (immutable, deduplicated)
+PipelineStore                                     ← CONTENT-ADDRESSED with name aliases
+├── images: Map[StructuralHash, PipelineImage]    (immutable, deduplicated)
 ├── aliases: Map[String, StructuralHash]         (mutable name → hash, like git branches)
 └── syntacticIndex: Map[(SyntacticHash, RegistryHash), StructuralHash]  (compilation cache)
     ↓ constellation.run(loaded, inputs, options)
 DataSignature                                    ← Unified result: completed, suspended, or failed
     ↓ (if suspended)
 SuspendedExecution                               ← Serializable snapshot, resumable
-    ↓ ProgramImage.rehydrate(image)
-LoadedProgram                                    ← Executable again, no source needed
+    ↓ PipelineImage.rehydrate(image)
+LoadedPipeline                                    ← Executable again, no source needed
 ```
 
 ### Domain Types
@@ -641,7 +641,7 @@ LoadedProgram                                    ← Executable again, no source
 /** Serializable compiled artifact — immutable, content-addressed, distributable.
   * Like a Docker image: store it, transfer it, instantiate it anywhere.
   */
-final case class ProgramImage(
+final case class PipelineImage(
   // --- Identity ---
   structuralHash: String,                              // SHA-256 of canonical DagSpec (true identity)
   syntacticHash: String,                               // Normalized AST hash (cheap cache key)
@@ -660,30 +660,30 @@ final case class ProgramImage(
   sourceHash: Option[String]                           // SHA-256 of original source (for auditing)
 )
 
-/** Executable form — a ProgramImage loaded into a running JVM with live synthetic modules.
-  * Created by compiling source or rehydrating a ProgramImage. NOT serializable.
+/** Executable form — a PipelineImage loaded into a running JVM with live synthetic modules.
+  * Created by compiling source or rehydrating a PipelineImage. NOT serializable.
   * Pure data holder — execution goes through Constellation, which merges registered modules.
   */
-final case class LoadedProgram(
-  image: ProgramImage,
+final case class LoadedPipeline(
+  image: PipelineImage,
   syntheticModules: Map[UUID, Module.Uninitialized]    // Compiler-generated Scala functions
 ) {
   def structuralHash: String = image.structuralHash
 }
 
-object ProgramImage {
+object PipelineImage {
   /** Rehydrate a serializable image into an executable form.
     * Delegates to SyntheticModuleFactory to deterministically reconstruct
     * synthetic modules from DagSpec metadata (InlineTransform, ModuleNodeSpec).
     * Cheap — no compilation needed, no source code needed.
     */
-  def rehydrate(image: ProgramImage): LoadedProgram =
-    LoadedProgram(image, SyntheticModuleFactory.fromDagSpec(image.dagSpec))
+  def rehydrate(image: PipelineImage): LoadedPipeline =
+    LoadedPipeline(image, SyntheticModuleFactory.fromDagSpec(image.dagSpec))
 }
 
 /** Single source of truth for creating synthetic modules from DagSpec metadata.
   * Lives in constellation-runtime. Called by the compiler during compilation
-  * and by ProgramImage.rehydrate() during deserialization recovery.
+  * and by PipelineImage.rehydrate() during deserialization recovery.
   *
   * Synthetic modules are deterministic pure functions derived from:
   * - DataNodeSpec.inlineTransform (merge, project, field access, conditional, etc.)
@@ -698,23 +698,23 @@ object SyntheticModuleFactory {
 ```
 
 ```scala
-/** Compiler output — separates the reusable program from ephemeral compiler feedback.
+/** Compiler output — separates the reusable pipeline from ephemeral compiler feedback.
   * LangCompiler.compile returns Either[List[CompileError], CompilationOutput].
   */
 final case class CompilationOutput(
-  program: LoadedProgram,
+  pipeline: LoadedPipeline,
   warnings: List[CompileWarning]
 )
 ```
 
-**The serialization boundary is now a type-level guarantee:** if you have a `ProgramImage`, you can serialize it. If you have a `LoadedProgram`, you can execute it. The compiler produces `LoadedProgram` (both). Deserialization produces `ProgramImage` (artifact only). `rehydrate` bridges the gap.
+**The serialization boundary is now a type-level guarantee:** if you have a `PipelineImage`, you can serialize it. If you have a `LoadedPipeline`, you can execute it. The compiler produces `LoadedPipeline` (both). Deserialization produces `PipelineImage` (artifact only). `rehydrate` bridges the gap.
 
 ### Two-Level Hashing
 
 | Level | Name | Computed When | Algorithm | What It Catches | Cost |
 |-------|------|--------------|-----------|----------------|------|
 | **Syntactic** | `syntacticHash` | After parsing (~1ms) | SHA-256 of normalized AST | Variable renaming, whitespace, comments, reordering of independent statements | ~1ms |
-| **Structural** | `structuralHash` | After compilation (free — byproduct) | SHA-256 of canonical DagSpec | Everything — true semantic identity. Two programs that compile to the same DAG get the same hash. | 0 (already compiled) |
+| **Structural** | `structuralHash` | After compilation (free — byproduct) | SHA-256 of canonical DagSpec | Everything — true semantic identity. Two pipelines that compile to the same DAG get the same hash. | 0 (already compiled) |
 
 **Syntactic normalization** (applied to parsed AST before hashing):
 
@@ -728,23 +728,23 @@ final case class CompilationOutput(
 2. Sort all map entries by key
 3. Normalize field ordering within specs
 
-The syntactic hash is the **compilation cache key** — combined with a `registryHash`, it identifies a unique compilation context. If two source strings have the same syntactic hash and the module registry hasn't changed, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the program actually does.
+The syntactic hash is the **compilation cache key** — combined with a `registryHash`, it identifies a unique compilation context. If two source strings have the same syntactic hash and the module registry hasn't changed, they will compile to the same DagSpec, so compilation can be skipped entirely. The structural hash is the **storage identity** — the immutable fingerprint of what the pipeline actually does.
 
 **Registry hash computation:** SHA-256 of the sorted list of `(moduleName, majorVersion, minorVersion, inputTypeSignature, outputTypeSignature)` tuples for all registered `FunctionSignature`s. Sorting is lexicographic by `moduleName`. Type signatures use their canonical `CType.toString` form. This ensures that adding, removing, or changing any registered module invalidates the syntactic cache.
 
-### Content-Addressed Program Store
+### Content-Addressed Pipeline Store
 
-The `ProgramStore` replaces the current `DagRegistry`. Programs are stored by structural hash (immutable, deduplicated) and referenced by name (mutable alias) or hash.
+The `PipelineStore` replaces the current `DagRegistry`. Pipelines are stored by structural hash (immutable, deduplicated) and referenced by name (mutable alias) or hash.
 
-**Note:** `ProgramStore` always operates on raw hashes (no `sha256:` prefix). The `sha256:` convention is a consumer-facing concern — `Constellation.run(ref)` strips the prefix before delegating to `ProgramStore.get`.
+**Note:** `PipelineStore` always operates on raw hashes (no `sha256:` prefix). The `sha256:` convention is a consumer-facing concern — `Constellation.run(ref)` strips the prefix before delegating to `PipelineStore.get`.
 
 ```scala
-trait ProgramStore {
+trait PipelineStore {
   // --- Store ---
-  /** Store a program image. Returns the structural hash.
+  /** Store a pipeline image. Returns the structural hash.
     * If an image with the same structural hash already exists, this is a no-op (dedup).
     */
-  def store(image: ProgramImage): IO[String]
+  def store(image: PipelineImage): IO[String]
 
   // --- Aliases (mutable name → structural hash) ---
   /** Point a name at a structural hash. Creates or updates the alias. */
@@ -757,11 +757,11 @@ trait ProgramStore {
   def listAliases: IO[Map[String, String]]
 
   // --- Retrieve ---
-  /** Get a program image by structural hash. */
-  def get(structuralHash: String): IO[Option[ProgramImage]]
+  /** Get a pipeline image by structural hash. */
+  def get(structuralHash: String): IO[Option[PipelineImage]]
 
   /** Get by name (resolve alias → retrieve image). */
-  def getByName(name: String): IO[Option[ProgramImage]]
+  def getByName(name: String): IO[Option[PipelineImage]]
 
   // --- Syntactic index (compilation cache) ---
   /** Register (syntacticHash, registryHash) → structural hash mapping.
@@ -774,7 +774,7 @@ trait ProgramStore {
   def lookupSyntactic(syntacticHash: String, registryHash: String): IO[Option[String]]
 
   // --- Lifecycle ---
-  def listImages: IO[List[ProgramImage]]
+  def listImages: IO[List[PipelineImage]]
   def remove(structuralHash: String): IO[Boolean]
 }
 ```
@@ -784,21 +784,21 @@ Names are **mutable aliases** — like git branch pointers. Compiling v2 of `"on
 - **Rollback:** Repoint the alias to a previous hash
 - **Blue-green:** Two aliases pointing to different versions, swap atomically
 - **Immutable references:** Use structural hash in production configs for guaranteed stability
-- **Deduplication:** Two programs that compile to the same DAG share one image
+- **Deduplication:** Two pipelines that compile to the same DAG share one image
 
 ### Refactor Mapping: Current Types → New Types
 
 | Current Type | Becomes | Nature of Change |
 |-------------|---------|-----------------|
-| `CompileResult` | `CompilationOutput` → `LoadedProgram` | Split. `dagSpec` + `moduleOptions` + hashes → `ProgramImage` (serializable). `syntheticModules` stays on `LoadedProgram` (runtime-only). `warnings` stays on the new `CompilationOutput` wrapper — ephemeral compiler feedback, not stored. |
-| `DagRegistry` | `ProgramStore` | Replaced. `Map[String, DagSpec]` → content-addressed store with `images`, `aliases`, and `syntacticIndex`. |
-| `DagRegistryImpl` | `ProgramStoreImpl` | Replaced. Three internal `Ref[IO, Map[...]]` instances. |
-| `CompilationCache` | Absorbed | The syntactic index in `ProgramStore` replaces the standalone compilation cache. No separate cache layer — the store IS the cache. |
-| `CachingLangCompiler` | Refactored | Instead of its own cache, delegates to `ProgramStore.lookupSyntactic(syntacticHash, registryHash)` on compile. On cache miss, compiles and stores. Registry changes naturally invalidate stale entries. |
-| `Constellation.setDag` | Removed | Consumers use `ProgramStore.store` + `alias` directly. |
-| `Constellation.getDag` | Removed | Consumers use `ProgramStore.getByName` or `get` directly. |
-| `Constellation.runDag(name, inputs)` | `Constellation.run(ref, inputs)` | `ref` accepts name OR structural hash. Resolves to `ProgramImage`, rehydrates to `LoadedProgram`, executes. |
-| `Constellation.runDagWithModules(...)` | `Constellation.run(loaded, inputs)` | Consumer passes `LoadedProgram` directly. |
+| `CompileResult` | `CompilationOutput` → `LoadedPipeline` | Split. `dagSpec` + `moduleOptions` + hashes → `PipelineImage` (serializable). `syntheticModules` stays on `LoadedPipeline` (runtime-only). `warnings` stays on the new `CompilationOutput` wrapper — ephemeral compiler feedback, not stored. |
+| `DagRegistry` | `PipelineStore` | Replaced. `Map[String, DagSpec]` → content-addressed store with `images`, `aliases`, and `syntacticIndex`. |
+| `DagRegistryImpl` | `PipelineStoreImpl` | Replaced. Three internal `Ref[IO, Map[...]]` instances. |
+| `CompilationCache` | Absorbed | The syntactic index in `PipelineStore` replaces the standalone compilation cache. No separate cache layer — the store IS the cache. |
+| `CachingLangCompiler` | Refactored | Instead of its own cache, delegates to `PipelineStore.lookupSyntactic(syntacticHash, registryHash)` on compile. On cache miss, compiles and stores. Registry changes naturally invalidate stale entries. |
+| `Constellation.setDag` | Removed | Consumers use `PipelineStore.store` + `alias` directly. |
+| `Constellation.getDag` | Removed | Consumers use `PipelineStore.getByName` or `get` directly. |
+| `Constellation.runDag(name, inputs)` | `Constellation.run(ref, inputs)` | `ref` accepts name OR structural hash. Resolves to `PipelineImage`, rehydrates to `LoadedPipeline`, executes. |
+| `Constellation.runDagWithModules(...)` | `Constellation.run(loaded, inputs)` | Consumer passes `LoadedPipeline` directly. |
 
 ### Impact on HTTP API
 
@@ -809,10 +809,10 @@ The HTTP API gains run-by-reference and content-addressed compilation:
 | `POST /compile` | `{source, dagName}` → stores DagSpec by name | `{source, name?}` → returns `{structuralHash, syntacticHash, name?}`. Image always stored by hash. If `name` given, alias created. |
 | `POST /execute` | `{dagName, inputs}` → name lookup only | `{ref, inputs}` where `ref` is a name OR structural hash |
 | `POST /run` | `{source, inputs}` → ephemeral, not stored | `{source, inputs}` → compile (with syntactic cache), store image, execute. Returns `structuralHash` for future reference. |
-| `GET /programs` | N/A | List all stored images with aliases |
-| `GET /programs/:ref` | N/A | Program metadata by name or hash |
-| `DELETE /programs/:ref` | N/A | Remove image (fails if aliases point to it) |
-| `PUT /programs/:name/alias` | N/A | Repoint alias to a different structural hash |
+| `GET /pipelines` | N/A | List all stored images with aliases |
+| `GET /pipelines/:ref` | N/A | Pipeline metadata by name or hash |
+| `DELETE /pipelines/:ref` | N/A | Remove image (fails if aliases point to it) |
+| `PUT /pipelines/:name/alias` | N/A | Repoint alias to a different structural hash |
 
 ### Use Cases
 
@@ -838,7 +838,7 @@ POST /compile { "source": "...", "name": "onboarding" }
 // Execute by name (mutable — follows alias)
 POST /execute { "ref": "onboarding", "inputs": {...} }
 
-// Execute by hash (immutable — guaranteed same program forever)
+// Execute by hash (immutable — guaranteed same pipeline forever)
 POST /execute { "ref": "sha256:abc123...", "inputs": {...} }
 ```
 
@@ -851,15 +851,15 @@ POST /compile { "source": "...(v2)...", "name": "onboarding" }
 // "onboarding" alias now points to v2. v1 still accessible by sha256:abc123...
 
 // Rollback
-PUT /programs/onboarding/alias { "structuralHash": "sha256:abc123..." }
+PUT /pipelines/onboarding/alias { "structuralHash": "sha256:abc123..." }
 // "onboarding" now points back to v1
 ```
 
 ### Connection to Suspension
 
-An un-run `LoadedProgram` is a `SuspendedExecution` at resumption 0:
+An un-run `LoadedPipeline` is a `SuspendedExecution` at resumption 0:
 
-| | LoadedProgram (before run) | SuspendedExecution (mid-run) |
+| | LoadedPipeline (before run) | SuspendedExecution (mid-run) |
 |---|---|---|
 | Inputs provided | None | Some (cumulative) |
 | Nodes computed | None | Some |
@@ -867,7 +867,7 @@ An un-run `LoadedProgram` is a `SuspendedExecution` at resumption 0:
 | DagSpec | Present | Present |
 | Can execute | Yes (with inputs) | Yes (with more inputs) |
 
-This means `constellation.run(loaded, partialInputs)` and `SuspendableExecution.resume(suspended, moreInputs, modules)` are the same operation at different lifecycle points. The unified `DataSignature` return type works for both. The `structuralHash` in `ProgramImage` is the same `structuralHash` referenced in `SuspendedExecution` and `DataSignature` — a single identity threading through the entire lifecycle.
+This means `constellation.run(loaded, partialInputs)` and `SuspendableExecution.resume(suspended, moreInputs, modules)` are the same operation at different lifecycle points. The unified `DataSignature` return type works for both. The `structuralHash` in `PipelineImage` is the same `structuralHash` referenced in `SuspendedExecution` and `DataSignature` — a single identity threading through the entire lifecycle.
 
 ---
 
@@ -898,7 +898,7 @@ trait SuspensionStore {
 
 /** Filter criteria for listing suspended executions. */
 final case class SuspensionFilter(
-  structuralHash: Option[String] = None,    // Only suspensions for this program
+  structuralHash: Option[String] = None,    // Only suspensions for this pipeline
   executionId: Option[UUID] = None,         // Specific execution chain
   minResumptionCount: Option[Int] = None,   // At least N resumptions
   maxResumptionCount: Option[Int] = None    // At most N resumptions
@@ -946,7 +946,7 @@ The existing `ConstellationImpl.builder()` is extended with new configuration me
 ```scala
 // Consumer setup (extends existing builder pattern)
 val constellation = ConstellationImpl.builder()
-  .withProgramStore(programStore)    // New — replaces DagRegistry internally
+  .withPipelineStore(pipelineStore)    // New — replaces DagRegistry internally
   .withSuspensionStore(store)        // New — optional, enables resumeFromStore
   .build
 
@@ -963,11 +963,11 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 
 | Component | Change |
 |-----------|--------|
-| `constellation-core` | `ExecutionStatus`, `ExecutionOptions`, `DataSignature`, `ProgramImage` case classes |
-| `constellation-runtime` | `LoadedProgram`, `ProgramStore` (replaces `DagRegistry`), `SuspendableExecution` executor, `SuspendedExecution` IR, `SuspensionCodec` trait, `CirceJsonSuspensionCodec`, `SyntheticModuleFactory`, rehydration logic. `ConstellationImpl.builder()` extended with `.withProgramStore()` and `.withSuspensionStore()`. `Constellation` trait gains `run(loaded, ...)`, `run(ref, ...)`, `resumeFromStore(...)`. |
+| `constellation-core` | `ExecutionStatus`, `ExecutionOptions`, `DataSignature`, `PipelineImage` case classes |
+| `constellation-runtime` | `LoadedPipeline`, `PipelineStore` (replaces `DagRegistry`), `SuspendableExecution` executor, `SuspendedExecution` IR, `SuspensionCodec` trait, `CirceJsonSuspensionCodec`, `SyntheticModuleFactory`, rehydration logic. `ConstellationImpl.builder()` extended with `.withPipelineStore()` and `.withSuspensionStore()`. `Constellation` trait gains `run(loaded, ...)`, `run(ref, ...)`, `resumeFromStore(...)`. |
 | `constellation-runtime` (optional) | `SuspensionStore` trait, `SuspensionFilter`, `InMemorySuspensionStore` |
-| `constellation-compiler` | `LangCompiler` returns `CompilationOutput` (`LoadedProgram` + warnings) instead of `CompileResult`. `CachingLangCompiler` delegates to `ProgramStore.lookupSyntactic`. Syntactic normalization + hashing added to parse phase. |
-| `constellation-http-api` | `POST /execute` accepts name or structural hash. `POST /run` returns structural hash. New endpoints: `GET /programs`, `GET /programs/:ref`, `DELETE /programs/:ref`, `PUT /programs/:name/alias`. |
+| `constellation-compiler` | `LangCompiler` returns `CompilationOutput` (`LoadedPipeline` + warnings) instead of `CompileResult`. `CachingLangCompiler` delegates to `PipelineStore.lookupSyntactic`. Syntactic normalization + hashing added to parse phase. |
+| `constellation-http-api` | `POST /execute` accepts name or structural hash. `POST /run` returns structural hash. New endpoints: `GET /pipelines`, `GET /pipelines/:ref`, `DELETE /pipelines/:ref`, `PUT /pipelines/:name/alias`. |
 
 ## What Doesn't Change
 
@@ -976,25 +976,25 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 | constellation-lang syntax | Suspension is implicit from DAG dependencies; hashing is transparent |
 | Parser grammar | No new AST nodes (normalization is a post-parse transform) |
 | Module system / ModuleBuilder | Modules are unaware of suspension and content addressing |
-| Existing `runDag` / `setDag` / `getDag` methods | Removed — replaced by `Constellation.run` and `ProgramStore`. No existing users to break. |
+| Existing `runDag` / `setDag` / `getDag` methods | Removed — replaced by `Constellation.run` and `PipelineStore`. No existing users to break. |
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: Program Image & Content-Addressed Store
+### Phase 1: Pipeline Image & Content-Addressed Store
 
-- `ProgramImage` case class with `structuralHash`, `syntacticHash`, `dagSpec`, `moduleOptions`, provenance fields
-- `LoadedProgram` case class wrapping `ProgramImage` + `syntheticModules`
-- `CompilationOutput` case class wrapping `LoadedProgram` + `List[CompileWarning]`
+- `PipelineImage` case class with `structuralHash`, `syntacticHash`, `dagSpec`, `moduleOptions`, provenance fields
+- `LoadedPipeline` case class wrapping `PipelineImage` + `syntheticModules`
+- `CompilationOutput` case class wrapping `LoadedPipeline` + `List[CompileWarning]`
 - Structural hash computation: canonical DagSpec → SHA-256
 - Syntactic hash computation: parse → normalize AST → SHA-256
-- `ProgramStore` trait and `ProgramStoreImpl` (content-addressed images, mutable aliases, syntactic index)
-- Refactor `LangCompiler` to return `CompilationOutput` (wraps `LoadedProgram` + `warnings`) instead of `CompileResult`
-- Refactor `CachingLangCompiler` to use `ProgramStore.lookupSyntactic(syntacticHash, registryHash)` instead of standalone cache
+- `PipelineStore` trait and `PipelineStoreImpl` (content-addressed images, mutable aliases, syntactic index)
+- Refactor `LangCompiler` to return `CompilationOutput` (wraps `LoadedPipeline` + `warnings`) instead of `CompileResult`
+- Refactor `CachingLangCompiler` to use `PipelineStore.lookupSyntactic(syntacticHash, registryHash)` instead of standalone cache
 - Extract `SyntheticModuleFactory` into `constellation-runtime` — single source of truth for creating synthetic modules from DagSpec metadata. Refactor `DagCompiler` to delegate to this factory instead of inline creation.
-- Rehydration: `ProgramImage.rehydrate()` → delegates to `SyntheticModuleFactory.fromDagSpec`
-- Replace `DagRegistry` with `ProgramStore` in `Constellation`. Remove `setDag`/`getDag`/`runDag` — replaced by `ProgramStore` and `Constellation.run`.
+- Rehydration: `PipelineImage.rehydrate()` → delegates to `SyntheticModuleFactory.fromDagSpec`
+- Replace `DagRegistry` with `PipelineStore` in `Constellation`. Remove `setDag`/`getDag`/`runDag` — replaced by `PipelineStore` and `Constellation.run`.
 - Tests: structural hash determinism, syntactic normalization equivalence, store/alias/resolve round-trip, deduplication, rehydration correctness (rehydrated modules produce same results as compiler-created ones)
 
 ### Phase 2: Core Suspend/Resume
@@ -1010,7 +1010,7 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 - Node resolution validation (unknown node, type mismatch, already resolved)
 - Failed executions preserve suspension state (`status = Failed`, `suspendedState = Some(...)`)
 - `DataSignature.failedNodes` accessor
-- Program change detection on resume (structural hash comparison)
+- Pipeline change detection on resume (structural hash comparison)
 - Tests: round-trip suspend/resume, incremental multi-step, all inputs provided (no suspension), codec round-trip (JSON), custom codec pluggability, cross-JVM resume via rehydration, input validation edge cases, node healing (failed module bypass), error cases
 
 ### Phase 3: Metadata Flags
@@ -1037,19 +1037,19 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 - Update `POST /compile` to return `structuralHash` and create alias
 - Update `POST /execute` to accept name or structural hash as `ref`
 - Update `POST /run` to store image and return `structuralHash`
-- New `GET /programs` — list images with aliases
-- New `GET /programs/:ref` — program metadata by name or hash
-- New `DELETE /programs/:ref` — remove image
-- New `PUT /programs/:name/alias` — repoint alias
+- New `GET /pipelines` — list images with aliases
+- New `GET /pipelines/:ref` — pipeline metadata by name or hash
+- New `DELETE /pipelines/:ref` — remove image
+- New `PUT /pipelines/:name/alias` — repoint alias
 - Tests: compile + execute by hash, compile + alias + execute by name, hot-load repoint, dedup via /run, rollback via alias update
 
 ### Phase 6: Documentation
 
 - Embedder guide: "Suspendable Execution" — concepts, API walkthrough, examples
-- Embedder guide: "Program Lifecycle" — ProgramImage, LoadedProgram, ProgramStore, hashing
+- Embedder guide: "Pipeline Lifecycle" — PipelineImage, LoadedPipeline, PipelineStore, hashing
 - Embedder guide: "Healing Failed Executions" — resolvedNodes, failedNodes, audit trails
 - API reference: all new types with Scaladoc
-- Migration guide: `CompileResult` → `CompilationOutput`/`LoadedProgram`, `DagRegistry` → `ProgramStore`, `runDag` → `Constellation.run`
+- Migration guide: `CompileResult` → `CompilationOutput`/`LoadedPipeline`, `DagRegistry` → `PipelineStore`, `runDag` → `Constellation.run`
 - Update `llm.md` and `CLAUDE.md` with new types and commands
 - Update example-app to use new API
 
@@ -1057,9 +1057,9 @@ val sig2   = constellation.resumeFromStore(handle, moreInputs).unsafeRunSync()
 
 ## Test Strategy
 
-### Canonical Fixture Programs
+### Canonical Fixture Pipelines
 
-Tests across all phases use a shared set of `.cst` fixture programs with known dependency structures:
+Tests across all phases use a shared set of `.cst` fixture pipelines with known dependency structures:
 
 **Fixture 1: `three-step-onboarding.cst`** — Three-tier dependency chain for incremental suspension.
 
@@ -1140,7 +1140,7 @@ out result
 | **Syntactic hash determinism** | Same source string → same syntactic hash, always |
 | **Structural hash determinism** | Same DagSpec → same structural hash, always |
 | **Structural hash uniqueness** | Different DagSpecs → different structural hashes (probabilistic — no SHA-256 collisions) |
-| **Rehydration equivalence** | For any `LoadedProgram`, `rehydrate(loaded.image)` produces synthetic modules that yield identical outputs for the same inputs |
+| **Rehydration equivalence** | For any `LoadedPipeline`, `rehydrate(loaded.image)` produces synthetic modules that yield identical outputs for the same inputs |
 | **Codec round-trip** | `decode(encode(state)) == Right(state)` for any `SuspendedExecution` |
 | **Input accumulation** | After N resumptions, `suspendedState.providedInputs == union of all inputs across all steps` |
 | **Additive-only inputs** | `resume(state, Map("x" -> v1))` followed by `resume(_, Map("x" -> v2))` where `v1 != v2` always fails with `InputAlreadyProvidedError` |
@@ -1152,14 +1152,14 @@ out result
 A single end-to-end test exercises the complete lifecycle using `three-step-onboarding.cst`:
 
 ```
-1. Compile source → CompilationOutput (LoadedProgram + warnings)
-2. Store image → ProgramStore.store(image) → structuralHash
-3. Create alias → ProgramStore.alias("onboarding", hash)
+1. Compile source → CompilationOutput (LoadedPipeline + warnings)
+2. Store image → PipelineStore.store(image) → structuralHash
+3. Create alias → PipelineStore.alias("onboarding", hash)
 4. Run by ref → constellation.run("onboarding", tier1Inputs) → DataSignature (Suspended)
 5. Verify sig1: status=Suspended, computedNodes has tier 1 values, missingInputs has tier 2+3
 6. Serialize → SuspendedExecution.serialize(sig1.suspendedState.get) → bytes
 7. Deserialize → SuspendedExecution.deserialize(bytes) → SuspendedExecution
-8. Rehydrate → ProgramImage.rehydrate(image) → LoadedProgram (simulates different JVM)
+8. Rehydrate → PipelineImage.rehydrate(image) → LoadedPipeline (simulates different JVM)
 9. Resume → SuspendableExecution.resume(suspended, tier2Inputs, loaded.syntheticModules) → sig2 (Suspended)
 10. Verify sig2: resumptionCount=1, computedNodes has tier 1+2, missingInputs has tier 3 only
 11. Resume → resume(sig2.suspendedState.get, tier3Inputs, ...) → sig3 (Completed)
@@ -1186,8 +1186,8 @@ Using `failable-pipeline.cst`:
 | Structural hash computation | <5ms | Computed once post-compile, amortized over all executions |
 | Rehydration | <5ms | Must be near-instant — called on every run-by-reference |
 | Codec round-trip (JSON) | <10ms (small state), <50ms (large state) | Serialization on suspend, deserialization on resume |
-| ProgramStore lookup (by hash) | <1ms | Hot path for run-by-reference |
-| ProgramStore lookup (by name) | <1ms | Alias resolve + hash lookup |
+| PipelineStore lookup (by hash) | <1ms | Hot path for run-by-reference |
+| PipelineStore lookup (by name) | <1ms | Alias resolve + hash lookup |
 
 ---
 
@@ -1206,23 +1206,23 @@ val modules = result.syntheticModules
 // AFTER
 val output: CompilationOutput = compiler.compile(source, dagName).toOption.get
 output.warnings.foreach(w => logger.warn(w.message))
-val loaded: LoadedProgram = output.program
-val image: ProgramImage = loaded.image       // Serializable artifact
+val loaded: LoadedPipeline = output.pipeline
+val image: PipelineImage = loaded.image       // Serializable artifact
 val modules = loaded.syntheticModules         // Runtime-only
 ```
 
-### Storing Programs
+### Storing Pipelines
 
 ```scala
 // BEFORE
 constellation.setDag("myprogram", compileResult.dagSpec)
 
 // AFTER
-programStore.store(loaded.image).unsafeRunSync()               // Content-addressed
-programStore.alias("myprogram", loaded.structuralHash).unsafeRunSync()  // Named reference
+pipelineStore.store(loaded.image).unsafeRunSync()               // Content-addressed
+pipelineStore.alias("myprogram", loaded.structuralHash).unsafeRunSync()  // Named reference
 ```
 
-### Executing Programs
+### Executing Pipelines
 
 ```scala
 // BEFORE — by name (returns Runtime.State)
@@ -1232,7 +1232,7 @@ val outputs = state.data.map { case (k, v) => k -> v.value }
 // BEFORE — with modules (returns Runtime.State)
 val state = constellation.runDagWithModules(dagSpec, inputs, syntheticModules).unsafeRunSync()
 
-// AFTER — by LoadedProgram (returns DataSignature)
+// AFTER — by LoadedPipeline (returns DataSignature)
 val sig = constellation.run(loaded, inputs).unsafeRunSync()
 sig.outputs          // Already resolved by variable name
 sig.computedNodes    // All intermediate values
@@ -1242,16 +1242,16 @@ val sig = constellation.run("myprogram", inputs).unsafeRunSync()
 val sig = constellation.run("sha256:abc123...", inputs).unsafeRunSync()
 ```
 
-### Retrieving Programs
+### Retrieving Pipelines
 
 ```scala
 // BEFORE
 val dagSpec: Option[DagSpec] = constellation.getDag("myprogram").unsafeRunSync()
 
 // AFTER
-val image: Option[ProgramImage] = programStore.getByName("myprogram").unsafeRunSync()
-val image: Option[ProgramImage] = programStore.get("abc123...").unsafeRunSync()  // Raw hash, no prefix
-val loaded: LoadedProgram = ProgramImage.rehydrate(image.get)   // When you need to execute
+val image: Option[PipelineImage] = pipelineStore.getByName("myprogram").unsafeRunSync()
+val image: Option[PipelineImage] = pipelineStore.get("abc123...").unsafeRunSync()  // Raw hash, no prefix
+val loaded: LoadedPipeline = PipelineImage.rehydrate(image.get)   // When you need to execute
 ```
 
 ### Constellation Builder
@@ -1267,29 +1267,30 @@ val constellation = ConstellationImpl.builder()
 val constellation = ConstellationImpl.builder()
   .withScheduler(scheduler)
   .withCache(cacheBackend)
-  .withProgramStore(programStore)       // New — replaces internal DagRegistry
+  .withPipelineStore(pipelineStore)       // New — replaces internal DagRegistry
   .withSuspensionStore(suspensionStore) // New — optional, enables resumeFromStore
   .build()
 
-// If no ProgramStore is provided, builder creates a default InMemoryProgramStore.
+// If no PipelineStore is provided, builder creates a default InMemoryPipelineStore.
 ```
 
 ### Internal Files Requiring Migration
 
 | File | Changes |
 |------|---------|
-| `modules/runtime/.../Constellation.scala` | Remove `setDag`/`getDag`/`runDag`/`runDagWithModules`. Add `run(loaded, ...)` and `run(ref, ...)`. Replace `DagRegistry` with `ProgramStore`. |
-| `modules/runtime/.../DagRegistry.scala` | Delete — replaced by `ProgramStore`. |
-| `modules/runtime/.../impl/DagRegistryImpl.scala` | Delete — replaced by `ProgramStoreImpl`. |
-| `modules/runtime/.../impl/ConstellationImpl.scala` | Rewrite to use `ProgramStore`. Module merging logic moves here (registered + synthetic). |
+| `modules/runtime/.../Constellation.scala` | Remove `setDag`/`getDag`/`runDag`/`runDagWithModules`. Add `run(loaded, ...)` and `run(ref, ...)`. Replace `DagRegistry` with `PipelineStore`. |
+| `modules/runtime/.../DagRegistry.scala` | Delete — replaced by `PipelineStore`. |
+| `modules/runtime/.../impl/DagRegistryImpl.scala` | Delete — replaced by `PipelineStoreImpl`. |
+| `modules/runtime/.../impl/ConstellationImpl.scala` | Rewrite to use `PipelineStore`. Module merging logic moves here (registered + synthetic). |
 | `modules/lang-compiler/.../LangCompiler.scala` | Return `CompilationOutput` instead of `CompileResult`. |
 | `modules/lang-compiler/.../compiler/DagCompiler.scala` | Delegate synthetic module creation to `SyntheticModuleFactory`. Compute structural hash. |
-| `modules/lang-compiler/.../CachingLangCompiler.scala` | Replace internal cache with `ProgramStore.lookupSyntactic`. |
-| `modules/lang-compiler/.../CompilationCache.scala` | Delete — absorbed into `ProgramStore`. |
-| `modules/http-api/.../ConstellationRoutes.scala` | Update all route handlers for new API. Add `/programs` endpoints. |
+| `modules/lang-compiler/.../CachingLangCompiler.scala` | Replace internal cache with `PipelineStore.lookupSyntactic`. |
+| `modules/lang-compiler/.../CompilationCache.scala` | Delete — absorbed into `PipelineStore`. |
+| `modules/http-api/.../ConstellationRoutes.scala` | Update all route handlers for new API. Add `/pipelines` endpoints. |
 | `modules/http-api/.../ApiModels.scala` | Update request/response models (`ref` instead of `dagName`, add `structuralHash` to responses). |
-| `modules/example-app/.../ExampleApp.scala` | Update to use `CompilationOutput`, `ProgramStore`, `constellation.run`. |
-| All existing tests using `CompileResult` | Update to unwrap `CompilationOutput.program`. |
+| `modules/example-app/.../ExampleApp.scala` | Update to use `CompilationOutput`, `PipelineStore`, `constellation.run`. |
+| All existing tests using `CompileResult` | Update to unwrap `CompilationOutput.pipeline`. |
+
 
 ---
 
@@ -1303,9 +1304,9 @@ val constellation = ConstellationImpl.builder()
 | **Suspension-aware HTTP endpoints** | REST API for suspend/resume/list operations on the optional HTTP server module. |
 | **Distributed suspension** | Coordination for suspended executions across multiple server instances. |
 | **TTL and expiry** | Automatic cleanup of suspended executions that haven't been resumed within a time limit (consumer concern for now). |
-| **Persistent ProgramStore** | In-memory `ProgramStoreImpl` is sufficient for v1. A persistent implementation (backed by database, filesystem, or object storage) would survive JVM restarts. Follows the same SPI pattern as `SuspensionStore`. |
+| **Persistent PipelineStore** | In-memory `PipelineStoreImpl` is sufficient for v1. A persistent implementation (backed by database, filesystem, or object storage) would survive JVM restarts. Follows the same SPI pattern as `SuspensionStore`. |
 | **Image garbage collection** | When aliases are repointed, orphaned images accumulate. A GC strategy (reference counting, mark-and-sweep over aliases + active suspensions) would reclaim storage. |
-| **ProgramImage codec** | `SuspensionCodec` handles `SuspendedExecution`. A parallel `ProgramImageCodec` (or a generalized codec) would enable persistent ProgramStore implementations with pluggable serialization. For v1, Circe JSON is sufficient. |
+| **PipelineImage codec** | `SuspensionCodec` handles `SuspendedExecution`. A parallel `PipelineImageCodec` (or a generalized codec) would enable persistent PipelineStore implementations with pluggable serialization. For v1, Circe JSON is sufficient. |
 
 ---
 
@@ -1335,7 +1336,7 @@ Decisions resolved during RFC design, documented here for context.
 
 **Decision:** Store module references (UUIDs) in the IR, not module instances. Consumer provides modules on resume.
 
-**Rationale:** Synthetic modules are Scala functions generated by the compiler — they cannot be meaningfully serialized. Storing them in the IR would make it non-serializable and couple it to the JVM instance. Instead, `SuspendedExecution` contains only the `DagSpec` (which references modules by UUID), and the consumer provides the `Map[UUID, Module.Uninitialized]` from their retained `LoadedProgram` when calling `resume()`. This keeps the IR purely data, avoids unnecessary recompilation, and aligns with the existing `runDagWithModules` pattern.
+**Rationale:** Synthetic modules are Scala functions generated by the compiler — they cannot be meaningfully serialized. Storing them in the IR would make it non-serializable and couple it to the JVM instance. Instead, `SuspendedExecution` contains only the `DagSpec` (which references modules by UUID), and the consumer provides the `Map[UUID, Module.Uninitialized]` from their retained `LoadedPipeline` when calling `resume()`. This keeps the IR purely data, avoids unnecessary recompilation, and aligns with the existing `runDagWithModules` pattern.
 
 ### D5: Two-Level Hashing
 
@@ -1343,8 +1344,8 @@ Decisions resolved during RFC design, documented here for context.
 
 **Rationale:** True semantic hashing without compilation is impossible — the DAG structure depends on type checking, module resolution, and optimization. A syntactic hash after parsing (~1ms) catches the common equivalences (variable renaming, whitespace, reordering) and serves as a fast cache key to skip compilation. The structural hash is computed as a free byproduct of compilation and provides true semantic identity. Attempting a single hash that handles both use cases would either be too expensive (full compilation) or too imprecise (missing semantic equivalences). The two-level approach gives fast cache performance AND correct identity.
 
-### D6: Domain Naming — ProgramImage / LoadedProgram
+### D6: Domain Naming — PipelineImage / LoadedPipeline
 
-**Decision:** Rename `CompileResult` to `LoadedProgram` and extract its serializable fields into `ProgramImage`. Names are mutable aliases pointing to structural hashes.
+**Decision:** Rename `CompileResult` to `LoadedPipeline` and extract its serializable fields into `PipelineImage`. Names are mutable aliases pointing to structural hashes.
 
-**Rationale:** The previous `CompileResult` mixed serializable data (`DagSpec`, `moduleOptions`) with non-serializable Scala functions (`syntheticModules`) in one type. This made it impossible to persist or transfer compiled programs without losing executability. The new naming makes the serialization boundary a type-level guarantee: `ProgramImage` is always serializable (store it, transfer it, content-address it), `LoadedProgram` is always executable (run it, resume from it). `ProgramImage.rehydrate()` bridges the gap deterministically without recompilation. The alias model (names as mutable pointers to structural hashes) follows the git branch metaphor — consumers can version, rollback, and hot-swap programs by repointing aliases.
+**Rationale:** The previous `CompileResult` mixed serializable data (`DagSpec`, `moduleOptions`) with non-serializable Scala functions (`syntheticModules`) in one type. This made it impossible to persist or transfer compiled pipelines without losing executability. The new naming makes the serialization boundary a type-level guarantee: `PipelineImage` is always serializable (store it, transfer it, content-address it), `LoadedPipeline` is always executable (run it, resume from it). `PipelineImage.rehydrate()` bridges the gap deterministically without recompilation. The alias model (names as mutable pointers to structural hashes) follows the git branch metaphor — consumers can version, rollback, and hot-swap pipelines by repointing aliases.

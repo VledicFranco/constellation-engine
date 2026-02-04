@@ -354,7 +354,7 @@ Pipelines can be cancelled mid-execution:
 
 ```scala
 // Use IO.timeout for cancellation:
-constellation.run(compiled.program, inputs)
+constellation.run(compiled.pipeline, inputs)
   .timeout(30.seconds)
 ```
 

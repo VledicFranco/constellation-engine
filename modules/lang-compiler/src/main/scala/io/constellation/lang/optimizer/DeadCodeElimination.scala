@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 
 import java.util.UUID
 import scala.collection.mutable
@@ -14,7 +14,7 @@ object DeadCodeElimination extends OptimizationPass {
 
   val name: String = "dead-code-elimination"
 
-  def run(ir: IRProgram): IRProgram = {
+  def run(ir: IRPipeline): IRPipeline = {
     // Find all output node IDs from declared outputs
     val outputNodeIds = ir.declaredOutputs.flatMap { outputName =>
       ir.variableBindings.get(outputName)
@@ -50,7 +50,7 @@ object DeadCodeElimination extends OptimizationPass {
     *
     * Uses backward DFS traversal following dependencies.
     */
-  private def computeReachable(outputNodeIds: List[UUID], ir: IRProgram): Set[UUID] = {
+  private def computeReachable(outputNodeIds: List[UUID], ir: IRPipeline): Set[UUID] = {
     val visited = mutable.Set[UUID]()
 
     def visit(id: UUID): Unit =

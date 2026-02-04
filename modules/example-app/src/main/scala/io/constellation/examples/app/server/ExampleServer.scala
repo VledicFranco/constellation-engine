@@ -29,12 +29,12 @@ import java.nio.file.Paths
   *
   * Once started, you can:
   *   - Access the dashboard: http://localhost:{port}/dashboard
-  *   - Compile programs: POST /compile (returns structuralHash for content-addressed lookup)
+  *   - Compile pipelines: POST /compile (returns structuralHash for content-addressed lookup)
   *   - Execute by reference: POST /execute (accepts name or "sha256:<hash>" via `ref` field)
   *   - Compile and run: POST /run (stores image, returns structuralHash)
-  *   - List stored programs: GET /programs
-  *   - Program metadata: GET /programs/:ref
-  *   - Repoint alias: PUT /programs/:name/alias
+  *   - List stored pipelines: GET /pipelines
+  *   - Pipeline metadata: GET /pipelines/:ref
+  *   - Repoint alias: PUT /pipelines/:name/alias
   *   - List available DAGs: GET /dags (legacy)
   *   - List available modules: GET /modules
   *   - Check server health: GET /health

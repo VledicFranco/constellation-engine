@@ -46,7 +46,7 @@ object DagCompiler {
 
   /** Compile an IR program to a DagSpec and synthetic modules */
   def compile(
-      program: IRProgram,
+      program: IRPipeline,
       dagName: String,
       registeredModules: Map[String, Module.Uninitialized]
   ): Either[DagCompilerError, DagCompileOutput] = {
@@ -76,7 +76,7 @@ object DagCompiler {
     private def getNodeOutput(nodeId: UUID, context: String): Either[DagCompilerError, UUID] =
       nodeOutputs.get(nodeId).toRight(DagCompilerError.NodeNotFound(nodeId, context))
 
-    def compile(program: IRProgram): Either[DagCompilerError, DagCompileOutput] = {
+    def compile(program: IRPipeline): Either[DagCompilerError, DagCompileOutput] = {
       // Process nodes in topological order
       val processResult =
         program.topologicalOrder.foldLeft[Either[DagCompilerError, Unit]](Right(())) {

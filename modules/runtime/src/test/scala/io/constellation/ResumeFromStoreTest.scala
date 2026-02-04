@@ -51,7 +51,7 @@ class ResumeFromStoreTest extends AnyFlatSpec with Matchers {
     outputBindings = Map("result" -> outputDataId)
   )
 
-  private val image = ProgramImage(
+  private val image = PipelineImage(
     structuralHash = "test-hash-abc",
     syntacticHash = "test-syntactic",
     dagSpec = dag,

@@ -28,13 +28,13 @@ object IRGenerator {
   }
 
   /** Generate IR from a typed program */
-  def generate(program: TypedProgram): IRProgram = {
+  def generate(program: TypedPipeline): IRPipeline = {
     val (finalCtx, inputIds) = generateDeclarations(program.declarations, GenContext.empty)
 
     // Extract declared output variable names
     val declaredOutputs = program.outputs.map(_._1)
 
-    IRProgram(
+    IRPipeline(
       nodes = finalCtx.nodes,
       inputs = inputIds,
       declaredOutputs = declaredOutputs,

@@ -30,7 +30,7 @@ const sidebars: SidebarsConfig = {
       label: 'Language Reference',
       items: [
         'language/index',
-        'language/program-structure',
+        'language/pipeline-structure',
         'language/types',
         'language/declarations',
         'language/expressions',

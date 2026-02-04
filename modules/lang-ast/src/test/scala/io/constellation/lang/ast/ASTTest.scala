@@ -187,10 +187,10 @@ class ASTTest extends AnyFlatSpec with Matchers {
   }
 
   // ============================================================
-  // Program Tests
+  // Pipeline Tests
   // ============================================================
 
-  "Program" should "hold declarations and outputs" in {
+  "Pipeline" should "hold declarations and outputs" in {
     val decls = List(
       Declaration.InputDecl(
         Located("x", Span(0, 1)),
@@ -198,7 +198,7 @@ class ASTTest extends AnyFlatSpec with Matchers {
       )
     )
     val outputs = List(Located("result", Span(20, 26)))
-    val program = Program(decls, outputs)
+    val program = Pipeline(decls, outputs)
 
     program.declarations shouldBe decls
     program.outputs shouldBe outputs

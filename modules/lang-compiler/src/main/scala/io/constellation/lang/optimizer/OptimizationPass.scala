@@ -1,12 +1,12 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram}
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 
 import java.util.UUID
 
 /** Base trait for IR optimization passes.
   *
-  * Each pass transforms an IRProgram to a potentially optimized version. Passes should be pure
+  * Each pass transforms an IRPipeline to a potentially optimized version. Passes should be pure
   * functions - they should not modify their input.
   */
 trait OptimizationPass {
@@ -21,7 +21,7 @@ trait OptimizationPass {
     * @return
     *   The optimized IR program (may be unchanged if no optimizations apply)
     */
-  def run(ir: IRProgram): IRProgram
+  def run(ir: IRPipeline): IRPipeline
 
   /** Helper to transform all nodes in the IR program.
     *
@@ -32,7 +32,7 @@ trait OptimizationPass {
     * @return
     *   A new IR program with transformed nodes
     */
-  protected def transformNodes(ir: IRProgram)(f: IRNode => IRNode): IRProgram =
+  protected def transformNodes(ir: IRPipeline)(f: IRNode => IRNode): IRPipeline =
     ir.copy(nodes = ir.nodes.map { case (id, node) => id -> f(node) })
 
   /** Helper to filter nodes from the IR program.
@@ -44,7 +44,7 @@ trait OptimizationPass {
     * @return
     *   A new IR program with only nodes matching the predicate
     */
-  protected def filterNodes(ir: IRProgram)(p: (UUID, IRNode) => Boolean): IRProgram =
+  protected def filterNodes(ir: IRPipeline)(p: (UUID, IRNode) => Boolean): IRPipeline =
     ir.copy(nodes = ir.nodes.filter { case (id, node) => p(id, node) })
 
   /** Helper to replace node references throughout the IR program.
@@ -56,7 +56,7 @@ trait OptimizationPass {
     * @return
     *   A new IR program with references updated
     */
-  protected def replaceReferences(ir: IRProgram, replacements: Map[UUID, UUID]): IRProgram = {
+  protected def replaceReferences(ir: IRPipeline, replacements: Map[UUID, UUID]): IRPipeline = {
     def replace(id: UUID): UUID = replacements.getOrElse(id, id)
 
     def replaceInNode(node: IRNode): IRNode = node match {

@@ -60,8 +60,8 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
   private def addWarning(warning: CompileWarning): Unit =
     collectedWarnings.get() += warning
 
-  /** Type check a program */
-  def check(program: Program): Either[List[CompileError], TypedProgram] = {
+  /** Type check a pipeline */
+  def check(program: Pipeline): Either[List[CompileError], TypedPipeline] = {
     // Reset warnings for this thread's type check invocation
     collectedWarnings.get().clear()
     val initialEnv = TypeEnvironment(functions = functions)
@@ -79,7 +79,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case TypedDeclaration.OutputDecl(name, semanticType, span) =>
             (name, semanticType, span)
         }
-        TypedProgram(typedDecls, outputs, collectedWarnings.get().toList)
+        TypedPipeline(typedDecls, outputs, collectedWarnings.get().toList)
       }
 
     result.toEither.left.map(_.toList)

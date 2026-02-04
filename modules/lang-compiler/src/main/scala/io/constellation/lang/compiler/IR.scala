@@ -267,7 +267,7 @@ final case class TypedLambda(
 )
 
 /** The complete IR program representing a constellation-lang program */
-final case class IRProgram(
+final case class IRPipeline(
     nodes: Map[UUID, IRNode],
     inputs: List[UUID],                 // IDs of input nodes (for top-level data)
     declaredOutputs: List[String],      // Names of declared output variables

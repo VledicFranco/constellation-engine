@@ -298,7 +298,7 @@ Runtime not initialized: modules not loaded
    val constellation = ConstellationImpl.init
    modules.foreach(m => constellation.setModule(m))
    val compiled = compiler.compile(source, "my-dag")
-   constellation.run(compiled.program, inputs)  // Run after setup
+   constellation.run(compiled.pipeline, inputs)  // Run after setup
    ```
 
 ---
@@ -458,25 +458,25 @@ Cannot convert from JSON Array to CProduct: expected object
 
 ---
 
-### 404 Not Found for Program
+### 404 Not Found for Pipeline
 
 **Error Response:**
 ```json
 {
-  "error": "PROGRAM_NOT_FOUND",
-  "message": "Program 'my-pipelin' not found"
+  "error": "PIPELINE_NOT_FOUND",
+  "message": "Pipeline 'my-pipelin' not found"
 }
 ```
 
-**Cause:** Program name misspelled or not compiled.
+**Cause:** Pipeline name misspelled or not compiled.
 
 **Solution:**
-1. Check program name spelling (case-sensitive)
-2. List available programs:
+1. Check pipeline name spelling (case-sensitive)
+2. List available pipelines:
    ```bash
-   curl http://localhost:8080/programs
+   curl http://localhost:8080/pipelines
    ```
-3. Compile the program before executing
+3. Compile the pipeline before executing
 
 ---
 
@@ -564,16 +564,16 @@ When debug mode catches a type error:
 [TYPE_MISMATCH] Expected Long, but got String [location=HOF lambda argument extraction, value=hello world]
 ```
 
-### Inspecting Program State
+### Inspecting Pipeline State
 
-Use the HTTP API to inspect program state:
+Use the HTTP API to inspect pipeline state:
 
 ```bash
-# Get program metadata
-curl http://localhost:8080/programs/my-pipeline
+# Get pipeline metadata
+curl http://localhost:8080/pipelines/my-pipeline
 
-# List all stored programs
-curl http://localhost:8080/programs
+# List all stored pipelines
+curl http://localhost:8080/pipelines
 ```
 
 ### Structured Logging

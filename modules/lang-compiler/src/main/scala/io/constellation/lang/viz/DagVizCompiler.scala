@@ -1,11 +1,11 @@
 package io.constellation.lang.viz
 
-import io.constellation.lang.compiler.{HigherOrderOp, IRNode, IRProgram}
+import io.constellation.lang.compiler.{HigherOrderOp, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
 
 import java.util.UUID
 
-/** Compiles an IRProgram into a DagVizIR for visualization */
+/** Compiles an IRPipeline into a DagVizIR for visualization */
 object DagVizCompiler:
 
   /** Compile an IR program to visualization IR
@@ -17,7 +17,7 @@ object DagVizCompiler:
     * @return
     *   DagVizIR ready for layout
     */
-  def compile(ir: IRProgram, title: Option[String] = None): DagVizIR =
+  def compile(ir: IRPipeline, title: Option[String] = None): DagVizIR =
     val nodeMap = ir.nodes
 
     // Step 1: Convert all IR nodes to VizNodes (keep original kind/label)
@@ -231,7 +231,7 @@ object DagVizCompiler:
     }
 
   /** Build edges from IR dependencies */
-  private def buildEdges(ir: IRProgram): List[VizEdge] =
+  private def buildEdges(ir: IRPipeline): List[VizEdge] =
     var edgeId = 0
     def nextEdgeId(): String =
       edgeId += 1

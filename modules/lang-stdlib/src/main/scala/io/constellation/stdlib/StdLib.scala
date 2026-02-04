@@ -88,15 +88,15 @@ object StdLib
         // Include stdlib modules that are referenced by the DAG
         // Match module specs in the DAG to stdlib modules by name
         val neededStdModules: Map[UUID, Module.Uninitialized] =
-          result.program.image.dagSpec.modules.flatMap { case (moduleId, spec) =>
+          result.pipeline.image.dagSpec.modules.flatMap { case (moduleId, spec) =>
             stdModules
               .find { case (name, _) => spec.name.contains(name) }
               .map { case (_, module) => moduleId -> module }
           }
-        val updatedProgram = result.program.copy(
-          syntheticModules = result.program.syntheticModules ++ neededStdModules
+        val updatedPipeline = result.pipeline.copy(
+          syntheticModules = result.pipeline.syntheticModules ++ neededStdModules
         )
-        result.copy(program = updatedProgram)
+        result.copy(pipeline = updatedPipeline)
       }
 
     def compileToIR(source: String, dagName: String) =

@@ -1,6 +1,6 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRProgram, TypedLambda}
+import io.constellation.lang.compiler.{IRNode, IRPipeline, TypedLambda}
 
 import java.util.UUID
 import scala.collection.mutable
@@ -14,7 +14,7 @@ object CommonSubexpressionElimination extends OptimizationPass {
 
   val name: String = "common-subexpression-elimination"
 
-  def run(ir: IRProgram): IRProgram = {
+  def run(ir: IRPipeline): IRPipeline = {
     // Compute signature for each node
     val signatures = ir.nodes.map { case (id, node) =>
       id -> computeSignature(node)

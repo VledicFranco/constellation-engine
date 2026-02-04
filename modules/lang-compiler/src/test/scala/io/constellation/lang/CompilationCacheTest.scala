@@ -26,7 +26,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers with RetrySupport {
       declaredOutputs = List.empty,
       outputBindings = Map.empty
     )
-    val image = ProgramImage(
+    val image = PipelineImage(
       structuralHash = ContentHash.computeStructuralHash(dagSpec),
       syntacticHash = "",
       dagSpec = dagSpec,
@@ -34,7 +34,7 @@ class CompilationCacheTest extends AnyFlatSpec with Matchers with RetrySupport {
       compiledAt = Instant.now(),
       sourceHash = None
     )
-    CompilationOutput(LoadedProgram(image, Map.empty), Nil)
+    CompilationOutput(LoadedPipeline(image, Map.empty), Nil)
   }
 
   // ============================================

@@ -24,7 +24,7 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
       declaredOutputs = List(sourceId), // Use sourceId in declared outputs to make it unique
       outputBindings = Map.empty
     )
-    val image = ProgramImage(
+    val image = PipelineImage(
       structuralHash = ContentHash.computeStructuralHash(dagSpec),
       syntacticHash = sourceId, // Unique per source
       dagSpec = dagSpec,
@@ -32,7 +32,7 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
       compiledAt = Instant.now(),
       sourceHash = Some(sourceId)
     )
-    CompilationOutput(LoadedProgram(image, Map.empty), Nil)
+    CompilationOutput(LoadedPipeline(image, Map.empty), Nil)
   }
 
   /** Mock compiler that returns different results based on source content */
@@ -74,8 +74,8 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
 
     // Different sources should produce different results
     // With the hashCode bug, if there's a collision, result2 might equal result1
-    val hash1 = result1.toOption.get.program.image.syntacticHash
-    val hash2 = result2.toOption.get.program.image.syntacticHash
+    val hash1 = result1.toOption.get.pipeline.image.syntacticHash
+    val hash2 = result2.toOption.get.pipeline.image.syntacticHash
 
     hash1 should not equal hash2 // CRITICAL: Different sources must produce different results
     hash1 should be(s"source-${source1.hashCode}")
@@ -107,7 +107,7 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
     }
 
     // Each should have different syntactic hashes
-    val hashes = results.map(_.toOption.get.program.image.syntacticHash)
+    val hashes = results.map(_.toOption.get.pipeline.image.syntacticHash)
 
     // Verify each source produced a unique result
     hashes.toSet.size should be(sources.size) // All hashes should be unique
@@ -165,6 +165,6 @@ class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
     result2.isRight should be(true)
 
     // Results should be different because source changed
-    result1.toOption.get.program.image.syntacticHash should not equal result2.toOption.get.program.image.syntacticHash
+    result1.toOption.get.pipeline.image.syntacticHash should not equal result2.toOption.get.pipeline.image.syntacticHash
   }
 }

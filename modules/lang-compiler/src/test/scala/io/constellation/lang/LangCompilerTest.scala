@@ -24,8 +24,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.name shouldBe "simple-dag"
-    compiled.program.image.dagSpec.data should not be empty
+    compiled.pipeline.image.dagSpec.name shouldBe "simple-dag"
+    compiled.pipeline.image.dagSpec.data should not be empty
   }
 
   it should "compile a program with record types" in {
@@ -41,7 +41,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(_.cType match {
+    compiled.pipeline.image.dagSpec.data.values.exists(_.cType match {
       case CType.CProduct(fields) =>
         fields.contains("name") && fields.contains("age")
       case _ => false
@@ -63,7 +63,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline merge transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -84,7 +84,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline project transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("project") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.ProjectTransform]
       )
@@ -114,7 +114,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "compile a program with conditional expressions" in {
@@ -133,7 +133,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline conditional transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("conditional") && d.inlineTransform.contains(
         InlineTransform.ConditionalTransform
       )
@@ -196,7 +196,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "report errors for undefined variables" in {
@@ -259,8 +259,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have edges connecting input -> module -> output
-    compiled.program.image.dagSpec.inEdges should not be empty
-    compiled.program.image.dagSpec.outEdges should not be empty
+    compiled.pipeline.image.dagSpec.inEdges should not be empty
+    compiled.pipeline.image.dagSpec.outEdges should not be empty
   }
 
   it should "use builder pattern correctly" in {
@@ -320,7 +320,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 module nodes in the DAG
-    compiled.program.image.dagSpec.modules should have size 2
+    compiled.pipeline.image.dagSpec.modules should have size 2
   }
 
   it should "compile complex expressions with merge and projection" in {
@@ -338,7 +338,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have data nodes with both project and merge inline transforms
-    val dataNodes = compiled.program.image.dagSpec.data.values.toList
+    val dataNodes = compiled.pipeline.image.dagSpec.data.values.toList
     dataNodes.exists(d =>
       d.name.contains("project") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.ProjectTransform]
@@ -367,7 +367,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Output should be Candidates with projected fields
     val outputDataNodes =
-      compiled.program.image.dagSpec.data.values.filter(_.name.contains("project"))
+      compiled.pipeline.image.dagSpec.data.values.filter(_.name.contains("project"))
     outputDataNodes should not be empty
   }
 
@@ -386,8 +386,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 3 input data nodes
-    compiled.program.image.dagSpec.data should have size 3
-    val names = compiled.program.image.dagSpec.data.values.map(_.name).toSet
+    compiled.pipeline.image.dagSpec.data should have size 3
+    val names = compiled.pipeline.image.dagSpec.data.values.map(_.name).toSet
     names should contain allOf ("userId", "sessionId", "items")
   }
 
@@ -406,7 +406,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // The input data node should have the merged type
-    val inputNode = compiled.program.image.dagSpec.data.values.find(_.name == "data")
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.find(_.name == "data")
     inputNode.isDefined shouldBe true
     inputNode.get.cType match {
       case CType.CProduct(fields) =>
@@ -428,7 +428,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node for the literal
-    compiled.program.image.dagSpec.data should not be empty
+    compiled.pipeline.image.dagSpec.data should not be empty
   }
 
   // Multiple outputs tests
@@ -448,10 +448,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.declaredOutputs should contain allOf ("x", "z")
-    compiled.program.image.dagSpec.declaredOutputs should have size 2
+    compiled.pipeline.image.dagSpec.declaredOutputs should contain allOf ("x", "z")
+    compiled.pipeline.image.dagSpec.declaredOutputs should have size 2
     // y is NOT declared as output
-    compiled.program.image.dagSpec.declaredOutputs should not contain "y"
+    compiled.pipeline.image.dagSpec.declaredOutputs should not contain "y"
   }
 
   it should "create output bindings for all declared outputs" in {
@@ -470,10 +470,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // outputBindings should contain mappings for x and z
-    compiled.program.image.dagSpec.outputBindings.keys should contain allOf ("x", "z")
-    compiled.program.image.dagSpec.outputBindings should have size 2
+    compiled.pipeline.image.dagSpec.outputBindings.keys should contain allOf ("x", "z")
+    compiled.pipeline.image.dagSpec.outputBindings should have size 2
     // y is NOT in output bindings
-    compiled.program.image.dagSpec.outputBindings.keys should not contain "y"
+    compiled.pipeline.image.dagSpec.outputBindings.keys should not contain "y"
   }
 
   it should "map aliased outputs to correct data nodes" in {
@@ -490,11 +490,11 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // z should be bound to the same data node as x
-    val zBinding = compiled.program.image.dagSpec.outputBindings.get("z")
+    val zBinding = compiled.pipeline.image.dagSpec.outputBindings.get("z")
     zBinding.isDefined shouldBe true
 
     // The data node should exist
-    compiled.program.image.dagSpec.data.get(zBinding.get).isDefined shouldBe true
+    compiled.pipeline.image.dagSpec.data.get(zBinding.get).isDefined shouldBe true
   }
 
   it should "handle multiple outputs from different expressions" in {
@@ -512,12 +512,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.declaredOutputs should contain allOf ("a", "merged")
-    compiled.program.image.dagSpec.outputBindings should have size 2
+    compiled.pipeline.image.dagSpec.declaredOutputs should contain allOf ("a", "merged")
+    compiled.pipeline.image.dagSpec.outputBindings should have size 2
 
     // a and merged should point to different data nodes
-    val aBinding      = compiled.program.image.dagSpec.outputBindings("a")
-    val mergedBinding = compiled.program.image.dagSpec.outputBindings("merged")
+    val aBinding      = compiled.pipeline.image.dagSpec.outputBindings("a")
+    val mergedBinding = compiled.pipeline.image.dagSpec.outputBindings("merged")
     aBinding should not equal mergedBinding
   }
 
@@ -561,7 +561,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "compile programs with use declarations" in {
@@ -590,7 +590,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "compile programs with aliased imports" in {
@@ -619,7 +619,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "compile programs with multiple namespaces" in {
@@ -661,7 +661,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 modules: add and trim
-    compiled.program.image.dagSpec.modules should have size 2
+    compiled.pipeline.image.dagSpec.modules should have size 2
   }
 
   it should "include synthetic modules for namespace functions" in {
@@ -701,7 +701,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // syntheticModules should contain the resolved module
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
   }
 
   it should "report error for undefined namespace" in {
@@ -816,7 +816,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline merge transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -838,7 +838,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline merge transform
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
     ) shouldBe true
   }
@@ -862,7 +862,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 data nodes with inline merge transforms for a + b + c
-    val mergeDataNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val mergeDataNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -885,10 +885,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // The output data node should have the merged Candidates type (CList of CProduct)
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.CList(CType.CProduct(fields)) =>
@@ -915,7 +915,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline merge transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -938,7 +938,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a data node with inline merge transform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -959,10 +959,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.CList(CType.CProduct(fields)) =>
@@ -987,7 +987,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 data nodes with inline merge transforms for a + b + c
-    val mergeDataNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val mergeDataNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.name.contains("merge") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MergeTransform]
       )
@@ -1037,8 +1037,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a synthetic branch module
-    compiled.program.syntheticModules should not be empty
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.syntheticModules should not be empty
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
   }
 
   it should "compile a branch expression with single case" in {
@@ -1053,7 +1053,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
   }
 
   it should "compile a branch expression with only otherwise" in {
@@ -1071,7 +1071,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
   }
 
   it should "compile a branch expression with string results" in {
@@ -1092,7 +1092,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
   }
 
@@ -1167,10 +1167,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.CProduct(fields) =>
@@ -1204,7 +1204,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
     // Should have 2 branch modules
     val branchModules =
-      compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
+      compiled.pipeline.image.dagSpec.modules.values.filter(_.name.contains("branch"))
     branchModules should have size 2
   }
 
@@ -1229,10 +1229,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
     // AND and OR operations use inline transforms on data nodes (not separate modules)
-    compiled.program.image.dagSpec.data.values.exists(_.name.contains("and")) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(_.name.contains("or")) shouldBe true
+    compiled.pipeline.image.dagSpec.data.values.exists(_.name.contains("and")) shouldBe true
+    compiled.pipeline.image.dagSpec.data.values.exists(_.name.contains("or")) shouldBe true
   }
 
   // Lambda expression and higher-order function tests
@@ -1337,7 +1337,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a higher-order node in the DAG
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("hof") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.FilterTransform]
       )
@@ -1358,7 +1358,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a higher-order node with MapTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("hof") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.MapTransform]
       )
@@ -1379,7 +1379,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a higher-order node with AllTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("hof") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.AllTransform]
       )
@@ -1400,7 +1400,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a higher-order node with AnyTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("hof") && d.inlineTransform.exists(
         _.isInstanceOf[InlineTransform.AnyTransform]
       )
@@ -1433,7 +1433,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -1451,10 +1451,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
@@ -1472,10 +1472,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CBoolean
   }
@@ -1527,7 +1527,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Guard should create a data node with GuardTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("guard") && d.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
   }
@@ -1546,10 +1546,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.COptional(CType.CInt)
   }
@@ -1568,8 +1568,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType match {
       case CType.COptional(CType.CProduct(fields)) =>
         fields.keys should contain allOf ("name", "age")
@@ -1594,7 +1594,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have two guard transforms
-    val guardNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val guardNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.contains(InlineTransform.GuardTransform)
     )
     guardNodes should have size 2
@@ -1617,7 +1617,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Coalesce should create a data node with CoalesceTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.name.contains("coalesce") && d.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
   }
@@ -1636,8 +1636,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     // Should be Int (unwrapped), not Optional<Int>
     outputNode.get.cType shouldBe CType.CInt
   }
@@ -1656,8 +1656,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     // Optional ?? Optional returns Optional
     outputNode.get.cType shouldBe CType.COptional(CType.CInt)
   }
@@ -1678,14 +1678,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have two coalesce transforms
-    val coalesceNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val coalesceNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.contains(InlineTransform.CoalesceTransform)
     )
     coalesceNodes should have size 2
 
     // Final result should be Int
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CInt
   }
 
@@ -1707,16 +1707,16 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have both guard and coalesce transforms
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
 
     // Final result should be Int (unwrapped by coalesce)
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CInt
   }
 
@@ -1738,12 +1738,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have two guards and two coalesce operations
-    val guardNodes = compiled.program.image.dagSpec.data.values.filter(
+    val guardNodes = compiled.pipeline.image.dagSpec.data.values.filter(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     )
     guardNodes should have size 2
 
-    val coalesceNodes = compiled.program.image.dagSpec.data.values.filter(
+    val coalesceNodes = compiled.pipeline.image.dagSpec.data.values.filter(
       _.inlineTransform.contains(InlineTransform.CoalesceTransform)
     )
     coalesceNodes should have size 2
@@ -1770,9 +1770,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a branch module
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
     // Should have guard transforms
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
   }
@@ -1797,9 +1797,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have a branch module
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
     // Should have coalesce transforms
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
   }
@@ -1824,11 +1824,11 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have branch, guard, and coalesce
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
   }
@@ -1865,7 +1865,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val compiled = result.toOption.get
 
     // Verify DAG has coalesce nodes for primary ?? secondary ?? 0
-    val coalesceNodes = compiled.program.image.dagSpec.data.values
+    val coalesceNodes = compiled.pipeline.image.dagSpec.data.values
       .filter(
         _.inlineTransform.contains(InlineTransform.CoalesceTransform)
       )
@@ -1873,16 +1873,16 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     coalesceNodes.size should be >= 2
 
     // Verify DAG has guard node for `selected when selected > threshold`
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
 
     // Verify comparison module for `selected > threshold`
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
 
     // Final output should be Int
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CInt
   }
 
@@ -1912,14 +1912,14 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     // Should have 2 branch modules (nested)
     val branchModules =
-      compiled.program.image.dagSpec.modules.values.filter(_.name.contains("branch"))
+      compiled.pipeline.image.dagSpec.modules.values.filter(_.name.contains("branch"))
     branchModules should have size 2
 
     // Should have guard and coalesce transforms
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
   }
@@ -1939,8 +1939,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType match {
       case CType.COptional(CType.CList(CType.CProduct(fields))) =>
         fields.keys should contain allOf ("id", "name")
@@ -1963,8 +1963,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType match {
       case CType.CList(CType.CProduct(fields)) =>
         fields.keys should contain("id")
@@ -1989,10 +1989,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have merge and guard
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.exists(_.isInstanceOf[InlineTransform.MergeTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(
+    compiled.pipeline.image.dagSpec.data.values.exists(
       _.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
   }
@@ -2011,9 +2011,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data should have size 1
+    compiled.pipeline.image.dagSpec.data should have size 1
 
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure.keys should contain allOf ("String", "Int")
@@ -2033,7 +2033,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 3
@@ -2055,7 +2055,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType shouldBe a[CType.CUnion]
   }
 
@@ -2074,7 +2074,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -2106,12 +2106,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
 
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe a[CType.CUnion]
   }
@@ -2139,12 +2139,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
 
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType shouldBe CType.CBoolean
   }
@@ -2162,10 +2162,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled      = result.toOption.get
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("y")
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("y")
     resultBinding.isDefined shouldBe true
 
-    val outputNode = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
       case CType.CUnion(structure) =>
@@ -2186,7 +2186,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -2212,7 +2212,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -2239,7 +2239,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -2268,7 +2268,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         // Should be flattened to 4 members
@@ -2293,7 +2293,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled  = result.toOption.get
-    val inputNode = compiled.program.image.dagSpec.data.values.head
+    val inputNode = compiled.pipeline.image.dagSpec.data.values.head
     inputNode.cType match {
       case CType.CUnion(structure) =>
         structure should have size 2
@@ -2318,7 +2318,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2336,7 +2336,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2354,7 +2354,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2382,7 +2382,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
     ) shouldBe true
   }
@@ -2402,10 +2402,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have both FilterTransform and MapTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
     ) shouldBe true
   }
@@ -2425,10 +2425,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have FilterTransform and AllTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
     ) shouldBe true
   }
@@ -2448,10 +2448,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have FilterTransform and AnyTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
     ) shouldBe true
   }
@@ -2469,12 +2469,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
     ) shouldBe true
 
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -2491,12 +2491,12 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
     ) shouldBe true
 
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CBoolean
   }
 
@@ -2513,7 +2513,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2531,7 +2531,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2551,15 +2551,15 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have both MapTransform and FilterTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.MapTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
 
-    val resultBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(resultBinding.get)
+    val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType shouldBe CType.CList(CType.CInt)
   }
 
@@ -2578,10 +2578,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have both AllTransform and AnyTransform
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AllTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.AnyTransform])
     ) shouldBe true
   }
@@ -2599,7 +2599,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val hofNode = compiled.program.image.dagSpec.data.values
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
       .find(d => d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform]))
       .get
 
@@ -2622,7 +2622,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -2643,9 +2643,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Output should be String type
-    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     outputBinding shouldBe defined
-    val outputNode = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CString
   }
 
@@ -2663,7 +2663,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have data node with StringInterpolationTransform
-    val hasStringInterp = compiled.program.image.dagSpec.data.values.exists(d =>
+    val hasStringInterp = compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     hasStringInterp shouldBe true
@@ -2684,7 +2684,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have StringInterpolationTransform
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
+    val interpNode = compiled.pipeline.image.dagSpec.data.values.find(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     interpNode shouldBe defined
@@ -2707,8 +2707,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Output type should be String
-    val outputBinding = compiled.program.image.dagSpec.outputBindings.get("result")
-    val outputNode    = compiled.program.image.dagSpec.data.get(outputBinding.get)
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
+    val outputNode    = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
     outputNode.get.cType shouldBe CType.CString
   }
 
@@ -2725,7 +2725,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -2743,7 +2743,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values.find(d =>
+    val interpNode = compiled.pipeline.image.dagSpec.data.values.find(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     interpNode shouldBe defined
@@ -2764,7 +2764,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values
+    val interpNode = compiled.pipeline.image.dagSpec.data.values
       .find(d =>
         d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
       )
@@ -2789,7 +2789,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values
+    val interpNode = compiled.pipeline.image.dagSpec.data.values
       .find(d =>
         d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
       )
@@ -2814,7 +2814,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values
+    val interpNode = compiled.pipeline.image.dagSpec.data.values
       .find(d =>
         d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
       )
@@ -2839,7 +2839,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    val interpNode = compiled.program.image.dagSpec.data.values
+    val interpNode = compiled.pipeline.image.dagSpec.data.values
       .find(d =>
         d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
       )
@@ -2874,7 +2874,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -2892,7 +2892,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -2910,7 +2910,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -2928,7 +2928,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }
@@ -2956,10 +2956,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have both StringInterpolationTransform and module call
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "compile chained string interpolations" in {
@@ -2977,7 +2977,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 StringInterpolationTransform nodes
-    val interpCount = compiled.program.image.dagSpec.data.values.count(d =>
+    val interpCount = compiled.pipeline.image.dagSpec.data.values.count(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     interpCount shouldBe 2
@@ -2996,7 +2996,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should NOT have StringInterpolationTransform for plain strings
-    val hasStringInterp = compiled.program.image.dagSpec.data.values.exists(d =>
+    val hasStringInterp = compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     hasStringInterp shouldBe false
@@ -3015,7 +3015,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Escaped $ should be literal, not interpolation
-    val hasStringInterp = compiled.program.image.dagSpec.data.values.exists(d =>
+    val hasStringInterp = compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     )
     hasStringInterp shouldBe false
@@ -3061,9 +3061,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // syntheticModules should contain the registered module
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
     // Module should have been resolved from the registry
-    compiled.program.image.dagSpec.modules should not be empty
+    compiled.pipeline.image.dagSpec.modules should not be empty
   }
 
   it should "use registered module's output field name from produces map" in {
@@ -3098,9 +3098,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
     // The output data node should use the custom field name from the module's produces map
-    val outputNodes = compiled.program.image.dagSpec.data.values.filter(_.name.contains("output"))
+    val outputNodes = compiled.pipeline.image.dagSpec.data.values.filter(_.name.contains("output"))
     outputNodes should not be empty
   }
 
@@ -3156,8 +3156,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have 2 synthetic modules
-    compiled.program.syntheticModules should have size 2
-    compiled.program.image.dagSpec.modules should have size 2
+    compiled.pipeline.syntheticModules should have size 2
+    compiled.pipeline.image.dagSpec.modules should have size 2
   }
 
   it should "update data node nicknames correctly for registered modules" in {
@@ -3192,9 +3192,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
     // Input data nodes should have nicknames pointing to the module
-    val inputDataNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val inputDataNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.name == "first" || d.name == "second"
     )
     inputDataNodes should have size 2
@@ -3256,10 +3256,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should have size 2
+    compiled.pipeline.syntheticModules should have size 2
     // Verify edges connect properly
-    compiled.program.image.dagSpec.inEdges should not be empty
-    compiled.program.image.dagSpec.outEdges should not be empty
+    compiled.pipeline.image.dagSpec.inEdges should not be empty
+    compiled.pipeline.image.dagSpec.outEdges should not be empty
   }
 
   // Test mixing registered and unregistered modules
@@ -3305,9 +3305,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // syntheticModules should contain only the registered module
-    compiled.program.syntheticModules should have size 1
+    compiled.pipeline.syntheticModules should have size 1
     // But dagSpec.modules should have 2 (one with resolved spec, one with placeholder)
-    compiled.program.image.dagSpec.modules should have size 2
+    compiled.pipeline.image.dagSpec.modules should have size 2
   }
 
   // Test branch with field access on record in different scenarios
@@ -3326,7 +3326,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Field access creates inline transforms
-    val fieldAccessNodes = compiled.program.image.dagSpec.data.values.filter(d =>
+    val fieldAccessNodes = compiled.pipeline.image.dagSpec.data.values.filter(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FieldAccessTransform])
     )
     fieldAccessNodes should have size 2
@@ -3370,8 +3370,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
-    compiled.program.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
+    compiled.pipeline.syntheticModules should not be empty
+    compiled.pipeline.image.dagSpec.modules.values.exists(_.name.contains("branch")) shouldBe true
   }
 
   // Test boolean operators with registered module comparisons
@@ -3424,16 +3424,16 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Each comparison creates a module call, so we get 4 (2 gt, 2 lt)
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
 
     // Should have And, Or, Not inline transforms
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.AndTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.OrTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.NotTransform)
     ) shouldBe true
   }
@@ -3473,8 +3473,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.syntheticModules should not be empty
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.ConditionalTransform)
     ) shouldBe true
   }
@@ -3513,11 +3513,11 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.syntheticModules should not be empty
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.GuardTransform)
     ) shouldBe true
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.contains(InlineTransform.CoalesceTransform)
     ) shouldBe true
   }
@@ -3538,7 +3538,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // FilterTransform should be created for the HOF
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.FilterTransform])
     ) shouldBe true
   }
@@ -3576,8 +3576,8 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
-    compiled.program.image.dagSpec.data.values.exists(d =>
+    compiled.pipeline.syntheticModules should not be empty
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
       d.inlineTransform.exists(_.isInstanceOf[InlineTransform.StringInterpolationTransform])
     ) shouldBe true
   }

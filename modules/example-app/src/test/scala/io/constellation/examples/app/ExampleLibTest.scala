@@ -325,7 +325,7 @@ class ExampleLibTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    compiled.program.syntheticModules should not be empty
+    compiled.pipeline.syntheticModules should not be empty
   }
 
   it should "compile programs using resilience functions" in {

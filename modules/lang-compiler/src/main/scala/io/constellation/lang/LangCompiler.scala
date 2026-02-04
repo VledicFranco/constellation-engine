@@ -15,7 +15,7 @@ import java.util.UUID
 /** Main interface for compiling constellation-lang programs */
 trait LangCompiler {
 
-  /** Compile a constellation-lang source to a CompilationOutput (LoadedProgram + warnings). */
+  /** Compile a constellation-lang source to a CompilationOutput (LoadedPipeline + warnings). */
   def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput]
 
   /** Async variant of compile that avoids blocking threads.
@@ -30,7 +30,7 @@ trait LangCompiler {
     IO(compile(source, dagName))
 
   /** Compile to IR only (for visualization) */
-  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram]
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRPipeline]
 
   /** Get the function registry for namespace/function introspection */
   def functionRegistry: FunctionRegistry
@@ -165,13 +165,13 @@ private class LangCompilerImpl(
       program <- ConstellationParser.parse(source).left.map(List(_))
 
       // Phase 2: Type check
-      typedProgram <- TypeChecker.check(program, registry)
+      typedPipeline <- TypeChecker.check(program, registry)
 
       // Phase 3: Generate IR
-      irProgram = IRGenerator.generate(typedProgram)
+      irPipeline = IRGenerator.generate(typedPipeline)
 
       // Phase 4: Optimize IR
-      optimizedIR = IROptimizer.optimizeIR(irProgram, optimizationConfig)
+      optimizedIR = IROptimizer.optimizeIR(irPipeline, optimizationConfig)
 
       // Phase 5: Compile to DagSpec
       result <- DagCompiler.compile(optimizedIR, dagName, modules).left.map { err =>
@@ -180,12 +180,12 @@ private class LangCompilerImpl(
     } yield {
       // Build CompilationOutput from DagCompileOutput
       val sourceHash     = ContentHash.computeSHA256(source.getBytes("UTF-8"))
-      val structuralHash = ProgramImage.computeStructuralHash(result.dagSpec)
+      val structuralHash = PipelineImage.computeStructuralHash(result.dagSpec)
       val moduleOptions = result.moduleOptions.map { case (uuid, irOpts) =>
         uuid -> irOpts.toModuleCallOptions
       }
 
-      val image = ProgramImage(
+      val image = PipelineImage(
         structuralHash = structuralHash,
         syntacticHash = sourceHash,
         dagSpec = result.dagSpec,
@@ -194,23 +194,23 @@ private class LangCompilerImpl(
         sourceHash = Some(sourceHash)
       )
 
-      val loaded = LoadedProgram(image, result.syntheticModules)
-      CompilationOutput(loaded, typedProgram.warnings)
+      val loaded = LoadedPipeline(image, result.syntheticModules)
+      CompilationOutput(loaded, typedPipeline.warnings)
     }
 
-  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRProgram] =
+  def compileToIR(source: String, dagName: String): Either[List[CompileError], IRPipeline] =
     for {
       // Phase 1: Parse
       program <- ConstellationParser.parse(source).left.map(List(_))
 
       // Phase 2: Type check
-      typedProgram <- TypeChecker.check(program, registry)
+      typedPipeline <- TypeChecker.check(program, registry)
 
       // Phase 3: Generate IR
-      irProgram = IRGenerator.generate(typedProgram)
+      irPipeline = IRGenerator.generate(typedPipeline)
 
       // Phase 4: Optimize IR
-      optimizedIR = IROptimizer.optimizeIR(irProgram, optimizationConfig)
+      optimizedIR = IROptimizer.optimizeIR(irPipeline, optimizationConfig)
     } yield optimizedIR
 }
 

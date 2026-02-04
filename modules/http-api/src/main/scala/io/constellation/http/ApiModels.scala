@@ -194,11 +194,11 @@ object ApiModels {
   }
 
   // ---------------------------------------------------------------------------
-  // Program management models (Phase 5)
+  // Pipeline management models (Phase 5)
   // ---------------------------------------------------------------------------
 
   /** Summary of a stored program image */
-  case class ProgramSummary(
+  case class PipelineSummary(
       structuralHash: String,
       syntacticHash: String,
       aliases: List[String],
@@ -207,23 +207,23 @@ object ApiModels {
       declaredOutputs: List[String]
   )
 
-  object ProgramSummary {
-    given Encoder[ProgramSummary] = deriveEncoder
-    given Decoder[ProgramSummary] = deriveDecoder
+  object PipelineSummary {
+    given Encoder[PipelineSummary] = deriveEncoder
+    given Decoder[PipelineSummary] = deriveDecoder
   }
 
-  /** Response listing stored programs */
-  case class ProgramListResponse(
-      programs: List[ProgramSummary]
+  /** Response listing stored pipelines */
+  case class PipelineListResponse(
+      pipelines: List[PipelineSummary]
   )
 
-  object ProgramListResponse {
-    given Encoder[ProgramListResponse] = deriveEncoder
-    given Decoder[ProgramListResponse] = deriveDecoder
+  object PipelineListResponse {
+    given Encoder[PipelineListResponse] = deriveEncoder
+    given Decoder[PipelineListResponse] = deriveDecoder
   }
 
   /** Detailed program metadata response */
-  case class ProgramDetailResponse(
+  case class PipelineDetailResponse(
       structuralHash: String,
       syntacticHash: String,
       aliases: List[String],
@@ -234,9 +234,9 @@ object ApiModels {
       outputSchema: Map[String, String]
   )
 
-  object ProgramDetailResponse {
-    given Encoder[ProgramDetailResponse] = deriveEncoder
-    given Decoder[ProgramDetailResponse] = deriveDecoder
+  object PipelineDetailResponse {
+    given Encoder[PipelineDetailResponse] = deriveEncoder
+    given Decoder[PipelineDetailResponse] = deriveDecoder
   }
 
   /** Request to update an alias target */

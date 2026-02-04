@@ -34,7 +34,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   private def getModuleOptions(result: CompilationOutput): Option[ModuleCallOptions] =
-    result.program.image.moduleOptions.values.headOption
+    result.pipeline.image.moduleOptions.values.headOption
 
   // ============================================================================
   // Basic Pipeline Tests
@@ -349,7 +349,7 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // No options should mean moduleOptions is empty
-    compiled.program.image.moduleOptions shouldBe empty
+    compiled.pipeline.image.moduleOptions shouldBe empty
   }
 
   // ============================================================================
@@ -466,10 +466,10 @@ class OptionsPipelineIntegrationTest extends AnyFlatSpec with Matchers {
 
     val compiled = result.toOption.get
     // Should have options for both modules
-    compiled.program.image.moduleOptions.size shouldBe 2
+    compiled.pipeline.image.moduleOptions.size shouldBe 2
 
     // Verify different options for each
-    val allOptions    = compiled.program.image.moduleOptions.values.toList
+    val allOptions    = compiled.pipeline.image.moduleOptions.values.toList
     val retriesOption = allOptions.find(_.retry.isDefined)
     val cacheOption   = allOptions.find(_.cacheMs.isDefined)
 

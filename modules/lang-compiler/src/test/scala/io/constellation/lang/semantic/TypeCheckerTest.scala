@@ -8,17 +8,17 @@ import org.scalatest.matchers.should.Matchers
 
 class TypeCheckerTest extends AnyFlatSpec with Matchers {
 
-  private def parse(source: String): Program =
+  private def parse(source: String): Pipeline =
     ConstellationParser.parse(source).getOrElse(fail("Parse failed"))
 
   private def check(
       source: String,
       registry: FunctionRegistry = FunctionRegistry.empty
-  ): Either[List[CompileError], TypedProgram] =
+  ): Either[List[CompileError], TypedPipeline] =
     TypeChecker.check(parse(source), registry)
 
   /** Helper to get the output type (assumes single output) */
-  private def getOutputType(program: TypedProgram): SemanticType =
+  private def getOutputType(program: TypedPipeline): SemanticType =
     program.outputs.head._2
 
   "TypeChecker" should "type check simple primitive inputs" in {
@@ -4737,10 +4737,10 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source, optionsRegistry)
     result.isRight shouldBe true
-    val typedProgram = result.toOption.get
-    typedProgram.warnings.nonEmpty shouldBe true
-    typedProgram.warnings.exists(_.isInstanceOf[CompileWarning.OptionDependency]) shouldBe true
-    typedProgram.warnings.exists(w =>
+    val typedPipeline = result.toOption.get
+    typedPipeline.warnings.nonEmpty shouldBe true
+    typedPipeline.warnings.exists(_.isInstanceOf[CompileWarning.OptionDependency]) shouldBe true
+    typedPipeline.warnings.exists(w =>
       w.message.contains("delay") && w.message.contains("retry")
     ) shouldBe true
   }
@@ -4753,9 +4753,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source, optionsRegistry)
     result.isRight shouldBe true
-    val typedProgram = result.toOption.get
-    typedProgram.warnings.nonEmpty shouldBe true
-    typedProgram.warnings.exists(w =>
+    val typedPipeline = result.toOption.get
+    typedPipeline.warnings.nonEmpty shouldBe true
+    typedPipeline.warnings.exists(w =>
       w.message.contains("backoff") && w.message.contains("delay")
     ) shouldBe true
   }
@@ -4768,9 +4768,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source, optionsRegistry)
     result.isRight shouldBe true
-    val typedProgram = result.toOption.get
+    val typedPipeline = result.toOption.get
     // Should have no warnings about delay without retry
-    typedProgram.warnings.exists(w =>
+    typedPipeline.warnings.exists(w =>
       w.message.contains("delay") && w.message.contains("retry")
     ) shouldBe false
   }
@@ -4783,9 +4783,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source, optionsRegistry)
     result.isRight shouldBe true
-    val typedProgram = result.toOption.get
+    val typedPipeline = result.toOption.get
     // Should have no warnings about backoff without delay
-    typedProgram.warnings.exists(w =>
+    typedPipeline.warnings.exists(w =>
       w.message.contains("backoff") && w.message.contains("delay")
     ) shouldBe false
   }
@@ -4887,7 +4887,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source, optionsRegistry)
     result.isRight shouldBe true
     // No warnings since delay is with retry, backoff is with delay
-    val typedProgram = result.toOption.get
-    typedProgram.warnings.isEmpty shouldBe true
+    val typedPipeline = result.toOption.get
+    typedPipeline.warnings.isEmpty shouldBe true
   }
 }

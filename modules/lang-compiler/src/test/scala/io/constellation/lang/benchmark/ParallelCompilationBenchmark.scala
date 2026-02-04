@@ -22,7 +22,7 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
   val MeasureIterations = 20
 
   /** Compile to IR for analysis */
-  private def compileToIR(source: String): Either[List[_], IRProgram] =
+  private def compileToIR(source: String): Either[List[_], IRPipeline] =
     for {
       program <- ConstellationParser.parse(source).left.map(List(_))
       typed   <- TypeChecker.check(program, io.constellation.lang.semantic.FunctionRegistry.empty)
@@ -86,7 +86,7 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
 
     println("\n=== Parallelism Analysis ===")
     println(
-      f"${"Program"}%-15s ${"Nodes"}%8s ${"Layers"}%8s ${"MaxPar"}%8s ${"AvgLayer"}%10s ${"SeqRatio"}%10s"
+      f"${"Pipeline"}%-15s ${"Nodes"}%8s ${"Layers"}%8s ${"MaxPar"}%8s ${"AvgLayer"}%10s ${"SeqRatio"}%10s"
     )
     println("-" * 70)
 

@@ -31,7 +31,7 @@ final case class TypeEnvironment(
 }
 
 /** Typed program after type checking */
-final case class TypedProgram(
+final case class TypedPipeline(
     declarations: List[TypedDeclaration],
     outputs: List[(String, SemanticType, Span)], // (name, type, span) for each declared output
     warnings: List[CompileWarning] = Nil
@@ -214,12 +214,12 @@ object TypeChecker {
     * @param functions
     *   Registry of available function signatures
     * @return
-    *   Either a list of type errors, or a fully typed program
+    *   Either a list of type errors, or a fully typed pipeline
     */
   def check(
-      program: Program,
+      program: Pipeline,
       functions: FunctionRegistry
-  ): Either[List[CompileError], TypedProgram] =
+  ): Either[List[CompileError], TypedPipeline] =
     // Delegate to bidirectional type checker
     BidirectionalTypeChecker(functions).check(program)
 

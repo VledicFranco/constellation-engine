@@ -1,20 +1,20 @@
 package io.constellation.impl
 
 import cats.effect.{IO, Ref}
-import io.constellation.{ProgramImage, ProgramStore}
+import io.constellation.{PipelineImage, PipelineStore}
 
-/** In-memory implementation of [[ProgramStore]].
+/** In-memory implementation of [[PipelineStore]].
   *
   * Uses three concurrent Ref maps: one for images, one for aliases, and one for the syntactic
   * index.
   */
-class ProgramStoreImpl private (
-    images: Ref[IO, Map[String, ProgramImage]],
+class PipelineStoreImpl private (
+    images: Ref[IO, Map[String, PipelineImage]],
     aliases: Ref[IO, Map[String, String]],
     syntacticIndex: Ref[IO, Map[(String, String), String]]
-) extends ProgramStore {
+) extends PipelineStore {
 
-  def store(image: ProgramImage): IO[String] = {
+  def store(image: PipelineImage): IO[String] = {
     val hash = image.structuralHash
     images.update(_.updated(hash, image)).as(hash)
   }
@@ -28,10 +28,10 @@ class ProgramStoreImpl private (
   def listAliases: IO[Map[String, String]] =
     aliases.get
 
-  def get(structuralHash: String): IO[Option[ProgramImage]] =
+  def get(structuralHash: String): IO[Option[PipelineImage]] =
     images.get.map(_.get(structuralHash))
 
-  def getByName(name: String): IO[Option[ProgramImage]] =
+  def getByName(name: String): IO[Option[PipelineImage]] =
     for {
       optHash <- resolve(name)
       optImage <- optHash match {
@@ -50,7 +50,7 @@ class ProgramStoreImpl private (
   def lookupSyntactic(syntacticHash: String, registryHash: String): IO[Option[String]] =
     syntacticIndex.get.map(_.get((syntacticHash, registryHash)))
 
-  def listImages: IO[List[ProgramImage]] =
+  def listImages: IO[List[PipelineImage]] =
     images.get.map(_.values.toList)
 
   def remove(structuralHash: String): IO[Boolean] =
@@ -60,13 +60,13 @@ class ProgramStoreImpl private (
     }
 }
 
-object ProgramStoreImpl {
+object PipelineStoreImpl {
 
-  /** Create a new empty in-memory ProgramStore. */
-  def init: IO[ProgramStore] =
+  /** Create a new empty in-memory PipelineStore. */
+  def init: IO[PipelineStore] =
     for {
-      images         <- Ref.of[IO, Map[String, ProgramImage]](Map.empty)
+      images         <- Ref.of[IO, Map[String, PipelineImage]](Map.empty)
       aliases        <- Ref.of[IO, Map[String, String]](Map.empty)
       syntacticIndex <- Ref.of[IO, Map[(String, String), String]](Map.empty)
-    } yield new ProgramStoreImpl(images, aliases, syntacticIndex)
+    } yield new PipelineStoreImpl(images, aliases, syntacticIndex)
 }

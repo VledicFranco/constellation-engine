@@ -225,9 +225,9 @@ object Server extends IOApp.Simple {
 | `/modules` | GET | List registered modules |
 | `/compile` | POST | Compile constellation-lang source |
 | `/run` | POST | Compile and execute in one call |
-| `/programs` | GET | List stored programs |
-| `/programs/{ref}` | GET | Get program metadata |
-| `/execute` | POST | Execute a stored program |
+| `/pipelines` | GET | List stored pipelines |
+| `/pipelines/{ref}` | GET | Get pipeline metadata |
+| `/execute` | POST | Execute a stored pipeline |
 | `/lsp` | WebSocket | Language Server Protocol for IDE support |
 
 ---

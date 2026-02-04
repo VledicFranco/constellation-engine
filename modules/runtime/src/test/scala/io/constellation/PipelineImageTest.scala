@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import java.time.Instant
 import java.util.UUID
 
-class ProgramImageTest extends AnyFlatSpec with Matchers {
+class PipelineImageTest extends AnyFlatSpec with Matchers {
 
   private def simpleDagSpec: DagSpec = {
     val moduleId = UUID.randomUUID()
@@ -33,33 +33,33 @@ class ProgramImageTest extends AnyFlatSpec with Matchers {
     )
   }
 
-  "ProgramImage.computeStructuralHash" should "delegate to ContentHash" in {
+  "PipelineImage.computeStructuralHash" should "delegate to ContentHash" in {
     val dag  = simpleDagSpec
-    val hash = ProgramImage.computeStructuralHash(dag)
+    val hash = PipelineImage.computeStructuralHash(dag)
     hash shouldBe ContentHash.computeStructuralHash(dag)
   }
 
-  "ProgramImage.rehydrate" should "produce a LoadedProgram" in {
+  "PipelineImage.rehydrate" should "produce a LoadedPipeline" in {
     val dag = simpleDagSpec
-    val image = ProgramImage(
-      structuralHash = ProgramImage.computeStructuralHash(dag),
+    val image = PipelineImage(
+      structuralHash = PipelineImage.computeStructuralHash(dag),
       syntacticHash = "",
       dagSpec = dag,
       moduleOptions = Map.empty,
       compiledAt = Instant.now()
     )
 
-    val loaded = ProgramImage.rehydrate(image)
+    val loaded = PipelineImage.rehydrate(image)
     loaded.image shouldBe image
     loaded.structuralHash shouldBe image.structuralHash
     // No branch modules in this simple DAG, so synthetic should be empty
     loaded.syntheticModules shouldBe empty
   }
 
-  "structural hash" should "round-trip through ProgramImage" in {
+  "structural hash" should "round-trip through PipelineImage" in {
     val dag  = simpleDagSpec
-    val hash = ProgramImage.computeStructuralHash(dag)
-    val image = ProgramImage(
+    val hash = PipelineImage.computeStructuralHash(dag)
+    val image = PipelineImage(
       structuralHash = hash,
       syntacticHash = "",
       dagSpec = dag,
@@ -67,6 +67,6 @@ class ProgramImageTest extends AnyFlatSpec with Matchers {
       compiledAt = Instant.now()
     )
     image.structuralHash shouldBe hash
-    ProgramImage.computeStructuralHash(image.dagSpec) shouldBe hash
+    PipelineImage.computeStructuralHash(image.dagSpec) shouldBe hash
   }
 }

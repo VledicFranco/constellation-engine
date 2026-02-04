@@ -5,7 +5,7 @@ import java.util.UUID
 
 /** Immutable, serializable snapshot of a compiled pipeline.
   *
-  * A ProgramImage captures everything needed to reconstruct a runnable program: the DAG topology,
+  * A PipelineImage captures everything needed to reconstruct a runnable program: the DAG topology,
   * module call options, and content hashes for deduplication.
   *
   * @param structuralHash
@@ -21,7 +21,7 @@ import java.util.UUID
   * @param sourceHash
   *   Optional hash of the original source code
   */
-final case class ProgramImage(
+final case class PipelineImage(
     structuralHash: String,
     syntacticHash: String,
     dagSpec: DagSpec,
@@ -30,20 +30,20 @@ final case class ProgramImage(
     sourceHash: Option[String] = None
 )
 
-object ProgramImage {
+object PipelineImage {
 
   /** Compute the structural hash of a DagSpec. */
   def computeStructuralHash(dagSpec: DagSpec): String =
     ContentHash.computeStructuralHash(dagSpec)
 
-  /** Rehydrate a ProgramImage into a LoadedProgram by reconstructing synthetic modules.
+  /** Rehydrate a PipelineImage into a LoadedPipeline by reconstructing synthetic modules.
     *
     * Only branch modules can be reconstructed from the DagSpec alone. HOF transforms (filter, map,
     * etc.) contain closures that cannot be reconstructed; those programs require the original
-    * LoadedProgram or recompilation.
+    * LoadedPipeline or recompilation.
     */
-  def rehydrate(image: ProgramImage): LoadedProgram = {
+  def rehydrate(image: PipelineImage): LoadedPipeline = {
     val syntheticModules = SyntheticModuleFactory.fromDagSpec(image.dagSpec)
-    LoadedProgram(image, syntheticModules)
+    LoadedPipeline(image, syntheticModules)
   }
 }

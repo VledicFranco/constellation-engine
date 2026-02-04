@@ -390,15 +390,15 @@ class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
         outputBindings = Map("output" -> outputDataId)
       )
 
-      structuralHash = ProgramImage.computeStructuralHash(dag)
-      image = ProgramImage(
+      structuralHash = PipelineImage.computeStructuralHash(dag)
+      image = PipelineImage(
         structuralHash = structuralHash,
         syntacticHash = "",
         dagSpec = dag,
         moduleOptions = Map.empty,
         compiledAt = java.time.Instant.now()
       )
-      loaded = LoadedProgram(image, Map.empty)
+      loaded = LoadedPipeline(image, Map.empty)
       sig <- constellation.run(loaded, Map("input" -> CValue.CString("world")))
 
       _ <- IO.sleep(scala.concurrent.duration.Duration(50, "ms"))
