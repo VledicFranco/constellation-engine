@@ -1,6 +1,6 @@
 package io.constellation.http
 
-import cats.effect.IO
+import cats.effect.{IO, Ref}
 import cats.implicits.*
 import io.circe.{Json, parser}
 import io.circe.syntax.*
@@ -29,7 +29,8 @@ import scala.jdk.CollectionConverters.*
   */
 class FileSystemPipelineStore private[http] (
     private[http] val storeDirectory: Path,
-    private[http] val delegate: PipelineStore
+    private[http] val delegate: PipelineStore,
+    private val syntacticIndexRef: Ref[IO, Map[String, String]]
 ) extends PipelineStore {
 
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[FileSystemPipelineStore])
@@ -124,10 +125,11 @@ class FileSystemPipelineStore private[http] (
       }
     }
 
-  /** Persist a single syntactic index entry by reading, updating, and atomically writing back.
+  /** Persist the syntactic index by atomically updating the in-memory Ref and writing from it.
     *
     * Uses a composite key "syntacticHash:registryHash" to preserve both dimensions
-    * of the deduplication index across restarts.
+    * of the deduplication index across restarts. Reads from the atomic Ref (not the file)
+    * to avoid read-modify-write races under concurrent store() calls.
     */
   private def persistSyntacticEntry(
       syntacticHash: String,
@@ -135,27 +137,13 @@ class FileSystemPipelineStore private[http] (
       structuralHash: String
   ): IO[Unit] = {
     val compositeKey = s"$syntacticHash:$registryHash"
-    readSyntacticIndexFile().flatMap { existing =>
-      val updated = existing + (compositeKey -> structuralHash)
-      val json = Json.fromFields(updated.map { case (k, v) => k -> Json.fromString(v) }).spaces2
+    syntacticIndexRef.updateAndGet(_ + (compositeKey -> structuralHash)).flatMap { entries =>
+      val json = Json.fromFields(entries.map { case (k, v) => k -> Json.fromString(v) }).spaces2
       atomicWrite(syntacticFile, json)
     }.handleErrorWith { e =>
       logger.error(s"Failed to persist syntactic index entry: ${e.getMessage}")
     }
   }
-
-  /** Read the current syntactic-index.json as a Map. Returns empty map if file doesn't exist. */
-  private def readSyntacticIndexFile(): IO[Map[String, String]] =
-    IO(Files.exists(syntacticFile)).flatMap {
-      case false => IO.pure(Map.empty)
-      case true =>
-        IO(Files.readString(syntacticFile)).flatMap { content =>
-          parser.parse(content).flatMap(_.as[Map[String, String]]) match {
-            case Right(entries) => IO.pure(entries)
-            case Left(_)       => IO.pure(Map.empty)
-          }
-        }.handleErrorWith(_ => IO.pure(Map.empty))
-    }
 
   private def removeImageFile(structuralHash: String): IO[Unit] =
     if !validateHash(structuralHash) then IO.unit
@@ -187,10 +175,11 @@ object FileSystemPipelineStore {
     */
   def init(directory: Path, delegate: PipelineStore): IO[FileSystemPipelineStore] =
     for {
-      _ <- IO(Files.createDirectories(directory.resolve("images")))
-      _ <- cleanupTempFiles(directory)
-      store = new FileSystemPipelineStore(directory, delegate)
-      _ <- loadPersistedData(store)
+      _                  <- IO(Files.createDirectories(directory.resolve("images")))
+      _                  <- cleanupTempFiles(directory)
+      syntacticIndexRef  <- Ref.of[IO, Map[String, String]](Map.empty)
+      store = new FileSystemPipelineStore(directory, delegate, syntacticIndexRef)
+      _                  <- loadPersistedData(store)
     } yield store
 
   /** Remove any .tmp files left behind by incomplete atomic writes from a previous crash. */
@@ -285,7 +274,7 @@ object FileSystemPipelineStore {
                   case idx => (key.substring(0, idx), key.substring(idx + 1))
                 }
                 store.delegate.indexSyntactic(syntacticHash, registryHash, structuralHash)
-              }.as(entries.size)
+              } *> store.syntacticIndexRef.set(entries) *> IO.pure(entries.size)
             case Left(err) =>
               logger.warn(s"Skipping corrupted syntactic-index.json: ${err.getMessage}").as(0)
           }

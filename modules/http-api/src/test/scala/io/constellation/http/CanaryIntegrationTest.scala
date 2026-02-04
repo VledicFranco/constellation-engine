@@ -332,4 +332,90 @@ class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
     val deleteResp = routes.orNotFound.run(deleteReq).unsafeRunSync()
     deleteResp.status shouldBe Status.BadRequest
   }
+
+  // --- Auto-promotion alias update (G-1 regression test) ---
+
+  "Canary auto-promotion" should "update pipeline alias to new version after completion" in {
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    val compiler      = LangCompiler.empty
+    val registry      = FunctionRegistry.empty
+    val vs            = PipelineVersionStore.init.unsafeRunSync()
+    val cr            = CanaryRouter.init.unsafeRunSync()
+    val filePathRef   = Ref.of[IO, Map[String, Path]](Map.empty).unsafeRunSync()
+    val routes = new ConstellationRoutes(
+      constellation,
+      compiler,
+      registry,
+      scheduler = None,
+      lifecycle = None,
+      versionStore = Some(vs),
+      filePathMap = Some(filePathRef),
+      canaryRouter = Some(cr)
+    ).routes
+
+    // Compile v1
+    val v1Resp = compilePipeline(routes, "scoring", sourceV1)
+    val v1Hash = v1Resp.structuralHash.get
+
+    // Reload with canary — minimal config for fast auto-promotion
+    val reloadReq = Request[IO](Method.POST, uri"/pipelines/scoring/reload")
+      .withEntity(
+        ReloadRequest(
+          source = Some(sourceV2),
+          canary = Some(CanaryConfigRequest(
+            initialWeight = Some(1.0), // all traffic to new version
+            promotionSteps = Some(List(1.0)),
+            observationWindow = Some("0s"),
+            minRequests = Some(1),
+            autoPromote = Some(true)
+          ))
+        )
+      )
+    val reloadResp = routes.orNotFound.run(reloadReq).unsafeRunSync()
+    reloadResp.status shouldBe Status.Ok
+    val reloadBody = reloadResp.as[ReloadResponse].unsafeRunSync()
+    val v2Hash = reloadBody.newHash
+
+    // Verify alias still points to old version (canary hasn't completed yet)
+    val aliasBefore = constellation.PipelineStore.resolve("scoring").unsafeRunSync()
+    aliasBefore shouldBe Some(v1Hash)
+
+    // Execute to trigger auto-promotion (needs 1 success to auto-promote through single step)
+    val execReq = Request[IO](Method.POST, uri"/execute")
+      .withEntity(ExecuteRequest(dagName = Some("scoring"), inputs = Map("x" -> Json.fromLong(1))))
+    routes.orNotFound.run(execReq).unsafeRunSync()
+
+    // After auto-promotion, alias should now point to the new version
+    val aliasAfter = constellation.PipelineStore.resolve("scoring").unsafeRunSync()
+    aliasAfter shouldBe Some(v2Hash)
+  }
+
+  // --- Success detection (G-2 regression test) ---
+
+  "Canary success detection" should "correctly count execution results as success or failure" in {
+    val cr = CanaryRouter.init.unsafeRunSync()
+    val oldVersion = PipelineVersion(1, "hash-old", java.time.Instant.now())
+    val newVersion = PipelineVersion(2, "hash-new", java.time.Instant.now())
+    val config = CanaryConfig(
+      initialWeight = 1.0,
+      promotionSteps = List(1.0),
+      observationWindow = scala.concurrent.duration.FiniteDuration(1, "hour"),
+      minRequests = 100,
+      autoPromote = false
+    )
+    cr.startCanary("test", oldVersion, newVersion, config).unsafeRunSync()
+
+    // Record successful requests
+    cr.recordResult("test", newVersion.structuralHash, success = true, 10.0).unsafeRunSync()
+    cr.recordResult("test", newVersion.structuralHash, success = true, 10.0).unsafeRunSync()
+
+    // Record failed requests (these should be counted as failures)
+    cr.recordResult("test", newVersion.structuralHash, success = false, 10.0).unsafeRunSync()
+
+    val state = cr.getState("test").unsafeRunSync().get
+    state.metrics.newVersion.requests shouldBe 3
+    state.metrics.newVersion.successes shouldBe 2
+    state.metrics.newVersion.failures shouldBe 1
+    state.metrics.newVersion.errorRate shouldBe (1.0 / 3.0) +- 0.001
+  }
 }

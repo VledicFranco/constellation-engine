@@ -1033,11 +1033,23 @@ class ConstellationRoutes(
                 executeImage(image, jsonInputs).flatMap { result =>
                   val latencyMs = (System.nanoTime() - startTime) / 1e6
                   val success = result.isRight && result.toOption.exists { case (sig, _) =>
-                    sig.status != PipelineStatus.Failed(Nil)
+                    sig.status match {
+                      case _: PipelineStatus.Failed => false
+                      case _                        => true
+                    }
                   }
                   canaryRouter
                     .traverse(_.recordResult(ref, selectedHash, success, latencyMs))
-                    .as(result)
+                    .flatMap { stateOpt =>
+                      // If auto-promotion completed, update the alias to the new version
+                      stateOpt.flatten match {
+                        case Some(state) if state.status == CanaryStatus.Complete =>
+                          constellation.PipelineStore
+                            .alias(ref, state.newVersion.structuralHash)
+                            .as(result)
+                        case _ => IO.pure(result)
+                      }
+                    }
                 }
               case None =>
                 IO.pure(Left(ApiError.NotFoundError("Pipeline", ref)))
@@ -1309,12 +1321,12 @@ class ConstellationRoutes(
                           // Look up old version from the version store
                           vs.getVersion(name, pv.version - 1).flatMap {
                             case Some(oldPv) =>
-                              cr.startCanary(name, oldPv, pv, canaryConfig)
+                              cr.startCanary(name, oldPv, pv, canaryConfig).map(_.map(Some(_)))
                             case None =>
                               // No previous version — cannot canary
                               IO.pure(Left("No previous version exists for canary deployment"))
                           }
-                        case _ => IO.pure(Right(null)) // No canary requested
+                        case _ => IO.pure(Right(None))
                       }
                       resp <- canaryStateOpt match {
                         case Left(errMsg) if reloadReq.canary.isDefined =>
@@ -1326,7 +1338,7 @@ class ConstellationRoutes(
                           )
                         case _ =>
                           val canaryResp = canaryStateOpt.toOption
-                            .flatMap(Option(_))
+                            .flatten
                             .map(toCanaryStateResponse)
                           Ok(
                             ReloadResponse(
