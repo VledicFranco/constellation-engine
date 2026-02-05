@@ -312,8 +312,9 @@ class DashboardRoutes(
     * defense) and that the file doesn't exceed [[MaxFileSize]] (memory exhaustion defense).
     */
   private def getFileContent(relativePath: String): IO[Response[IO]] = {
-    val baseDir  = config.getCstDirectory.normalize()
-    val fullPath = baseDir.resolve(relativePath.replace("/", java.io.File.separator)).normalize()
+    // Use toAbsolutePath to ensure consistent path comparison on all platforms
+    val baseDir  = config.getCstDirectory.toAbsolutePath.normalize()
+    val fullPath = baseDir.resolve(relativePath.replace("/", java.io.File.separator)).toAbsolutePath.normalize()
 
     // Path traversal defense: ensure resolved path is within the base directory
     if !fullPath.startsWith(baseDir) then
@@ -572,8 +573,9 @@ class DashboardRoutes(
 
   /** Read a script file. Validates path stays within the CST directory. */
   private def readScriptFile(scriptPath: String): IO[Either[ApiError, String]] = IO {
-    val baseDir  = config.getCstDirectory.normalize()
-    val fullPath = baseDir.resolve(scriptPath.replace("/", java.io.File.separator)).normalize()
+    // Use toAbsolutePath to ensure consistent path comparison on all platforms
+    val baseDir  = config.getCstDirectory.toAbsolutePath.normalize()
+    val fullPath = baseDir.resolve(scriptPath.replace("/", java.io.File.separator)).toAbsolutePath.normalize()
     if !fullPath.startsWith(baseDir) then Left(ApiError.InputError("Invalid file path"))
     else if !Files.exists(fullPath) then Left(ApiError.NotFoundError("Script", scriptPath))
     else Right(Files.readString(fullPath))
