@@ -4,15 +4,11 @@ sidebar_position: 1
 description: "Web dashboard, DAG visualization, and execution history"
 ---
 
-# Dashboard & Tooling Guide
-
-This document covers the web dashboard, VSCode extension, and developer tooling included with Constellation Engine.
-
-## Web Dashboard
-
-### Overview
+# Web Dashboard Guide
 
 The web dashboard is a browser-based UI for browsing scripts, executing pipelines, and visualizing DAGs. It is served by `ConstellationServer` when enabled.
+
+## Quick Start
 
 ```scala
 ConstellationServer
@@ -23,7 +19,7 @@ ConstellationServer
 
 Access at `http://localhost:8080/dashboard` (or your configured port).
 
-### Configuration
+## Configuration
 
 `DashboardConfig` controls the dashboard behavior:
 
@@ -44,52 +40,399 @@ ConstellationServer
 | `CONSTELLATION_CST_DIR` | Current working directory | Directory containing `.cst` script files |
 | `CONSTELLATION_SAMPLE_RATE` | `1.0` | Execution sampling rate (0.0 to 1.0) |
 | `CONSTELLATION_MAX_EXECUTIONS` | `1000` | Maximum stored executions (LRU eviction) |
+| `CONSTELLATION_DASHBOARD_ENABLED` | `true` | Enable/disable dashboard endpoints |
 
-### Features
+## Security Model
 
-#### File Browser
+### Authentication
 
-The left panel displays `.cst` files from the configured directory as a tree. Click a file to load it in the editor. Folders can be expanded and collapsed.
+The dashboard inherits security settings from the parent `ConstellationServer`. When authentication is enabled, all dashboard API endpoints require a valid API key.
 
-#### Script Editor
+```scala
+ConstellationServer
+  .builder(constellation, compiler)
+  .withDashboard
+  .withAuth(AuthConfig(hashedKeys = List(
+    HashedApiKey("admin-key", ApiRole.Admin),
+    HashedApiKey("viewer-key", ApiRole.ReadOnly)
+  )))
+  .run
+```
 
-The central panel shows the script source. Inputs declared with `in` are displayed as a form — each input gets a type-appropriate control:
+**Role permissions for dashboard access:**
+
+| Role | Dashboard Access | Execution | History Delete |
+|------|------------------|-----------|----------------|
+| `Admin` | Full access | Yes | Yes |
+| `Execute` | Full access | Yes | No |
+| `ReadOnly` | View only | No | No |
+
+### Public Paths
+
+The following paths are always accessible without authentication:
+
+- `/health` - Health check endpoint
+- `/health/live` - Kubernetes liveness probe
+- `/health/ready` - Kubernetes readiness probe
+- `/metrics` - Prometheus metrics (if enabled)
+
+### Path Traversal Protection
+
+The file browser API validates all file paths to prevent directory traversal attacks. Requests that attempt to access files outside the configured `cstDirectory` are rejected with a 400 Bad Request.
+
+### File Size Limits
+
+To prevent memory exhaustion:
+
+- Maximum file size for content serving: **10 MB**
+- Maximum directory recursion depth: **20 levels**
+
+### CORS Configuration
+
+When exposing the dashboard to external origins, configure CORS:
+
+```scala
+ConstellationServer
+  .builder(constellation, compiler)
+  .withDashboard
+  .withCors(CorsConfig(allowedOrigins = Set("https://app.example.com")))
+  .run
+```
+
+## Core Features
+
+### File Browser
+
+The left panel displays `.cst` files from the configured directory as a tree structure.
+
+**Features:**
+- Hierarchical folder view with expand/collapse
+- Click a file to load it in the editor
+- Automatic filtering of development directories (`node_modules`, `.git`, `target`, etc.)
+- Files sorted alphabetically with folders first
+
+**Screenshot description:** A sidebar showing a tree of `.cst` files with folder icons for directories and document icons for script files. Selected file is highlighted in blue.
+
+### Script Editor
+
+The central panel provides a code editor with live compilation preview.
+
+**Input Form:**
+Inputs declared with `in` are displayed as a form with type-appropriate controls:
 
 | Type | Control |
 |------|---------|
 | `String` | Text input |
-| `Int` | Number input |
+| `Int` | Number input (step=1) |
+| `Long` | Number input |
 | `Boolean` | Checkbox |
+| `Float` / `Double` | Number input (decimal) |
 | `List<T>` | JSON text area |
+| `Map<K,V>` | JSON text area |
 
-Click **Run** (or press `Ctrl+Enter`) to execute the script.
+**Example annotations:**
+Use `@example` annotations to pre-populate input fields:
 
-#### Execution Output
+```constellation
+@example("Hello, World!")
+in text: String
 
-After execution, outputs appear below the editor. Results are formatted as JSON. Errors display the error message and code.
+@example(42)
+in count: Int
+```
 
-#### DAG Visualization
+**Live Preview:**
+As you edit code, the DAG visualization updates in real-time. Compilation errors appear in a banner below the editor.
 
-The right panel renders the pipeline as an interactive graph using Cytoscape.js:
+### Execution Output
 
-- **Data nodes** — blue, rounded rectangles (inputs and intermediate values)
-- **Module nodes** — orange, rectangles (processing steps)
-- **Edges** — arrows showing data flow direction
+After clicking **Run** (or pressing `Ctrl+Enter`):
 
-Interaction:
-- Pan by clicking and dragging the background
-- Zoom with mouse wheel
-- Click a node to see its type information
-- Toggle between hierarchical and force-directed layouts
+- **Success:** Outputs display as formatted JSON with syntax highlighting
+- **Failure:** Error message with stack trace in a red-highlighted panel
+- **Suspended:** For pipelines with missing inputs, shows partial results and required inputs
 
-#### Execution History
+### DAG Visualization
 
-The bottom panel lists recent executions with:
-- DAG name, status (success/failure), timestamp
+The right panel renders the pipeline as an interactive graph using Cytoscape.js.
+
+**Node Types:**
+
+| Node Type | Color | Shape | Description |
+|-----------|-------|-------|-------------|
+| Input | Green (#56d364) | Circle | Pipeline inputs |
+| Output | Blue (#58a6ff) | Circle | Pipeline outputs |
+| Operation | Purple (#d2a8ff) | Rectangle | Module calls |
+| Literal | Orange (#ffa657) | Rectangle | Constant values |
+| Conditional | Red (#ff7b72) | Diamond | If/else nodes |
+| Merge | Pink (#f778ba) | Octagon | Branch merge points |
+
+**Interactions:**
+
+| Action | Result |
+|--------|--------|
+| Click + drag background | Pan the view |
+| Mouse wheel | Zoom in/out |
+| Click node | Show node details in side panel |
+| Hover node | Show tooltip with type and value |
+
+**Layout Controls:**
+
+| Button | Description |
+|--------|-------------|
+| **TB** | Top-to-bottom hierarchical layout |
+| **LR** | Left-to-right hierarchical layout |
+| **+** | Zoom in (10%) |
+| **-** | Zoom out (10%) |
+| **Fit** | Fit entire DAG in viewport |
+
+**Resizing:**
+Drag the handle between the editor and DAG panels to resize.
+
+### Execution History
+
+The History view lists all stored executions with:
+
+- DAG name and script path
+- Execution status (completed, failed, running)
+- Timestamp and duration
 - Filter by script path
-- Click to view detailed results including per-node execution data
 
-### Architecture
+**Detail View:**
+Click an execution to see:
+- Full input/output values
+- Per-node execution timing
+- DAG visualization at execution time
+- Error details (if failed)
+
+## Execution History Retention
+
+### Storage Configuration
+
+Execution history is stored in memory by default with LRU (Least Recently Used) eviction:
+
+```scala
+DashboardConfig(
+  maxStoredExecutions = 1000,  // Maximum entries before eviction
+  defaultSampleRate = 1.0      // Store all executions (1.0) or sample (0.0-1.0)
+)
+```
+
+### Sampling
+
+For high-throughput scenarios, use sampling to reduce storage:
+
+```scala
+DashboardConfig(
+  defaultSampleRate = 0.1  // Store 10% of executions
+)
+```
+
+Sampling uses consistent hashing based on DAG name, so the same pipeline gets sampled consistently.
+
+**Per-request override:**
+The API accepts a `sampleRate` parameter to override the default:
+
+```json
+{
+  "scriptPath": "example.cst",
+  "inputs": {},
+  "sampleRate": 1.0
+}
+```
+
+### Persistence
+
+By default, execution history is stored in memory and lost on server restart. For persistent storage, implement a custom `ExecutionStorage`:
+
+```scala
+// Custom storage implementation
+val customStorage: ExecutionStorage[IO] = new ExecutionStorage[IO] {
+  // Implement persistence to database, S3, etc.
+}
+
+// Use with dashboard
+val routes = new DashboardRoutes(
+  constellation, compiler, customStorage, config
+)
+```
+
+## Export/Import Pipelines
+
+### Exporting DAG Specifications
+
+Use the API to export pipeline definitions:
+
+```bash
+# Export compiled pipeline as JSON
+curl http://localhost:8080/api/v1/preview \
+  -H "Content-Type: application/json" \
+  -d '{"source": "in x: Int\nout x"}' \
+  | jq '.dagVizIR'
+```
+
+### Importing Pipelines
+
+Pipelines are loaded by placing `.cst` files in the configured directory:
+
+```bash
+# Add a new script
+cp my-pipeline.cst ./scripts/
+
+# Refresh the file browser in the dashboard
+# Or call the refresh API
+curl http://localhost:8080/api/v1/files
+```
+
+### Execution Export
+
+Export execution history programmatically:
+
+```bash
+# List recent executions
+curl "http://localhost:8080/api/v1/executions?limit=100"
+
+# Get specific execution details
+curl http://localhost:8080/api/v1/executions/{executionId}
+
+# Get DAG visualization for an execution
+curl http://localhost:8080/api/v1/executions/{executionId}/dag
+```
+
+## Keyboard Shortcuts
+
+| Shortcut | Context | Action |
+|----------|---------|--------|
+| `Ctrl+Enter` / `Cmd+Enter` | Editor | Execute current script |
+| `Ctrl+S` / `Cmd+S` | Editor | Save (if editing enabled) |
+| `Escape` | Node details | Close details panel |
+
+## Dark Mode / Themes
+
+The dashboard uses a dark theme by default, optimized for extended use and DAG visualization contrast.
+
+**Color Palette:**
+
+| Element | Color |
+|---------|-------|
+| Background (primary) | #0d1117 |
+| Background (secondary) | #161b22 |
+| Text (primary) | #f0f6fc |
+| Text (secondary) | #8b949e |
+| Accent | #58a6ff |
+| Success | #3fb950 |
+| Error | #f85149 |
+| Warning | #d29922 |
+
+**Customization:**
+
+Currently, themes are not user-configurable. To customize colors, modify the CSS variables in `main.css`:
+
+```css
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --text-primary: #f0f6fc;
+  --accent-primary: #58a6ff;
+  /* ... */
+}
+```
+
+## Performance Tuning for Large DAGs
+
+### Rendering Performance
+
+For DAGs with 100+ nodes, consider these optimizations:
+
+**1. Use Hierarchical Layout:**
+The `TB` (top-to-bottom) or `LR` (left-to-right) layouts use the Dagre algorithm which is optimized for directed graphs. Avoid force-directed layouts for large DAGs.
+
+**2. Limit Node Details:**
+Click a node to see details rather than displaying all information inline.
+
+**3. Browser Performance:**
+- Use Chrome or Firefox for best WebGL performance
+- Ensure hardware acceleration is enabled
+- Close other browser tabs when visualizing large DAGs
+
+### DAG Size Limits
+
+| DAG Size | Render Time | Recommendation |
+|----------|-------------|----------------|
+| < 50 nodes | < 100ms | All layouts work well |
+| 50-200 nodes | 100-500ms | Use hierarchical layout |
+| 200-500 nodes | 500ms-2s | Consider splitting pipeline |
+| > 500 nodes | > 2s | Split into sub-pipelines |
+
+### Memory Optimization
+
+For large execution histories:
+
+```scala
+DashboardConfig(
+  maxStoredExecutions = 100,   // Reduce for memory savings
+  defaultSampleRate = 0.01     // Store 1% of executions
+)
+```
+
+## Custom Panels Overview
+
+The dashboard is composed of modular JavaScript components:
+
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| File Browser | `file-browser.js` | Directory tree navigation |
+| Code Editor | `code-editor.js` | Script editing with live preview |
+| DAG Visualizer | `dag-visualizer.js` | Cytoscape.js graph rendering |
+| Execution Panel | `execution-panel.js` | Input/output forms and history |
+| Pipelines Panel | `pipelines-panel.js` | Pipeline management and canary status |
+
+### Extending the Dashboard
+
+To add custom panels:
+
+1. Create a new component in `dashboard/static/js/components/`
+2. Register it in `main.js`
+3. Add HTML structure in `index.html`
+4. Style in `main.css`
+
+**Example custom component structure:**
+
+```javascript
+class CustomPanel {
+  constructor(containerId, options = {}) {
+    this.container = document.getElementById(containerId);
+    this.options = options;
+  }
+
+  init() {
+    // Initialize the panel
+  }
+
+  render(data) {
+    // Render content
+  }
+
+  destroy() {
+    // Cleanup
+  }
+}
+```
+
+### Component Communication
+
+Components communicate through the main `ConstellationDashboard` class:
+
+```javascript
+// In main.js
+window.dashboard.customPanel = new CustomPanel('custom-container');
+window.dashboard.customPanel.init();
+
+// Components can access each other via window.dashboard
+this.dagVisualizer.render(dagVizIR);
+```
+
+## Architecture
 
 The dashboard is a TypeScript single-page application bundled into the server JAR:
 
@@ -113,70 +456,6 @@ Build the dashboard TypeScript:
 make dashboard          # One-time build
 make dashboard-watch    # Watch mode (auto-rebuild)
 ```
-
-## VSCode Extension
-
-### Features
-
-The VSCode extension provides a rich editing experience for `.cst` files:
-
-| Feature | Trigger | Description |
-|---------|---------|-------------|
-| Syntax highlighting | Automatic | TextMate grammar + semantic tokens |
-| Autocomplete | `Ctrl+Space` | Module names, keywords, types |
-| Real-time diagnostics | Automatic | Compilation errors as you type |
-| Hover information | Mouse hover | Module documentation and types |
-| Run script | `Ctrl+Shift+R` | Execute with input form and output display |
-| DAG visualization | `Ctrl+Shift+D` | Interactive pipeline graph |
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Shift+R` | Run the current `.cst` script |
-| `Ctrl+Shift+D` | Show DAG visualization for current script |
-| `Ctrl+Space` | Trigger autocomplete |
-| `F5` | Launch extension in debug mode (development) |
-
-### Installation
-
-```bash
-cd vscode-extension
-npm install
-npm run compile
-```
-
-Then open VSCode, go to Extensions, and install from the `vscode-extension` directory (or press `F5` to launch a debug instance).
-
-### Configuration
-
-Extension settings (`settings.json`):
-
-```json
-{
-  "constellation.server.url": "ws://localhost:8080/lsp"
-}
-```
-
-For multi-agent setups, point each VSCode instance to the appropriate agent port:
-
-```json
-{
-  "constellation.server.url": "ws://localhost:8082/lsp"
-}
-```
-
-### LSP Integration
-
-The extension communicates with the Constellation server via WebSocket at `ws://host:port/lsp`. The LSP server provides:
-
-- **textDocument/completion** — autocomplete items
-- **textDocument/hover** — type and documentation info
-- **textDocument/publishDiagnostics** — real-time error markers
-- **textDocument/semanticTokens** — rich syntax highlighting
-- **constellation/executePipeline** — custom command to run scripts
-
-See [LSP Integration Guide](../tooling/lsp-integration.md) for protocol details.
 
 ## Playwright Dev Loop
 
@@ -207,7 +486,7 @@ cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
 
 Screenshots are saved to `dashboard-tests/screenshots/`.
 
-See [Playwright Dev Loop Guide](#) for the full protocol.
+See [Playwright Dev Loop Guide](../dev/playwright-dev-loop.md) for the full protocol.
 
 ## Dashboard E2E Tests
 
@@ -262,6 +541,6 @@ cd dashboard-tests && npx playwright show-trace test-results/<trace>.zip
 
 ## Related Documentation
 
-- [LSP Integration Guide](../tooling/lsp-integration.md) — WebSocket protocol and message formats
-- [Playwright Dev Loop](#) — Screenshot-driven development protocol
-- [Dashboard E2E RFC](#) — Design document for E2E tests
+- [VSCode Extension](./vscode-extension.md) - IDE integration for `.cst` files
+- [LSP Integration](./lsp-integration.md) - WebSocket protocol and message formats
+- [Troubleshooting](./troubleshooting.md) - Common issues and solutions

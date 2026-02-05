@@ -189,3 +189,345 @@ All logging uses SLF4J/Logback. Configure via `logback.xml` in the classpath.
 Default log format includes timestamps, log level, logger name, and message.
 
 Request IDs are included in error logs via the `X-Request-ID` header (auto-generated if not provided by client).
+
+## Multi-Instance Deployments
+
+Constellation Engine supports horizontal scaling with multiple instances. Each instance is stateless at the HTTP layer, making it straightforward to run behind a load balancer.
+
+### Running Multiple Instances
+
+#### Docker Compose
+
+```yaml
+services:
+  constellation-1:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      CONSTELLATION_PORT: "8080"
+      CONSTELLATION_SCHEDULER_ENABLED: "true"
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+
+  constellation-2:
+    build: .
+    ports:
+      - "8081:8080"
+    environment:
+      CONSTELLATION_PORT: "8080"
+      CONSTELLATION_SCHEDULER_ENABLED: "true"
+      JAVA_OPTS: "-Xms512m -Xmx1g"
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - constellation-1
+      - constellation-2
+```
+
+#### Kubernetes
+
+Increase replicas in the deployment:
+
+```bash
+kubectl scale deployment constellation-engine --replicas=4 -n constellation
+```
+
+Or set replicas in the manifest:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: constellation-engine
+  namespace: constellation
+spec:
+  replicas: 4  # Multiple instances
+  # ...
+```
+
+### Shared State Considerations
+
+Each Constellation instance maintains its own in-memory state:
+
+| State Type | Scope | Sharing Strategy |
+|------------|-------|------------------|
+| Compilation cache | Per-instance | Each instance has independent cache; consider distributed cache backend |
+| Execution history | Per-instance | Use external storage (PostgreSQL, Redis) via `ExecutionStorage` SPI |
+| Module registry | Per-instance | Modules are registered at startup; ensure identical configuration |
+| Scheduler queue | Per-instance | Each instance schedules independently |
+| Circuit breaker state | Per-instance | Each instance tracks failures independently |
+
+For workloads requiring shared state across instances:
+
+1. **Shared compilation cache** — Use a distributed `CacheBackend` like Memcached or Redis:
+   ```scala
+   import io.constellation.cache.memcached.{MemcachedCacheBackend, MemcachedConfig}
+
+   MemcachedCacheBackend.resource(MemcachedConfig.cluster(
+     "memcached-1:11211,memcached-2:11211"
+   )).use { cache =>
+     val compiler = LangCompilerBuilder()
+       .withCacheBackend(cache)
+       .build()
+     // All instances share the same compilation cache
+   }
+   ```
+
+2. **Shared execution history** — Implement `ExecutionStorage` backed by a database:
+   ```scala
+   val storage = new PostgresExecutionStorage(dataSource)
+   ConstellationImpl.builder()
+     .withBackends(ConstellationBackends(storage = Some(storage)))
+     .build()
+   ```
+
+3. **Distributed circuit breakers** — For coordinated failure handling across instances, implement a custom circuit breaker backed by Redis or a coordination service.
+
+### Load Balancing Strategies
+
+#### Round-Robin (Default)
+
+Suitable for stateless workloads where any instance can handle any request:
+
+```nginx
+upstream constellation {
+    server constellation-1:8080;
+    server constellation-2:8080;
+    server constellation-3:8080;
+}
+```
+
+Kubernetes Services use round-robin by default.
+
+#### Least Connections
+
+Better for variable-duration requests (long-running pipelines):
+
+```nginx
+upstream constellation {
+    least_conn;
+    server constellation-1:8080;
+    server constellation-2:8080;
+    server constellation-3:8080;
+}
+```
+
+#### Weighted Distribution
+
+For heterogeneous instances (different CPU/memory):
+
+```nginx
+upstream constellation {
+    server constellation-1:8080 weight=3;  # More powerful
+    server constellation-2:8080 weight=1;
+}
+```
+
+### Session Affinity Requirements
+
+Session affinity (sticky sessions) is **required** for:
+
+| Feature | Reason | Affinity Type |
+|---------|--------|---------------|
+| LSP WebSocket | Connection state is per-instance | IP hash or cookie |
+| Step-through debugging | Execution state is per-instance | IP hash or cookie |
+| Suspendable executions | Resume must hit same instance | Execution ID routing |
+
+#### Enabling Session Affinity in Kubernetes
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: constellation-engine
+  namespace: constellation
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
+  selector:
+    app.kubernetes.io/name: constellation-engine
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+```
+
+#### Nginx IP Hash
+
+```nginx
+upstream constellation {
+    ip_hash;
+    server constellation-1:8080;
+    server constellation-2:8080;
+}
+```
+
+#### Ingress Controller (nginx-ingress)
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: constellation
+  namespace: constellation
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "CONSTELLATION_AFFINITY"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "10800"
+spec:
+  rules:
+    - host: constellation.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: constellation-engine
+                port:
+                  number: 8080
+```
+
+### WebSocket Load Balancing
+
+The LSP endpoint (`/lsp`) uses WebSocket. Ensure your load balancer:
+
+1. **Supports WebSocket upgrades** — Most modern load balancers do
+2. **Has appropriate timeouts** — WebSocket connections are long-lived
+3. **Uses session affinity** — WebSocket state is per-connection
+
+#### Nginx WebSocket Configuration
+
+```nginx
+upstream constellation {
+    ip_hash;  # Required for WebSocket affinity
+    server constellation-1:8080;
+    server constellation-2:8080;
+}
+
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://constellation;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;  # 1 hour for long-lived connections
+    }
+}
+```
+
+#### AWS ALB
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: constellation
+  annotations:
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/target-group-attributes: stickiness.enabled=true,stickiness.lb_cookie.duration_seconds=10800
+spec:
+  ingressClassName: alb
+  rules:
+    - host: constellation.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: constellation-engine
+                port:
+                  number: 8080
+```
+
+### Health Check Configuration for Load Balancers
+
+Configure your load balancer to use the appropriate health endpoints:
+
+| Endpoint | Use For | Expected Response |
+|----------|---------|-------------------|
+| `/health/live` | Liveness — is the process running? | 200 always (unless process crashed) |
+| `/health/ready` | Readiness — should it receive traffic? | 200 when ready, 503 when draining |
+
+```nginx
+upstream constellation {
+    server constellation-1:8080;
+    server constellation-2:8080;
+
+    # Health check (nginx plus / commercial)
+    health_check uri=/health/ready interval=5s fails=2 passes=1;
+}
+```
+
+For open-source nginx, use a sidecar or external health checker.
+
+### Autoscaling
+
+#### Kubernetes Horizontal Pod Autoscaler
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: constellation-hpa
+  namespace: constellation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: constellation-engine
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+```
+
+#### Custom Metrics Scaling
+
+For more sophisticated scaling based on scheduler queue depth or request latency, expose Prometheus metrics and use the Prometheus Adapter:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: constellation-hpa-custom
+  namespace: constellation
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: constellation-engine
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Pods
+      pods:
+        metric:
+          name: constellation_scheduler_queued_count
+        target:
+          type: AverageValue
+          averageValue: "50"  # Scale up when avg queue > 50
+```

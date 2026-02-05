@@ -115,6 +115,204 @@ All configuration is validated at server startup:
 - Invalid rate limit values (non-positive RPM or burst) fail server startup
 - Configuration summary is logged at startup showing which features are enabled
 
+## Health Check Configuration
+
+Constellation provides multiple health endpoints with configurable behavior for different deployment scenarios.
+
+### Health Endpoints Overview
+
+| Endpoint | Purpose | Default Behavior |
+|----------|---------|------------------|
+| `GET /health` | Basic health check | Always returns `{"status":"ok"}` |
+| `GET /health/live` | Liveness probe | Returns 200 if process is alive |
+| `GET /health/ready` | Readiness probe | Returns 200 if ready, 503 if draining |
+| `GET /health/detail` | Deep diagnostics | Disabled by default (opt-in) |
+
+### Enabling the Detail Endpoint
+
+The `/health/detail` endpoint provides comprehensive diagnostics but is disabled by default for security. Enable it via `HealthCheckConfig`:
+
+```scala
+ConstellationServer.builder(constellation, compiler)
+  .withHealthChecks(HealthCheckConfig(
+    enableDetailEndpoint = true
+  ))
+  .run
+```
+
+When enabled, `/health/detail` returns:
+
+```json
+{
+  "status": "ok",
+  "lifecycle": "Running",
+  "scheduler": {
+    "activeCount": 5,
+    "queuedCount": 12,
+    "totalSubmitted": 1542
+  },
+  "cache": {
+    "hitRate": 0.85,
+    "entries": 234,
+    "evictions": 12
+  },
+  "checks": {
+    "database": { "status": "ok", "latencyMs": 2 },
+    "redis": { "status": "ok", "latencyMs": 1 }
+  }
+}
+```
+
+### Custom Health Checks
+
+Add custom health checks to verify external dependencies:
+
+```scala
+import io.constellation.http.health.{HealthCheck, HealthCheckResult}
+import cats.effect.IO
+import scala.concurrent.duration._
+
+// Simple check
+val dbCheck = HealthCheck("database") {
+  IO(dataSource.getConnection())
+    .flatMap(conn => IO(conn.close()))
+    .as(HealthCheckResult.ok("Connected"))
+    .timeout(5.seconds)
+    .handleError(e => HealthCheckResult.unhealthy(e.getMessage))
+}
+
+// Check with latency measurement
+val redisCheck = HealthCheck.timed("redis") {
+  redisClient.ping.as(HealthCheckResult.ok("PONG"))
+}
+
+ConstellationServer.builder(constellation, compiler)
+  .withHealthChecks(HealthCheckConfig(
+    enableDetailEndpoint = true,
+    customChecks = List(dbCheck, redisCheck)
+  ))
+  .run
+```
+
+### Liveness vs Readiness Configuration
+
+**Liveness probe** (`/health/live`):
+- Always returns 200 if the JVM process is running
+- Used by Kubernetes to restart crashed pods
+- Should NOT check external dependencies (database, cache, etc.)
+- Failure triggers pod restart
+
+**Readiness probe** (`/health/ready`):
+- Returns 200 when the instance can serve traffic
+- Returns 503 during:
+  - Startup (before initialization completes)
+  - Graceful shutdown (draining state)
+- Used by Kubernetes to route/stop traffic
+- Failure removes pod from Service endpoints
+
+#### Kubernetes Configuration
+
+```yaml
+spec:
+  containers:
+    - name: constellation
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 8080
+        initialDelaySeconds: 30    # Wait for JVM startup
+        periodSeconds: 10          # Check every 10s
+        timeoutSeconds: 5          # Fail if no response in 5s
+        failureThreshold: 3        # Restart after 3 consecutive failures
+
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 8080
+        initialDelaySeconds: 10    # Shorter than liveness
+        periodSeconds: 5           # Check more frequently
+        timeoutSeconds: 3          # Fail faster
+        failureThreshold: 1        # Remove from service immediately
+```
+
+#### Why Different Configurations?
+
+| Setting | Liveness | Readiness | Rationale |
+|---------|----------|-----------|-----------|
+| `initialDelaySeconds` | 30s | 10s | Liveness allows more startup time |
+| `periodSeconds` | 10s | 5s | Readiness needs faster detection |
+| `failureThreshold` | 3 | 1 | Liveness allows transient failures; readiness is strict |
+
+### Startup Probe (Slow Initialization)
+
+For applications with slow startup (large module registry, cold cache), use a startup probe to avoid liveness probe false positives:
+
+```yaml
+spec:
+  containers:
+    - name: constellation
+      startupProbe:
+        httpGet:
+          path: /health/ready
+          port: 8080
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        failureThreshold: 30      # 30 * 5s = 150s max startup time
+
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 8080
+        periodSeconds: 10
+        failureThreshold: 3
+        # No initialDelaySeconds - startup probe handles this
+```
+
+The startup probe runs until success, then liveness and readiness probes take over.
+
+### Health Check Timeouts
+
+Health endpoints have internal timeouts to prevent hanging:
+
+| Check Type | Timeout | Configurable |
+|------------|---------|--------------|
+| Basic `/health` | None | No |
+| Liveness `/health/live` | None | No |
+| Readiness `/health/ready` | 5s | No |
+| Detail `/health/detail` | 10s total | No |
+| Custom checks | Per-check | Yes (in `HealthCheck`) |
+
+If a custom check exceeds its timeout, the detail endpoint marks it as unhealthy but still returns a response.
+
+### Health Check Security
+
+The `/health/detail` endpoint can expose sensitive information (queue depths, cache sizes, check results). Protect it:
+
+1. **Require authentication** — When auth is enabled, `/health/detail` requires a valid API key:
+   ```bash
+   curl -H "Authorization: Bearer YOUR_API_KEY" http://localhost:8080/health/detail
+   ```
+
+2. **Network isolation** — Only expose detail endpoint on internal network:
+   ```yaml
+   # Kubernetes: Internal service for monitoring
+   apiVersion: v1
+   kind: Service
+   metadata:
+     name: constellation-internal
+     namespace: constellation
+   spec:
+     type: ClusterIP
+     selector:
+       app.kubernetes.io/name: constellation-engine
+     ports:
+       - name: http-internal
+         port: 8080
+         targetPort: 8080
+   ```
+
+3. **Disable in production** — Keep `enableDetailEndpoint = false` (default) if not needed.
+
 ## Security Considerations
 
 - API keys are never logged — only counts and role distributions appear in logs

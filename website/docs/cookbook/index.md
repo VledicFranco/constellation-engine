@@ -59,3 +59,11 @@ Patterns for building reliable pipelines that handle failures.
 | [Priority and Lazy](priority-and-lazy.md) | `priority` levels, `lazy` evaluation |
 | [Resilient Pipeline](resilient-pipeline.md) | All options combined in a realistic scenario |
 | [Caching Strategies](caching-strategies.md) | Short TTL, long TTL, distributed backends |
+
+## Debugging
+
+Tools and techniques for troubleshooting pipelines.
+
+| Recipe | Concepts |
+|---|---|
+| [Debugging](debugging.md) | Dashboard, step-through, tracing, error messages, performance |

@@ -23,10 +23,9 @@ constellation-lang is a domain-specific language for defining data transformatio
 ### Orchestration
 
 - [Orchestration Algebra](./orchestration-algebra.md) - Boolean algebra for control flow
-  - Guard expressions (`when`)
-  - Coalesce operator (`??`)
-  - Branch expressions
-  - Lambda expressions
+- [Guard Expressions](./guards.md) - Conditional execution with `when`
+- [Coalesce Operator](./coalesce.md) - Fallback values with `??`
+- [Lambda Expressions](./lambdas.md) - Inline functions for higher-order operations
 
 ### Module Call Options
 

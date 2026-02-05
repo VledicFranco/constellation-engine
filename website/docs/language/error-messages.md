@@ -1,6 +1,6 @@
 ---
 title: "Error Messages"
-sidebar_position: 10
+sidebar_position: 15
 ---
 
 # Error Messages

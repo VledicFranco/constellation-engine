@@ -145,6 +145,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'operations/configuration',
         'operations/deployment',
+        'operations/clustering',
         'operations/runbook',
         'operations/json-logging',
         'operations/graceful-shutdown',
@@ -186,6 +187,7 @@ const sidebars: SidebarsConfig = {
         'resources/roadmap',
         'resources/ml-orchestration-challenges',
         'resources/migration-v030',
+        'resources/migration-v040',
         'resources/contributing',
         'resources/changelog',
       ],
