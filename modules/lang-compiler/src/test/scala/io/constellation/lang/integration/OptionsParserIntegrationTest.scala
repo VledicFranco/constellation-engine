@@ -2,6 +2,7 @@ package io.constellation.lang.integration
 
 import io.constellation.lang.ast.*
 import io.constellation.lang.parser.ConstellationParser
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

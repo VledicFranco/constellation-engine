@@ -1,8 +1,10 @@
 package io.constellation
 
-import cats.effect.IO
-import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 import java.io.{FilterInputStream, InputStream}
+
+import cats.effect.IO
+
+import com.fasterxml.jackson.core.{JsonFactory, JsonParser, JsonToken}
 
 /** Configuration for streaming JSON parser limits.
   *

@@ -1,19 +1,22 @@
 package io.constellation.lang.compiler
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.syntax.all.*
-import io.constellation.{CType, CValue}
+
 import io.constellation.cache.{CacheBackend, CacheKeyGenerator, CacheRegistry, InMemoryCacheBackend}
 import io.constellation.execution.*
 import io.constellation.lang.ast.{
   BackoffStrategy as ASTBackoffStrategy,
   ErrorStrategy as ASTErrorStrategy
 }
+import io.constellation.{CType, CValue}
+
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import scala.concurrent.duration.*
-import java.util.UUID
 
 /** Executes module operations with options from the DAG compiler.
   *

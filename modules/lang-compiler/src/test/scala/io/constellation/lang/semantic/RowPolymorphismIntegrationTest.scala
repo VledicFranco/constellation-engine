@@ -1,10 +1,11 @@
 package io.constellation.lang.semantic
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.SemanticType.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** Integration tests for row polymorphism with full type checking.
   *
@@ -277,7 +278,7 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val typedPipeline = result.toOption.get
-    val outputs      = typedPipeline.outputs
+    val outputs       = typedPipeline.outputs
 
     // Find name output - should be String
     val nameOutput = outputs.find(_._1 == "name")
@@ -309,7 +310,7 @@ class RowPolymorphismIntegrationTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val typedPipeline = result.toOption.get
-    val outputs      = typedPipeline.outputs
+    val outputs       = typedPipeline.outputs
 
     // nameLen should be Int
     val nameLenOutput = outputs.find(_._1 == "nameLen")

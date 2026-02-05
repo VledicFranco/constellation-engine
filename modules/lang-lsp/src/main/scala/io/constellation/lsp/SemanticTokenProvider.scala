@@ -1,10 +1,10 @@
 package io.constellation.lsp
 
+import scala.collection.mutable
+
 import io.constellation.lang.ast.*
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lsp.SemanticTokenTypes.*
-
-import scala.collection.mutable
 
 /** Provides semantic tokens for LSP semantic highlighting.
   *

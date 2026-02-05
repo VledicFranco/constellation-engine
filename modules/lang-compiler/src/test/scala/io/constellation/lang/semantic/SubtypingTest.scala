@@ -1,8 +1,9 @@
 package io.constellation.lang.semantic
 
+import io.constellation.lang.semantic.SemanticType.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lang.semantic.SemanticType.*
 
 class SubtypingTest extends AnyFlatSpec with Matchers {
 

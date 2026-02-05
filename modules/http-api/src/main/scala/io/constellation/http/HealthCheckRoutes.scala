@@ -1,18 +1,18 @@
 package io.constellation.http
 
+import java.time.Instant
+
 import cats.effect.IO
 import cats.implicits.*
+
+import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, LifecycleState}
+import io.constellation.lang.{CachingLangCompiler, LangCompiler}
+
 import io.circe.Json
 import io.circe.syntax.*
 import org.http4s.HttpRoutes
-import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.execution.{ConstellationLifecycle, LifecycleState}
-import io.constellation.lang.CachingLangCompiler
-import io.constellation.lang.LangCompiler
-import io.constellation.execution.GlobalScheduler
-
-import java.time.Instant
+import org.http4s.dsl.io.*
 
 /** A named readiness check that returns `true` when ready. */
 case class ReadinessCheck(name: String, check: IO[Boolean])

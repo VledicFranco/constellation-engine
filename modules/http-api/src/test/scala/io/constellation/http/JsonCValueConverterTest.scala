@@ -1,10 +1,11 @@
 package io.constellation.http
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import io.constellation.{CType, CValue, JsonCValueConverter}
+
 import io.circe.Json
 import io.circe.syntax.*
-import io.constellation.{CType, CValue, JsonCValueConverter}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
 

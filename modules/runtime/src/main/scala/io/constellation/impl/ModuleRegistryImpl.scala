@@ -1,10 +1,11 @@
 package io.constellation.impl
 
+import java.util.UUID
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.constellation.{DagSpec, Module, ModuleNodeSpec, ModuleRegistry}
 
-import java.util.UUID
+import io.constellation.{DagSpec, Module, ModuleNodeSpec, ModuleRegistry}
 
 /** Optimized ModuleRegistry implementation with pre-computed name index.
   *

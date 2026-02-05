@@ -1,13 +1,15 @@
 package io.constellation.http
 
+import java.nio.file.{Files, Path}
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 
-import java.nio.file.{Files, Path}
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class PipelineLoaderTest extends AnyFlatSpec with Matchers {
 
@@ -34,10 +36,9 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
         Files.writeString(filePath, content)
       }
       test(tmpDir)
-    } finally {
+    } finally
       // Cleanup
       Files.walk(tmpDir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete(_))
-    }
   }
 
   /** Create fresh constellation + compiler for each test to avoid state leakage. */
@@ -50,7 +51,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("scoring.cst" -> validSource1, "text.cst" -> validSource2)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir)
+    val config                    = PipelineLoaderConfig(directory = dir)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 2
@@ -69,7 +70,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("good.cst" -> validSource1, "bad.cst" -> invalidSource)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir, failOnError = false)
+    val config                    = PipelineLoaderConfig(directory = dir, failOnError = false)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 1
@@ -87,7 +88,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("good.cst" -> validSource1, "bad.cst" -> invalidSource)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir, failOnError = true)
+    val config                    = PipelineLoaderConfig(directory = dir, failOnError = true)
 
     val error = intercept[RuntimeException] {
       PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
@@ -99,7 +100,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
 
   it should "return empty result for empty directory" in withTempDir(Map.empty) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir)
+    val config                    = PipelineLoaderConfig(directory = dir)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 0
@@ -114,7 +115,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("top.cst" -> validSource1, "sub/nested.cst" -> validSource2)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir, recursive = true)
+    val config                    = PipelineLoaderConfig(directory = dir, recursive = true)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 2
@@ -128,7 +129,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("top.cst" -> validSource1, "sub/nested.cst" -> validSource2)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir, recursive = false)
+    val config                    = PipelineLoaderConfig(directory = dir, recursive = false)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 1
@@ -141,7 +142,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("scoring.cst" -> validSource1)
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir)
+    val config                    = PipelineLoaderConfig(directory = dir)
 
     // Load once
     val result1 = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
@@ -260,15 +261,13 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     val tmpFile = Files.createTempFile("not-a-dir", ".txt")
     try {
       val (constellation, compiler) = freshInstances
-      val config = PipelineLoaderConfig(directory = tmpFile)
+      val config                    = PipelineLoaderConfig(directory = tmpFile)
 
       val error = intercept[IllegalArgumentException] {
         PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
       }
       error.getMessage should include("not a directory")
-    } finally {
-      Files.delete(tmpFile)
-    }
+    } finally Files.delete(tmpFile)
   }
 
   // --- Ignores non-cst files ---
@@ -277,7 +276,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     Map("readme.md" -> "# Readme", "scoring.cst" -> validSource1, "data.json" -> "{}")
   ) { dir =>
     val (constellation, compiler) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir)
+    val config                    = PipelineLoaderConfig(directory = dir)
     val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
     result.loaded shouldBe 1

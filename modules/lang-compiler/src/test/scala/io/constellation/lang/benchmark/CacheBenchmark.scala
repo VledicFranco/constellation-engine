@@ -1,13 +1,15 @@
 package io.constellation.lang.benchmark
 
+import scala.collection.mutable.ListBuffer
+
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.lang.*
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.FunctionRegistry
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable.ListBuffer
 
 /** Benchmarks for compilation cache performance
   *

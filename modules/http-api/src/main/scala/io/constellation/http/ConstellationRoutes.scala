@@ -1,39 +1,59 @@
 package io.constellation.http
 
-import cats.data.EitherT
-import cats.effect.IO
-import cats.implicits.*
-import org.http4s.HttpRoutes
-import org.http4s.dsl.io.*
-import org.http4s.circe.CirceEntityCodec.*
-import io.constellation.{CValue, Constellation, DataSignature, DagSpec, JsonCValueConverter, PipelineImage, PipelineStatus, SuspensionFilter, SuspensionHandle, SuspensionSummary, InputTypeMismatchError, InputAlreadyProvidedError, ResumeInProgressError, UnknownNodeError, NodeTypeMismatchError, NodeAlreadyResolvedError, PipelineChangedError}
-import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
-import io.constellation.http.ApiModels.*
-import io.constellation.errors.{ApiError, ErrorHandling}
-import io.constellation.lang.{CachingLangCompiler, LangCompiler}
-import io.constellation.lang.semantic.FunctionRegistry
-import io.circe.syntax.*
-import io.circe.Json
-
 import java.nio.file.{Files, Path}
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
-import cats.effect.Ref
+
+import scala.concurrent.duration.*
+
+import cats.data.EitherT
+import cats.effect.{IO, Ref}
+import cats.implicits.*
+
+import io.constellation.errors.{ApiError, ErrorHandling}
+import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler, QueueFullException}
+import io.constellation.http.ApiModels.*
+import io.constellation.lang.semantic.FunctionRegistry
+import io.constellation.lang.{CachingLangCompiler, LangCompiler}
+import io.constellation.{
+  CValue,
+  Constellation,
+  DagSpec,
+  DataSignature,
+  InputAlreadyProvidedError,
+  InputTypeMismatchError,
+  JsonCValueConverter,
+  NodeAlreadyResolvedError,
+  NodeTypeMismatchError,
+  PipelineChangedError,
+  PipelineImage,
+  PipelineStatus,
+  ResumeInProgressError,
+  SuspensionFilter,
+  SuspensionHandle,
+  SuspensionSummary,
+  UnknownNodeError
+}
+
+import io.circe.Json
+import io.circe.syntax.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.dsl.io.*
+import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.http4s.{
   DecodeFailure,
   DecodeResult,
   EntityDecoder,
+  HttpRoutes,
   MalformedMessageBodyFailure,
   MediaType,
   Response,
   Status
 }
-import org.http4s.headers.{`Content-Length`, `Content-Type`}
 import org.typelevel.ci.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-import scala.concurrent.duration.*
 
 /** HTTP routes for the Constellation Engine API */
 class ConstellationRoutes(
@@ -202,25 +222,24 @@ class ConstellationRoutes(
                           case _                        => true
                         }
                         autoSaveSuspension(sig) *>
-                        Ok(
-                          ExecuteResponse(
-                            success = isSuccess,
-                            outputs = outputs,
-                            error = sig.status match {
-                              case PipelineStatus.Failed(errors) =>
-                                Some(errors.map(_.message).mkString("; "))
-                              case _ => None
-                            },
-                            status = Some(statusString(sig.status)),
-                            executionId = Some(sig.executionId.toString),
-                            missingInputs =
-                              if missing.nonEmpty then Some(missing) else None,
-                            pendingOutputs =
-                              if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
-                              else None,
-                            resumptionCount = Some(sig.resumptionCount)
+                          Ok(
+                            ExecuteResponse(
+                              success = isSuccess,
+                              outputs = outputs,
+                              error = sig.status match {
+                                case PipelineStatus.Failed(errors) =>
+                                  Some(errors.map(_.message).mkString("; "))
+                                case _ => None
+                              },
+                              status = Some(statusString(sig.status)),
+                              executionId = Some(sig.executionId.toString),
+                              missingInputs = if missing.nonEmpty then Some(missing) else None,
+                              pendingOutputs =
+                                if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
+                                else None,
+                              resumptionCount = Some(sig.resumptionCount)
+                            )
                           )
-                        )
                       case Left(ApiError.NotFoundError(_, name)) =>
                         NotFound(
                           ErrorResponse(
@@ -291,26 +310,25 @@ class ConstellationRoutes(
                   case _                        => true
                 }
                 autoSaveSuspension(sig) *>
-                Ok(
-                  RunResponse(
-                    success = isSuccess,
-                    outputs = outputs,
-                    structuralHash = Some(structuralHash),
-                    error = sig.status match {
-                      case PipelineStatus.Failed(errors) =>
-                        Some(errors.map(_.message).mkString("; "))
-                      case _ => None
-                    },
-                    status = Some(statusString(sig.status)),
-                    executionId = Some(sig.executionId.toString),
-                    missingInputs =
-                      if missing.nonEmpty then Some(missing) else None,
-                    pendingOutputs =
-                      if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
-                      else None,
-                    resumptionCount = Some(sig.resumptionCount)
+                  Ok(
+                    RunResponse(
+                      success = isSuccess,
+                      outputs = outputs,
+                      structuralHash = Some(structuralHash),
+                      error = sig.status match {
+                        case PipelineStatus.Failed(errors) =>
+                          Some(errors.map(_.message).mkString("; "))
+                        case _ => None
+                      },
+                      status = Some(statusString(sig.status)),
+                      executionId = Some(sig.executionId.toString),
+                      missingInputs = if missing.nonEmpty then Some(missing) else None,
+                      pendingOutputs =
+                        if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
+                        else None,
+                      resumptionCount = Some(sig.resumptionCount)
+                    )
                   )
-                )
               case Left(ApiError.CompilationError(errors)) =>
                 BadRequest(RunResponse(success = false, compilationErrors = errors))
               case Left(ApiError.InputError(msg)) =>
@@ -598,9 +616,9 @@ class ConstellationRoutes(
             case Some(state) =>
               // If promotion completed the canary, update the alias to the new version
               (if state.status == CanaryStatus.Complete then
-                constellation.PipelineStore.alias(name, state.newVersion.structuralHash)
-              else IO.unit) *>
-              Ok(toCanaryStateResponse(state))
+                 constellation.PipelineStore.alias(name, state.newVersion.structuralHash)
+               else IO.unit) *>
+                Ok(toCanaryStateResponse(state))
           }
       }
 
@@ -663,7 +681,9 @@ class ConstellationRoutes(
                 executionId = s.executionId.toString,
                 structuralHash = s.structuralHash,
                 resumptionCount = s.resumptionCount,
-                missingInputs = s.missingInputs.map { case (name, ctype) => name -> ctype.toString },
+                missingInputs = s.missingInputs.map { case (name, ctype) =>
+                  name -> ctype.toString
+                },
                 createdAt = s.createdAt.toString
               )
             }
@@ -740,10 +760,10 @@ class ConstellationRoutes(
                   case Some(suspended) =>
                     val dagSpec = suspended.dagSpec
                     // Convert JSON inputs to CValue using the DagSpec
-                    val jsonInputs    = resumeReq.additionalInputs.getOrElse(Map.empty)
-                    val jsonResolved  = resumeReq.resolvedNodes.getOrElse(Map.empty)
+                    val jsonInputs   = resumeReq.additionalInputs.getOrElse(Map.empty)
+                    val jsonResolved = resumeReq.resolvedNodes.getOrElse(Map.empty)
                     (for {
-                      cvalueInputs <- convertAdditionalInputs(jsonInputs, dagSpec)
+                      cvalueInputs   <- convertAdditionalInputs(jsonInputs, dagSpec)
                       cvalueResolved <- convertResolvedNodes(jsonResolved, dagSpec)
                       sig <- constellation.resumeFromStore(
                         handle,
@@ -780,8 +800,7 @@ class ConstellationRoutes(
                             },
                             status = Some(statusString(sig.status)),
                             executionId = Some(sig.executionId.toString),
-                            missingInputs =
-                              if missing.nonEmpty then Some(missing) else None,
+                            missingInputs = if missing.nonEmpty then Some(missing) else None,
                             pendingOutputs =
                               if sig.pendingOutputs.nonEmpty then Some(sig.pendingOutputs)
                               else None,
@@ -792,33 +811,52 @@ class ConstellationRoutes(
                         Conflict(
                           ErrorResponse(
                             error = "ResumeInProgress",
-                            message = s"A resume operation is already in progress for execution '$id'",
+                            message =
+                              s"A resume operation is already in progress for execution '$id'",
                             requestId = Some(reqId)
                           )
                         )
                       case Left(e: InputTypeMismatchError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Input error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: InputAlreadyProvidedError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Input error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: UnknownNodeError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Input error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: NodeTypeMismatchError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Input error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: NodeAlreadyResolvedError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Input error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Input error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: PipelineChangedError) =>
                         BadRequest(
-                          ExecuteResponse(success = false, error = Some(s"Pipeline error: ${e.getMessage}"))
+                          ExecuteResponse(
+                            success = false,
+                            error = Some(s"Pipeline error: ${e.getMessage}")
+                          )
                         )
                       case Left(e: NoSuchElementException) =>
                         NotFound(
@@ -829,7 +867,8 @@ class ConstellationRoutes(
                           )
                         )
                       case Left(error) =>
-                        logger.error(error)(s"[$reqId] Unexpected error in /executions/$id/resume") *>
+                        logger
+                          .error(error)(s"[$reqId] Unexpected error in /executions/$id/resume") *>
                           InternalServerError(
                             ExecuteResponse(
                               success = false,
@@ -1116,7 +1155,7 @@ class ConstellationRoutes(
             ApiError.CompilationError(errors.map(_.message))
           })
       )
-      image = compiled.pipeline.image
+      image   = compiled.pipeline.image
       dagSpec = image.dagSpec
       // Store image in PipelineStore for dedup and future reference
       _      <- EitherT.liftF(constellation.PipelineStore.store(image))
@@ -1126,7 +1165,9 @@ class ConstellationRoutes(
         val missingNames  = allInputNames -- inputs.keySet
         if missingNames.nonEmpty then {
           // Short-circuit: build a Suspended DataSignature without runtime execution
-          EitherT.rightT[IO, ApiError](buildSuspendedSignature(dagSpec, image.structuralHash, inputs))
+          EitherT.rightT[IO, ApiError](
+            buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
+          )
         } else {
           // All inputs present — run the pipeline
           ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
@@ -1156,9 +1197,9 @@ class ConstellationRoutes(
 
   /** Convert a PipelineStatus to its wire string representation. */
   private def statusString(status: PipelineStatus): String = status match {
-    case PipelineStatus.Completed  => "completed"
-    case PipelineStatus.Suspended  => "suspended"
-    case PipelineStatus.Failed(_)  => "failed"
+    case PipelineStatus.Completed => "completed"
+    case PipelineStatus.Suspended => "suspended"
+    case PipelineStatus.Failed(_) => "failed"
   }
 
   /** Extract outputs from a DataSignature and convert CValues to JSON. */
@@ -1180,18 +1221,20 @@ class ConstellationRoutes(
         spec.nicknames.values.map(name => name -> spec.cType)
       }.toMap
 
-    jsonInputs.toList.traverse { case (name, json) =>
-      inputNameToType.get(name) match {
-        case Some(ctype) =>
-          JsonCValueConverter.jsonToCValue(json, ctype, name) match {
-            case Right(cValue) => IO.pure(name -> cValue)
-            case Left(error) =>
-              IO.raiseError(new RuntimeException(s"Input '$name': $error"))
-          }
-        case None =>
-          IO.raiseError(UnknownNodeError(name))
+    jsonInputs.toList
+      .traverse { case (name, json) =>
+        inputNameToType.get(name) match {
+          case Some(ctype) =>
+            JsonCValueConverter.jsonToCValue(json, ctype, name) match {
+              case Right(cValue) => IO.pure(name -> cValue)
+              case Left(error) =>
+                IO.raiseError(new RuntimeException(s"Input '$name': $error"))
+            }
+          case None =>
+            IO.raiseError(UnknownNodeError(name))
+        }
       }
-    }.map(_.toMap)
+      .map(_.toMap)
   }
 
   /** Convert JSON resolved nodes to CValue for resume.
@@ -1206,18 +1249,20 @@ class ConstellationRoutes(
     val nameToType: Map[String, io.constellation.CType] =
       dagSpec.data.map { case (_, spec) => spec.name -> spec.cType }
 
-    jsonNodes.toList.traverse { case (name, json) =>
-      nameToType.get(name) match {
-        case Some(ctype) =>
-          JsonCValueConverter.jsonToCValue(json, ctype, name) match {
-            case Right(cValue) => IO.pure(name -> cValue)
-            case Left(error) =>
-              IO.raiseError(new RuntimeException(s"Node '$name': $error"))
-          }
-        case None =>
-          IO.raiseError(UnknownNodeError(name))
+    jsonNodes.toList
+      .traverse { case (name, json) =>
+        nameToType.get(name) match {
+          case Some(ctype) =>
+            JsonCValueConverter.jsonToCValue(json, ctype, name) match {
+              case Right(cValue) => IO.pure(name -> cValue)
+              case Left(error) =>
+                IO.raiseError(new RuntimeException(s"Node '$name': $error"))
+            }
+          case None =>
+            IO.raiseError(UnknownNodeError(name))
+        }
       }
-    }.map(_.toMap)
+      .map(_.toMap)
   }
 
   /** Handle a pipeline reload request.
@@ -1235,7 +1280,7 @@ class ConstellationRoutes(
     val parseBody: IO[ReloadRequest] =
       req.headers.get[`Content-Length`] match {
         case Some(cl) if cl.length == 0 => IO.pure(ReloadRequest(None))
-        case None =>
+        case None                       =>
           // No Content-Length header — check Content-Type to decide
           req.headers.get[`Content-Type`] match {
             case Some(ct) if ct.mediaType == MediaType.application.json =>
@@ -1246,137 +1291,140 @@ class ConstellationRoutes(
         case _ => req.as[ReloadRequest]
       }
 
-    parseBody.flatMap { reloadReq =>
-      // Determine source: from body, or re-read from file
-      val resolveSource: IO[Either[String, String]] = reloadReq.source match {
-        case Some(src) => IO.pure(Right(src))
-        case None =>
-          filePathMap match {
-            case None =>
-              IO.pure(Left("No source provided and no file path known for this pipeline"))
-            case Some(ref) =>
-              ref.get.flatMap { pathMap =>
-                pathMap.get(name) match {
-                  case None =>
-                    IO.pure(Left("No source provided and no file path known for this pipeline"))
-                  case Some(path) =>
-                    IO(Files.readString(path)).map(Right(_)).handleErrorWith { e =>
-                      IO.pure(Left(s"Failed to read file ${path}: ${safeMessage(e)}"))
-                    }
+    parseBody
+      .flatMap { reloadReq =>
+        // Determine source: from body, or re-read from file
+        val resolveSource: IO[Either[String, String]] = reloadReq.source match {
+          case Some(src) => IO.pure(Right(src))
+          case None =>
+            filePathMap match {
+              case None =>
+                IO.pure(Left("No source provided and no file path known for this pipeline"))
+              case Some(ref) =>
+                ref.get.flatMap { pathMap =>
+                  pathMap.get(name) match {
+                    case None =>
+                      IO.pure(Left("No source provided and no file path known for this pipeline"))
+                    case Some(path) =>
+                      IO(Files.readString(path)).map(Right(_)).handleErrorWith { e =>
+                        IO.pure(Left(s"Failed to read file ${path}: ${safeMessage(e)}"))
+                      }
+                  }
                 }
-              }
-          }
-      }
+            }
+        }
 
-      resolveSource.flatMap {
-        case Left(errMsg) =>
-          BadRequest(ErrorResponse(error = "NoSource", message = errMsg))
+        resolveSource.flatMap {
+          case Left(errMsg) =>
+            BadRequest(ErrorResponse(error = "NoSource", message = errMsg))
 
-        case Right(source) =>
-          compiler
-            .compileIO(source, name)
-            .timeoutTo(
-              compilationTimeout,
-              IO.raiseError(
-                new java.util.concurrent.TimeoutException(
-                  s"Compilation timed out after $compilationTimeout"
-                )
-              )
-            )
-            .flatMap {
-              case Left(errors) =>
-                BadRequest(
-                  ErrorResponse(
-                    error = "CompilationError",
-                    message = errors.map(_.message).mkString("; ")
+          case Right(source) =>
+            compiler
+              .compileIO(source, name)
+              .timeoutTo(
+                compilationTimeout,
+                IO.raiseError(
+                  new java.util.concurrent.TimeoutException(
+                    s"Compilation timed out after $compilationTimeout"
                   )
                 )
+              )
+              .flatMap {
+                case Left(errors) =>
+                  BadRequest(
+                    ErrorResponse(
+                      error = "CompilationError",
+                      message = errors.map(_.message).mkString("; ")
+                    )
+                  )
 
-              case Right(compiled) =>
-                val image    = compiled.pipeline.image
-                val newHash  = image.structuralHash
+                case Right(compiled) =>
+                  val image   = compiled.pipeline.image
+                  val newHash = image.structuralHash
 
-                for {
-                  // Get the current alias hash
-                  currentHashOpt <- constellation.PipelineStore.resolve(name)
-                  changed = !currentHashOpt.contains(newHash)
-                  result <- if !changed then {
-                    // Hash unchanged — no new version needed
-                    vs.activeVersion(name).flatMap { activeOpt =>
-                      Ok(
-                        ReloadResponse(
-                          success = true,
-                          previousHash = currentHashOpt,
-                          newHash = newHash,
-                          name = name,
-                          changed = false,
-                          version = activeOpt.getOrElse(1)
-                        )
-                      )
-                    }
-                  } else {
-                    for {
-                      // Store new image
-                      _ <- constellation.PipelineStore.store(image)
-                      // Update alias (unless canary — alias stays on old version during canary)
-                      _ <- if reloadReq.canary.isEmpty then
-                        constellation.PipelineStore.alias(name, newHash)
-                      else IO.unit
-                      // Record new version
-                      pv <- vs.recordVersion(name, newHash, Some(source))
-                      // Start canary deployment if requested
-                      canaryStateOpt <- (canaryRouter, reloadReq.canary) match {
-                        case (Some(cr), Some(ccReq)) =>
-                          val canaryConfig = toCanaryConfig(ccReq)
-                          // Look up old version from the version store
-                          vs.getVersion(name, pv.version - 1).flatMap {
-                            case Some(oldPv) =>
-                              cr.startCanary(name, oldPv, pv, canaryConfig).map(_.map(Some(_)))
-                            case None =>
-                              // No previous version — cannot canary
-                              IO.pure(Left("No previous version exists for canary deployment"))
-                          }
-                        case _ => IO.pure(Right(None))
-                      }
-                      resp <- canaryStateOpt match {
-                        case Left(errMsg) if reloadReq.canary.isDefined =>
-                          Conflict(
-                            ErrorResponse(
-                              error = "CanaryConflict",
-                              message = errMsg
-                            )
-                          )
-                        case _ =>
-                          val canaryResp = canaryStateOpt.toOption
-                            .flatten
-                            .map(toCanaryStateResponse)
+                  for {
+                    // Get the current alias hash
+                    currentHashOpt <- constellation.PipelineStore.resolve(name)
+                    changed = !currentHashOpt.contains(newHash)
+                    result <-
+                      if !changed then {
+                        // Hash unchanged — no new version needed
+                        vs.activeVersion(name).flatMap { activeOpt =>
                           Ok(
                             ReloadResponse(
                               success = true,
                               previousHash = currentHashOpt,
                               newHash = newHash,
                               name = name,
-                              changed = true,
-                              version = pv.version,
-                              canary = canaryResp
+                              changed = false,
+                              version = activeOpt.getOrElse(1)
                             )
                           )
+                        }
+                      } else {
+                        for {
+                          // Store new image
+                          _ <- constellation.PipelineStore.store(image)
+                          // Update alias (unless canary — alias stays on old version during canary)
+                          _ <-
+                            if reloadReq.canary.isEmpty then
+                              constellation.PipelineStore.alias(name, newHash)
+                            else IO.unit
+                          // Record new version
+                          pv <- vs.recordVersion(name, newHash, Some(source))
+                          // Start canary deployment if requested
+                          canaryStateOpt <- (canaryRouter, reloadReq.canary) match {
+                            case (Some(cr), Some(ccReq)) =>
+                              val canaryConfig = toCanaryConfig(ccReq)
+                              // Look up old version from the version store
+                              vs.getVersion(name, pv.version - 1).flatMap {
+                                case Some(oldPv) =>
+                                  cr.startCanary(name, oldPv, pv, canaryConfig).map(_.map(Some(_)))
+                                case None =>
+                                  // No previous version — cannot canary
+                                  IO.pure(Left("No previous version exists for canary deployment"))
+                              }
+                            case _ => IO.pure(Right(None))
+                          }
+                          resp <- canaryStateOpt match {
+                            case Left(errMsg) if reloadReq.canary.isDefined =>
+                              Conflict(
+                                ErrorResponse(
+                                  error = "CanaryConflict",
+                                  message = errMsg
+                                )
+                              )
+                            case _ =>
+                              val canaryResp = canaryStateOpt.toOption.flatten
+                                .map(toCanaryStateResponse)
+                              Ok(
+                                ReloadResponse(
+                                  success = true,
+                                  previousHash = currentHashOpt,
+                                  newHash = newHash,
+                                  name = name,
+                                  changed = true,
+                                  version = pv.version,
+                                  canary = canaryResp
+                                )
+                              )
+                          }
+                        } yield resp
                       }
-                    } yield resp
-                  }
-                } yield result
-            }
+                  } yield result
+              }
+        }
       }
-    }.handleErrorWith { error =>
-      logger.error(error)(s"[$reqId] Unexpected error in /pipelines/$name/reload") *>
-        InternalServerError(
-          ErrorResponse(
-            error = "InternalError",
-            message = s"Unexpected error: ${safeMessage(error)}",
-            requestId = Some(reqId)
+      .handleErrorWith { error =>
+        logger.error(error)(s"[$reqId] Unexpected error in /pipelines/$name/reload") *>
+          InternalServerError(
+            ErrorResponse(
+              error = "InternalError",
+              message = s"Unexpected error: ${safeMessage(error)}",
+              requestId = Some(reqId)
+            )
           )
-        )
-    }
+      }
   }
 
   /** Handle a pipeline rollback request (to previous version or specific version). */
@@ -1468,7 +1516,8 @@ class ConstellationRoutes(
     CanaryConfig(
       initialWeight = req.initialWeight.getOrElse(defaults.initialWeight),
       promotionSteps = req.promotionSteps.getOrElse(defaults.promotionSteps),
-      observationWindow = req.observationWindow.flatMap(parseDuration).getOrElse(defaults.observationWindow),
+      observationWindow =
+        req.observationWindow.flatMap(parseDuration).getOrElse(defaults.observationWindow),
       errorThreshold = req.errorThreshold.getOrElse(defaults.errorThreshold),
       latencyThresholdMs = req.latencyThresholdMs.orElse(defaults.latencyThresholdMs),
       minRequests = req.minRequests.getOrElse(defaults.minRequests),
@@ -1536,10 +1585,11 @@ class ConstellationRoutes(
       structuralHash: String,
       inputs: Map[String, CValue]
   ): DataSignature = {
-    val allInputNames  = dagSpec.userInputDataNodes.values.map(_.name).toSet
-    val missingInputs  = (allInputNames -- inputs.keySet).toList.sorted
-    val pendingOutputs = dagSpec.declaredOutputs // All outputs are pending when suspended pre-execution
-    val execId         = UUID.randomUUID()
+    val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
+    val missingInputs = (allInputNames -- inputs.keySet).toList.sorted
+    val pendingOutputs =
+      dagSpec.declaredOutputs // All outputs are pending when suspended pre-execution
+    val execId = UUID.randomUUID()
     val suspendedState = io.constellation.SuspendedExecution(
       executionId = execId,
       structuralHash = structuralHash,

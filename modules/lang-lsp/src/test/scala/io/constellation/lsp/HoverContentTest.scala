@@ -1,6 +1,7 @@
 package io.constellation.lsp
 
 import io.constellation.{CType, ComponentMetadata, ModuleNodeSpec}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

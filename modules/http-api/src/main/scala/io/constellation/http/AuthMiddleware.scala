@@ -2,12 +2,13 @@ package io.constellation.http
 
 import cats.data.{Kleisli, OptionT}
 import cats.effect.IO
-import org.http4s.{HttpRoutes, Request, Response, Status}
-import org.http4s.headers.Authorization
-import org.http4s.Credentials
-import org.http4s.circe.CirceEntityCodec.*
-import org.typelevel.ci.*
+
 import io.constellation.http.ApiModels.ErrorResponse
+
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.headers.Authorization
+import org.http4s.{Credentials, HttpRoutes, Request, Response, Status}
+import org.typelevel.ci.*
 
 /** Middleware that enforces static API-key authentication.
   *

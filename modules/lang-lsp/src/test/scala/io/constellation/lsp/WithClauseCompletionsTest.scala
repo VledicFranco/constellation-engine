@@ -1,9 +1,10 @@
 package io.constellation.lsp
 
+import io.constellation.lsp.WithClauseCompletions.*
+import io.constellation.lsp.protocol.LspTypes.{CompletionItem, CompletionItemKind}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lsp.protocol.LspTypes.{CompletionItem, CompletionItemKind}
-import io.constellation.lsp.WithClauseCompletions.*
 
 class WithClauseCompletionsTest extends AnyFlatSpec with Matchers {
 

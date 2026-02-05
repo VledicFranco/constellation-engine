@@ -1,8 +1,9 @@
 package io.constellation.lsp
 
+import io.constellation.lsp.SemanticTokenTypes.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lsp.SemanticTokenTypes.*
 
 class SemanticTokenProviderTest extends AnyFlatSpec with Matchers {
 

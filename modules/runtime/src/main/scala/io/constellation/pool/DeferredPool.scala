@@ -1,9 +1,9 @@
 package io.constellation.pool
 
+import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
+
 import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
-
-import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 
 /** A pool of pre-allocated Deferred instances for reducing allocation overhead.
   *

@@ -1,9 +1,9 @@
 package io.constellation.execution
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-
-import scala.concurrent.duration.*
 
 /** State of a circuit breaker. */
 enum CircuitState:

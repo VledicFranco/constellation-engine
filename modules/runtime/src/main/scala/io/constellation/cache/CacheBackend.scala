@@ -1,8 +1,8 @@
 package io.constellation.cache
 
-import cats.effect.IO
-
 import scala.concurrent.duration.FiniteDuration
+
+import cats.effect.IO
 
 /** Pluggable cache backend interface.
   *

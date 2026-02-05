@@ -1,15 +1,18 @@
 package io.constellation.http
 
+import java.nio.file.{Files, Path}
+
+import scala.jdk.CollectionConverters.*
+
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
+import io.constellation.PipelineImage
 import io.constellation.impl.{ConstellationImpl, PipelineStoreImpl}
 import io.constellation.lang.LangCompiler
-import io.constellation.PipelineImage
 
-import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters.*
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class FileSystemPipelineStoreTest extends AnyFlatSpec with Matchers {
 
@@ -19,9 +22,9 @@ class FileSystemPipelineStoreTest extends AnyFlatSpec with Matchers {
 
   /** Create a temp directory and a filesystem store wrapping a fresh in-memory store. */
   private def freshStore(): (FileSystemPipelineStore, Path) = {
-    val tmpDir    = Files.createTempDirectory("fs-pipeline-store-test")
-    val delegate  = PipelineStoreImpl.init.unsafeRunSync()
-    val fsStore   = FileSystemPipelineStore.init(tmpDir, delegate).unsafeRunSync()
+    val tmpDir   = Files.createTempDirectory("fs-pipeline-store-test")
+    val delegate = PipelineStoreImpl.init.unsafeRunSync()
+    val fsStore  = FileSystemPipelineStore.init(tmpDir, delegate).unsafeRunSync()
     (fsStore, tmpDir)
   }
 
@@ -33,12 +36,13 @@ class FileSystemPipelineStoreTest extends AnyFlatSpec with Matchers {
   }
 
   /** Clean up a temp directory recursively. */
-  private def cleanup(dir: Path): Unit = {
+  private def cleanup(dir: Path): Unit =
     if Files.exists(dir) then {
-      Files.walk(dir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(dir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(p => Files.deleteIfExists(p))
     }
-  }
 
   // --- Basic store and retrieve ---
 
@@ -89,7 +93,9 @@ class FileSystemPipelineStoreTest extends AnyFlatSpec with Matchers {
       store.alias("scoring", image.structuralHash).unsafeRunSync()
 
       store.resolve("scoring").unsafeRunSync() shouldBe Some(image.structuralHash)
-      store.getByName("scoring").unsafeRunSync().map(_.structuralHash) shouldBe Some(image.structuralHash)
+      store.getByName("scoring").unsafeRunSync().map(_.structuralHash) shouldBe Some(
+        image.structuralHash
+      )
     } finally cleanup(tmpDir)
   }
 
@@ -143,7 +149,9 @@ class FileSystemPipelineStoreTest extends AnyFlatSpec with Matchers {
       // Verify data survived
       store2.get(image.structuralHash).unsafeRunSync() shouldBe defined
       store2.resolve("scoring").unsafeRunSync() shouldBe Some(image.structuralHash)
-      store2.getByName("scoring").unsafeRunSync().map(_.structuralHash) shouldBe Some(image.structuralHash)
+      store2.getByName("scoring").unsafeRunSync().map(_.structuralHash) shouldBe Some(
+        image.structuralHash
+      )
       store2.listImages.unsafeRunSync() should have size 1
     } finally cleanup(tmpDir)
   }

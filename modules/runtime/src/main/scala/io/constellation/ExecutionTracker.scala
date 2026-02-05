@@ -1,12 +1,14 @@
 package io.constellation
 
+import java.util.UUID
+
+import scala.collection.immutable.Queue
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.circe.{Encoder, Json}
-import io.circe.generic.semiauto.*
 
-import java.util.UUID
-import scala.collection.immutable.Queue
+import io.circe.generic.semiauto.*
+import io.circe.{Encoder, Json}
 
 /** Execution status for tracking node execution.
   *

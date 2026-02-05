@@ -1,13 +1,14 @@
 package io.constellation.stdlib
 
+import java.util.UUID
+
 import cats.effect.IO
+
 import io.constellation.*
 import io.constellation.lang.compiler.CompilationOutput
-import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
 import io.constellation.lang.semantic.*
+import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
 import io.constellation.stdlib.categories.*
-
-import java.util.UUID
 
 /** Standard library of modules for constellation-lang.
   *

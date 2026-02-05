@@ -1,20 +1,34 @@
 package io.constellation.http
 
+import java.nio.file.Path
+
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
+
+import io.constellation.execution.{GlobalScheduler, TokenBucketRateLimiter}
+import io.constellation.lang.LangCompiler
+import io.constellation.lang.semantic.FunctionRegistry
+import io.constellation.{
+  CValue,
+  Constellation,
+  DataSignature,
+  ExecutionOptions,
+  LoadedPipeline,
+  Module,
+  ModuleNodeSpec,
+  PipelineStore,
+  SuspensionHandle,
+  SuspensionStore
+}
+
 import com.comcast.ip4s.*
 import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
-import io.constellation.{CValue, Constellation, ExecutionOptions, DataSignature, LoadedPipeline, Module, ModuleNodeSpec, PipelineStore, SuspensionHandle, SuspensionStore}
-import io.constellation.execution.{GlobalScheduler, TokenBucketRateLimiter}
-import io.constellation.lang.LangCompiler
-import io.constellation.lang.semantic.FunctionRegistry
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import java.nio.file.Path
-import scala.concurrent.duration.*
 
 /** HTTP server for the Constellation Engine API
   *
@@ -215,7 +229,8 @@ object ConstellationServer {
     /** Enable persistent filesystem-backed pipeline store.
       *
       * Wraps the constellation's existing PipelineStore with a filesystem-backed layer. Pipeline
-      * images, aliases, and syntactic indices are persisted to disk so they survive server restarts.
+      * images, aliases, and syntactic indices are persisted to disk so they survive server
+      * restarts.
       *
       * @param directory
       *   Root directory for the persistent store (e.g. `.constellation-store`)
@@ -335,7 +350,9 @@ object ConstellationServer {
           .default[IO]
           .withHost(host)
           .withPort(port)
-          .withIdleTimeout(10.minutes) // Allow long-running LSP sessions but prevent resource exhaustion
+          .withIdleTimeout(
+            10.minutes
+          ) // Allow long-running LSP sessions but prevent resource exhaustion
           .withHttpWebSocketApp { wsb =>
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
             val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
@@ -400,12 +417,21 @@ object ConstellationServer {
   private def wrapWithStore(delegate: Constellation, store: PipelineStore): Constellation =
     new Constellation {
       def getModules: IO[List[ModuleNodeSpec]] = delegate.getModules
-      def getModuleByName(name: String): IO[Option[Module.Uninitialized]] = delegate.getModuleByName(name)
+      def getModuleByName(name: String): IO[Option[Module.Uninitialized]] =
+        delegate.getModuleByName(name)
       def setModule(module: Module.Uninitialized): IO[Unit] = delegate.setModule(module)
-      def PipelineStore: PipelineStore = store
-      def run(loaded: LoadedPipeline, inputs: Map[String, CValue], options: ExecutionOptions): IO[DataSignature] =
+      def PipelineStore: PipelineStore                      = store
+      def run(
+          loaded: LoadedPipeline,
+          inputs: Map[String, CValue],
+          options: ExecutionOptions
+      ): IO[DataSignature] =
         delegate.run(loaded, inputs, options)
-      def run(ref: String, inputs: Map[String, CValue], options: ExecutionOptions): IO[DataSignature] =
+      def run(
+          ref: String,
+          inputs: Map[String, CValue],
+          options: ExecutionOptions
+      ): IO[DataSignature] =
         delegate.run(ref, inputs, options)
       override def suspensionStore: Option[SuspensionStore] = delegate.suspensionStore
       def resumeFromStore(

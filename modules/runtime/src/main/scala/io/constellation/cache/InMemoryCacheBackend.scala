@@ -1,11 +1,12 @@
 package io.constellation.cache
 
-import cats.effect.{IO, Ref}
-
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
+
+import cats.effect.{IO, Ref}
 
 /** In-memory cache backend using ConcurrentHashMap.
   *

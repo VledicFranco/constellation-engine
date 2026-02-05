@@ -1,13 +1,14 @@
 package io.constellation.lang.compiler
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.syntax.all.*
-import io.constellation.*
-import io.constellation.lang.compiler.CompilerError as DagCompilerError
-import io.constellation.lang.ast.CompileWarning
-import io.constellation.lang.semantic.SemanticType
 
-import java.util.UUID
+import io.constellation.*
+import io.constellation.lang.ast.CompileWarning
+import io.constellation.lang.compiler.CompilerError as DagCompilerError
+import io.constellation.lang.semantic.SemanticType
 
 /** Internal compilation output from DagCompiler. */
 private[compiler] final case class DagCompileOutput(

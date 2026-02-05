@@ -1,15 +1,16 @@
 package io.constellation.lang.benchmark
 
+import scala.collection.mutable.ListBuffer
+
 import io.constellation.lang.*
 import io.constellation.lang.compiler.{IRGenerator, IRPipeline}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
 import io.constellation.lang.viz.{DagVizCompiler, DagVizIR, LayoutConfig, SugiyamaLayout}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable.ListBuffer
 
 /** Benchmarks for DAG visualization pipeline
   *

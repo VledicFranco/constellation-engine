@@ -17,7 +17,8 @@ enum AliasStrategy {
 
 object AliasStrategy {
 
-  /** Parse an alias strategy from a string (case-insensitive, supports hyphenated and camelCase). */
+  /** Parse an alias strategy from a string (case-insensitive, supports hyphenated and camelCase).
+    */
   def fromString(s: String): Option[AliasStrategy] = s.toLowerCase match {
     case "filename" | "file-name"         => Some(FileName)
     case "relativepath" | "relative-path" => Some(RelativePath)

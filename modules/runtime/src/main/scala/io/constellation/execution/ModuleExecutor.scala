@@ -1,9 +1,9 @@
 package io.constellation.execution
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.implicits.*
-
-import scala.concurrent.duration.*
 
 /** Backoff strategies for retry delays.
   *

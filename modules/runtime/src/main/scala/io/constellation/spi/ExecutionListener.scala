@@ -1,8 +1,8 @@
 package io.constellation.spi
 
-import cats.effect.IO
-
 import java.util.UUID
+
+import cats.effect.IO
 
 /** Service Provider Interface for execution lifecycle events.
   *

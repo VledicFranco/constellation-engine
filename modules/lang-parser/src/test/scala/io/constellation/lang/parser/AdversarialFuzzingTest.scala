@@ -1,11 +1,11 @@
 package io.constellation.lang.parser
 
+import io.constellation.lang.ast.CompileError
+
+import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.scalacheck.Gen
-
-import io.constellation.lang.ast.CompileError
 
 /** Adversarial input fuzzing tests (RFC-013 Phase 5.4)
   *

@@ -2,10 +2,12 @@ package io.constellation.examples.app
 
 import cats.effect.{IO, IOApp}
 import cats.implicits.*
+
+import io.constellation.examples.app.modules.{DataModules, TextModules}
+import io.constellation.http.ConstellationServer
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
-import io.constellation.http.ConstellationServer
-import io.constellation.examples.app.modules.{DataModules, TextModules}
+
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 

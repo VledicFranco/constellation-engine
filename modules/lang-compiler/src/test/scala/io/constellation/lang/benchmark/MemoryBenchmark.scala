@@ -1,14 +1,15 @@
 package io.constellation.lang.benchmark
 
+import scala.collection.mutable.ListBuffer
+
 import io.constellation.lang.*
 import io.constellation.lang.compiler.{DagCompiler, IRGenerator}
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable.ListBuffer
 
 /** Result of a memory measurement */
 case class MemoryResult(

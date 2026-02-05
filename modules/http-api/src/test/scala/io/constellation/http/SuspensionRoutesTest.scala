@@ -2,16 +2,18 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.circe.CirceEntityCodec.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
+import io.constellation.http.ApiModels.*
 import io.constellation.impl.{ConstellationImpl, InMemorySuspensionStore}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.http.ApiModels.*
+
 import io.circe.Json
+import org.http4s.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.implicits.*
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
 
@@ -25,7 +27,7 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
         .build()
       compiler         = LangCompiler.empty
       functionRegistry = FunctionRegistry.empty
-      routes = ConstellationRoutes(constellation, compiler, functionRegistry).routes
+      routes           = ConstellationRoutes(constellation, compiler, functionRegistry).routes
     } yield (routes, suspensionStore)).unsafeRunSync()
     (routes, store)
   }
@@ -76,7 +78,7 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       // missing "y"
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
     runResponse.status shouldBe Status.Ok
     val runBody = runResponse.as[RunResponse].unsafeRunSync()
@@ -98,8 +100,8 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
 
   "GET /executions/:id" should "return 404 for unknown execution" in {
     val (routes, _) = routesWithStore
-    val request  = Request[IO](Method.GET, uri"/executions/550e8400-e29b-41d4-a716-446655440000")
-    val response = routes.orNotFound.run(request).unsafeRunSync()
+    val request     = Request[IO](Method.GET, uri"/executions/550e8400-e29b-41d4-a716-446655440000")
+    val response    = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
   }
@@ -127,9 +129,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Get detail by executionId
@@ -147,10 +149,11 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   "POST /executions/:id/resume" should "return 404 when no store is configured" in {
-    val routes = routesWithoutStore
+    val routes    = routesWithoutStore
     val resumeReq = ResumeRequest(additionalInputs = Some(Map("y" -> Json.fromLong(10))))
-    val request = Request[IO](Method.POST, uri"/executions/550e8400-e29b-41d4-a716-446655440000/resume")
-      .withEntity(resumeReq)
+    val request =
+      Request[IO](Method.POST, uri"/executions/550e8400-e29b-41d4-a716-446655440000/resume")
+        .withEntity(resumeReq)
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
@@ -160,9 +163,10 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
 
   it should "return 404 for unknown execution ID" in {
     val (routes, _) = routesWithStore
-    val resumeReq = ResumeRequest(additionalInputs = Some(Map("y" -> Json.fromLong(10))))
-    val request = Request[IO](Method.POST, uri"/executions/550e8400-e29b-41d4-a716-446655440000/resume")
-      .withEntity(resumeReq)
+    val resumeReq   = ResumeRequest(additionalInputs = Some(Map("y" -> Json.fromLong(10))))
+    val request =
+      Request[IO](Method.POST, uri"/executions/550e8400-e29b-41d4-a716-446655440000/resume")
+        .withEntity(resumeReq)
     val response = routes.orNotFound.run(request).unsafeRunSync()
 
     response.status shouldBe Status.NotFound
@@ -181,9 +185,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     runBody.status shouldBe Some("suspended")
     val executionId = runBody.executionId.get
 
@@ -214,9 +218,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Resume to completion
@@ -265,13 +269,14 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Delete it
-    val deleteRequest  = Request[IO](Method.DELETE, Uri.unsafeFromString(s"/executions/$executionId"))
+    val deleteRequest =
+      Request[IO](Method.DELETE, Uri.unsafeFromString(s"/executions/$executionId"))
     val deleteResponse = routes.orNotFound.run(deleteRequest).unsafeRunSync()
 
     deleteResponse.status shouldBe Status.Ok
@@ -298,13 +303,14 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Delete it
-    val deleteRequest = Request[IO](Method.DELETE, Uri.unsafeFromString(s"/executions/$executionId"))
+    val deleteRequest =
+      Request[IO](Method.DELETE, Uri.unsafeFromString(s"/executions/$executionId"))
     routes.orNotFound.run(deleteRequest).unsafeRunSync()
 
     // Try to resume — should 404
@@ -341,7 +347,7 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(42))
     )
 
-    val execReq = Request[IO](Method.POST, uri"/execute").withEntity(executeRequest)
+    val execReq  = Request[IO](Method.POST, uri"/execute").withEntity(executeRequest)
     val response = routes.orNotFound.run(execReq).unsafeRunSync()
     response.status shouldBe Status.Ok
     val body = response.as[ExecuteResponse].unsafeRunSync()
@@ -371,9 +377,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Resume with an input name that doesn't exist in the pipeline
@@ -399,9 +405,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq      = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val runResponse = routes.orNotFound.run(runReq).unsafeRunSync()
-    val runBody = runResponse.as[RunResponse].unsafeRunSync()
+    val runBody     = runResponse.as[RunResponse].unsafeRunSync()
     val executionId = runBody.executionId.get
 
     // Resume providing x again with a DIFFERENT value (5 → 99) plus y
@@ -431,9 +437,9 @@ class SuspensionRoutesTest extends AnyFlatSpec with Matchers {
       inputs = Map("x" -> Json.fromLong(5))
     )
 
-    val runReq = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
+    val runReq   = Request[IO](Method.POST, uri"/run").withEntity(runRequest)
     val response = routes.orNotFound.run(runReq).unsafeRunSync()
-    val body = response.as[RunResponse].unsafeRunSync()
+    val body     = response.as[RunResponse].unsafeRunSync()
     body.status shouldBe Some("completed")
 
     // Should not have any suspensions

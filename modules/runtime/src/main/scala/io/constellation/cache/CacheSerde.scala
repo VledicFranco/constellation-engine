@@ -1,16 +1,12 @@
 package io.constellation.cache
 
-import io.circe.{Decoder, Encoder, parser}
-import io.circe.syntax.*
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+
 import io.constellation.CValue
 import io.constellation.json.given
 
-import java.io.{
-  ByteArrayInputStream,
-  ByteArrayOutputStream,
-  ObjectInputStream,
-  ObjectOutputStream
-}
+import io.circe.syntax.*
+import io.circe.{Decoder, Encoder, parser}
 
 /** Type class for serializing and deserializing cache values.
   *
@@ -65,7 +61,8 @@ object CacheSerde {
       parser
         .decode[CValue](jsonStr)
         .fold(
-          err => throw new CacheSerdeException(s"Failed to deserialize CValue: ${err.getMessage}", err),
+          err =>
+            throw new CacheSerdeException(s"Failed to deserialize CValue: ${err.getMessage}", err),
           identity
         )
     }
@@ -137,7 +134,7 @@ object CacheSerde {
     private val javaFallback = javaSerde[java.io.Serializable]
 
     override def serialize(value: Any): Array[Byte] = value match {
-      case cv: CValue => cvalueSerde.serialize(cv)
+      case cv: CValue              => cvalueSerde.serialize(cv)
       case s: java.io.Serializable =>
         // Prefix with 0x01 to distinguish from JSON (which starts with '{' or '[')
         val bytes = javaFallback.serialize(s)

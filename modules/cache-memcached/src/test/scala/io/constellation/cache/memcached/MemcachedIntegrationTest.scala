@@ -1,16 +1,18 @@
 package io.constellation.cache.memcached
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.cache.CacheSerde
 import io.constellation.{CType, CValue}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.utility.DockerImageName
-
-import scala.concurrent.duration.*
 
 /** Integration tests for MemcachedCacheBackend using a real Memcached server via Testcontainers.
   *
@@ -19,9 +21,8 @@ import scala.concurrent.duration.*
   * sbt "cacheMemcached/testOnly *IntegrationTest"
   * }}}
   *
-  * Tests exercise the full round-trip: CacheSerde serialization -> spymemcached client ->
-  * Memcached wire protocol -> Memcached server -> wire protocol -> client -> CacheSerde
-  * deserialization.
+  * Tests exercise the full round-trip: CacheSerde serialization -> spymemcached client -> Memcached
+  * wire protocol -> Memcached server -> wire protocol -> client -> CacheSerde deserialization.
   */
 class MemcachedIntegrationTest
     extends AnyFlatSpec
@@ -92,7 +93,7 @@ class MemcachedIntegrationTest
   it should "round-trip a CValue.CProduct" in {
     val value = CValue.CProduct(
       Map("name" -> CValue.CString("test"), "count" -> CValue.CInt(5)),
-      Map("name" -> CType.CString, "count" -> CType.CInt)
+      Map("name" -> CType.CString, "count"          -> CType.CInt)
     )
 
     backend.set("cv-product", value, 1.minute).unsafeRunSync()
@@ -197,8 +198,8 @@ class MemcachedIntegrationTest
   it should "track hits and misses" in {
     backend.set("stats-key", "value", 1.minute).unsafeRunSync()
 
-    backend.get[String]("stats-key").unsafeRunSync()  // hit
-    backend.get[String]("stats-key").unsafeRunSync()  // hit
+    backend.get[String]("stats-key").unsafeRunSync()   // hit
+    backend.get[String]("stats-key").unsafeRunSync()   // hit
     backend.get[String]("no-such-key").unsafeRunSync() // miss
 
     val stats = backend.stats.unsafeRunSync()
@@ -212,18 +213,22 @@ class MemcachedIntegrationTest
 
   it should "support getOrCompute" in {
     var computeCount = 0
-    val result1 = backend.getOrCompute[String]("compute-key", 1.minute)(IO {
-      computeCount += 1
-      s"computed-$computeCount"
-    }).unsafeRunSync()
+    val result1 = backend
+      .getOrCompute[String]("compute-key", 1.minute)(IO {
+        computeCount += 1
+        s"computed-$computeCount"
+      })
+      .unsafeRunSync()
 
     result1 shouldBe "computed-1"
     computeCount shouldBe 1
 
-    val result2 = backend.getOrCompute[String]("compute-key", 1.minute)(IO {
-      computeCount += 1
-      s"computed-$computeCount"
-    }).unsafeRunSync()
+    val result2 = backend
+      .getOrCompute[String]("compute-key", 1.minute)(IO {
+        computeCount += 1
+        s"computed-$computeCount"
+      })
+      .unsafeRunSync()
 
     result2 shouldBe "computed-1" // cached
     computeCount shouldBe 1

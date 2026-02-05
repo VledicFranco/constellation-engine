@@ -1,8 +1,8 @@
 package io.constellation
 
-import cats.effect.IO
-
 import java.util.UUID
+
+import cats.effect.IO
 
 trait ModuleRegistry {
 

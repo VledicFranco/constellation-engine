@@ -1,9 +1,9 @@
 package io.constellation.lang.compiler
 
+import java.util.UUID
+
 import io.constellation.lang.ast.{BoolOp, ModuleCallOptions, PriorityLevel}
 import io.constellation.lang.semantic.*
-
-import java.util.UUID
 
 /** Generates IR from a typed AST */
 object IRGenerator {

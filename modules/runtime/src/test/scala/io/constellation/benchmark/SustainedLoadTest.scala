@@ -1,18 +1,20 @@
 package io.constellation.benchmark
 
+import java.util.UUID
+
+import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
-import scala.concurrent.duration.*
-import scala.collection.mutable.ListBuffer
-import java.util.UUID
 
 import io.constellation.*
 import io.constellation.execution.GlobalScheduler
 import io.constellation.spi.ConstellationBackends
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** Sustained load tests (RFC-013 Phase 5.3)
   *

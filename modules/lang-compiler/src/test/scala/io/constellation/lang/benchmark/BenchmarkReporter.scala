@@ -1,11 +1,12 @@
 package io.constellation.lang.benchmark
 
-import io.circe.*
-import io.circe.syntax.*
-
 import java.io.{File, PrintWriter}
 import java.time.Instant
+
 import scala.util.{Try, Using}
+
+import io.circe.*
+import io.circe.syntax.*
 
 /** Reporter for benchmark results with JSON and console output */
 object BenchmarkReporter {

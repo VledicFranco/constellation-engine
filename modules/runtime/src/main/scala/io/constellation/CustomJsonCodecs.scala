@@ -1,12 +1,14 @@
 package io.constellation
 
+import java.util.UUID
+
+import scala.concurrent.duration.{DurationLong, FiniteDuration}
+
 import cats.Eval
 import cats.syntax.all.*
+
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, HCursor, Json}
-
-import java.util.UUID
-import scala.concurrent.duration.{DurationLong, FiniteDuration}
 
 object json extends CustomJsonCodecs
 
@@ -383,6 +385,13 @@ trait CustomJsonCodecs {
       moduleOptions  <- c.downField("moduleOptions").as[Map[UUID, ModuleCallOptions]]
       compiledAt     <- c.downField("compiledAt").as[java.time.Instant]
       sourceHash     <- c.downField("sourceHash").as[Option[String]]
-    } yield PipelineImage(structuralHash, syntacticHash, dagSpec, moduleOptions, compiledAt, sourceHash)
+    } yield PipelineImage(
+      structuralHash,
+      syntacticHash,
+      dagSpec,
+      moduleOptions,
+      compiledAt,
+      sourceHash
+    )
   }
 }

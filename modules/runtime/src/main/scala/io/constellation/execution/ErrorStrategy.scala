@@ -1,7 +1,9 @@
 package io.constellation.execution
 
 import cats.effect.IO
+
 import io.constellation.{CType, CValue}
+
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 

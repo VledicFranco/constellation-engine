@@ -1,17 +1,20 @@
 package io.constellation.lang
 
+import java.time.Instant
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.*
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.time.Instant
-import java.util.UUID
-import scala.concurrent.duration.*
 
 class CompilationCacheTest extends AnyFlatSpec with Matchers with RetrySupport {
 

@@ -1,9 +1,10 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRPipeline, TypedLambda}
-
 import java.util.UUID
+
 import scala.collection.mutable
+
+import io.constellation.lang.compiler.{IRNode, IRPipeline, TypedLambda}
 
 /** Common Subexpression Elimination optimization pass.
   *

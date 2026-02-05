@@ -1,8 +1,12 @@
 package io.constellation.cache.memcached
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.cache.CacheSerde
+
 import net.spy.memcached.MemcachedClient
 import net.spy.memcached.internal.OperationFuture
 import org.mockito.ArgumentMatchers.*
@@ -10,8 +14,6 @@ import org.mockito.Mockito.*
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.concurrent.duration.*
 
 /** Unit tests that exercise the real MemcachedCacheBackend class with a mocked spymemcached client.
   *
@@ -22,10 +24,10 @@ import scala.concurrent.duration.*
   */
 class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
 
-  private var mockClient: MemcachedClient = _
-  private var mockSetFuture: OperationFuture[java.lang.Boolean] = _
+  private var mockClient: MemcachedClient                          = _
+  private var mockSetFuture: OperationFuture[java.lang.Boolean]    = _
   private var mockDeleteFuture: OperationFuture[java.lang.Boolean] = _
-  private var mockFlushFuture: OperationFuture[java.lang.Boolean] = _
+  private var mockFlushFuture: OperationFuture[java.lang.Boolean]  = _
 
   override def beforeEach(): Unit = {
     mockClient = mock(classOf[MemcachedClient])
@@ -55,7 +57,7 @@ class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with Befor
     val backend = createBackend(MemcachedConfig(keyPrefix = "myapp"))
 
     // Set up mock to return serialized bytes
-    val testValue = "hello"
+    val testValue  = "hello"
     val serialized = CacheSerde.anySerde.serialize(testValue)
     when(mockClient.get("myapp:testkey")).thenReturn(serialized)
 
@@ -102,7 +104,7 @@ class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with Befor
   }
 
   it should "serialize values through CacheSerde before storing" in {
-    val backend = createBackend()
+    val backend   = createBackend()
     val testValue = "hello"
 
     backend.set("key", testValue, 1.minute).unsafeRunSync()
@@ -122,8 +124,8 @@ class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with Befor
   // -------------------------------------------------------------------------
 
   it should "return deserialized value on cache hit" in {
-    val backend = createBackend()
-    val testValue = "hello"
+    val backend    = createBackend()
+    val testValue  = "hello"
     val serialized = CacheSerde.anySerde.serialize(testValue)
 
     when(mockClient.get("key")).thenReturn(serialized)
@@ -153,7 +155,7 @@ class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with Befor
   }
 
   it should "get with prefixed key" in {
-    val backend = createBackend(MemcachedConfig(keyPrefix = "app"))
+    val backend    = createBackend(MemcachedConfig(keyPrefix = "app"))
     val serialized = CacheSerde.anySerde.serialize("value")
 
     when(mockClient.get("app:key")).thenReturn(serialized)
@@ -215,7 +217,7 @@ class MemcachedCacheBackendMockTest extends AnyFlatSpec with Matchers with Befor
   // -------------------------------------------------------------------------
 
   it should "track hits on successful get" in {
-    val backend = createBackend()
+    val backend    = createBackend()
     val serialized = CacheSerde.anySerde.serialize("value")
 
     when(mockClient.get("key")).thenReturn(serialized)

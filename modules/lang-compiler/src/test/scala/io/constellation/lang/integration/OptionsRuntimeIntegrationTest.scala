@@ -1,9 +1,14 @@
 package io.constellation.lang.integration
 
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.CType
-import io.constellation.lang.LangCompiler
 import io.constellation.lang.compiler.{
   CompilationOutput,
   DagCompiler,
@@ -11,14 +16,11 @@ import io.constellation.lang.compiler.{
   ModuleOptionsExecutor
 }
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
-import io.constellation.lang.RetrySupport
+import io.constellation.lang.{LangCompiler, RetrySupport}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration.*
 
 /** End-to-end integration tests for module call options. These tests verify that options specified
   * in constellation-lang source code are correctly parsed, compiled, and executed at runtime.

@@ -1,6 +1,7 @@
 package io.constellation.stdlib.categories
 
 import cats.effect.IO
+
 import io.constellation.*
 import io.constellation.lang.semantic.*
 

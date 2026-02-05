@@ -1,9 +1,9 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.implicits.*
-
-import java.util.UUID
 
 /** Reconstructs synthetic module implementations from a [[DagSpec]].
   *

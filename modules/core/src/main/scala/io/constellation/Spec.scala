@@ -1,9 +1,10 @@
 package io.constellation
 
-import io.circe.Json
-
 import java.util.UUID
+
 import scala.concurrent.duration.FiniteDuration
+
+import io.circe.Json
 
 /** Specification for a directed acyclic graph (DAG) pipeline.
   *

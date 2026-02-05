@@ -1,14 +1,14 @@
 package io.constellation.lang.benchmark
 
-import io.constellation.lang.*
-import io.constellation.lang.RetrySupport
+import scala.collection.mutable.ListBuffer
+
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.{FunctionRegistry, TypeChecker}
+import io.constellation.lang.{RetrySupport, *}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import scala.collection.mutable.ListBuffer
 
 /** Performance regression test suite
   *

@@ -1,10 +1,10 @@
 package io.constellation.lang.compiler
 
+import java.util.UUID
+
 import io.constellation.ModuleCallOptions
 import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy, PriorityLevel, Span}
 import io.constellation.lang.semantic.SemanticType
-
-import java.util.UUID
 
 /** Module call options at IR level.
   *

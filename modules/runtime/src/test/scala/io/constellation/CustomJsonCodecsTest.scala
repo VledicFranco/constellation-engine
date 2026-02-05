@@ -1,11 +1,12 @@
 package io.constellation
 
+import scala.concurrent.duration.*
+
 import io.constellation.json.given
+
 import io.circe.syntax.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.concurrent.duration.*
 
 class CustomJsonCodecsTest extends AnyFlatSpec with Matchers {
 

@@ -1,15 +1,18 @@
 package io.constellation.execution
 
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+
 import io.constellation.RetrySupport
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import scala.concurrent.duration.*
-import java.util.concurrent.atomic.AtomicInteger
 
 class CircuitBreakerTest extends AnyFlatSpec with Matchers with RetrySupport {
 

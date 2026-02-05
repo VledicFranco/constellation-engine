@@ -1,8 +1,9 @@
 package io.constellation.lsp
 
+import scala.concurrent.duration.*
+
 import cats.effect.{Fiber, IO, Ref}
 import cats.syntax.all.*
-import scala.concurrent.duration.*
 
 /** A debouncer that delays action execution until a quiet period. Multiple rapid calls with the
   * same key will cancel previous pending actions and restart the timer.

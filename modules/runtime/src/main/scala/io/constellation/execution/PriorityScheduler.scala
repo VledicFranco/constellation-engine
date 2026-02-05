@@ -1,10 +1,10 @@
 package io.constellation.execution
 
-import cats.effect.{IO, Ref}
-import cats.effect.std.Queue
-import cats.implicits.*
-
 import java.util.concurrent.atomic.AtomicLong
+
+import cats.effect.std.Queue
+import cats.effect.{IO, Ref}
+import cats.implicits.*
 
 /** Priority levels for task scheduling.
   *

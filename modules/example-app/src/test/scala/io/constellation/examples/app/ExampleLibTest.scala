@@ -1,8 +1,9 @@
 package io.constellation.examples.app
 
+import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
 import io.constellation.lang.LangCompilerBuilder
 import io.constellation.lang.semantic.{FunctionRegistry, SemanticType}
-import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

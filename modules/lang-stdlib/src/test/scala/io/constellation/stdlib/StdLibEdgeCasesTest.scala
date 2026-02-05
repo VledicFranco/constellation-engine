@@ -3,8 +3,10 @@ package io.constellation.stdlib
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -1,13 +1,15 @@
 package io.constellation
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import io.constellation.impl.ConstellationImpl
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import java.time.Instant
 import java.util.UUID
+
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+
+import io.constellation.impl.ConstellationImpl
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class ConstellationTest extends AnyFlatSpec with Matchers {
 

@@ -1,11 +1,12 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 

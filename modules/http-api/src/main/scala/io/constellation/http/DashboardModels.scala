@@ -1,7 +1,7 @@
 package io.constellation.http
 
-import io.circe.{Decoder, Encoder, Json}
 import io.circe.generic.semiauto.*
+import io.circe.{Decoder, Encoder, Json}
 
 /** API request and response models for the Dashboard endpoints */
 object DashboardModels {

@@ -1,12 +1,12 @@
 package io.constellation.spi
 
-import cats.effect.IO
+import java.util.UUID
+
 import cats.effect.unsafe.implicits.global
-import cats.effect.Ref
+import cats.effect.{IO, Ref}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class SpiTraitTests extends AnyFlatSpec with Matchers {
 

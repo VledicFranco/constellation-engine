@@ -1,21 +1,23 @@
 package io.constellation.lang.parser
 
-import cats.parse.{Parser as P, Parser0}
-import cats.parse.Numbers
 import cats.parse.Rfc5234.{alpha, digit}
+import cats.parse.{Numbers, Parser as P, Parser0}
 import cats.syntax.all.*
-import io.constellation.lang.ast.*
-import io.constellation.lang.ast.CompareOp
-import io.constellation.lang.ast.ArithOp
-import io.constellation.lang.ast.BoolOp
-import io.constellation.lang.ast.DurationUnit
-import io.constellation.lang.ast.Duration
-import io.constellation.lang.ast.Rate
-import io.constellation.lang.ast.BackoffStrategy
-import io.constellation.lang.ast.ErrorStrategy
-import io.constellation.lang.ast.PriorityLevel
-import io.constellation.lang.ast.CustomPriority
-import io.constellation.lang.ast.ModuleCallOptions
+
+import io.constellation.lang.ast.{
+  ArithOp,
+  BackoffStrategy,
+  BoolOp,
+  CompareOp,
+  CustomPriority,
+  Duration,
+  DurationUnit,
+  ErrorStrategy,
+  ModuleCallOptions,
+  PriorityLevel,
+  Rate,
+  *
+}
 
 object ConstellationParser extends MemoizationSupport {
 

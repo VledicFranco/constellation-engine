@@ -1,8 +1,8 @@
 package io.constellation.execution
 
-import cats.effect.{Deferred, IO, Ref}
-
 import scala.concurrent.duration.*
+
+import cats.effect.{Deferred, IO, Ref}
 
 /** A lazy, memoized value.
   *

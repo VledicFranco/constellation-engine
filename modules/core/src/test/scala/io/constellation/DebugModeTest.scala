@@ -1,10 +1,9 @@
 package io.constellation
 
+import java.io.{ByteArrayOutputStream, PrintStream}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 class DebugModeTest extends AnyFlatSpec with Matchers {
 

@@ -2,6 +2,7 @@ package io.constellation.lsp.diagnostics
 
 import io.constellation.lang.ast.{BackoffStrategy, ErrorStrategy, ModuleCallOptions, PriorityLevel}
 import io.constellation.lsp.protocol.LspTypes.{DiagnosticSeverity, Position, Range}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

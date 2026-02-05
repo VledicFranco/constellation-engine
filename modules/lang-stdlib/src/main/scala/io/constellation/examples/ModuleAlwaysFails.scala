@@ -1,9 +1,10 @@
 package io.constellation.examples
 
-import cats.effect.IO
-import io.constellation.*
-
 import scala.concurrent.duration.DurationInt
+
+import cats.effect.IO
+
+import io.constellation.*
 
 object ModuleAlwaysFails {
 

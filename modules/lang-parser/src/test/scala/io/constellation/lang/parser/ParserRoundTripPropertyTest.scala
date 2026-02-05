@@ -1,9 +1,9 @@
 package io.constellation.lang.parser
 
+import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.scalacheck.Gen
 
 /** Property-based tests for parser determinism and round-trip consistency (RFC-017 Phase 3).
   *
@@ -14,10 +14,7 @@ import org.scalacheck.Gen
   *
   * Run with: sbt "langParser/testOnly *ParserRoundTripPropertyTest"
   */
-class ParserRoundTripPropertyTest
-    extends AnyFlatSpec
-    with Matchers
-    with ScalaCheckPropertyChecks {
+class ParserRoundTripPropertyTest extends AnyFlatSpec with Matchers with ScalaCheckPropertyChecks {
 
   private val parser = ConstellationParser
 
@@ -26,9 +23,9 @@ class ParserRoundTripPropertyTest
   // -------------------------------------------------------------------------
 
   private val genVarName: Gen[String] = for {
-    head <- Gen.alphaLowerChar
-    tail <- Gen.listOfN(Gen.choose(2, 8).sample.getOrElse(4), Gen.alphaLowerChar).map(_.mkString)
-  } yield s"$head$tail"
+    len  <- Gen.choose(2, 8)
+    tail <- Gen.listOfN(len, Gen.alphaLowerChar).map(_.mkString)
+  } yield s"v$tail"
 
   private val genSimpleBooleanProgram: Gen[String] = for {
     numVars  <- Gen.choose(2, 10)
@@ -65,7 +62,8 @@ class ParserRoundTripPropertyTest
     numAssignments <- Gen.choose(2, 5)
     inputNames     <- Gen.listOfN(numInputs, genVarName).map(_.distinct)
     if inputNames.nonEmpty
-    assignNames <- Gen.listOfN(numAssignments, genVarName)
+    assignNames <- Gen
+      .listOfN(numAssignments, genVarName)
       .map(_.distinct.filterNot(inputNames.contains))
     if assignNames.nonEmpty
   } yield {
@@ -149,7 +147,9 @@ class ParserRoundTripPropertyTest
   it should "successfully parse all generated boolean programs" in {
     forAll(genSimpleBooleanProgram) { source =>
       val result = parser.parse(source)
-      withClue(s"Failed to parse generated boolean program:\n$source\nError: ${result.left.toOption}") {
+      withClue(
+        s"Failed to parse generated boolean program:\n$source\nError: ${result.left.toOption}"
+      ) {
         result.isRight shouldBe true
       }
     }
@@ -180,7 +180,7 @@ class ParserRoundTripPropertyTest
   // -------------------------------------------------------------------------
 
   it should "deterministically parse a passthrough program" in {
-    val source = "in x: String\nout x"
+    val source  = "in x: String\nout x"
     val results = (1 to 10).map(_ => parser.parse(source))
     results.foreach(_.isRight shouldBe true)
     results.sliding(2).foreach { pair =>

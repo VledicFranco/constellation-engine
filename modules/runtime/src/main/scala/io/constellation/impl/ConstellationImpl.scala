@@ -1,7 +1,13 @@
 package io.constellation.impl
 
+import java.time.Instant
+import java.util.UUID
+
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.IO
 import cats.implicits.*
+
 import io.constellation.*
 import io.constellation.cache.CacheBackend
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler}
@@ -11,10 +17,6 @@ import io.constellation.spi.{
   MetricsProvider,
   TracerProvider
 }
-
-import java.time.Instant
-import java.util.UUID
-import scala.concurrent.duration.FiniteDuration
 
 /** Default implementation of the [[io.constellation.Constellation]] API.
   *
@@ -364,7 +366,8 @@ object ConstellationImpl {
     def withLifecycle(lc: ConstellationLifecycle): ConstellationBuilder = copy(lifecycle = Some(lc))
 
     /** Set a pre-configured PipelineStore instance. */
-    def withPipelineStore(ps: PipelineStore): ConstellationBuilder = copy(PipelineStoreOpt = Some(ps))
+    def withPipelineStore(ps: PipelineStore): ConstellationBuilder =
+      copy(PipelineStoreOpt = Some(ps))
 
     /** Set a SuspensionStore for persisting and resuming suspended executions. */
     def withSuspensionStore(ss: SuspensionStore): ConstellationBuilder =

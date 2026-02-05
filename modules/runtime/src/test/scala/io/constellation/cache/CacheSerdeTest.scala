@@ -1,6 +1,7 @@
 package io.constellation.cache
 
 import io.constellation.{CType, CValue}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -65,7 +66,7 @@ class CacheSerdeTest extends AnyFlatSpec with Matchers {
   it should "roundtrip CProduct" in {
     val original = CValue.CProduct(
       Map("name" -> CValue.CString("test"), "count" -> CValue.CInt(5)),
-      Map("name" -> CType.CString, "count" -> CType.CInt)
+      Map("name" -> CType.CString, "count"          -> CType.CInt)
     )
     val bytes   = CacheSerde.cvalueSerde.serialize(original)
     val decoded = CacheSerde.cvalueSerde.deserialize(bytes)

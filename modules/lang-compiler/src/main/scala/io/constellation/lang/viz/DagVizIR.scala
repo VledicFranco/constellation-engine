@@ -1,7 +1,7 @@
 package io.constellation.lang.viz
 
-import io.circe.{Decoder, Encoder, Json}
 import io.circe.generic.semiauto.*
+import io.circe.{Decoder, Encoder, Json}
 
 /** Node kinds for DAG visualization */
 enum NodeKind:

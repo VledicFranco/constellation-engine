@@ -1,10 +1,11 @@
 package io.constellation.lsp.benchmark
 
+import scala.collection.mutable.ListBuffer
+
 import io.constellation.lsp.SemanticTokenProvider
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable.ListBuffer
 
 /** Benchmarks for semantic token generation performance
   *

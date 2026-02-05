@@ -1,10 +1,11 @@
 package io.constellation.lang
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Ref}
+
 import io.constellation.cache.{CacheBackend, CacheStats, InMemoryCacheBackend}
 import io.constellation.lang.compiler.CompilationOutput
-
-import scala.concurrent.duration.*
 
 /** Thread-safe cache for compilation results.
   *
@@ -12,8 +13,8 @@ import scala.concurrent.duration.*
   * with the runtime cache SPI. The compilation cache adds hash-based validation on top: a cached
   * result is only returned if both the source hash and registry hash match the stored entry.
   *
-  * Statistics are tracked at this layer (not delegated to the backend) to ensure accurate
-  * hit/miss counts regardless of backend caching behavior.
+  * Statistics are tracked at this layer (not delegated to the backend) to ensure accurate hit/miss
+  * counts regardless of backend caching behavior.
   *
   * '''Note:''' `CompilationOutput` contains closures (`Module.Uninitialized`) that cannot be
   * serialized, so this cache must use an in-memory backend. The `CacheBackend` abstraction is used
@@ -238,7 +239,10 @@ object CompilationCache {
   }
 
   /** Create a CompilationCache synchronously with a specific cache backend. */
-  def createUnsafeWithBackend(backend: CacheBackend, config: Config = Config()): CompilationCache = {
+  def createUnsafeWithBackend(
+      backend: CacheBackend,
+      config: Config = Config()
+  ): CompilationCache = {
     import cats.effect.unsafe.implicits.global
     createWithBackend(backend, config).unsafeRunSync()
   }

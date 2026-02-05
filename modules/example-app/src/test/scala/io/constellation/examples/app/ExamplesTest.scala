@@ -1,18 +1,21 @@
 package io.constellation.examples.app
 
+import java.io.File
+import java.nio.file.{Files, Paths}
+
+import scala.io.Source
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.stdlib.StdLib
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.io.File
-import java.nio.file.{Files, Paths}
-import scala.io.Source
 
 /** Tests that verify all .cst example programs in the examples directory compile and execute
   * successfully.

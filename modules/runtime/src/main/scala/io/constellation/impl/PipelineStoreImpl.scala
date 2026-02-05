@@ -1,6 +1,7 @@
 package io.constellation.impl
 
 import cats.effect.{IO, Ref}
+
 import io.constellation.{PipelineImage, PipelineStore}
 
 /** In-memory implementation of [[PipelineStore]].

@@ -1,10 +1,11 @@
 package io.constellation.execution
 
+import java.util.concurrent.ConcurrentHashMap
+
+import scala.jdk.CollectionConverters.*
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-
-import java.util.concurrent.ConcurrentHashMap
-import scala.jdk.CollectionConverters.*
 
 /** Registry for managing rate limiters and concurrency limiters.
   *

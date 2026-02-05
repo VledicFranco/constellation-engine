@@ -1,13 +1,16 @@
 package io.constellation.http
 
+import java.util.UUID
+
+import scala.collection.immutable.Queue
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto.*
+
 import io.constellation.lang.viz.DagVizIR
 
-import java.util.UUID
-import scala.collection.immutable.Queue
+import io.circe.generic.semiauto.*
+import io.circe.{Decoder, Encoder, Json}
 
 /** Execution status for stored executions */
 enum ExecutionStatus:

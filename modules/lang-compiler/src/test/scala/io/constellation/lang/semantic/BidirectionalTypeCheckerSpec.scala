@@ -1,10 +1,11 @@
 package io.constellation.lang.semantic
 
+import io.constellation.lang.ast.CompileError
+import io.constellation.lang.compiler.DagCompiler
+import io.constellation.lang.parser.ConstellationParser
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lang.compiler.DagCompiler
-import io.constellation.lang.ast.CompileError
 
 /** Tests for bidirectional type inference.
   *

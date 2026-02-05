@@ -1,8 +1,8 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRPipeline}
-
 import java.util.UUID
+
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 
 /** Base trait for IR optimization passes.
   *

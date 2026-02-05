@@ -1,10 +1,11 @@
 package io.constellation.http
 
-import cats.effect.{IO, Ref}
-
 import java.time.Instant
+
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
+
+import cats.effect.{IO, Ref}
 
 /** Configuration for a canary deployment. */
 case class CanaryConfig(
@@ -51,8 +52,7 @@ case class VersionMetrics(
     val newRequests = requests + 1
     // Reservoir sampling: keep up to MaxLatencySamples entries
     val newLatencies =
-      if latencies.size < VersionMetrics.MaxLatencySamples then
-        latencies :+ latencyMs
+      if latencies.size < VersionMetrics.MaxLatencySamples then latencies :+ latencyMs
       else {
         // Replace a random existing entry with probability MaxLatencySamples/newRequests
         val idx = Random.nextInt(newRequests.toInt)
@@ -70,6 +70,7 @@ case class VersionMetrics(
 }
 
 object VersionMetrics {
+
   /** Maximum number of latency samples retained for p99 calculation. */
   val MaxLatencySamples: Int = 10000
 }
@@ -200,19 +201,21 @@ object CanaryRouter {
               val isNewVersion = structuralHash == state.newVersion.structuralHash
               val updatedMetrics =
                 if isNewVersion then
-                  state.metrics.copy(newVersion = state.metrics.newVersion.record(success, latencyMs))
+                  state.metrics
+                    .copy(newVersion = state.metrics.newVersion.record(success, latencyMs))
                 else
-                  state.metrics.copy(oldVersion = state.metrics.oldVersion.record(success, latencyMs))
+                  state.metrics.copy(oldVersion =
+                    state.metrics.oldVersion.record(success, latencyMs)
+                  )
 
               val updatedState = state.copy(metrics = updatedMetrics)
 
               // Evaluate auto-promotion/rollback
               val evaluated = evaluateCanary(updatedState, now)
               // Remove from map if terminal state (Complete/RolledBack) — F-3.3
-              if evaluated.status == CanaryStatus.Complete || evaluated.status == CanaryStatus.RolledBack then
-                (states - name, Some(evaluated))
-              else
-                (states.updated(name, evaluated), Some(evaluated))
+              if evaluated.status == CanaryStatus.Complete || evaluated.status == CanaryStatus.RolledBack
+              then (states - name, Some(evaluated))
+              else (states.updated(name, evaluated), Some(evaluated))
           }
         }
 
@@ -228,10 +231,8 @@ object CanaryRouter {
               (states, Some(state))
             case Some(state) =>
               val advanced = advanceStep(state, now)
-              if advanced.status == CanaryStatus.Complete then
-                (states - name, Some(advanced))
-              else
-                (states.updated(name, advanced), Some(advanced))
+              if advanced.status == CanaryStatus.Complete then (states - name, Some(advanced))
+              else (states.updated(name, advanced), Some(advanced))
           }
         }
 
@@ -258,7 +259,7 @@ object CanaryRouter {
         if newMetrics.requests < state.config.minRequests then return state
 
         // Observation window hasn't elapsed
-        val elapsed = java.time.Duration.between(state.stepStartedAt, now)
+        val elapsed      = java.time.Duration.between(state.stepStartedAt, now)
         val windowMillis = state.config.observationWindow.toMillis
         if elapsed.toMillis < windowMillis then return state
 

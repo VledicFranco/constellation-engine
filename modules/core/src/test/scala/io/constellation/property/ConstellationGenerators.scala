@@ -1,7 +1,8 @@
 package io.constellation.property
 
-import org.scalacheck.{Arbitrary, Gen}
 import io.constellation.{CType, CValue}
+
+import org.scalacheck.{Arbitrary, Gen}
 
 /** ScalaCheck generators for Constellation core types (RFC-013 Phase 5.2)
   *
@@ -203,7 +204,8 @@ object ConstellationGenerators {
     sb.toString
   }
 
-  /** Generate a valid multi-statement constellation-lang program with inputs, assignments, and outputs.
+  /** Generate a valid multi-statement constellation-lang program with inputs, assignments, and
+    * outputs.
     *
     * Produces programs with:
     *   - 1-3 typed input declarations (String, Int, Boolean)
@@ -215,7 +217,8 @@ object ConstellationGenerators {
     numAssignments <- Gen.choose(2, 5)
     inputNames     <- Gen.listOfN(numInputs, genVarName).map(_.distinct)
     if inputNames.nonEmpty
-    assignNames <- Gen.listOfN(numAssignments, genVarName)
+    assignNames <- Gen
+      .listOfN(numAssignments, genVarName)
       .map(_.distinct.filterNot(inputNames.contains))
     if assignNames.nonEmpty
   } yield {
@@ -227,7 +230,7 @@ object ConstellationGenerators {
     if inputNames.size > 2 then sb.append(s"in ${inputNames(2)}: String\n")
     sb.append("\n")
 
-    val boolInput = inputNames.head
+    val boolInput  = inputNames.head
     val allDefined = scala.collection.mutable.ListBuffer[String](inputNames*)
 
     // Generate assignments

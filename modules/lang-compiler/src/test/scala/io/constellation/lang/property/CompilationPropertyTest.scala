@@ -1,13 +1,13 @@
 package io.constellation.lang.property
 
+import io.constellation.lang.LangCompiler
+import io.constellation.lang.ast.CompileError
+import io.constellation.lang.benchmark.TestFixtures
+import io.constellation.lang.parser.ConstellationParser
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-
-import io.constellation.lang.LangCompiler
-import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lang.ast.CompileError
-import io.constellation.lang.benchmark.TestFixtures
 
 /** Property-based tests for compilation determinism (RFC-013 Phase 5.2)
   *

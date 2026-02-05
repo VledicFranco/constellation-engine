@@ -1,14 +1,17 @@
 package io.constellation.benchmark
 
+import java.util.UUID
+
+import scala.collection.mutable.ListBuffer
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
-import scala.collection.mutable.ListBuffer
 
 /** Result of a benchmark measurement */
 case class ExecutionBenchmarkResult(

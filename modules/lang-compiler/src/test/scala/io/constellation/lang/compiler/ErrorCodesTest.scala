@@ -1,6 +1,7 @@
 package io.constellation.lang.compiler
 
 import io.constellation.lang.ast.CompileError
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

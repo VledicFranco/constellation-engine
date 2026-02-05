@@ -1,23 +1,12 @@
 package io.constellation.lsp
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
-import io.circe.*
-import io.circe.syntax.*
-import io.constellation.{
-  CValue,
-  Constellation,
-  ExecutionTrace,
-  ExecutionTracker,
-  Module,
-  NodeExecutionResult,
-  NodeStatus,
-  SteppedExecution
-}
+
 import io.constellation.cache.CacheStats
-import io.constellation.lang.{ast, CachingLangCompiler, LangCompiler}
-import io.constellation.lang.viz.{DagVizCompiler, LayoutConfig, SugiyamaLayout}
 import io.constellation.lang.ast.{
   Annotation,
   CompileError,
@@ -35,15 +24,28 @@ import io.constellation.lang.compiler.{
   SuggestionContext,
   Suggestions
 }
-import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.lang.parser.ConstellationParser
+import io.constellation.lang.semantic.FunctionRegistry
+import io.constellation.lang.viz.{DagVizCompiler, LayoutConfig, SugiyamaLayout}
+import io.constellation.lang.{CachingLangCompiler, LangCompiler, ast}
 import io.constellation.lsp.protocol.JsonRpc.*
-import io.constellation.lsp.protocol.LspTypes.*
 import io.constellation.lsp.protocol.LspMessages.*
+import io.constellation.lsp.protocol.LspTypes.*
+import io.constellation.{
+  CValue,
+  Constellation,
+  ExecutionTrace,
+  ExecutionTracker,
+  Module,
+  NodeExecutionResult,
+  NodeStatus,
+  SteppedExecution
+}
+
+import io.circe.*
+import io.circe.syntax.*
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import scala.concurrent.duration.*
 
 /** Language server for constellation-lang with LSP support */
 class ConstellationLanguageServer(
@@ -62,7 +64,7 @@ class ConstellationLanguageServer(
   // Access is synchronized via completionTrieLock to prevent data races from concurrent requests.
   private var moduleCompletionTrie: CompletionTrie  = CompletionTrie.empty
   private var lastModuleNames: Set[String]          = Set.empty
-  private val completionTrieLock: AnyRef             = new Object()
+  private val completionTrieLock: AnyRef            = new Object()
   private val keywordCompletionTrie: CompletionTrie = buildKeywordTrie()
 
   // Semantic token provider for syntax highlighting
@@ -476,7 +478,9 @@ class ConstellationLanguageServer(
       case e: Exception =>
         // Log at debug level for troubleshooting example evaluation failures.
         // Uses stderr since this is a pure method without IO context.
-        System.err.println(s"[DEBUG] evaluateExampleToJson failed: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        System.err.println(
+          s"[DEBUG] evaluateExampleToJson failed: ${e.getClass.getSimpleName}: ${e.getMessage}"
+        )
         None
     }
 
@@ -1298,7 +1302,9 @@ class ConstellationLanguageServer(
         // Use trie-based prefix lookup for O(k) instead of O(n) filtering
         // where k = prefix length and n = number of items
         val keywordMatches = keywordCompletionTrie.findByPrefix(wordAtCursor)
-        val moduleMatches  = completionTrieLock.synchronized { moduleCompletionTrie.findByPrefix(wordAtCursor) }
+        val moduleMatches = completionTrieLock.synchronized {
+          moduleCompletionTrie.findByPrefix(wordAtCursor)
+        }
         keywordMatches ++ moduleMatches
       }
 
@@ -1407,7 +1413,8 @@ class ConstellationLanguageServer(
     completionTrieLock.synchronized {
       if currentNames != lastModuleNames then {
         val moduleItems = modules.map { module =>
-          val signature = TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
+          val signature =
+            TypeFormatter.formatSignature(module.name, module.consumes, module.produces)
           val enhancedDoc = if module.consumes.nonEmpty || module.produces.nonEmpty then {
             val paramsDoc  = TypeFormatter.formatParameters(module.consumes)
             val returnsDoc = TypeFormatter.formatReturns(module.produces)

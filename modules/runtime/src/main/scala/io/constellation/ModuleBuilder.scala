@@ -1,12 +1,14 @@
 package io.constellation
 
-import cats.Eval
-import cats.effect.IO
-import io.constellation.ModuleBuilder.{SimpleIn, SimpleOut}
-import io.circe.Json
-
 import scala.concurrent.duration.FiniteDuration
 import scala.deriving.Mirror
+
+import cats.Eval
+import cats.effect.IO
+
+import io.constellation.ModuleBuilder.{SimpleIn, SimpleOut}
+
+import io.circe.Json
 
 /** ModuleBuilder - Fluent API for defining Constellation modules.
   *

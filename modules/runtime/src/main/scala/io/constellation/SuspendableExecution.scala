@@ -1,13 +1,14 @@
 package io.constellation
 
-import cats.effect.IO
-import cats.implicits.*
-import io.constellation.execution.GlobalScheduler
-import io.constellation.spi.ConstellationBackends
-
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+
+import cats.effect.IO
+import cats.implicits.*
+
+import io.constellation.execution.GlobalScheduler
+import io.constellation.spi.ConstellationBackends
 
 // Error types for resume validation
 final case class InputTypeMismatchError(name: String, expected: CType, actual: CType)

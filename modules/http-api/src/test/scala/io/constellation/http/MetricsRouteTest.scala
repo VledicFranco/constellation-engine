@@ -2,18 +2,21 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.circe.CirceEntityCodec.*
-import org.http4s.headers.Accept
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.circe.Json
 
-/** Tests for the /metrics endpoint including JSON and Prometheus content negotiation (RFC-017 Phase 3).
+import io.circe.Json
+import org.http4s.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.headers.Accept
+import org.http4s.implicits.*
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+
+/** Tests for the /metrics endpoint including JSON and Prometheus content negotiation (RFC-017 Phase
+  * 3).
   *
   * Run with: sbt "httpApi/testOnly *MetricsRouteTest"
   */
@@ -72,11 +75,11 @@ class MetricsRouteTest extends AnyFlatSpec with Matchers {
 
     val response1 = routes.orNotFound.run(request).unsafeRunSync()
     val body1     = response1.as[Json].unsafeRunSync()
-    val count1    = body1.hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+    val count1 = body1.hcursor.downField("server").downField("requests_total").as[Long].toOption.get
 
     val response2 = routes.orNotFound.run(request).unsafeRunSync()
     val body2     = response2.as[Json].unsafeRunSync()
-    val count2    = body2.hcursor.downField("server").downField("requests_total").as[Long].toOption.get
+    val count2 = body2.hcursor.downField("server").downField("requests_total").as[Long].toOption.get
 
     count2 should be > count1
   }

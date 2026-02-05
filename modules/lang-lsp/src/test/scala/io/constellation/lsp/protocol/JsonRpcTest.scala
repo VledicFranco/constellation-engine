@@ -1,10 +1,11 @@
 package io.constellation.lsp.protocol
 
+import io.constellation.lsp.protocol.JsonRpc.RequestId.*
+import io.constellation.lsp.protocol.JsonRpc.*
+
 import io.circe.Json
 import io.circe.parser.*
 import io.circe.syntax.*
-import io.constellation.lsp.protocol.JsonRpc.*
-import io.constellation.lsp.protocol.JsonRpc.RequestId.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

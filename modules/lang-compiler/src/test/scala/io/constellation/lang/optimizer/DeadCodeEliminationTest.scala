@@ -1,11 +1,12 @@
 package io.constellation.lang.optimizer
 
+import java.util.UUID
+
 import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class DeadCodeEliminationTest extends AnyFlatSpec with Matchers {
 

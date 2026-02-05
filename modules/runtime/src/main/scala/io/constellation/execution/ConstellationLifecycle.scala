@@ -1,10 +1,11 @@
 package io.constellation.execution
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
-
-import java.util.UUID
-import scala.concurrent.duration.*
 
 /** State of the Constellation lifecycle. */
 enum LifecycleState:

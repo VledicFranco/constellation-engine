@@ -1,11 +1,12 @@
 package io.constellation.http
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
+
 import org.http4s.HttpRoutes
 import org.http4s.server.middleware.CORS
 import org.typelevel.ci.CIString
-
-import scala.concurrent.duration.*
 
 /** Middleware that applies CORS headers to responses.
   *

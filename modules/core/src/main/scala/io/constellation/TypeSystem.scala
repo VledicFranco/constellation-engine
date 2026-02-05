@@ -1,9 +1,10 @@
 package io.constellation
 
+import scala.compiletime.{constValue, erasedValue, summonInline}
+import scala.deriving.Mirror
+
 import cats.effect.IO
 import cats.implicits.toTraverseOps
-import scala.deriving.Mirror
-import scala.compiletime.{constValue, erasedValue, summonInline}
 
 /** Constellation Type System
   *

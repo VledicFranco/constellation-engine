@@ -1,26 +1,28 @@
 package io.constellation.http
 
+import java.nio.file.{Files, Path, Paths}
+import java.util.UUID
+
+import scala.jdk.CollectionConverters.*
+import scala.util.Try
+
 import cats.data.EitherT
 import cats.effect.IO
 import cats.implicits.*
-import org.http4s.{HttpRoutes, Response, StaticFile, Status, Uri}
-import org.http4s.dsl.io.*
-import org.http4s.circe.CirceEntityCodec.*
-import org.http4s.headers.`Content-Type`
-import org.http4s.MediaType
-import io.circe.Json
-import io.circe.syntax.*
-import io.constellation.{CValue, Constellation}
-import io.constellation.http.DashboardModels.*
-import io.constellation.http.ApiModels.ErrorResponse
+
 import io.constellation.errors.{ApiError, ErrorHandling}
+import io.constellation.http.ApiModels.ErrorResponse
+import io.constellation.http.DashboardModels.*
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.viz.DagVizCompiler
+import io.constellation.{CValue, Constellation}
 
-import java.nio.file.{Files, Path, Paths}
-import java.util.UUID
-import scala.jdk.CollectionConverters.*
-import scala.util.Try
+import io.circe.Json
+import io.circe.syntax.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.dsl.io.*
+import org.http4s.headers.`Content-Type`
+import org.http4s.{HttpRoutes, MediaType, Response, StaticFile, Status, Uri}
 
 /** HTTP routes for the Constellation Dashboard.
   *
@@ -254,8 +256,8 @@ class DashboardRoutes(
 
   /** Recursive helper that tracks the base root for relative path computation.
     *
-    * Bounded to [[MaxRecursionDepth]] levels to prevent stack overflow from adversarial
-    * directory structures. Uses try-finally to ensure `Files.list` streams are closed.
+    * Bounded to [[MaxRecursionDepth]] levels to prevent stack overflow from adversarial directory
+    * structures. Uses try-finally to ensure `Files.list` streams are closed.
     */
   private def buildFileTreeRec(baseRoot: Path, currentDir: Path, depth: Int = 0): List[FileNode] = {
     if depth > MaxRecursionDepth then return List.empty
@@ -263,7 +265,7 @@ class DashboardRoutes(
 
     Try {
       val stream = Files.list(currentDir)
-      try {
+      try
         stream
           .iterator()
           .asScala
@@ -299,9 +301,8 @@ class DashboardRoutes(
               )
           }
           .sortBy(node => (node.fileType != FileType.Directory, node.name.toLowerCase))
-      } finally {
+      finally
         stream.close()
-      }
     }.getOrElse(List.empty)
   }
 
@@ -325,7 +326,11 @@ class DashboardRoutes(
 
     // File size defense: prevent memory exhaustion from large files
     if Files.size(fullPath) > MaxFileSize then
-      return BadRequest(DashboardError.invalidRequest(s"File exceeds maximum size of ${MaxFileSize / 1024 / 1024}MB"))
+      return BadRequest(
+        DashboardError.invalidRequest(
+          s"File exceeds maximum size of ${MaxFileSize / 1024 / 1024}MB"
+        )
+      )
 
     IO {
       val content      = Files.readString(fullPath)
@@ -483,7 +488,9 @@ class DashboardRoutes(
 
       // Optionally compile the DAG visualization
       dagVizIR = irPipeline.flatMap(ir =>
-        Try(DagVizCompiler.compile(ir, Some(compiled.pipeline.image.dagSpec.metadata.name))).toOption
+        Try(
+          DagVizCompiler.compile(ir, Some(compiled.pipeline.image.dagSpec.metadata.name))
+        ).toOption
       )
 
       // Create initial execution record if sampling
@@ -508,19 +515,23 @@ class DashboardRoutes(
       inputs <- convertInputs(req.inputs, compiled.pipeline.image.dagSpec)
 
       // Execute using the new API
-      sig <- ErrorHandling.liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
-        ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
-      }.leftSemiflatTap { error =>
-        // Record failure in execution storage so dashboard doesn't show perpetually running
-        if shouldStore then
-          storage.update(executionId) { exec =>
-            exec.copy(
-              endTime = Some(System.currentTimeMillis()),
-              status = ExecutionStatus.Failed
-            )
-          }.void
-        else IO.unit
-      }
+      sig <- ErrorHandling
+        .liftIO(constellation.run(compiled.pipeline, inputs)) { t =>
+          ApiError.ExecutionError(s"Execution failed: ${t.getMessage}")
+        }
+        .leftSemiflatTap { error =>
+          // Record failure in execution storage so dashboard doesn't show perpetually running
+          if shouldStore then
+            storage
+              .update(executionId) { exec =>
+                exec.copy(
+                  endTime = Some(System.currentTimeMillis()),
+                  status = ExecutionStatus.Failed
+                )
+              }
+              .void
+          else IO.unit
+        }
 
       // Extract outputs from DataSignature
       outputs = sig.outputs.map { case (k, v) =>

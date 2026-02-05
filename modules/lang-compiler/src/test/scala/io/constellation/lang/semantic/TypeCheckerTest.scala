@@ -3,6 +3,7 @@ package io.constellation.lang.semantic
 import io.constellation.CType
 import io.constellation.lang.ast.*
 import io.constellation.lang.parser.ConstellationParser
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -1,13 +1,14 @@
 package io.constellation
 
+import java.util.UUID
+
+import scala.concurrent.TimeoutException
+
 import cats.data.Validated.{Invalid, Valid}
 import cats.data.{Validated, ValidatedNel}
 import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
 import cats.{Eval, Monoid}
-
-import java.util.UUID
-import scala.concurrent.TimeoutException
 
 /** Stepped execution engine for debugging DAG pipelines. Allows batch-by-batch execution with state
   * inspection between steps.

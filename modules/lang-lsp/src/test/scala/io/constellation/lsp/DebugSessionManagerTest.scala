@@ -1,12 +1,14 @@
 package io.constellation.lsp
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class DebugSessionManagerTest extends AnyFlatSpec with Matchers {
 

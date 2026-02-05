@@ -1,16 +1,18 @@
 package io.constellation.execution
 
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
-import io.constellation.{CType, CValue}
-import io.constellation.RetrySupport
+
+import io.constellation.{CType, CValue, RetrySupport}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration.*
 
 // ============================================================================
 // ErrorStrategy Tests

@@ -1,10 +1,11 @@
 package io.constellation
 
+import java.util.UUID
+
+import io.circe.parser.*
+import io.circe.syntax.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.circe.syntax.*
-import io.circe.parser.*
-import java.util.UUID
 
 class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 

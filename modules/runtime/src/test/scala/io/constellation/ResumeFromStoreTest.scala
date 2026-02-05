@@ -1,12 +1,14 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.impl.{ConstellationImpl, InMemorySuspensionStore}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 /** Integration tests for the full suspend -> store -> resumeFromStore lifecycle (Phase 4). */
 class ResumeFromStoreTest extends AnyFlatSpec with Matchers {

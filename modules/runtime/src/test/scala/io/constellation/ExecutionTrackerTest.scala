@@ -2,6 +2,7 @@ package io.constellation
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.circe.Json
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

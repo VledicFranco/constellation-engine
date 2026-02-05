@@ -1,19 +1,21 @@
 package io.constellation.http
 
-import cats.effect.{IO, Ref}
+import java.nio.file.Path
+
 import cats.effect.unsafe.implicits.global
-import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.circe.CirceEntityCodec.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import cats.effect.{IO, Ref}
+
+import io.constellation.http.ApiModels.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.http.ApiModels.*
-import io.circe.Json
 
-import java.nio.file.Path
+import io.circe.Json
+import org.http4s.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.implicits.*
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
 
@@ -27,7 +29,8 @@ class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
       |out x""".stripMargin
 
   /** Create routes with versioning and canary routing enabled. */
-  private def routesWithCanary(): (HttpRoutes[IO], PipelineVersionStore, CanaryRouter, ConstellationImpl) = {
+  private def routesWithCanary()
+      : (HttpRoutes[IO], PipelineVersionStore, CanaryRouter, ConstellationImpl) = {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     val compiler      = LangCompiler.empty
     val registry      = FunctionRegistry.empty
@@ -217,10 +220,12 @@ class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
       .withEntity(
         ReloadRequest(
           source = Some(sourceV2),
-          canary = Some(CanaryConfigRequest(
-            initialWeight = Some(0.1),
-            promotionSteps = Some(List(0.25, 0.50, 1.0))
-          ))
+          canary = Some(
+            CanaryConfigRequest(
+              initialWeight = Some(0.1),
+              promotionSteps = Some(List(0.25, 0.50, 1.0))
+            )
+          )
         )
       )
     routes.orNotFound.run(reloadReq).unsafeRunSync()
@@ -362,19 +367,21 @@ class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
       .withEntity(
         ReloadRequest(
           source = Some(sourceV2),
-          canary = Some(CanaryConfigRequest(
-            initialWeight = Some(1.0), // all traffic to new version
-            promotionSteps = Some(List(1.0)),
-            observationWindow = Some("0s"),
-            minRequests = Some(1),
-            autoPromote = Some(true)
-          ))
+          canary = Some(
+            CanaryConfigRequest(
+              initialWeight = Some(1.0), // all traffic to new version
+              promotionSteps = Some(List(1.0)),
+              observationWindow = Some("0s"),
+              minRequests = Some(1),
+              autoPromote = Some(true)
+            )
+          )
         )
       )
     val reloadResp = routes.orNotFound.run(reloadReq).unsafeRunSync()
     reloadResp.status shouldBe Status.Ok
     val reloadBody = reloadResp.as[ReloadResponse].unsafeRunSync()
-    val v2Hash = reloadBody.newHash
+    val v2Hash     = reloadBody.newHash
 
     // Verify alias still points to old version (canary hasn't completed yet)
     val aliasBefore = constellation.PipelineStore.resolve("scoring").unsafeRunSync()
@@ -393,7 +400,7 @@ class CanaryIntegrationTest extends AnyFlatSpec with Matchers {
   // --- Success detection (G-2 regression test) ---
 
   "Canary success detection" should "correctly count execution results as success or failure" in {
-    val cr = CanaryRouter.init.unsafeRunSync()
+    val cr         = CanaryRouter.init.unsafeRunSync()
     val oldVersion = PipelineVersion(1, "hash-old", java.time.Instant.now())
     val newVersion = PipelineVersion(2, "hash-new", java.time.Instant.now())
     val config = CanaryConfig(

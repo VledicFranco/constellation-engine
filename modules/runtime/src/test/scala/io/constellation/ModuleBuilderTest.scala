@@ -1,12 +1,13 @@
 package io.constellation
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.circe.Json
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.concurrent.duration.*
 
 class ModuleBuilderTest extends AnyFlatSpec with Matchers {
 

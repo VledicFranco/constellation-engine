@@ -1,7 +1,8 @@
 package io.constellation.examples.app.modules
 
-import io.constellation.*
 import cats.effect.IO
+
+import io.constellation.*
 
 /** Custom data processing modules for the example application
   *

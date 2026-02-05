@@ -1,8 +1,8 @@
 package io.constellation
 
-import cats.effect.IO
-
 import java.time.Instant
+
+import cats.effect.IO
 
 /** Opaque handle to a stored suspended execution. */
 final case class SuspensionHandle(id: String)

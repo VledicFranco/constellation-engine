@@ -1,11 +1,13 @@
 package io.constellation.http
 
+import java.time.Instant
+
+import scala.concurrent.duration.*
+
 import cats.effect.unsafe.implicits.global
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.time.Instant
-import scala.concurrent.duration.*
 
 class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
@@ -26,7 +28,8 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
   "CanaryRouter.startCanary" should "create canary with initial weight" in {
     val router = freshRouter
-    val result = router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
+    val result =
+      router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
 
     result.isRight shouldBe true
     val state = result.toOption.get
@@ -42,15 +45,22 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
     val router = freshRouter
     router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
 
-    val result = router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
+    val result =
+      router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
     result.isLeft shouldBe true
     result.left.toOption.get should include("already active")
   }
 
   it should "allow canary for different pipelines" in {
     val router = freshRouter
-    router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync().isRight shouldBe true
-    router.startCanary("text", oldVersion, newVersion, defaultConfig).unsafeRunSync().isRight shouldBe true
+    router
+      .startCanary("scoring", oldVersion, newVersion, defaultConfig)
+      .unsafeRunSync()
+      .isRight shouldBe true
+    router
+      .startCanary("text", oldVersion, newVersion, defaultConfig)
+      .unsafeRunSync()
+      .isRight shouldBe true
   }
 
   it should "allow new canary after previous one was rolled back" in {
@@ -58,7 +68,8 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
     router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
     router.rollback("scoring").unsafeRunSync()
 
-    val result = router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
+    val result =
+      router.startCanary("scoring", oldVersion, newVersion, defaultConfig).unsafeRunSync()
     result.isRight shouldBe true
   }
 
@@ -89,7 +100,8 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
   it should "return None after canary completed" in {
     val router = freshRouter
-    val config = defaultConfig.copy(promotionSteps = List(1.0), minRequests = 1, observationWindow = 0.seconds)
+    val config =
+      defaultConfig.copy(promotionSteps = List(1.0), minRequests = 1, observationWindow = 0.seconds)
     router.startCanary("scoring", oldVersion, newVersion, config).unsafeRunSync()
 
     // Record enough successful requests to trigger promotion through all steps
@@ -132,7 +144,9 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
     // Record failures exceeding threshold
     router.recordResult("scoring", newVersion.structuralHash, success = false, 10.0).unsafeRunSync()
-    val result = router.recordResult("scoring", newVersion.structuralHash, success = false, 10.0).unsafeRunSync()
+    val result = router
+      .recordResult("scoring", newVersion.structuralHash, success = false, 10.0)
+      .unsafeRunSync()
 
     result.get.status shouldBe CanaryStatus.RolledBack
   }
@@ -149,7 +163,9 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
     // Record enough successes
     router.recordResult("scoring", newVersion.structuralHash, success = true, 10.0).unsafeRunSync()
-    val result = router.recordResult("scoring", newVersion.structuralHash, success = true, 10.0).unsafeRunSync()
+    val result = router
+      .recordResult("scoring", newVersion.structuralHash, success = true, 10.0)
+      .unsafeRunSync()
 
     // Should advance to step 1 (weight 0.5 -> next step)
     result.get.currentStep shouldBe 1
@@ -220,7 +236,9 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
     )
     router.startCanary("scoring", oldVersion, newVersion, config).unsafeRunSync()
 
-    val result = router.recordResult("scoring", newVersion.structuralHash, success = true, 10.0).unsafeRunSync()
+    val result = router
+      .recordResult("scoring", newVersion.structuralHash, success = true, 10.0)
+      .unsafeRunSync()
     result.get.status shouldBe CanaryStatus.Complete
     result.get.currentWeight shouldBe 1.0
   }
@@ -237,7 +255,9 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
     // Record high latency
     router.recordResult("scoring", newVersion.structuralHash, success = true, 100.0).unsafeRunSync()
-    val result = router.recordResult("scoring", newVersion.structuralHash, success = true, 100.0).unsafeRunSync()
+    val result = router
+      .recordResult("scoring", newVersion.structuralHash, success = true, 100.0)
+      .unsafeRunSync()
 
     result.get.status shouldBe CanaryStatus.RolledBack
   }
@@ -328,7 +348,7 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
   }
 
   "Multiple pipelines" should "have independent canaries" in {
-    val router = freshRouter
+    val router   = freshRouter
     val otherOld = PipelineVersion(1, "hash-other-old", Instant.now())
     val otherNew = PipelineVersion(2, "hash-other-new", Instant.now())
 
@@ -351,7 +371,7 @@ class CanaryRouterTest extends AnyFlatSpec with Matchers {
 
   it should "calculate p99 latency correctly" in {
     val latencies = (1 to 100).map(_.toDouble).toVector
-    val vm = VersionMetrics(requests = 100, latencies = latencies)
+    val vm        = VersionMetrics(requests = 100, latencies = latencies)
     // ceil(100 * 0.99) - 1 = 98 → value at index 98 is 99.0
     vm.p99LatencyMs shouldBe 99.0 +- 0.1
   }

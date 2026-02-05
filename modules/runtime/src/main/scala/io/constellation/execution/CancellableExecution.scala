@@ -1,11 +1,13 @@
 package io.constellation.execution
 
+import java.util.UUID
+
+import scala.concurrent.duration.FiniteDuration
+
 import cats.effect.{Deferred, Fiber, IO, Ref}
 import cats.implicits.*
-import io.constellation.Runtime
 
-import java.util.UUID
-import scala.concurrent.duration.FiniteDuration
+import io.constellation.Runtime
 
 /** Status of a cancellable DAG execution. */
 enum ExecutionStatus:

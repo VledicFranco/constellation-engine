@@ -1,14 +1,17 @@
 package io.constellation.cache.memcached
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import io.constellation.cache.{CacheSerde, CacheStats, DistributedCacheBackend}
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.*
+
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+
+import io.constellation.cache.{CacheSerde, CacheStats, DistributedCacheBackend}
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 /** Unit tests for MemcachedCacheBackend using a mock client.
   *
@@ -76,7 +79,11 @@ class MemcachedCacheBackendTest extends AnyFlatSpec with Matchers {
       }
     }
 
-    override protected def setBytes(key: String, bytes: Array[Byte], ttl: FiniteDuration): IO[Unit] = IO {
+    override protected def setBytes(
+        key: String,
+        bytes: Array[Byte],
+        ttl: FiniteDuration
+    ): IO[Unit] = IO {
       val prefixed = prefixKey(key)
       val now      = System.currentTimeMillis()
       storage.put(prefixed, (bytes, now, now + ttl.toMillis))
@@ -143,7 +150,7 @@ class MemcachedCacheBackendTest extends AnyFlatSpec with Matchers {
 
     backend.set("k1", "v1", 1.minute).unsafeRunSync()
     backend.get[String]("k1").unsafeRunSync()      // hit
-    backend.get[String]("missing").unsafeRunSync()  // miss
+    backend.get[String]("missing").unsafeRunSync() // miss
 
     val stats = backend.stats.unsafeRunSync()
     stats.hits shouldBe 1

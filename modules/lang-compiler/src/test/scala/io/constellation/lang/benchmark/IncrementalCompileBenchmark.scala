@@ -1,11 +1,13 @@
 package io.constellation.lang.benchmark
 
+import scala.collection.mutable.ListBuffer
+
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.lang.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable.ListBuffer
 
 /** Benchmarks for incremental compilation performance
   *

@@ -1,15 +1,17 @@
 package io.constellation
 
+import java.time.Instant
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
+
 import io.constellation.RetrySupport
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.time.Instant
-import java.util.UUID
 
 /** Tests for SuspendableExecution concurrent resume safety.
   *

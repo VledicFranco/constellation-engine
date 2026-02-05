@@ -1,9 +1,9 @@
 package io.constellation.http
 
+import java.time.Instant
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-
-import java.time.Instant
 
 /** A version entry for a named pipeline. */
 case class PipelineVersion(
@@ -33,7 +33,11 @@ trait PipelineVersionStore {
     * @return
     *   The newly created version entry
     */
-  def recordVersion(name: String, structuralHash: String, source: Option[String]): IO[PipelineVersion]
+  def recordVersion(
+      name: String,
+      structuralHash: String,
+      source: Option[String]
+  ): IO[PipelineVersion]
 
   /** List all versions for a named pipeline, newest first. */
   def listVersions(name: String): IO[List[PipelineVersion]]
@@ -80,10 +84,10 @@ object PipelineVersionStore {
         for {
           now <- IO.realTimeInstant
           pv <- versionsRef.modify { versions =>
-            val existing  = versions.getOrElse(name, Nil)
-            val nextVer   = existing.headOption.map(_.version + 1).getOrElse(1)
-            val newEntry  = PipelineVersion(nextVer, structuralHash, now, source)
-            val updated   = newEntry :: existing
+            val existing = versions.getOrElse(name, Nil)
+            val nextVer  = existing.headOption.map(_.version + 1).getOrElse(1)
+            val newEntry = PipelineVersion(nextVer, structuralHash, now, source)
+            val updated  = newEntry :: existing
             (versions.updated(name, updated), newEntry)
           }
           _ <- activeRef.update(_.updated(name, pv.version))
@@ -98,12 +102,12 @@ object PipelineVersionStore {
             val activeVer = activeMap.get(name)
             versionsRef.update { versions =>
               versions.get(name) match {
-                case None => versions
+                case None                                         => versions
                 case Some(versionList) if versionList.size <= max => versions
-                case Some(versionList) =>
+                case Some(versionList)                            =>
                   // Keep the newest `max` versions, but always retain the active version
                   val (keep, candidates) = versionList.splitAt(max)
-                  val mustKeep = candidates.filter(v => activeVer.contains(v.version))
+                  val mustKeep           = candidates.filter(v => activeVer.contains(v.version))
                   versions.updated(name, keep ++ mustKeep)
               }
             }

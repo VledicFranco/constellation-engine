@@ -1,18 +1,19 @@
 package io.constellation.execution
 
-import cats.effect.{Deferred, IO}
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Deferred, IO}
 import cats.implicits.*
-import io.constellation.RetrySupport
+
+import io.constellation.spi.ConstellationBackends
+import io.constellation.{RetrySupport, *}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import scala.concurrent.duration.*
-import java.util.UUID
-
-import io.constellation.*
-import io.constellation.spi.ConstellationBackends
 
 class ConstellationLifecycleTest extends AnyFlatSpec with Matchers with RetrySupport {
 

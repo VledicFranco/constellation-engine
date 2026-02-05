@@ -1,14 +1,16 @@
 package io.constellation.execution
 
-import cats.effect.{Deferred, IO, Ref, Resource}
-import cats.effect.std.{Queue, Semaphore}
-import cats.implicits.*
-import org.typelevel.log4cats.Logger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.immutable.TreeSet
 import scala.concurrent.duration.*
+
+import cats.effect.std.{Queue, Semaphore}
+import cats.effect.{Deferred, IO, Ref, Resource}
+import cats.implicits.*
+
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Exception thrown when the scheduler queue is full and cannot accept new tasks. */
 class QueueFullException(val currentSize: Int, val maxSize: Int)
@@ -315,8 +317,8 @@ private[execution] class BoundedGlobalScheduler private (
 
   /** Shutdown the scheduler gracefully.
     *
-    * Sets the shuttingDown flag (preventing new submissions), cancels the aging fiber, then
-    * drains the pending queue by completing all outstanding gates so no waiting fibers deadlock.
+    * Sets the shuttingDown flag (preventing new submissions), cancels the aging fiber, then drains
+    * the pending queue by completing all outstanding gates so no waiting fibers deadlock.
     */
   def shutdown: IO[Unit] =
     for {

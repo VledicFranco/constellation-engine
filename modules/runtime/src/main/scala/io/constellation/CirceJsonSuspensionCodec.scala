@@ -1,10 +1,10 @@
 package io.constellation
 
-import io.circe.*
-import io.circe.syntax.*
-import io.circe.parser.*
-
 import java.util.UUID
+
+import io.circe.*
+import io.circe.parser.*
+import io.circe.syntax.*
 
 /** Circe JSON implementation of [[SuspensionCodec]].
   *

@@ -1,6 +1,7 @@
 package io.constellation.stdlib.categories
 
 import cats.effect.IO
+
 import io.constellation.*
 import io.constellation.lang.semantic.*
 
@@ -28,7 +29,7 @@ trait ListFunctions {
     .implementation[ListIntIn, ListIntOut] { in =>
       in.list.headOption match {
         case Some(v) => IO.pure(ListIntOut(v))
-        case None    => IO.raiseError(new NoSuchElementException("stdlib.list-first: list is empty"))
+        case None => IO.raiseError(new NoSuchElementException("stdlib.list-first: list is empty"))
       }
     }
     .build

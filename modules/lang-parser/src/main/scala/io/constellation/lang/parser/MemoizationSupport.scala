@@ -1,8 +1,8 @@
 package io.constellation.lang.parser
 
-import cats.parse.{Parser as P, Parser0}
-
 import scala.collection.mutable
+
+import cats.parse.{Parser as P, Parser0}
 
 /** Memoization support for the Constellation parser.
   *

@@ -1,12 +1,14 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.impl.ModuleRegistryImpl
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 

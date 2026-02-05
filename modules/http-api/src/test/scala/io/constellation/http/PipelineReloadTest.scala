@@ -1,19 +1,21 @@
 package io.constellation.http
 
-import cats.effect.{IO, Ref}
+import java.nio.file.{Files, Path}
+
 import cats.effect.unsafe.implicits.global
-import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.circe.CirceEntityCodec.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import cats.effect.{IO, Ref}
+
+import io.constellation.http.ApiModels.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.http.ApiModels.*
-import io.circe.Json
 
-import java.nio.file.{Files, Path}
+import io.circe.Json
+import org.http4s.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.implicits.*
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class PipelineReloadTest extends AnyFlatSpec with Matchers {
 

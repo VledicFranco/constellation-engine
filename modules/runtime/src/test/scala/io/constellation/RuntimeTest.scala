@@ -1,14 +1,16 @@
 package io.constellation
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.Eval
-import cats.effect.{Deferred, IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
-import scala.concurrent.duration.*
 
 class RuntimeTest extends AnyFlatSpec with Matchers {
 

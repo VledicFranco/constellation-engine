@@ -1,19 +1,20 @@
 package io.constellation.execution
 
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import cats.implicits.*
-import io.constellation.RetrySupport
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.tagobjects.Retryable
-
-import scala.concurrent.duration.*
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 
-import io.constellation.*
+import scala.concurrent.duration.*
+
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+import cats.implicits.*
+
 import io.constellation.spi.{ConstellationBackends, ExecutionListener}
+import io.constellation.{RetrySupport, *}
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.tagobjects.Retryable
 
 class CancellableExecutionTest extends AnyFlatSpec with Matchers with RetrySupport {
 

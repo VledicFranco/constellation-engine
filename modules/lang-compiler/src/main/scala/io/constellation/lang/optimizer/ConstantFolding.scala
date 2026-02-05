@@ -1,10 +1,11 @@
 package io.constellation.lang.optimizer
 
+import java.util.UUID
+
+import scala.collection.mutable
+
 import io.constellation.lang.compiler.{IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
-
-import java.util.UUID
-import scala.collection.mutable
 
 /** Constant Folding optimization pass.
   *

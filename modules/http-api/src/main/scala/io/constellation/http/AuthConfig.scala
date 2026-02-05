@@ -1,8 +1,9 @@
 package io.constellation.http
 
-import org.slf4j.LoggerFactory
 import java.security.MessageDigest
 import java.util.Arrays
+
+import org.slf4j.LoggerFactory
 
 /** API role for authorization.
   *

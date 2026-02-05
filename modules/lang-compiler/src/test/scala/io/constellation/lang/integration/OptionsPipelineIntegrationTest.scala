@@ -4,6 +4,7 @@ import io.constellation.ModuleCallOptions
 import io.constellation.lang.*
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

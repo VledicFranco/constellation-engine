@@ -2,16 +2,18 @@ package io.constellation.lsp
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.circe.Json
-import io.circe.syntax.*
+
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.{FunctionSignature, SemanticType}
-import io.constellation.lsp.protocol.JsonRpc.*
 import io.constellation.lsp.protocol.JsonRpc.RequestId.*
+import io.constellation.lsp.protocol.JsonRpc.*
 import io.constellation.lsp.protocol.LspMessages.*
 import io.constellation.lsp.protocol.LspTypes.*
+
+import io.circe.Json
+import io.circe.syntax.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

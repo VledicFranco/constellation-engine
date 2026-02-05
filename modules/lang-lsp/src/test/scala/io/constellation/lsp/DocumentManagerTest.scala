@@ -3,7 +3,9 @@ package io.constellation.lsp
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+
 import io.constellation.lsp.protocol.LspTypes.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

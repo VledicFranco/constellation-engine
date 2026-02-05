@@ -1,7 +1,8 @@
 package io.constellation.lsp
 
-import io.constellation.lsp.protocol.LspTypes.CompletionItem
 import scala.collection.mutable
+
+import io.constellation.lsp.protocol.LspTypes.CompletionItem
 
 /** A trie (prefix tree) for efficient completion lookups.
   *

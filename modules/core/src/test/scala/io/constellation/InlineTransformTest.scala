@@ -1,6 +1,7 @@
 package io.constellation
 
 import io.constellation.InlineTransform.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

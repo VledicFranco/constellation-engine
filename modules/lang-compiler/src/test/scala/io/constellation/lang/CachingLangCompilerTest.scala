@@ -1,15 +1,17 @@
 package io.constellation.lang
 
+import java.time.Instant
+import java.util.UUID
+
 import cats.effect.IO
+
 import io.constellation.*
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.lang.semantic.FunctionRegistry
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.time.Instant
-import java.util.UUID
 
 class CachingLangCompilerTest extends AnyFlatSpec with Matchers {
 

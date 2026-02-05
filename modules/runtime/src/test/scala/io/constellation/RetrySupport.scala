@@ -1,7 +1,7 @@
 package io.constellation
 
-import org.scalatest.{Outcome, Retries}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.{Outcome, Retries}
 
 /** Mixin for AnyFlatSpec test classes that contain timing-sensitive tests.
   *

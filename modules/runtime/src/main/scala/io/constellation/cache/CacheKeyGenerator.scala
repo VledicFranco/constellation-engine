@@ -1,9 +1,9 @@
 package io.constellation.cache
 
-import io.constellation.CValue
-
 import java.security.MessageDigest
 import java.util.Base64
+
+import io.constellation.CValue
 
 /** Generates deterministic cache keys from module names and inputs.
   *

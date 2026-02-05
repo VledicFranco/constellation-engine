@@ -4,8 +4,8 @@ import java.util.UUID
 
 /** A pipeline that is ready to execute.
   *
-  * Combines an immutable [[PipelineImage]] with the runtime module instances (synthetic modules like
-  * branch modules) needed for execution.
+  * Combines an immutable [[PipelineImage]] with the runtime module instances (synthetic modules
+  * like branch modules) needed for execution.
   *
   * @param image
   *   The immutable pipeline snapshot

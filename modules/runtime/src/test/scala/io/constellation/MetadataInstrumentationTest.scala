@@ -1,14 +1,16 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.Eval
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.execution.GlobalScheduler
 import io.constellation.spi.ConstellationBackends
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 /** Integration tests for metadata instrumentation (Phase 3).
   *

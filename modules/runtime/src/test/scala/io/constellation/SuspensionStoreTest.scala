@@ -1,13 +1,15 @@
 package io.constellation
 
+import java.util.UUID
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits.*
+
 import io.constellation.impl.InMemorySuspensionStore
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class SuspensionStoreTest extends AnyFlatSpec with Matchers {
 

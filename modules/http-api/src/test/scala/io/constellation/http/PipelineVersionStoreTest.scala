@@ -1,6 +1,7 @@
 package io.constellation.http
 
 import cats.effect.unsafe.implicits.global
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -11,7 +12,7 @@ class PipelineVersionStoreTest extends AnyFlatSpec with Matchers {
 
   "PipelineVersionStore" should "create v1 for a new pipeline" in {
     val store = freshStore
-    val pv = store.recordVersion("scoring", "hash-aaa", Some("in x: Int\nout x")).unsafeRunSync()
+    val pv    = store.recordVersion("scoring", "hash-aaa", Some("in x: Int\nout x")).unsafeRunSync()
 
     pv.version shouldBe 1
     pv.structuralHash shouldBe "hash-aaa"
@@ -20,9 +21,9 @@ class PipelineVersionStoreTest extends AnyFlatSpec with Matchers {
 
   it should "auto-increment version numbers" in {
     val store = freshStore
-    val v1 = store.recordVersion("scoring", "hash-aaa", None).unsafeRunSync()
-    val v2 = store.recordVersion("scoring", "hash-bbb", None).unsafeRunSync()
-    val v3 = store.recordVersion("scoring", "hash-ccc", None).unsafeRunSync()
+    val v1    = store.recordVersion("scoring", "hash-aaa", None).unsafeRunSync()
+    val v2    = store.recordVersion("scoring", "hash-bbb", None).unsafeRunSync()
+    val v3    = store.recordVersion("scoring", "hash-ccc", None).unsafeRunSync()
 
     v1.version shouldBe 1
     v2.version shouldBe 2

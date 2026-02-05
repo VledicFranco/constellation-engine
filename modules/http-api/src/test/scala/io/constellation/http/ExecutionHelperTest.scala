@@ -1,14 +1,16 @@
 package io.constellation.http
 
+import java.util.UUID
+
 import cats.Eval
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.circe.Json
+
 import io.constellation.*
+
+import io.circe.Json
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class ExecutionHelperTest extends AnyFlatSpec with Matchers {
 

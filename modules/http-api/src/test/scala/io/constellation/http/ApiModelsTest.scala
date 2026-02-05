@@ -1,10 +1,11 @@
 package io.constellation.http
 
-import io.circe.{parser, Json}
-import io.circe.syntax.*
 import io.constellation.ComponentMetadata
 import io.constellation.http.ApiModels.*
 import io.constellation.http.ApiModels.given
+
+import io.circe.syntax.*
+import io.circe.{Json, parser}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

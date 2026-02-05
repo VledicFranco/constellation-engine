@@ -4,6 +4,7 @@ import io.constellation.lang.*
 import io.constellation.lang.compiler.*
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.TypeChecker
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

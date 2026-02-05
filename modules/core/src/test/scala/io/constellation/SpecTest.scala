@@ -1,9 +1,9 @@
 package io.constellation
 
+import java.util.UUID
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class SpecTest extends AnyFlatSpec with Matchers {
 

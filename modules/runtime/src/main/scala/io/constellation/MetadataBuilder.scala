@@ -1,10 +1,11 @@
 package io.constellation
 
-import cats.Eval
-
 import java.time.{Duration, Instant}
 import java.util.UUID
+
 import scala.concurrent.duration.FiniteDuration
+
+import cats.Eval
 
 /** Builds [[SignatureMetadata]] from execution state, controlled by [[ExecutionOptions]] flags.
   *

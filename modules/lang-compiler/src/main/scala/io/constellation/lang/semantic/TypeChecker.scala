@@ -2,10 +2,8 @@ package io.constellation.lang.semantic
 
 import cats.data.{Validated, ValidatedNel}
 import cats.syntax.all.*
-import io.constellation.lang.ast.*
-import io.constellation.lang.ast.CompareOp
-import io.constellation.lang.ast.ArithOp
-import io.constellation.lang.ast.BoolOp
+
+import io.constellation.lang.ast.{ArithOp, BoolOp, CompareOp, *}
 
 /** Type environment for type checking */
 final case class TypeEnvironment(

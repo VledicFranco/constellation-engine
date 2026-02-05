@@ -1,8 +1,9 @@
 package io.constellation.lsp
 
 import cats.effect.{IO, Ref}
-import io.constellation.lsp.protocol.LspTypes.*
+
 import io.constellation.lang.ast.SourceFile
+import io.constellation.lsp.protocol.LspTypes.*
 
 /** Manages open text documents and their state */
 class DocumentManager private (

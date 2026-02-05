@@ -1,21 +1,24 @@
 package io.constellation.http
 
-import cats.effect.{IO, Ref}
-import cats.effect.std.Queue
-import cats.implicits.*
-import fs2.{Pipe, Stream}
 import scala.concurrent.duration.*
-import org.http4s.HttpRoutes
-import org.http4s.dsl.io.*
-import org.http4s.server.websocket.WebSocketBuilder2
-import org.http4s.websocket.WebSocketFrame
-import io.circe.parser.*
-import io.circe.syntax.*
+
+import cats.effect.std.Queue
+import cats.effect.{IO, Ref}
+import cats.implicits.*
+
 import io.constellation.Constellation
 import io.constellation.lang.LangCompiler
 import io.constellation.lsp.ConstellationLanguageServer
 import io.constellation.lsp.protocol.JsonRpc.*
 import io.constellation.lsp.protocol.LspMessages.*
+
+import fs2.{Pipe, Stream}
+import io.circe.parser.*
+import io.circe.syntax.*
+import org.http4s.HttpRoutes
+import org.http4s.dsl.io.*
+import org.http4s.server.websocket.WebSocketBuilder2
+import org.http4s.websocket.WebSocketFrame
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 

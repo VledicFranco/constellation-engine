@@ -1,9 +1,10 @@
 package io.constellation.http.examples
 
 import cats.effect.{IO, IOApp}
+
+import io.constellation.http.ConstellationServer
 import io.constellation.impl.ConstellationImpl
 import io.constellation.stdlib.StdLib
-import io.constellation.http.ConstellationServer
 
 /** Demo HTTP server with standard library functions pre-loaded
   *

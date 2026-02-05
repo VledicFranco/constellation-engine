@@ -1,10 +1,11 @@
 package io.constellation.execution
 
-import cats.effect.{IO, Ref}
-import cats.effect.std.Semaphore
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.*
+
+import cats.effect.std.Semaphore
+import cats.effect.{IO, Ref}
 
 /** Concurrency limiter using a semaphore.
   *

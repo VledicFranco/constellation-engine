@@ -1,14 +1,16 @@
 package io.constellation.spi
 
-import cats.effect.{IO, Ref}
-import cats.effect.unsafe.implicits.global
-import cats.implicits.*
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import java.util.UUID
+
+import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Ref}
+import cats.implicits.*
+
 import io.constellation.*
 import io.constellation.execution.GlobalScheduler
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class BackendsIntegrationTest extends AnyFlatSpec with Matchers {
 

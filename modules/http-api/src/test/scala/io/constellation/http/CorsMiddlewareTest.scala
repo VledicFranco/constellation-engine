@@ -2,13 +2,14 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
+import io.circe.Json
 import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.dsl.io.*
 import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.dsl.io.*
+import org.http4s.implicits.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import io.circe.Json
 import org.typelevel.ci.CIString
 
 class CorsMiddlewareTest extends AnyFlatSpec with Matchers {

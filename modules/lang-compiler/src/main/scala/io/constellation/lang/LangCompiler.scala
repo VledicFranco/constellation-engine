@@ -1,6 +1,10 @@
 package io.constellation.lang
 
+import java.time.Instant
+import java.util.UUID
+
 import cats.effect.IO
+
 import io.constellation.*
 import io.constellation.cache.CacheBackend
 import io.constellation.lang.ast.CompileError
@@ -8,9 +12,6 @@ import io.constellation.lang.compiler.*
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.*
-
-import java.time.Instant
-import java.util.UUID
 
 /** Main interface for compiling constellation-lang programs */
 trait LangCompiler {

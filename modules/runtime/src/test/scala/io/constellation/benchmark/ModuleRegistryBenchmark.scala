@@ -1,12 +1,14 @@
 package io.constellation.benchmark
 
+import scala.collection.mutable
+
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.*
 import io.constellation.impl.ModuleRegistryImpl
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable
 
 /** Benchmarks for ModuleRegistry lookup performance.
   *

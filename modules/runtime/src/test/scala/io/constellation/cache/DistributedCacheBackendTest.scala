@@ -1,15 +1,18 @@
 package io.constellation.cache
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import io.constellation.RetrySupport
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.duration.*
 
 /** Tests for DistributedCacheBackend using a fake in-memory byte store.
   *
@@ -22,9 +25,9 @@ class DistributedCacheBackendTest extends AnyFlatSpec with Matchers with RetrySu
   class FakeDistributedBackend(serde: CacheSerde[Any] = CacheSerde.anySerde)
       extends DistributedCacheBackend(serde) {
 
-    val storage    = new ConcurrentHashMap[String, (Array[Byte], Long, Long)]()
-    val hitCount   = new AtomicLong(0)
-    val missCount  = new AtomicLong(0)
+    val storage   = new ConcurrentHashMap[String, (Array[Byte], Long, Long)]()
+    val hitCount  = new AtomicLong(0)
+    val missCount = new AtomicLong(0)
 
     override protected def getBytes(key: String): IO[Option[(Array[Byte], Long, Long)]] = IO {
       Option(storage.get(key)) match {
@@ -42,7 +45,11 @@ class DistributedCacheBackendTest extends AnyFlatSpec with Matchers with RetrySu
       }
     }
 
-    override protected def setBytes(key: String, bytes: Array[Byte], ttl: FiniteDuration): IO[Unit] = IO {
+    override protected def setBytes(
+        key: String,
+        bytes: Array[Byte],
+        ttl: FiniteDuration
+    ): IO[Unit] = IO {
       val now = System.currentTimeMillis()
       storage.put(key, (bytes, now, now + ttl.toMillis))
       ()
@@ -119,7 +126,7 @@ class DistributedCacheBackendTest extends AnyFlatSpec with Matchers with RetrySu
     val backend = new FakeDistributedBackend()
 
     backend.set("key1", "value1", 1.minute).unsafeRunSync()
-    backend.get[String]("key1").unsafeRunSync()   // hit
+    backend.get[String]("key1").unsafeRunSync()    // hit
     backend.get[String]("missing").unsafeRunSync() // miss
 
     val stats = backend.stats.unsafeRunSync()
@@ -150,17 +157,21 @@ class DistributedCacheBackendTest extends AnyFlatSpec with Matchers with RetrySu
     val backend = new FakeDistributedBackend()
 
     var computeCount = 0
-    val result1 = backend.getOrCompute("key", 1.minute)(IO {
-      computeCount += 1
-      s"computed-$computeCount"
-    }).unsafeRunSync()
+    val result1 = backend
+      .getOrCompute("key", 1.minute)(IO {
+        computeCount += 1
+        s"computed-$computeCount"
+      })
+      .unsafeRunSync()
 
     result1 shouldBe "computed-1"
 
-    val result2 = backend.getOrCompute("key", 1.minute)(IO {
-      computeCount += 1
-      s"computed-$computeCount"
-    }).unsafeRunSync()
+    val result2 = backend
+      .getOrCompute("key", 1.minute)(IO {
+        computeCount += 1
+        s"computed-$computeCount"
+      })
+      .unsafeRunSync()
 
     result2 shouldBe "computed-1" // Cached
     computeCount shouldBe 1

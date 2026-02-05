@@ -1,10 +1,10 @@
 package io.constellation
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import java.time.Instant
 import java.util.UUID
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class PipelineImageTest extends AnyFlatSpec with Matchers {
 

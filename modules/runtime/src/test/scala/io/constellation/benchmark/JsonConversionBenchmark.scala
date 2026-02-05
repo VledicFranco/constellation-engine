@@ -1,12 +1,13 @@
 package io.constellation.benchmark
 
+import scala.collection.mutable
+
+import io.constellation.*
+
 import io.circe.Json
 import io.circe.syntax.*
-import io.constellation.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.collection.mutable
 
 /** Benchmarks for JSON conversion strategies.
   *

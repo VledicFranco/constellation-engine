@@ -2,13 +2,15 @@ package io.constellation.lang.property
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation.{CValue, CType}
+
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
+import io.constellation.{CType, CValue}
+
+import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.scalacheck.Gen
 
 /** Property-based tests for runtime execution determinism (RFC-017 Phase 3).
   *
@@ -139,7 +141,7 @@ class RuntimeDeterminismPropertyTest
         |out f
         |""".stripMargin
 
-    val inputs = Map("a" -> CValue.CBoolean(true), "b" -> CValue.CBoolean(false))
+    val inputs  = Map("a" -> CValue.CBoolean(true), "b" -> CValue.CBoolean(false))
     val results = compileOnceRunMany(source, inputs)
 
     results.sliding(2).foreach { pair =>
@@ -265,7 +267,7 @@ class RuntimeDeterminismPropertyTest
     val source = "in user: { name: String, age: Int }\nout user"
     val record = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
     val results = compileOnceRunMany(source, Map("user" -> record))
 

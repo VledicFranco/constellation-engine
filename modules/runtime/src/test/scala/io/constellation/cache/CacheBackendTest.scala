@@ -1,15 +1,16 @@
 package io.constellation.cache
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation.*
-import io.constellation.RetrySupport
+
+import io.constellation.{RetrySupport, *}
+
+import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.BeforeAndAfterEach
 import org.scalatest.tagobjects.Retryable
-
-import scala.concurrent.duration.*
 
 class CacheBackendTest extends AnyFlatSpec with Matchers with BeforeAndAfterEach with RetrySupport {
 

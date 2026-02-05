@@ -2,13 +2,16 @@ package io.constellation.lang.integration
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import io.constellation.{CValue, CType}
+
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
+import io.constellation.{CType, CValue}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/** End-to-end integration tests for the full pipeline: .cst source → compile → execute → verify outputs.
+/** End-to-end integration tests for the full pipeline: .cst source → compile → execute → verify
+  * outputs.
   *
   * Tests cover passthrough, type variants, boolean logic, conditionals, records, guards, coalesce,
   * multiple outputs, and error cases.
@@ -30,7 +33,9 @@ class EndToEndPipelineTest extends AnyFlatSpec with Matchers {
         compiler
           .compile(source, "e2e-test")
           .left
-          .map(errors => new RuntimeException(s"Compilation failed: ${errors.map(_.message).mkString(", ")}"))
+          .map(errors =>
+            new RuntimeException(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+          )
       )
       dataSig <- constellation.run(compiled.pipeline, inputs)
     } yield dataSig.outputs
@@ -122,10 +127,10 @@ class EndToEndPipelineTest extends AnyFlatSpec with Matchers {
   // =========================================================================
 
   it should "pass through a record (product type) input" in {
-    val source  = "in user: { name: String, age: Int }\nout user"
-    val record  = CValue.CProduct(
+    val source = "in user: { name: String, age: Int }\nout user"
+    val record = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
     val outputs = compileAndRun(source, Map("user" -> record)).unsafeRunSync()
     outputs("user") shouldBe record
@@ -195,7 +200,7 @@ class EndToEndPipelineTest extends AnyFlatSpec with Matchers {
 
   it should "pass through a List input" in {
     val source = "in items: List<Int>\nout items"
-    val list   = CValue.CList(
+    val list = CValue.CList(
       Vector(CValue.CInt(1), CValue.CInt(2), CValue.CInt(3)),
       CType.CInt
     )

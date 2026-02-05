@@ -1,13 +1,15 @@
 package io.constellation.pool
 
-import cats.Eval
-import cats.effect.{IO, Ref}
-import io.constellation.{CValue, DagSpec, Module}
-
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
+
+import cats.Eval
+import cats.effect.{IO, Ref}
+
+import io.constellation.{CValue, DagSpec, Module}
 
 /** A pool of reusable runtime state containers.
   *

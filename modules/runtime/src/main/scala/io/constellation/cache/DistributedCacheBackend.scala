@@ -1,9 +1,10 @@
 package io.constellation.cache
 
-import cats.effect.IO
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-
 import scala.concurrent.duration.FiniteDuration
+
+import cats.effect.IO
+
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Abstract base class for distributed (network-backed) cache backends.
   *

@@ -1,8 +1,10 @@
 package io.constellation
 
-import io.circe.Json
 import java.util.concurrent.atomic.AtomicReference
+
 import scala.collection.mutable
+
+import io.circe.Json
 
 /** Lazy CValue that defers JSON conversion until value is accessed. Provides significant
   * performance gains when only a subset of data is used.

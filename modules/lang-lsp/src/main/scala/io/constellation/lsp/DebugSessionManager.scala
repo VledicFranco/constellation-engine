@@ -1,11 +1,13 @@
 package io.constellation.lsp
 
+import java.util.UUID
+
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.constellation.{CValue, DagSpec, Module, SteppedExecution}
 
-import java.util.UUID
-import scala.concurrent.duration.*
+import io.constellation.{CValue, DagSpec, Module, SteppedExecution}
 
 /** Manages debug/stepping sessions for the language server. Thread-safe session storage with
   * automatic cleanup of stale sessions.

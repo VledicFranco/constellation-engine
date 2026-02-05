@@ -1,10 +1,12 @@
 package io.constellation.examples.app.modules
 
-import io.constellation.*
-import cats.effect.IO
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.concurrent.duration.*
-import java.util.concurrent.atomic.AtomicInteger
+
+import cats.effect.IO
+
+import io.constellation.*
 
 /** Resilience demonstration modules for showcasing module call options.
   *

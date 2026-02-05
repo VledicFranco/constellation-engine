@@ -1,9 +1,9 @@
 package io.constellation.lang.viz
 
+import java.util.UUID
+
 import io.constellation.lang.compiler.{HigherOrderOp, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
-
-import java.util.UUID
 
 /** Compiles an IRPipeline into a DagVizIR for visualization */
 object DagVizCompiler:

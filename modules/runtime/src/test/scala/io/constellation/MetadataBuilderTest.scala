@@ -1,13 +1,15 @@
 package io.constellation
 
-import cats.Eval
-import cats.effect.unsafe.implicits.global
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import java.time.{Duration, Instant}
 import java.util.UUID
+
 import scala.concurrent.duration.*
+
+import cats.Eval
+import cats.effect.unsafe.implicits.global
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 

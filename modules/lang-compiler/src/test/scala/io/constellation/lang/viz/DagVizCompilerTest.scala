@@ -1,11 +1,12 @@
 package io.constellation.lang.viz
 
+import java.util.UUID
+
 import io.constellation.lang.compiler.{IRModuleCallOptions, IRNode, IRPipeline}
 import io.constellation.lang.semantic.SemanticType
+
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
-
-import java.util.UUID
 
 class DagVizCompilerTest extends AnyFunSuite with Matchers {
 

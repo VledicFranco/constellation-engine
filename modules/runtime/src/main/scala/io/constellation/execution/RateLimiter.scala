@@ -1,9 +1,10 @@
 package io.constellation.execution
 
-import cats.effect.{IO, Ref}
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.*
+
+import cats.effect.{IO, Ref}
 
 /** Rate limit specification.
   *

@@ -1,12 +1,15 @@
 package io.constellation.cache.memcached
 
-import cats.effect.{IO, Resource}
-import io.constellation.cache.{CacheSerde, CacheStats, DistributedCacheBackend}
-import net.spy.memcached.{AddrUtil, ConnectionFactoryBuilder, MemcachedClient}
-
 import java.util.concurrent.atomic.AtomicLong
+
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
+
+import cats.effect.{IO, Resource}
+
+import io.constellation.cache.{CacheSerde, CacheStats, DistributedCacheBackend}
+
+import net.spy.memcached.{AddrUtil, ConnectionFactoryBuilder, MemcachedClient}
 
 /** Memcached-backed distributed cache backend.
   *
@@ -89,8 +92,8 @@ class MemcachedCacheBackend(
 
   override protected def deleteKey(key: String): IO[Boolean] =
     IO.blocking {
-      val prefixed = prefixKey(key)
-      val future   = client.delete(prefixed)
+      val prefixed        = prefixKey(key)
+      val future          = client.delete(prefixed)
       val result: Boolean = Try(future.get()).getOrElse(java.lang.Boolean.FALSE)
       result
     }

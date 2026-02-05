@@ -1,17 +1,19 @@
 package io.constellation.http
 
+import scala.concurrent.duration.*
+
 import cats.data.{Kleisli, OptionT}
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.circe.syntax.*
-import org.http4s.{HttpRoutes, Request, Response, Status}
-import org.http4s.circe.CirceEntityCodec.*
-import org.http4s.headers.`Retry-After`
+
 import io.constellation.execution.{RateLimit, TokenBucketRateLimiter}
 import io.constellation.http.ApiModels.ErrorResponse
 
+import io.circe.syntax.*
+import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.headers.`Retry-After`
+import org.http4s.{HttpRoutes, Request, Response, Status}
 import org.typelevel.ci.*
-import scala.concurrent.duration.*
 
 /** Configuration for per-IP HTTP rate limiting.
   *
@@ -160,9 +162,9 @@ object RateLimitMiddleware {
 
   /** Extract client IP from remote address.
     *
-    * Uses `remoteAddr` directly rather than trusting `X-Forwarded-For`, which can be spoofed
-    * by any client to bypass rate limiting. In production deployments behind a reverse proxy,
-    * the proxy should set a trusted header and the server should be configured accordingly.
+    * Uses `remoteAddr` directly rather than trusting `X-Forwarded-For`, which can be spoofed by any
+    * client to bypass rate limiting. In production deployments behind a reverse proxy, the proxy
+    * should set a trusted header and the server should be configured accordingly.
     */
   private[http] def extractClientIp(req: Request[IO]): String =
     req.remoteAddr

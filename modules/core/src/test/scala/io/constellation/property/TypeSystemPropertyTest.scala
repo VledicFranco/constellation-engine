@@ -1,11 +1,11 @@
 package io.constellation.property
 
+import io.constellation.property.ConstellationGenerators.*
+import io.constellation.{CType, CValue}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-
-import io.constellation.{CType, CValue}
-import io.constellation.property.ConstellationGenerators.*
 
 /** Property-based tests for the Constellation type system (RFC-013 Phase 5.2)
   *

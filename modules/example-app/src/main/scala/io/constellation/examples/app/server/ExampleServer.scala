@@ -1,17 +1,19 @@
 package io.constellation.examples.app.server
 
+import java.nio.file.Paths
+
 import cats.effect.{IO, IOApp}
 import cats.implicits.*
-import io.constellation.impl.ConstellationImpl
-import io.constellation.execution.GlobalScheduler
+
 import io.constellation.examples.app.ExampleLib
-import io.constellation.stdlib.StdLib
+import io.constellation.execution.GlobalScheduler
 import io.constellation.http.{ConstellationServer, DashboardConfig}
+import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.CachingLangCompiler
+import io.constellation.stdlib.StdLib
+
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import java.nio.file.Paths
 
 /** Example HTTP server with standard library + example app functions
   *

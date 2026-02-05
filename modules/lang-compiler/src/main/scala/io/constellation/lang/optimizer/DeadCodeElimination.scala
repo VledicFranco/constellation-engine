@@ -1,9 +1,10 @@
 package io.constellation.lang.optimizer
 
-import io.constellation.lang.compiler.{IRNode, IRPipeline}
-
 import java.util.UUID
+
 import scala.collection.mutable
+
+import io.constellation.lang.compiler.{IRNode, IRPipeline}
 
 /** Dead Code Elimination optimization pass.
   *

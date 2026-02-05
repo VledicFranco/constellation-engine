@@ -1,9 +1,11 @@
 package io.constellation
 
+import java.io.ByteArrayInputStream
+
+import cats.effect.unsafe.implicits.global
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import cats.effect.unsafe.implicits.global
-import java.io.ByteArrayInputStream
 
 /** Tests for StreamingJsonConverter security limits and DoS protection. */
 class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {

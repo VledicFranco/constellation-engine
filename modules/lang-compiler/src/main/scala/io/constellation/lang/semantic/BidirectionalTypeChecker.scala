@@ -1,10 +1,11 @@
 package io.constellation.lang.semantic
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import cats.data.{Validated, ValidatedNel}
 import cats.syntax.all.*
-import io.constellation.lang.ast.*
 
-import java.util.concurrent.atomic.AtomicInteger
+import io.constellation.lang.ast.*
 
 /** Bidirectional type checker for constellation-lang.
   *

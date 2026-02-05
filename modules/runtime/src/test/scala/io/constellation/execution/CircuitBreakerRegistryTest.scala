@@ -1,11 +1,12 @@
 package io.constellation.execution
 
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import scala.concurrent.duration.*
 
 class CircuitBreakerRegistryTest extends AnyFlatSpec with Matchers {
 

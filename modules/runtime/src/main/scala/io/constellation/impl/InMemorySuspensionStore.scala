@@ -1,11 +1,13 @@
 package io.constellation.impl
 
-import cats.effect.{IO, Ref}
-import io.constellation.*
-
 import java.time.{Duration, Instant}
 import java.util.UUID
+
 import scala.concurrent.duration.FiniteDuration
+
+import cats.effect.{IO, Ref}
+
+import io.constellation.*
 
 /** In-memory implementation of [[SuspensionStore]] backed by a concurrent `Ref`.
   *
@@ -27,7 +29,8 @@ final class InMemorySuspensionStore private (
 
   import InMemorySuspensionStore.StoredEntry
 
-  /** Evict entries older than the configured TTL (if set). Returns the number of evicted entries. */
+  /** Evict entries older than the configured TTL (if set). Returns the number of evicted entries.
+    */
   private def evictExpired(): IO[Int] = ttl match {
     case None => IO.pure(0)
     case Some(ttlDuration) =>
@@ -135,7 +138,11 @@ object InMemorySuspensionStore {
     */
   def initWithTTL(ttl: FiniteDuration): IO[SuspensionStore] =
     Ref.of[IO, Map[String, StoredEntry]](Map.empty).map { store =>
-      new InMemorySuspensionStore(store, codecOpt = None, ttl = Some(Duration.ofMillis(ttl.toMillis)))
+      new InMemorySuspensionStore(
+        store,
+        codecOpt = None,
+        ttl = Some(Duration.ofMillis(ttl.toMillis))
+      )
     }
 
   /** Create a new empty in-memory suspension store with codec validation.

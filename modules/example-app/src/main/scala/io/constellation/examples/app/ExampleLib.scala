@@ -1,12 +1,12 @@
 package io.constellation.examples.app
 
-import io.constellation.*
-import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
-import io.constellation.lang.semantic.*
-import io.constellation.stdlib.StdLib
-import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
-
 import java.util.UUID
+
+import io.constellation.*
+import io.constellation.examples.app.modules.{DataModules, ResilienceModules, TextModules}
+import io.constellation.lang.semantic.*
+import io.constellation.lang.{LangCompiler, LangCompilerBuilder}
+import io.constellation.stdlib.StdLib
 
 /** ExampleLib - Complete function library for example applications.
   *

@@ -1,8 +1,14 @@
 package io.constellation.lang.compiler
 
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
+
+import scala.concurrent.duration.*
+
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.syntax.all.*
+
 import io.constellation.CType
 import io.constellation.cache.CacheRegistry
 import io.constellation.execution.LimiterRegistry
@@ -11,13 +17,10 @@ import io.constellation.lang.ast.{
   BackoffStrategy as ASTBackoffStrategy,
   ErrorStrategy as ASTErrorStrategy
 }
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.tagobjects.Retryable
-
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
-import scala.concurrent.duration.*
 
 class ModuleOptionsExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
 

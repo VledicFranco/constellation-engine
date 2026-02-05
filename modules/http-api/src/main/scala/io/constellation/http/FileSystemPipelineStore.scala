@@ -1,16 +1,19 @@
 package io.constellation.http
 
+import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
+
+import scala.jdk.CollectionConverters.*
+
 import cats.effect.{IO, Ref}
 import cats.implicits.*
-import io.circe.{Json, parser}
-import io.circe.syntax.*
-import io.constellation.{PipelineImage, PipelineStore}
+
 import io.constellation.json.given
+import io.constellation.{PipelineImage, PipelineStore}
+
+import io.circe.syntax.*
+import io.circe.{Json, parser}
 import org.typelevel.log4cats.Logger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
-
-import java.nio.file.{Files, Path, StandardCopyOption, StandardOpenOption}
-import scala.jdk.CollectionConverters.*
 
 /** Filesystem-backed [[PipelineStore]] that wraps an existing in-memory store as a cache layer.
   *
@@ -33,7 +36,8 @@ class FileSystemPipelineStore private[http] (
     private val syntacticIndexRef: Ref[IO, Map[String, String]]
 ) extends PipelineStore {
 
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[FileSystemPipelineStore])
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromClass[IO](classOf[FileSystemPipelineStore])
 
   private[http] val imagesDir     = storeDirectory.resolve("images")
   private[http] val aliasesFile   = storeDirectory.resolve("aliases.json")
@@ -63,7 +67,11 @@ class FileSystemPipelineStore private[http] (
   def getByName(name: String): IO[Option[PipelineImage]] =
     delegate.getByName(name)
 
-  def indexSyntactic(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit] =
+  def indexSyntactic(
+      syntacticHash: String,
+      registryHash: String,
+      structuralHash: String
+  ): IO[Unit] =
     for {
       _ <- delegate.indexSyntactic(syntacticHash, registryHash, structuralHash)
       _ <- persistSyntacticEntry(syntacticHash, registryHash, structuralHash)
@@ -78,12 +86,14 @@ class FileSystemPipelineStore private[http] (
   def remove(structuralHash: String): IO[Boolean] =
     for {
       removed <- delegate.remove(structuralHash)
-      _ <- if removed then removeImageFile(structuralHash) else IO.unit
+      _       <- if removed then removeImageFile(structuralHash) else IO.unit
     } yield removed
 
   // ========== Persistence Methods ==========
 
-  /** Validate that a hash contains only safe hex characters (defense-in-depth against path traversal). */
+  /** Validate that a hash contains only safe hex characters (defense-in-depth against path
+    * traversal).
+    */
   private def validateHash(hash: String): Boolean =
     hash.nonEmpty && hash.forall(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))
 
@@ -95,7 +105,12 @@ class FileSystemPipelineStore private[http] (
   private def atomicWrite(target: Path, content: String): IO[Unit] =
     IO {
       val tmp = target.resolveSibling(target.getFileName.toString + ".tmp")
-      Files.writeString(tmp, content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+      Files.writeString(
+        tmp,
+        content,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.TRUNCATE_EXISTING
+      )
       Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
       ()
     }.handleErrorWith { e1 =>
@@ -127,9 +142,9 @@ class FileSystemPipelineStore private[http] (
 
   /** Persist the syntactic index by atomically updating the in-memory Ref and writing from it.
     *
-    * Uses a composite key "syntacticHash:registryHash" to preserve both dimensions
-    * of the deduplication index across restarts. Reads from the atomic Ref (not the file)
-    * to avoid read-modify-write races under concurrent store() calls.
+    * Uses a composite key "syntacticHash:registryHash" to preserve both dimensions of the
+    * deduplication index across restarts. Reads from the atomic Ref (not the file) to avoid
+    * read-modify-write races under concurrent store() calls.
     */
   private def persistSyntacticEntry(
       syntacticHash: String,
@@ -137,12 +152,15 @@ class FileSystemPipelineStore private[http] (
       structuralHash: String
   ): IO[Unit] = {
     val compositeKey = s"$syntacticHash:$registryHash"
-    syntacticIndexRef.updateAndGet(_ + (compositeKey -> structuralHash)).flatMap { entries =>
-      val json = Json.fromFields(entries.map { case (k, v) => k -> Json.fromString(v) }).spaces2
-      atomicWrite(syntacticFile, json)
-    }.handleErrorWith { e =>
-      logger.error(s"Failed to persist syntactic index entry: ${e.getMessage}")
-    }
+    syntacticIndexRef
+      .updateAndGet(_ + (compositeKey -> structuralHash))
+      .flatMap { entries =>
+        val json = Json.fromFields(entries.map { case (k, v) => k -> Json.fromString(v) }).spaces2
+        atomicWrite(syntacticFile, json)
+      }
+      .handleErrorWith { e =>
+        logger.error(s"Failed to persist syntactic index entry: ${e.getMessage}")
+      }
   }
 
   private def removeImageFile(structuralHash: String): IO[Unit] =
@@ -159,7 +177,8 @@ class FileSystemPipelineStore private[http] (
 
 object FileSystemPipelineStore {
 
-  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.FileSystemPipelineStore")
+  private val logger: Logger[IO] =
+    Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.FileSystemPipelineStore")
 
   /** Create a filesystem-backed pipeline store wrapping an existing in-memory store.
     *
@@ -175,11 +194,11 @@ object FileSystemPipelineStore {
     */
   def init(directory: Path, delegate: PipelineStore): IO[FileSystemPipelineStore] =
     for {
-      _                  <- IO(Files.createDirectories(directory.resolve("images")))
-      _                  <- cleanupTempFiles(directory)
-      syntacticIndexRef  <- Ref.of[IO, Map[String, String]](Map.empty)
+      _                 <- IO(Files.createDirectories(directory.resolve("images")))
+      _                 <- cleanupTempFiles(directory)
+      syntacticIndexRef <- Ref.of[IO, Map[String, String]](Map.empty)
       store = new FileSystemPipelineStore(directory, delegate, syntacticIndexRef)
-      _                  <- loadPersistedData(store)
+      _ <- loadPersistedData(store)
     } yield store
 
   /** Remove any .tmp files left behind by incomplete atomic writes from a previous crash. */
@@ -190,7 +209,10 @@ object FileSystemPipelineStore {
         directory.resolve("aliases.json.tmp"),
         directory.resolve("syntactic-index.json.tmp")
       ) ++ (if Files.exists(imagesDir) then
-              Files.list(imagesDir).iterator().asScala
+              Files
+                .list(imagesDir)
+                .iterator()
+                .asScala
                 .filter(_.toString.endsWith(".tmp"))
                 .toList
             else Nil)
@@ -212,23 +234,32 @@ object FileSystemPipelineStore {
   private def loadImages(store: FileSystemPipelineStore): IO[Int] = IO {
     val dir = store.imagesDir
     if Files.exists(dir) then {
-      Files.list(dir).iterator().asScala
+      Files
+        .list(dir)
+        .iterator()
+        .asScala
         .filter(p => p.toString.endsWith(".json"))
         .toList
     } else Nil
   }.flatMap { files =>
-    files.traverse { file =>
-      IO(Files.readString(file)).flatMap { content =>
-        parser.parse(content).flatMap(_.as[PipelineImage]) match {
-          case Right(image) =>
-            store.delegate.store(image).as(1)
-          case Left(err) =>
-            logger.warn(s"Skipping corrupted image file ${file.getFileName}: ${err.getMessage}").as(0)
-        }
-      }.handleErrorWith { e =>
-        logger.warn(s"Failed to read image file ${file.getFileName}: ${e.getMessage}").as(0)
+    files
+      .traverse { file =>
+        IO(Files.readString(file))
+          .flatMap { content =>
+            parser.parse(content).flatMap(_.as[PipelineImage]) match {
+              case Right(image) =>
+                store.delegate.store(image).as(1)
+              case Left(err) =>
+                logger
+                  .warn(s"Skipping corrupted image file ${file.getFileName}: ${err.getMessage}")
+                  .as(0)
+            }
+          }
+          .handleErrorWith { e =>
+            logger.warn(s"Failed to read image file ${file.getFileName}: ${e.getMessage}").as(0)
+          }
       }
-    }.map(_.sum)
+      .map(_.sum)
   }
 
   /** Load persisted aliases from aliases.json. */
@@ -237,50 +268,56 @@ object FileSystemPipelineStore {
     IO(Files.exists(file)).flatMap {
       case false => IO.pure(0)
       case true =>
-        IO(Files.readString(file)).flatMap { content =>
-          parser.parse(content).flatMap(_.as[Map[String, String]]) match {
-            case Right(aliases) =>
-              val aliasList: List[(String, String)] = aliases.toList
-              aliasList.traverse_ { case (name, hash) =>
-                store.delegate.alias(name, hash)
-              }.as(aliases.size)
-            case Left(err) =>
-              logger.warn(s"Skipping corrupted aliases.json: ${err.getMessage}").as(0)
+        IO(Files.readString(file))
+          .flatMap { content =>
+            parser.parse(content).flatMap(_.as[Map[String, String]]) match {
+              case Right(aliases) =>
+                val aliasList: List[(String, String)] = aliases.toList
+                aliasList
+                  .traverse_ { case (name, hash) =>
+                    store.delegate.alias(name, hash)
+                  }
+                  .as(aliases.size)
+              case Left(err) =>
+                logger.warn(s"Skipping corrupted aliases.json: ${err.getMessage}").as(0)
+            }
           }
-        }.handleErrorWith { e =>
-          logger.warn(s"Failed to read aliases.json: ${e.getMessage}").as(0)
-        }
+          .handleErrorWith { e =>
+            logger.warn(s"Failed to read aliases.json: ${e.getMessage}").as(0)
+          }
     }
   }
 
   /** Load persisted syntactic index from syntactic-index.json.
     *
-    * Supports both legacy single-key format ("syntacticHash" -> "structuralHash")
-    * and composite-key format ("syntacticHash:registryHash" -> "structuralHash").
+    * Supports both legacy single-key format ("syntacticHash" -> "structuralHash") and composite-key
+    * format ("syntacticHash:registryHash" -> "structuralHash").
     */
   private def loadSyntacticIndex(store: FileSystemPipelineStore): IO[Int] = {
     val file = store.syntacticFile
     IO(Files.exists(file)).flatMap {
       case false => IO.pure(0)
       case true =>
-        IO(Files.readString(file)).flatMap { content =>
-          parser.parse(content).flatMap(_.as[Map[String, String]]) match {
-            case Right(entries) =>
-              val entryList: List[(String, String)] = entries.toList
-              entryList.traverse_ { case (key, structuralHash) =>
-                // Parse composite key "syntacticHash:registryHash" or legacy "syntacticHash"
-                val (syntacticHash, registryHash) = key.indexOf(':') match {
-                  case -1  => (key, "")  // legacy format — no registry hash
-                  case idx => (key.substring(0, idx), key.substring(idx + 1))
-                }
-                store.delegate.indexSyntactic(syntacticHash, registryHash, structuralHash)
-              } *> store.syntacticIndexRef.set(entries) *> IO.pure(entries.size)
-            case Left(err) =>
-              logger.warn(s"Skipping corrupted syntactic-index.json: ${err.getMessage}").as(0)
+        IO(Files.readString(file))
+          .flatMap { content =>
+            parser.parse(content).flatMap(_.as[Map[String, String]]) match {
+              case Right(entries) =>
+                val entryList: List[(String, String)] = entries.toList
+                entryList.traverse_ { case (key, structuralHash) =>
+                  // Parse composite key "syntacticHash:registryHash" or legacy "syntacticHash"
+                  val (syntacticHash, registryHash) = key.indexOf(':') match {
+                    case -1  => (key, "") // legacy format — no registry hash
+                    case idx => (key.substring(0, idx), key.substring(idx + 1))
+                  }
+                  store.delegate.indexSyntactic(syntacticHash, registryHash, structuralHash)
+                } *> store.syntacticIndexRef.set(entries) *> IO.pure(entries.size)
+              case Left(err) =>
+                logger.warn(s"Skipping corrupted syntactic-index.json: ${err.getMessage}").as(0)
+            }
           }
-        }.handleErrorWith { e =>
-          logger.warn(s"Failed to read syntactic-index.json: ${e.getMessage}").as(0)
-        }
+          .handleErrorWith { e =>
+            logger.warn(s"Failed to read syntactic-index.json: ${e.getMessage}").as(0)
+          }
     }
   }
 }

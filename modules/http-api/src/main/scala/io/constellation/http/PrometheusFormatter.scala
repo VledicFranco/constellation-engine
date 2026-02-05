@@ -17,7 +17,7 @@ object PrometheusFormatter {
     *   Prometheus exposition format text
     */
   def format(metricsJson: Json): String = {
-    val sb = new StringBuilder
+    val sb     = new StringBuilder
     val cursor = metricsJson.hcursor
 
     // Server metrics
@@ -73,19 +73,25 @@ object PrometheusFormatter {
       sched.downField("enabled").as[Boolean].foreach { enabled =>
         if enabled then {
           sched.downField("activeCount").as[Int].foreach { v =>
-            sb.append("# HELP constellation_scheduler_active_count Currently active scheduled tasks.\n")
+            sb.append(
+              "# HELP constellation_scheduler_active_count Currently active scheduled tasks.\n"
+            )
             sb.append("# TYPE constellation_scheduler_active_count gauge\n")
             sb.append(s"constellation_scheduler_active_count $v\n")
           }
 
           sched.downField("queuedCount").as[Int].foreach { v =>
-            sb.append("# HELP constellation_scheduler_queued_count Tasks waiting in scheduler queue.\n")
+            sb.append(
+              "# HELP constellation_scheduler_queued_count Tasks waiting in scheduler queue.\n"
+            )
             sb.append("# TYPE constellation_scheduler_queued_count gauge\n")
             sb.append(s"constellation_scheduler_queued_count $v\n")
           }
 
           sched.downField("totalSubmitted").as[Long].foreach { v =>
-            sb.append("# HELP constellation_scheduler_submitted_total Total tasks submitted to scheduler.\n")
+            sb.append(
+              "# HELP constellation_scheduler_submitted_total Total tasks submitted to scheduler.\n"
+            )
             sb.append("# TYPE constellation_scheduler_submitted_total counter\n")
             sb.append(s"constellation_scheduler_submitted_total $v\n")
           }

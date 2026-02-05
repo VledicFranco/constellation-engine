@@ -1,9 +1,10 @@
 package io.constellation.http
 
-import io.circe.{Decoder, Encoder, Json}
-import io.circe.generic.semiauto.*
-import io.constellation.{CValue, ComponentMetadata}
 import io.constellation.json.given
+import io.constellation.{CValue, ComponentMetadata}
+
+import io.circe.generic.semiauto.*
+import io.circe.{Decoder, Encoder, Json}
 
 /** API request and response models for the HTTP server */
 object ApiModels {

@@ -1,8 +1,9 @@
 package io.constellation
 
 import java.util.UUID
-import io.circe.{Encoder, Json}
+
 import io.circe.syntax.*
+import io.circe.{Encoder, Json}
 
 /** Constellation Error Hierarchy
   *

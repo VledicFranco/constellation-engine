@@ -2,13 +2,15 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+
+import io.constellation.impl.ConstellationImpl
+import io.constellation.lang.LangCompiler
+import io.constellation.lsp.protocol.JsonRpc.RequestId.*
+import io.constellation.lsp.protocol.JsonRpc.*
+
 import io.circe.Json
 import io.circe.parser.*
 import io.circe.syntax.*
-import io.constellation.impl.ConstellationImpl
-import io.constellation.lang.LangCompiler
-import io.constellation.lsp.protocol.JsonRpc.*
-import io.constellation.lsp.protocol.JsonRpc.RequestId.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -2,6 +2,7 @@ package io.constellation.lsp.protocol
 
 import io.circe.*
 import io.circe.generic.semiauto.*
+
 import LspTypes.*
 
 /** LSP message types for requests, responses, and notifications */

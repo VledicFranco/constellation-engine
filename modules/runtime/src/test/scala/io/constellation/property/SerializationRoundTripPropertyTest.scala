@@ -1,14 +1,14 @@
 package io.constellation.property
 
+import io.constellation.json.given
+import io.constellation.{CType, CValue}
+
+import io.circe.parser.*
+import io.circe.syntax.*
+import org.scalacheck.Gen
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.scalacheck.Gen
-
-import io.circe.syntax.*
-import io.circe.parser.*
-import io.constellation.{CType, CValue}
-import io.constellation.json.given
 
 /** Property-based tests for CValue serialization round-tripping (RFC-017 Phase 3).
   *
@@ -133,9 +133,7 @@ class SerializationRoundTripPropertyTest
       case CType.COptional(innerType) =>
         Gen.oneOf(
           Gen.const(CValue.CNone(innerType)),
-          genCValueForType(innerType, maxDepth - 1).map(v =>
-            CValue.CSome(v, innerType)
-          )
+          genCValueForType(innerType, maxDepth - 1).map(v => CValue.CSome(v, innerType))
         )
     }
 

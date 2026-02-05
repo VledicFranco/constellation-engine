@@ -2,8 +2,10 @@ package io.constellation.http
 
 import cats.effect.IO
 import cats.implicits.*
-import io.circe.Json
+
 import io.constellation.{CType, CValue, DagSpec, JsonCValueConverter, Runtime}
+
+import io.circe.Json
 
 /** Helper functions for converting between JSON and CValue when executing DAGs.
   *
