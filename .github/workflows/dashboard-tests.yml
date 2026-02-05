@@ -46,6 +46,9 @@ jobs:
         working-directory: dashboard-tests
         run: npx playwright install --with-deps chromium
 
+      - name: Pre-compile server
+        run: sbt "exampleApp/compile"
+
       - name: Run E2E tests
         working-directory: dashboard-tests
         env:

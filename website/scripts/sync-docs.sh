@@ -82,8 +82,8 @@ sync_file "$REPO_ROOT/docs/constellation-lang/README.md" \
   "$DEST/language/index.md" "Language Overview" 1 \
   "constellation-lang reference documentation"
 
-sync_file "$REPO_ROOT/docs/constellation-lang/program-structure.md" \
-  "$DEST/language/program-structure.md" "Program Structure" 2
+sync_file "$REPO_ROOT/docs/constellation-lang/pipeline-structure.md" \
+  "$DEST/language/pipeline-structure.md" "Pipeline Structure" 2
 sync_file "$REPO_ROOT/docs/constellation-lang/types.md" \
   "$DEST/language/types.md" "Types" 3
 sync_file "$REPO_ROOT/docs/constellation-lang/declarations.md" \

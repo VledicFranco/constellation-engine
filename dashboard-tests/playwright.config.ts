@@ -37,6 +37,6 @@ export default defineConfig({
       : `make -C .. server`,
     port: parseInt(PORT),
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    timeout: 180_000, // 3 minutes for CI cold start (sbt download + compile)
   },
 });
