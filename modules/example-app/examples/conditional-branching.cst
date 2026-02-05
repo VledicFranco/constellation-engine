@@ -1,0 +1,46 @@
+# Conditional Branching Pattern
+# Route execution through different paths using guards, coalesce, and branch
+
+@example(85)
+in score: Int
+
+@example("premium")
+in tier: String
+
+@example("Welcome aboard!")
+in defaultMessage: String
+
+# Branch expression: multi-way conditional routing
+category = branch {
+  score >= 90 -> "platinum",
+  score >= 70 -> "gold",
+  score >= 50 -> "silver",
+  otherwise -> "bronze"
+}
+
+# Guard expression: value only exists when condition is true (Optional<String>)
+premiumOffer = "Free upgrade available!" when tier == "premium"
+highScoreBonus = "Bonus: 500 points" when score > 80
+
+# Coalesce: unwrap Optional with fallback
+offerMessage = premiumOffer ?? "Standard service"
+bonusMessage = highScoreBonus ?? "No bonus this time"
+
+# Chained coalesce: try multiple optionals in order
+vipMessage = "VIP: exclusive access" when score >= 95
+goldMessage = "Gold: priority support" when score >= 75
+finalMessage = vipMessage ?? goldMessage ?? defaultMessage
+
+# Combine branch and guard for routing logic
+route = branch {
+  tier == "premium" and score >= 80 -> "fast-track",
+  tier == "premium" -> "priority-queue",
+  score >= 90 -> "express",
+  otherwise -> "standard"
+}
+
+out category
+out offerMessage
+out bonusMessage
+out finalMessage
+out route

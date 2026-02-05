@@ -39,7 +39,11 @@ const config: Config = {
           editUrl:
             'https://github.com/VledicFranco/constellation-engine/tree/master/website/',
         },
-        blog: false,
+        blog: {
+          showReadingTime: true,
+          blogTitle: 'Constellation Blog',
+          blogSidebarCount: 'ALL',
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -74,8 +78,13 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/docs/getting-started/examples/',
-          label: 'Examples',
+          to: '/docs/cookbook/',
+          label: 'Cookbook',
+          position: 'left',
+        },
+        {
+          to: '/blog',
+          label: 'Blog',
           position: 'left',
         },
         {

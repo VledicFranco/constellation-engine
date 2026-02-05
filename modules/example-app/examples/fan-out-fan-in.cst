@@ -1,0 +1,20 @@
+# Fan-Out / Fan-In Pattern
+# Multiple independent service calls in parallel, merged and projected
+
+@example("user-42")
+in userId: String
+
+# Fan-out: three independent calls execute in parallel (no data dependencies)
+profile = ProfileService(userId)
+activity = ActivityService(userId)
+prefs = PrefsService(userId)
+
+# Fan-in: merge all results into a single record
+# Right side wins on field name conflicts
+combined = profile + activity + prefs
+
+# Project specific fields from the merged record
+summary = combined[userName, activityScore, theme]
+
+out combined
+out summary

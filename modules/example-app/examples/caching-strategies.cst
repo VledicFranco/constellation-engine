@@ -1,0 +1,44 @@
+# Caching Strategies Pattern
+# Different cache TTLs and backends for different data freshness requirements
+
+@example("user-42")
+in userId: String
+
+@example("SELECT config FROM app_settings")
+in configQuery: String
+
+@example("https://exchange-rates.example.com/latest")
+in ratesEndpoint: String
+
+# Short TTL (30 seconds) - for frequently changing data
+# Use when data changes often but slight staleness is acceptable
+userSession = SessionLookup(userId) with cache: 30s
+
+# Medium TTL (5 minutes) - for moderately changing data
+# Use for API responses that update periodically
+userData = SlowQuery(userId) with cache: 5min
+
+# Long TTL (1 hour) - for rarely changing data
+# Use for reference data, configuration, or computed results
+appConfig = SlowQuery(configQuery) with cache: 1h
+
+# Distributed cache backend - for multi-instance deployments
+# Ensures all instances share the same cache entries
+exchangeRates = SlowApiCall(ratesEndpoint) with
+    cache: 10min,
+    cache_backend: "redis"
+
+# Combining cache with resilience options
+# Cache the successful result; retry on miss + failure
+resilientCached = FlakyService(userId) with
+    cache: 5min,
+    retry: 3,
+    delay: 100ms,
+    backoff: exponential,
+    timeout: 2s
+
+out userSession
+out userData
+out appConfig
+out exchangeRates
+out resilientCached
