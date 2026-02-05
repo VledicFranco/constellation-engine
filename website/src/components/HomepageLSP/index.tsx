@@ -1,7 +1,9 @@
 import styles from './styles.module.css';
 import CodeBlock from '@theme/CodeBlock';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 
 export default function HomepageLSP(): JSX.Element {
+  const screenshotUrl = useBaseUrl('/img/vscode-lsp-demo.png');
   const scalaModuleCode = `// modules/DataModules.scala
 // Define modules in Scala - LSP exposes them to .cst files
 
@@ -67,7 +69,7 @@ val filterAbove = ModuleBuilder
               <span>VSCode + Constellation Extension</span>
             </div>
             <img
-              src="/img/vscode-lsp-demo.png"
+              src={screenshotUrl}
               alt="VSCode showing Constellation LSP with hover documentation and Script Runner"
               className={styles.screenshot}
             />

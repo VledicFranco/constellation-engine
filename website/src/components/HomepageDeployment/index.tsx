@@ -7,98 +7,93 @@ export default function HomepageDeployment(): JSX.Element {
 
   const hotColdDiagram = `
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        Pipeline Deployment Modes                         │
+│                        Pipeline Execution Patterns                       │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│   HOT PIPELINES (In-Memory)              COLD PIPELINES (On-Demand)     │
-│   ─────────────────────────              ──────────────────────────     │
+│   HOT PIPELINES (Compile + Run)          COLD PIPELINES (Store + Exec)  │
+│   ─────────────────────────────          ────────────────────────────   │
 │                                                                         │
 │   ┌─────────┐                            ┌─────────┐                    │
-│   │ Server  │                            │ Server  │                    │
-│   │ Start   │                            │ Start   │                    │
+│   │ Client  │                            │ Client  │                    │
+│   │ Request │                            │ Request │                    │
 │   └────┬────┘                            └────┬────┘                    │
 │        │                                      │                         │
 │        ▼                                      ▼                         │
 │   ┌─────────┐                            ┌─────────┐                    │
-│   │ Load    │ ←── All .cst files         │ Ready   │ ←── No loading     │
-│   │ & Cache │     compiled at start      │         │     at startup     │
+│   │ POST    │ ←── Source code +          │ POST    │ ←── Reference +    │
+│   │ /run    │     inputs in one call     │/execute │     inputs only    │
 │   └────┬────┘                            └────┬────┘                    │
 │        │                                      │                         │
 │        ▼                                      ▼                         │
 │   ┌─────────┐                            ┌─────────┐                    │
-│   │ Execute │ ←── ~1ms latency           │ Request │                    │
-│   │ Request │     (cache hit)            │ Arrives │                    │
-│   └─────────┘                            └────┬────┘                    │
-│                                               │                         │
-│                                               ▼                         │
-│                                          ┌─────────┐                    │
-│                                          │ Compile │ ←── First request  │
-│                                          │ & Cache │     ~50-100ms      │
-│                                          └────┬────┘                    │
-│                                               │                         │
-│                                               ▼                         │
-│                                          ┌─────────┐                    │
-│                                          │ Execute │ ←── Subsequent     │
-│                                          │         │     ~1ms (cached)  │
-│                                          └─────────┘                    │
+│   │ Compile │ ←── Every request          │ Lookup  │ ←── By name or     │
+│   │ Source  │     compiles fresh         │ Stored  │     structural hash│
+│   └────┬────┘                            └────┬────┘                    │
+│        │                                      │                         │
+│        ▼                                      ▼                         │
+│   ┌─────────┐                            ┌─────────┐                    │
+│   │ Execute │ ←── ~50-100ms total        │ Execute │ ←── ~1ms           │
+│   │ & Return│     (compile + run)        │ & Return│     (no compile)   │
+│   └─────────┘                            └─────────┘                    │
+│                                                                         │
+│   Best for: Ad-hoc, dev, one-time        Best for: Production, APIs    │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘`;
 
-  const hotConfig = `# Server startup with hot loading
-# All pipelines compiled and cached at boot
+  const hotConfig = `# Hot Pipeline: Compile + Execute in one request
+# Send source code directly, get results immediately
 
-# Environment configuration
-CONSTELLATION_CST_DIR=/pipelines      # Directory to scan
-CONSTELLATION_LOADER_RECURSIVE=true   # Include subdirectories
-CONSTELLATION_LOADER_FAIL_ON_ERROR=true  # Fail fast on compile errors
-
-# Scala configuration
-ConstellationServer.builder(constellation, compiler)
-  .withPipelineLoader(PipelineLoaderConfig(
-    directory = Path.of("/pipelines"),
-    recursive = true,
-    failOnError = true,              // Server won't start if any pipeline fails
-    aliasStrategy = AliasStrategy.FileName  // "order-enrichment.cst" → alias "order-enrichment"
-  ))
-  .run
-
-# Result at startup:
-# PipelineLoader: found 24 .cst file(s) in /pipelines
-# PipelineLoader: loaded order-enrichment.cst -> hash=sha256:abc123...
-# PipelineLoader: loaded user-scoring.cst -> hash=sha256:def456...
-# PipelineLoader: loaded=24, failed=0, skipped=0
-# Server ready - all pipelines hot in memory`;
-
-  const coldConfig = `# On-demand compilation (cold start)
-# Pipelines compiled when first requested
-
-# No pre-loading - server starts instantly
-ConstellationServer.builder(constellation, compiler)
-  .withCaching(CachingLangCompiler.withDefaults(compiler))  # Cache after first compile
-  .run
-
-# First request for "order-enrichment":
+# Single request does everything:
 POST /run
+{
+  "source": "in orderId: String\\norder = GetOrder(orderId)\\nout order",
+  "inputs": { "orderId": "ORD-12345" }
+}
+
+# Response:
+{
+  "outputs": { "order": { "id": "ORD-12345", "total": 99.99 } },
+  "structuralHash": "sha256:abc123...",
+  "compileTimeMs": 87,
+  "executeTimeMs": 12
+}
+
+# Ideal for:
+# - Ad-hoc queries and exploration
+# - Development and testing
+# - One-time transformations
+# - Dynamic pipelines generated at runtime`;
+
+  const coldConfig = `# Cold Pipeline: Store + Execute by Reference
+# Compile once, run many times by name or hash
+
+# Step 1: Compile and store the pipeline
+POST /compile
 {
   "source": "in orderId: String\\norder = GetOrder(orderId)\\nout order",
   "name": "order-enrichment"
 }
+# Response: { "structuralHash": "sha256:abc123...", "alias": "order-enrichment" }
 
-# Response includes compile time:
+# Step 2: Execute by reference (no compilation!)
+POST /execute
 {
-  "structuralHash": "sha256:abc123...",
-  "compileTimeMs": 87,       # First request: ~50-100ms
-  "executeTimeMs": 12,
-  "cached": false
+  "ref": "order-enrichment",
+  "inputs": { "orderId": "ORD-12345" }
 }
 
-# Second request (cached):
+# Or execute by hash for immutable references:
+POST /execute
 {
-  "structuralHash": "sha256:abc123...",
-  "compileTimeMs": 0,        # Cache hit: ~0ms
-  "executeTimeMs": 11,
-  "cached": true
-}`;
+  "ref": "sha256:abc123...",
+  "inputs": { "orderId": "ORD-12345" }
+}
+
+# Benefits:
+# - Sub-millisecond execution (no compile overhead)
+# - Version control via structural hashes
+# - Update aliases without changing client code
+# - Pre-load at server startup for zero cold-start latency`;
 
   const canaryConfig = `# Canary deployment: gradual rollout with auto-rollback
 # Safe production deployments with traffic splitting
@@ -145,8 +140,8 @@ POST /canary/scoring-pipeline/rollback  # Abort and revert`;
           <span className={styles.badge}>Production Operations</span>
           <h2 className={styles.title}>Hot, Cold & Canary Deployments</h2>
           <p className={styles.subtitle}>
-            Choose how pipelines are loaded and deployed. Pre-warm for latency-sensitive workloads,
-            lazy-load for memory efficiency, and roll out changes safely with canary releases.
+            Choose your execution pattern. Use hot pipelines for ad-hoc development workflows,
+            cold pipelines for production APIs with sub-millisecond latency, and canary releases for safe rollouts.
           </p>
         </div>
 
@@ -180,21 +175,21 @@ POST /canary/scoring-pipeline/rollback  # Abort and revert`;
           {activeTab === 'hot' && (
             <>
               <div className={styles.description}>
-                <h3>Hot Pipelines: Pre-Compiled & Ready</h3>
+                <h3>Hot Pipelines: Compile + Run in One Request</h3>
                 <p>
-                  Load all pipelines at server startup. First request executes in ~1ms with no compilation overhead.
-                  Ideal for <strong>latency-sensitive APIs</strong>, <strong>high-throughput services</strong>, and
-                  <strong> predictable performance requirements</strong>.
+                  Send source code directly to the <code>/run</code> endpoint. The server compiles and executes in a single step.
+                  Ideal for <strong>ad-hoc queries</strong>, <strong>development</strong>, <strong>exploration</strong>, and
+                  <strong> dynamically generated pipelines</strong>.
                 </p>
                 <div className={styles.useCases}>
-                  <span className={styles.useCase}>Real-time APIs</span>
-                  <span className={styles.useCase}>BFF Services</span>
-                  <span className={styles.useCase}>ML Inference</span>
-                  <span className={styles.useCase}>Trading Systems</span>
+                  <span className={styles.useCase}>Development</span>
+                  <span className={styles.useCase}>Ad-hoc Queries</span>
+                  <span className={styles.useCase}>Dynamic Pipelines</span>
+                  <span className={styles.useCase}>One-time Jobs</span>
                 </div>
               </div>
               <div className={styles.codePanel}>
-                <CodeBlock language="bash" title="Hot Loading Configuration">
+                <CodeBlock language="bash" title="Hot Pipeline: /run Endpoint">
                   {hotConfig}
                 </CodeBlock>
               </div>
@@ -204,21 +199,21 @@ POST /canary/scoring-pipeline/rollback  # Abort and revert`;
           {activeTab === 'cold' && (
             <>
               <div className={styles.description}>
-                <h3>Cold Pipelines: On-Demand Compilation</h3>
+                <h3>Cold Pipelines: Store + Execute by Reference</h3>
                 <p>
-                  Start the server instantly with no pipeline loading. Pipelines compile on first request (~50-100ms),
-                  then cache for subsequent calls. Ideal for <strong>development environments</strong>,
-                  <strong> batch jobs</strong>, and <strong>memory-constrained deployments</strong>.
+                  Compile once with <code>/compile</code>, then execute many times by name or hash via <code>/execute</code>.
+                  Sub-millisecond execution with no compile overhead. Ideal for <strong>production APIs</strong>,
+                  <strong> high-throughput services</strong>, and <strong>versioned deployments</strong>.
                 </p>
                 <div className={styles.useCases}>
-                  <span className={styles.useCase}>Development</span>
-                  <span className={styles.useCase}>Batch Processing</span>
-                  <span className={styles.useCase}>Serverless</span>
-                  <span className={styles.useCase}>Low-Traffic Services</span>
+                  <span className={styles.useCase}>Production APIs</span>
+                  <span className={styles.useCase}>High Throughput</span>
+                  <span className={styles.useCase}>ML Inference</span>
+                  <span className={styles.useCase}>Trading Systems</span>
                 </div>
               </div>
               <div className={styles.codePanel}>
-                <CodeBlock language="bash" title="Cold Loading (On-Demand)">
+                <CodeBlock language="bash" title="Cold Pipeline: /compile + /execute">
                   {coldConfig}
                 </CodeBlock>
               </div>
@@ -289,27 +284,27 @@ POST /canary/scoring-pipeline/rollback  # Abort and revert`;
             </thead>
             <tbody>
               <tr>
-                <td>First Request Latency</td>
-                <td className={styles.good}>~1ms</td>
-                <td className={styles.neutral}>~50-100ms</td>
+                <td>API Pattern</td>
+                <td><code>/run</code> (compile + execute)</td>
+                <td><code>/compile</code> + <code>/execute</code></td>
+                <td>Traffic splitting</td>
+              </tr>
+              <tr>
+                <td>Execution Latency</td>
+                <td className={styles.neutral}>~50-100ms (includes compile)</td>
+                <td className={styles.good}>~1ms (pre-compiled)</td>
                 <td className={styles.good}>~1ms (both cached)</td>
               </tr>
               <tr>
-                <td>Startup Time</td>
-                <td className={styles.neutral}>Slower (compiles all)</td>
-                <td className={styles.good}>Instant</td>
-                <td className={styles.good}>Instant</td>
-              </tr>
-              <tr>
-                <td>Memory Usage</td>
-                <td className={styles.neutral}>Higher (all loaded)</td>
-                <td className={styles.good}>Lower (on-demand)</td>
-                <td className={styles.neutral}>2x during rollout</td>
+                <td>Reusability</td>
+                <td className={styles.neutral}>One-time use</td>
+                <td className={styles.good}>Compile once, run many</td>
+                <td className={styles.good}>Versioned deployments</td>
               </tr>
               <tr>
                 <td>Best For</td>
+                <td>Dev / Ad-hoc / Dynamic</td>
                 <td>Production APIs</td>
-                <td>Dev / Batch jobs</td>
                 <td>Safe deployments</td>
               </tr>
             </tbody>
