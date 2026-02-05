@@ -1,0 +1,299 @@
+.section {
+  padding: 5rem 2rem;
+  background: linear-gradient(180deg, var(--ifm-background-color) 0%, var(--ifm-color-emphasis-100) 100%);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background: #0891b220;
+  color: #0891b2;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--ifm-color-emphasis-300);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  border-color: #0891b2;
+  color: #0891b2;
+}
+
+.tabActive {
+  background: #0891b2;
+  border-color: #0891b2;
+  color: white;
+}
+
+.tabActive:hover {
+  color: white;
+}
+
+.tabIcon {
+  font-size: 1.1rem;
+}
+
+/* Content */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  align-items: start;
+}
+
+.description {
+  padding: 1.5rem;
+  background: var(--ifm-background-color);
+  border-radius: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.description h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--ifm-color-emphasis-900);
+}
+
+.description p {
+  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.description strong {
+  color: var(--ifm-color-emphasis-800);
+}
+
+/* Use cases badges */
+.useCases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.useCase {
+  padding: 0.35rem 0.75rem;
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ifm-color-emphasis-700);
+}
+
+/* Canary steps visualization */
+.canarySteps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.canaryStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.stepNumber {
+  width: 32px;
+  height: 32px;
+  background: #0891b2;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.stepLabel {
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
+  font-weight: 500;
+}
+
+.canaryArrow {
+  color: var(--ifm-color-emphasis-400);
+  font-size: 1rem;
+}
+
+/* Code panel */
+.codePanel {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.codePanel pre {
+  margin: 0;
+  font-size: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Diagram */
+.diagram {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #1e1e1e;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+}
+
+.diagram pre {
+  margin: 0;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 0.7rem;
+  color: #d4d4d4;
+  line-height: 1.4;
+  white-space: pre;
+}
+
+/* Comparison table */
+.comparisonTable {
+  overflow-x: auto;
+}
+
+.comparisonTable table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--ifm-background-color);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.comparisonTable th {
+  background: var(--ifm-color-emphasis-100);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.comparisonTable td {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.comparisonTable tr:last-child td {
+  border-bottom: none;
+}
+
+.comparisonTable td:first-child {
+  font-weight: 500;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.good {
+  color: #059669 !important;
+  font-weight: 500;
+}
+
+.neutral {
+  color: #d97706 !important;
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 3rem 1rem;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tab {
+    justify-content: center;
+  }
+
+  .diagram pre {
+    font-size: 0.5rem;
+  }
+
+  .comparisonTable th,
+  .comparisonTable td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
