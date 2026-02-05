@@ -204,23 +204,35 @@ suite('E2E User Workflow Tests', function() {
       const doc1 = await vscode.workspace.openTextDocument(file1Path);
       const doc2 = await vscode.workspace.openTextDocument(file2Path);
 
+      // Use longer delay for CI environments where editor focus switching may be slower
+      const switchDelay = 500;
+
       // Show file 1
       await vscode.window.showTextDocument(doc1);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, switchDelay));
       let activeDoc = vscode.window.activeTextEditor?.document;
-      assert.ok(activeDoc?.uri.fsPath.endsWith('simple.cst'));
+      assert.ok(
+        activeDoc?.uri.fsPath.endsWith('simple.cst'),
+        `Expected simple.cst but got: ${activeDoc?.uri.fsPath}`
+      );
 
       // Switch to file 2
       await vscode.window.showTextDocument(doc2);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, switchDelay));
       activeDoc = vscode.window.activeTextEditor?.document;
-      assert.ok(activeDoc?.uri.fsPath.endsWith('multi-step.cst'));
+      assert.ok(
+        activeDoc?.uri.fsPath.endsWith('multi-step.cst'),
+        `Expected multi-step.cst but got: ${activeDoc?.uri.fsPath}`
+      );
 
       // Switch back to file 1
       await vscode.window.showTextDocument(doc1);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, switchDelay));
       activeDoc = vscode.window.activeTextEditor?.document;
-      assert.ok(activeDoc?.uri.fsPath.endsWith('simple.cst'));
+      assert.ok(
+        activeDoc?.uri.fsPath.endsWith('simple.cst'),
+        `Expected simple.cst after switch back but got: ${activeDoc?.uri.fsPath}`
+      );
     });
   });
 
