@@ -12,7 +12,7 @@ in ratesEndpoint: String
 
 # Short TTL (30 seconds) - for frequently changing data
 # Use when data changes often but slight staleness is acceptable
-userSession = SessionLookup(userId) with cache: 30s
+userSession = QuickCheck(userId) with cache: 30s
 
 # Medium TTL (5 minutes) - for moderately changing data
 # Use for API responses that update periodically

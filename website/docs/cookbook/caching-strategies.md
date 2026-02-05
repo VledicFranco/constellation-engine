@@ -27,7 +27,7 @@ in configQuery: String
 in ratesEndpoint: String
 
 # Short TTL (30 seconds) - frequently changing data
-userSession = SessionLookup(userId) with cache: 30s
+userSession = QuickCheck(userId) with cache: 30s
 
 # Medium TTL (5 minutes) - moderately changing data
 userData = SlowQuery(userId) with cache: 5min
@@ -121,10 +121,10 @@ in userId: String
 in configKey: String
 
 # User data in Redis (shared across instances)
-user = UserService(userId) with cache: 5min, cache_backend: "redis"
+user = SlowQuery(userId) with cache: 5min, cache_backend: "redis"
 
 # Config in local memory (instance-specific, faster)
-config = ConfigService(configKey) with cache: 1h
+config = SlowQuery(configKey) with cache: 1h
 
 out user
 out config

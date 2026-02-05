@@ -1,20 +1,21 @@
 # Fan-Out / Fan-In Pattern
-# Multiple independent service calls in parallel, merged and projected
+# Multiple independent service calls execute in parallel
 
 @example("user-42")
 in userId: String
 
+@example("product-99")
+in productId: String
+
+@example("https://api.example.com/prefs")
+in prefsEndpoint: String
+
 # Fan-out: three independent calls execute in parallel (no data dependencies)
-profile = ProfileService(userId)
-activity = ActivityService(userId)
-prefs = PrefsService(userId)
+profile = FlakyService(userId)
+activity = SlowApiCall(productId)
+prefs = SlowQuery(prefsEndpoint)
 
-# Fan-in: merge all results into a single record
-# Right side wins on field name conflicts
-combined = profile + activity + prefs
-
-# Project specific fields from the merged record
-summary = combined[userName, activityScore, theme]
-
-out combined
-out summary
+# All three outputs are computed concurrently
+out profile
+out activity
+out prefs
