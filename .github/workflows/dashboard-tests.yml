@@ -6,11 +6,14 @@ on:
     paths:
       - 'modules/http-api/**'
       - 'dashboard-tests/**'
+      - '.github/workflows/dashboard-tests.yml'
   pull_request:
     branches: [master]
     paths:
       - 'modules/http-api/**'
       - 'dashboard-tests/**'
+      - '.github/workflows/dashboard-tests.yml'
+  workflow_dispatch:
 
 jobs:
   e2e-tests:
