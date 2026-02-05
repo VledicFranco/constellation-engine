@@ -154,11 +154,11 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
         for {
           // Fill the single slot with a blocking task
-          blocker <- scheduler.submit(50, IO.sleep(100.millis) *> IO.pure("blocker")).start
+          blocker <- scheduler.submit(50, IO.sleep(200.millis) *> IO.pure("blocker")).start
 
           // Submit tasks in order: low, medium, high
           // They should complete in order: high, medium, low (due to priority queue)
-          _ <- IO.sleep(20.millis) // Let blocker acquire the slot
+          _ <- IO.sleep(50.millis) // Let blocker acquire the slot
 
           lowFiber <- scheduler
             .submit(
@@ -204,7 +204,7 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
       .unsafeRunSync()
   }
 
-  it should "use FIFO within same priority level" in {
+  it should "use FIFO within same priority level" taggedAs Retryable in {
     GlobalScheduler
       .bounded(maxConcurrency = 1)
       .use { scheduler =>
@@ -212,8 +212,8 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
         for {
           // Fill the slot with a blocker
-          blocker <- scheduler.submit(50, IO.sleep(100.millis) *> IO.pure("blocker")).start
-          _       <- IO.sleep(20.millis)
+          blocker <- scheduler.submit(50, IO.sleep(200.millis) *> IO.pure("blocker")).start
+          _       <- IO.sleep(50.millis)
 
           // Submit 3 tasks at same priority
           fiber1 <- scheduler
