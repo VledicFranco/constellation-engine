@@ -15,7 +15,7 @@ In Constellation Engine, "modules" refer to two related concepts:
 
 2. **Optional Library Modules** - SBT library dependencies that extend the core runtime with integrations for external systems (e.g., cache backends, monitoring, authentication)
 
-This page focuses on **Optional Library Modules**. For information on creating pipeline modules, see [Creating Modules](/docs/scala-api/creating-modules).
+This page focuses on **Optional Library Modules**. For information on creating pipeline modules, see [Creating Modules](/docs/api-reference/programmatic-api#creating-modules).
 
 ---
 
@@ -419,5 +419,5 @@ override def stats: IO[CacheStats] = {
 
 - [Memcached Cache Module](./cache-memcached.md) - Complete example of an official module
 - [CacheBackend SPI Guide](/docs/integrations/cache-backend) - Implementing cache backends
-- [Creating Pipeline Modules](/docs/scala-api/creating-modules) - Registering functions for use in pipelines
+- [Creating Pipeline Modules](/docs/api-reference/programmatic-api#creating-modules) - Registering functions for use in pipelines
 - [Contributing Guide](https://github.com/VledicFranco/constellation-engine/blob/master/CONTRIBUTING.md) - Contributing to Constellation Engine

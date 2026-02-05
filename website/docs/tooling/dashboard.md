@@ -486,7 +486,7 @@ cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
 
 Screenshots are saved to `dashboard-tests/screenshots/`.
 
-See [Playwright Dev Loop Guide](../dev/playwright-dev-loop.md) for the full protocol.
+See the internal developer documentation (`docs/dev/playwright-dev-loop.md` in the repository) for the full protocol.
 
 ## Dashboard E2E Tests
 
