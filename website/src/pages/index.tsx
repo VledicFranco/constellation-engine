@@ -7,6 +7,8 @@ import HomepageComparison from '@site/src/components/HomepageComparison';
 import HomepageUseCases from '@site/src/components/HomepageUseCases';
 import HomepageArchitecture from '@site/src/components/HomepageArchitecture';
 import HomepageStats from '@site/src/components/HomepageStats';
+import HomepageLSP from '@site/src/components/HomepageLSP';
+import HomepageSuspended from '@site/src/components/HomepageSuspended';
 import styles from './index.module.css';
 
 export default function Home(): JSX.Element {
@@ -23,6 +25,8 @@ export default function Home(): JSX.Element {
         <HomepageUseCases />
         <HomepageArchitecture />
         <HomepageStats />
+        <HomepageLSP />
+        <HomepageSuspended />
         <HomepageComparison />
       </main>
     </Layout>

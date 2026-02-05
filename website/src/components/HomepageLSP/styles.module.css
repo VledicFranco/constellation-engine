@@ -1,0 +1,233 @@
+.section {
+  padding: 5rem 2rem;
+  background: linear-gradient(180deg, var(--ifm-background-color) 0%, var(--ifm-color-emphasis-100) 100%);
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  background: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary-darkest);
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.subtitle {
+  font-size: 1.15rem;
+  color: var(--ifm-color-emphasis-700);
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.subtitle code {
+  background: var(--ifm-color-emphasis-200);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.95em;
+}
+
+/* Content: Code + Screenshot */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  align-items: start;
+}
+
+.codePanel {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-color);
+}
+
+.codePanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--ifm-color-emphasis-100);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.fileIcon {
+  width: 20px;
+  height: 20px;
+  background: #dc322f;
+  color: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.tag {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--ifm-color-emphasis-200);
+  border-radius: 1rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.codePanel pre {
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  font-size: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* Screenshot panel */
+.screenshotPanel {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-background-color);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.screenshotHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: #1e1e1e;
+  color: #ccc;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.vscodeLogo {
+  color: #007acc;
+}
+
+.screenshot {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Features grid */
+.features {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.feature {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  background: var(--ifm-background-color);
+  border-radius: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.featureIcon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 1rem;
+  background: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.feature p {
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* CTA */
+.cta {
+  text-align: center;
+  padding: 1.5rem 2rem;
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.cta p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-800);
+  line-height: 1.6;
+}
+
+.cta code {
+  background: var(--ifm-color-emphasis-200);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .content {
+    grid-template-columns: 1fr;
+  }
+
+  .features {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 3rem 1rem;
+  }
+
+  .title {
+    font-size: 1.8rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .features {
+    grid-template-columns: 1fr;
+  }
+
+  .codePanel pre {
+    font-size: 0.7rem;
+  }
+}
