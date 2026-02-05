@@ -19,11 +19,11 @@ export default function Home(): JSX.Element {
       <main className={styles.main}>
         <HomepageHero />
         <HomepageFeatures />
-        <HomepageComparison />
         <HomepageCodeExample />
         <HomepageUseCases />
         <HomepageArchitecture />
         <HomepageStats />
+        <HomepageComparison />
       </main>
     </Layout>
   );
