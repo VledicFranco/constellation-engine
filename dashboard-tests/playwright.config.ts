@@ -3,14 +3,18 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = process.env.CONSTELLATION_PORT || '8080';
 const BASE_URL = `http://localhost:${PORT}`;
 
+// In CI, run only smoke tests unless FULL_E2E=true
+const ciTestMatch = process.env.FULL_E2E ? undefined : ['**/smoke.spec.ts'];
+
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   retries: process.env.CI ? 1 : 0, // Reduced from 2 to speed up CI
   workers: 1, // Sequential — tests share a server
   fullyParallel: false,
-  // Skip screenshot-audit in CI (it's a dev tool for visual inspection)
-  testIgnore: process.env.CI ? ['**/screenshot-audit.spec.ts'] : [],
+  // In CI: run only smoke tests (fast); locally: run all except screenshot-audit
+  testMatch: process.env.CI ? ciTestMatch : undefined,
+  testIgnore: process.env.CI ? ['**/screenshot-audit.spec.ts'] : ['**/screenshot-audit.spec.ts'],
 
   reporter: [
     ['html', { outputFolder: 'reports', open: 'never' }],
