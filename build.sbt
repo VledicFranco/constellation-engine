@@ -147,8 +147,8 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
   .dependsOn(runtime, langCompiler)
   .settings(
     name := "constellation-lang-lsp",
-    coverageMinimumStmtTotal := 60,
-    coverageMinimumBranchTotal := 50,
+    coverageMinimumStmtTotal := 70,
+    coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",
@@ -164,8 +164,8 @@ lazy val httpApi = (project in file("modules/http-api"))
   .dependsOn(runtime, langCompiler, langStdlib, langLsp)
   .settings(
     name := "constellation-http-api",
-    coverageMinimumStmtTotal := 60,
-    coverageMinimumBranchTotal := 50,
+    coverageMinimumStmtTotal := 75,
+    coverageMinimumBranchTotal := 60,
     libraryDependencies ++= Seq(
       "org.http4s" %% "http4s-ember-server" % "0.23.25",
       "org.http4s" %% "http4s-ember-client" % "0.23.25",

@@ -84,11 +84,11 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   // ========== NodeNotFoundError Tests ==========
 
-  "NodeNotFoundError" should "include node ID and type in message" in {
+  "NodeNotFoundError" should "include node type and de-emphasize ID in message" in {
     val nodeId = UUID.randomUUID()
     val error  = NodeNotFoundError(nodeId, "Input")
 
-    error.message shouldBe s"Input node $nodeId not found"
+    error.message shouldBe s"Input node not found (id: $nodeId)"
     error.errorCode shouldBe "NODE_NOT_FOUND"
     error.category shouldBe "compiler"
   }
@@ -96,10 +96,10 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
   it should "have factory methods for common node types" in {
     val nodeId = UUID.randomUUID()
 
-    NodeNotFoundError.input(nodeId).message should include("Input node")
-    NodeNotFoundError.source(nodeId).message should include("Source node")
-    NodeNotFoundError.condition(nodeId).message should include("Condition node")
-    NodeNotFoundError.expression(nodeId).message should include("Expression node")
+    NodeNotFoundError.input(nodeId).message should include("Input node not found")
+    NodeNotFoundError.source(nodeId).message should include("Source node not found")
+    NodeNotFoundError.condition(nodeId).message should include("Condition node not found")
+    NodeNotFoundError.expression(nodeId).message should include("Expression node not found")
   }
 
   it should "serialize to JSON" in {
@@ -132,19 +132,19 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   // ========== CycleDetectedError Tests ==========
 
-  "CycleDetectedError" should "show generic message without node IDs" in {
+  "CycleDetectedError" should "show user-friendly message without node IDs" in {
     val error = CycleDetectedError()
 
-    error.message shouldBe "Cycle detected in DAG"
+    error.message shouldBe "Cycle detected in pipeline — check for circular dependencies between variables or modules"
     error.errorCode shouldBe "CYCLE_DETECTED"
     error.category shouldBe "compiler"
   }
 
-  it should "include node IDs when provided" in {
+  it should "include node IDs when provided with actionable guidance" in {
     val nodeIds = List(UUID.randomUUID(), UUID.randomUUID())
     val error   = CycleDetectedError(nodeIds)
 
-    error.message should include("involving nodes:")
+    error.message should include("circular dependencies")
     nodeIds.foreach { id =>
       error.message should include(id.toString)
     }
@@ -226,11 +226,11 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
 
   // ========== DataNotFoundError Tests ==========
 
-  "DataNotFoundError" should "include data ID and type" in {
+  "DataNotFoundError" should "include data type and de-emphasize ID in message" in {
     val dataId = UUID.randomUUID()
     val error  = DataNotFoundError(dataId, "Data")
 
-    error.message shouldBe s"Data with ID $dataId not found"
+    error.message shouldBe s"Data not found (id: $dataId)"
     error.errorCode shouldBe "DATA_NOT_FOUND"
     error.category shouldBe "runtime"
   }
@@ -238,8 +238,8 @@ class ConstellationErrorTest extends AnyFlatSpec with Matchers {
   it should "have factory methods for common data types" in {
     val dataId = UUID.randomUUID()
 
-    DataNotFoundError.data(dataId).message should include("Data with ID")
-    DataNotFoundError.deferred(dataId).message should include("Deferred with ID")
+    DataNotFoundError.data(dataId).message should include("Data not found")
+    DataNotFoundError.deferred(dataId).message should include("Deferred not found")
   }
 
   // ========== RuntimeNotInitializedError Tests ==========

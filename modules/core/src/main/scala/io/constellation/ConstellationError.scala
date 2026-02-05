@@ -187,7 +187,7 @@ final case class NodeNotFoundError(
     context: Map[String, String] = Map.empty
 ) extends CompilerError {
   override def errorCode: String = "NODE_NOT_FOUND"
-  override def message: String   = s"$nodeType node $nodeId not found"
+  override def message: String   = s"$nodeType node not found (id: $nodeId)"
 }
 
 object NodeNotFoundError {
@@ -233,8 +233,10 @@ final case class CycleDetectedError(
 ) extends CompilerError {
   override def errorCode: String = "CYCLE_DETECTED"
   override def message: String =
-    if nodeIds.isEmpty then "Cycle detected in DAG"
-    else s"Cycle detected in DAG involving nodes: ${nodeIds.mkString(", ")}"
+    if nodeIds.isEmpty then
+      "Cycle detected in pipeline — check for circular dependencies between variables or modules"
+    else
+      s"Cycle detected in pipeline — check for circular dependencies (involved node ids: ${nodeIds.mkString(", ")})"
 }
 
 /** Error when an unsupported operation is encountered.
@@ -344,7 +346,7 @@ final case class DataNotFoundError(
     context: Map[String, String] = Map.empty
 ) extends RuntimeError {
   override def errorCode: String = "DATA_NOT_FOUND"
-  override def message: String   = s"$dataType with ID $dataId not found"
+  override def message: String   = s"$dataType not found (id: $dataId)"
 }
 
 object DataNotFoundError {

@@ -203,6 +203,57 @@ object ConstellationGenerators {
     sb.toString
   }
 
+  /** Generate a valid multi-statement constellation-lang program with inputs, assignments, and outputs.
+    *
+    * Produces programs with:
+    *   - 1-3 typed input declarations (String, Int, Boolean)
+    *   - 2-5 assignments using literal values, boolean ops, and conditionals
+    *   - 1-2 output declarations referencing defined variables
+    */
+  val genValidProgram: Gen[String] = for {
+    numInputs      <- Gen.choose(1, 3)
+    numAssignments <- Gen.choose(2, 5)
+    inputNames     <- Gen.listOfN(numInputs, genVarName).map(_.distinct)
+    if inputNames.nonEmpty
+    assignNames <- Gen.listOfN(numAssignments, genVarName)
+      .map(_.distinct.filterNot(inputNames.contains))
+    if assignNames.nonEmpty
+  } yield {
+    val sb = new StringBuilder
+
+    // Always include a boolean and an int input for conditional/guard usage
+    sb.append(s"in ${inputNames.head}: Boolean\n")
+    if inputNames.size > 1 then sb.append(s"in ${inputNames(1)}: Int\n")
+    if inputNames.size > 2 then sb.append(s"in ${inputNames(2)}: String\n")
+    sb.append("\n")
+
+    val boolInput = inputNames.head
+    val allDefined = scala.collection.mutable.ListBuffer[String](inputNames*)
+
+    // Generate assignments
+    assignNames.zipWithIndex.foreach { case (name, idx) =>
+      val expr = idx % 5 match {
+        case 0 => s"$boolInput and $boolInput"
+        case 1 => s"$boolInput or not $boolInput"
+        case 2 => s"not $boolInput"
+        case 3 =>
+          val prev = allDefined.filter(_ != boolInput).headOption.getOrElse(boolInput)
+          s"$prev"
+        case 4 => s"($boolInput and $boolInput) or $boolInput"
+      }
+      sb.append(s"$name = $expr\n")
+      allDefined += name
+    }
+
+    sb.append("\n")
+    // Output the last assignment
+    sb.append(s"out ${assignNames.last}\n")
+    // Also output the boolean input
+    sb.append(s"out $boolInput\n")
+
+    sb.toString
+  }
+
   // -------------------------------------------------------------------------
   // Arbitrary instances
   // -------------------------------------------------------------------------

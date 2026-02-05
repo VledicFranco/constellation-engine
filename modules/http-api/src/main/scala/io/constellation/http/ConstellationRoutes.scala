@@ -941,7 +941,8 @@ class ConstellationRoutes(
       }
 
     // Metrics endpoint for performance monitoring
-    case GET -> Root / "metrics" =>
+    // Supports content negotiation: Accept: text/plain → Prometheus format, else JSON
+    case req @ GET -> Root / "metrics" =>
       for {
         uptimeSeconds <- IO.pure(
           java.time.Duration.between(ConstellationRoutes.startTime, Instant.now()).getSeconds
@@ -984,17 +985,26 @@ class ConstellationRoutes(
             IO.pure(Some(Json.obj("enabled" -> Json.fromBoolean(false))))
         }
 
-        response <- Ok(
-          Json.obj(
-            "timestamp" -> Json.fromString(Instant.now().toString),
-            "cache"     -> cacheStats.getOrElse(Json.Null),
-            "scheduler" -> schedulerStats.getOrElse(Json.Null),
-            "server" -> Json.obj(
-              "uptime_seconds" -> Json.fromLong(uptimeSeconds),
-              "requests_total" -> Json.fromLong(requestCount)
-            )
+        metricsJson = Json.obj(
+          "timestamp" -> Json.fromString(Instant.now().toString),
+          "cache"     -> cacheStats.getOrElse(Json.Null),
+          "scheduler" -> schedulerStats.getOrElse(Json.Null),
+          "server" -> Json.obj(
+            "uptime_seconds" -> Json.fromLong(uptimeSeconds),
+            "requests_total" -> Json.fromLong(requestCount)
           )
         )
+
+        // Content negotiation: text/plain → Prometheus format, else JSON
+        wantsPrometheus = req.headers
+          .get[org.http4s.headers.Accept]
+          .exists(_.values.toList.exists(_.mediaRange.satisfiedBy(MediaType.text.plain)))
+
+        response <-
+          if wantsPrometheus then
+            Ok(PrometheusFormatter.format(metricsJson))
+              .map(_.withContentType(`Content-Type`(MediaType.text.plain)))
+          else Ok(metricsJson)
       } yield response
   }
 

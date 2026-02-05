@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Constellation Engine API
-  version: 0.2.0
+  version: 1.0.0
   description: |
     REST API for the Constellation Engine - a type-safe, composable ML orchestration framework.
 
@@ -10,6 +10,8 @@ info:
     - Execute compiled pipelines with input data
     - Compile and run scripts in a single request
     - Query available modules and namespaces
+    - Manage pipeline versions, hot-reload, and canary deployments
+    - Manage suspended executions
 
     ## Quick Start
 
@@ -40,6 +42,10 @@ tags:
     description: Execute compiled DAGs
   - name: Pipelines
     description: Manage stored pipelines (content-addressed)
+  - name: Canary
+    description: Canary deployment management for pipelines
+  - name: Executions
+    description: Manage suspended and completed executions
   - name: Modules
     description: Query available modules
   - name: Namespaces
@@ -157,14 +163,14 @@ paths:
                 outputs: {}
                 error: "Input error: Missing required input 'text'"
         '404':
-          description: DAG not found
+          description: Pipeline not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
-                error: "DagNotFound"
-                message: "DAG 'unknown-pipeline' not found"
+                error: "NotFound"
+                message: "Pipeline 'unknown-pipeline' not found"
         '500':
           description: Execution error
           content:
@@ -600,6 +606,398 @@ paths:
         '404':
           description: Target hash not found
 
+  /pipelines/{name}/reload:
+    post:
+      tags:
+        - Pipelines
+      summary: Hot-reload a pipeline
+      description: |
+        Recompile and reload a pipeline from its stored source or new source.
+        Optionally starts a canary deployment for safe rollout.
+      operationId: reloadPipeline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReloadRequest'
+      responses:
+        '200':
+          description: Pipeline reloaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReloadResponse'
+        '400':
+          description: Compilation error in new source
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Pipeline not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/versions:
+    get:
+      tags:
+        - Pipelines
+      summary: List pipeline version history
+      description: |
+        Returns the version history for a named pipeline, including structural
+        hashes, timestamps, and which version is currently active.
+      operationId: listPipelineVersions
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Version history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PipelineVersionsResponse'
+        '404':
+          description: Pipeline not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/rollback:
+    post:
+      tags:
+        - Pipelines
+      summary: Rollback to previous pipeline version
+      description: |
+        Rolls back a pipeline to its immediately previous version.
+      operationId: rollbackPipeline
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Rollback successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackResponse'
+        '404':
+          description: Pipeline not found or no previous version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/rollback/{version}:
+    post:
+      tags:
+        - Pipelines
+      summary: Rollback to a specific pipeline version
+      description: |
+        Rolls back a pipeline to a specific version number from its history.
+      operationId: rollbackPipelineToVersion
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+        - name: version
+          in: path
+          required: true
+          description: Version number to rollback to
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Rollback successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackResponse'
+        '404':
+          description: Pipeline or version not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/canary:
+    get:
+      tags:
+        - Canary
+      summary: Get canary deployment status
+      description: |
+        Returns the current canary deployment state for a pipeline,
+        including traffic weight, metrics, and promotion step.
+      operationId: getCanaryStatus
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Canary state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryStateResponse'
+        '404':
+          description: No active canary for this pipeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Canary
+      summary: Abort canary deployment
+      description: |
+        Aborts the canary deployment, reverting all traffic to the old version.
+      operationId: abortCanary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Canary aborted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryStateResponse'
+        '404':
+          description: No active canary for this pipeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/canary/promote:
+    post:
+      tags:
+        - Canary
+      summary: Promote canary deployment
+      description: |
+        Manually promotes the canary to the next step (or to full traffic).
+        Advances the traffic weight according to the configured promotion steps.
+      operationId: promoteCanary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Canary promoted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryStateResponse'
+        '404':
+          description: No active canary for this pipeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /pipelines/{name}/canary/rollback:
+    post:
+      tags:
+        - Canary
+      summary: Rollback canary deployment
+      description: |
+        Rolls back the canary deployment, reverting all traffic to the old version
+        and marking the canary as rolled back.
+      operationId: rollbackCanary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: name
+          in: path
+          required: true
+          description: Pipeline name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Canary rolled back
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CanaryStateResponse'
+        '404':
+          description: No active canary for this pipeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /executions:
+    get:
+      tags:
+        - Executions
+      summary: List suspended executions
+      description: |
+        Returns a list of suspended executions that are waiting for additional
+        inputs or external resolution before they can continue.
+      operationId: listExecutions
+      responses:
+        '200':
+          description: List of suspended executions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionListResponse'
+
+  /executions/{id}:
+    get:
+      tags:
+        - Executions
+      summary: Get execution detail
+      description: |
+        Returns the details of a specific execution, including its status,
+        missing inputs, and resumption count.
+      operationId: getExecution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Execution details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionSummary'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+        - Executions
+      summary: Delete a suspended execution
+      description: |
+        Removes a suspended execution from the store. This cannot be undone.
+      operationId: deleteExecution
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Execution deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  executionId:
+                    type: string
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /executions/{id}/resume:
+    post:
+      tags:
+        - Executions
+      summary: Resume a suspended execution
+      description: |
+        Resumes a suspended execution by providing additional inputs or
+        resolved node values. The execution will continue from where it
+        was suspended.
+      operationId: resumeExecution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Execution ID (UUID)
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResumeRequest'
+      responses:
+        '200':
+          description: Execution resumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecuteResponse'
+        '400':
+          description: Invalid resume request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Execution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /metrics:
     get:
       tags:
@@ -608,6 +1006,10 @@ paths:
       description: |
         Returns server statistics including uptime, request count,
         compilation cache metrics, and scheduler statistics.
+
+        Supports content negotiation:
+        - `Accept: application/json` (default) — JSON format
+        - `Accept: text/plain` — Prometheus exposition text format
       operationId: getMetrics
       responses:
         '200':
@@ -633,6 +1035,16 @@ paths:
                   queuedCount: 0
                   totalSubmitted: 15000
                   totalCompleted: 14997
+            text/plain:
+              schema:
+                type: string
+              example: |
+                # HELP constellation_server_uptime_seconds Server uptime in seconds.
+                # TYPE constellation_server_uptime_seconds gauge
+                constellation_server_uptime_seconds 3600
+                # HELP constellation_server_requests_total Total HTTP requests served.
+                # TYPE constellation_server_requests_total counter
+                constellation_server_requests_total 15000
 
 components:
   securitySchemes:
@@ -716,6 +1128,30 @@ components:
           type: string
           nullable: true
           description: Error message if execution failed
+        status:
+          type: string
+          nullable: true
+          description: Execution status (completed, suspended)
+        executionId:
+          type: string
+          nullable: true
+          description: Execution ID for suspended executions
+        missingInputs:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: string
+          description: Missing input names and their expected types
+        pendingOutputs:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: Outputs not yet computed
+        resumptionCount:
+          type: integer
+          nullable: true
+          description: Number of times this execution has been resumed
 
     RunRequest:
       type: object
@@ -754,6 +1190,272 @@ components:
           type: string
           nullable: true
           description: Runtime error message if execution failed
+
+    ReloadRequest:
+      type: object
+      properties:
+        source:
+          type: string
+          nullable: true
+          description: New source code to compile. If omitted, recompiles from stored source.
+        canary:
+          $ref: '#/components/schemas/CanaryConfig'
+
+    ReloadResponse:
+      type: object
+      required:
+        - success
+        - newHash
+        - name
+        - changed
+        - version
+      properties:
+        success:
+          type: boolean
+          description: Whether reload succeeded
+        previousHash:
+          type: string
+          nullable: true
+          description: Structural hash of the previous version
+        newHash:
+          type: string
+          description: Structural hash of the new version
+        name:
+          type: string
+          description: Pipeline name
+        changed:
+          type: boolean
+          description: Whether the pipeline actually changed (structural hash differs)
+        version:
+          type: integer
+          description: New version number
+        canary:
+          $ref: '#/components/schemas/CanaryStateResponse'
+
+    CanaryConfig:
+      type: object
+      properties:
+        initialWeight:
+          type: number
+          format: double
+          description: Initial traffic weight for the new version (0.0-1.0)
+          default: 0.05
+        promotionSteps:
+          type: array
+          items:
+            type: number
+            format: double
+          description: Traffic weight progression steps
+          default: [0.10, 0.25, 0.50, 1.0]
+        observationWindow:
+          type: string
+          description: Duration to observe each step (e.g., "5m", "1h")
+          default: "5m"
+        errorThreshold:
+          type: number
+          format: double
+          description: Maximum error rate before auto-rollback (0.0-1.0)
+          default: 0.05
+        latencyThresholdMs:
+          type: integer
+          format: int64
+          nullable: true
+          description: Maximum p99 latency in ms before auto-rollback
+        minRequests:
+          type: integer
+          description: Minimum requests before evaluating metrics
+          default: 10
+        autoPromote:
+          type: boolean
+          description: Whether to auto-promote when metrics are healthy
+          default: true
+
+    PipelineVersionInfo:
+      type: object
+      required:
+        - version
+        - structuralHash
+        - createdAt
+        - active
+      properties:
+        version:
+          type: integer
+          description: Version number
+        structuralHash:
+          type: string
+          description: Structural hash of this version
+        createdAt:
+          type: string
+          format: date-time
+          description: When this version was created
+        active:
+          type: boolean
+          description: Whether this version is currently active
+
+    PipelineVersionsResponse:
+      type: object
+      required:
+        - name
+        - versions
+      properties:
+        name:
+          type: string
+          description: Pipeline name
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PipelineVersionInfo'
+
+    RollbackResponse:
+      type: object
+      required:
+        - success
+        - name
+        - version
+        - structuralHash
+      properties:
+        success:
+          type: boolean
+          description: Whether rollback succeeded
+        name:
+          type: string
+          description: Pipeline name
+        version:
+          type: integer
+          description: Version rolled back to
+        structuralHash:
+          type: string
+          description: Structural hash of the rolled-back version
+
+    CanaryStateResponse:
+      type: object
+      required:
+        - pipelineName
+        - oldVersion
+        - newVersion
+        - currentWeight
+        - currentStep
+        - status
+        - startedAt
+        - metrics
+      properties:
+        pipelineName:
+          type: string
+          description: Pipeline name
+        oldVersion:
+          $ref: '#/components/schemas/CanaryVersionInfo'
+        newVersion:
+          $ref: '#/components/schemas/CanaryVersionInfo'
+        currentWeight:
+          type: number
+          format: double
+          description: Current traffic weight to new version (0.0-1.0)
+        currentStep:
+          type: integer
+          description: Current promotion step index
+        status:
+          type: string
+          description: Canary status
+          enum: [Observing, Promoting, RolledBack, Complete]
+        startedAt:
+          type: string
+          format: date-time
+          description: When the canary deployment started
+        metrics:
+          $ref: '#/components/schemas/CanaryMetricsResponse'
+
+    CanaryVersionInfo:
+      type: object
+      required:
+        - version
+        - structuralHash
+      properties:
+        version:
+          type: integer
+          description: Version number
+        structuralHash:
+          type: string
+          description: Structural hash
+
+    CanaryMetricsResponse:
+      type: object
+      properties:
+        oldVersion:
+          type: object
+          properties:
+            requests:
+              type: integer
+              format: int64
+            errorRate:
+              type: number
+              format: double
+            avgLatencyMs:
+              type: number
+              format: double
+        newVersion:
+          type: object
+          properties:
+            requests:
+              type: integer
+              format: int64
+            errorRate:
+              type: number
+              format: double
+            avgLatencyMs:
+              type: number
+              format: double
+
+    ExecutionSummary:
+      type: object
+      required:
+        - executionId
+        - structuralHash
+        - resumptionCount
+        - missingInputs
+        - createdAt
+      properties:
+        executionId:
+          type: string
+          description: Execution ID (UUID)
+        structuralHash:
+          type: string
+          description: Structural hash of the pipeline
+        resumptionCount:
+          type: integer
+          description: Number of times this execution has been resumed
+        missingInputs:
+          type: object
+          additionalProperties:
+            type: string
+          description: Missing input names and their expected types
+        createdAt:
+          type: string
+          format: date-time
+          description: When the execution was created
+
+    ExecutionListResponse:
+      type: object
+      required:
+        - executions
+      properties:
+        executions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExecutionSummary'
+
+    ResumeRequest:
+      type: object
+      properties:
+        additionalInputs:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Additional inputs to provide for the resumed execution
+        resolvedNodes:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: Resolved node values to inject into the execution
 
     ComponentMetadata:
       type: object
@@ -999,11 +1701,11 @@ components:
         error:
           type: string
           description: Error code
-          example: "DagNotFound"
+          example: "NotFound"
         message:
           type: string
           description: Human-readable error message
-          example: "DAG 'unknown-pipeline' not found"
+          example: "Pipeline 'unknown-pipeline' not found"
         requestId:
           type: string
           description: Request ID for tracing (from X-Request-ID header or auto-generated)
