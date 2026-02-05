@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Link from '@docusaurus/Link';
 import styles from './styles.module.css';
 
@@ -19,6 +20,15 @@ const edges = [
 ];
 
 export default function HomepageHero(): JSX.Element {
+  const [copied, setCopied] = useState(false);
+  const installCommand = '"io.constellation" %% "constellation-core" % "0.4.0"';
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(installCommand);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <header className={styles.hero}>
       <div className={styles.heroBackground} />
@@ -58,6 +68,24 @@ export default function HomepageHero(): JSX.Element {
           >
             View on GitHub
           </Link>
+        </div>
+        <div className={styles.installSection}>
+          <div className={styles.installBox} onClick={handleCopy}>
+            <code className={styles.installCode}>{installCommand}</code>
+            <button className={styles.copyButton} aria-label="Copy to clipboard">
+              {copied ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              )}
+            </button>
+          </div>
+          <span className={styles.installHint}>Add to your build.sbt</span>
         </div>
       </div>
     </header>

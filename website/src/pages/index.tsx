@@ -24,13 +24,13 @@ export default function Home(): JSX.Element {
         <HomepageHero />
         <HomepageFeatures />
         <HomepageCodeExample />
-        <HomepageUseCases />
-        <HomepageArchitecture />
-        <HomepageStats />
-        <HomepageLSP />
         <HomepageDashboard />
+        <HomepageLSP />
+        <HomepageUseCases />
+        <HomepageStats />
         <HomepageSuspended />
         <HomepageDeployment />
+        <HomepageArchitecture />
         <HomepageComparison />
       </main>
     </Layout>

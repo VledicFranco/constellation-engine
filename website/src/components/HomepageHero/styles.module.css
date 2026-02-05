@@ -134,6 +134,61 @@
   text-decoration: none;
 }
 
+/* Install command section */
+.installSection {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.installBox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.installBox:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.installCode {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  background: none;
+  padding: 0;
+}
+
+.copyButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.copyButton:hover {
+  color: #e2e8f0;
+}
+
+.installHint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
 @media (max-width: 768px) {
   .hero {
     padding: 4rem 1.5rem;
@@ -143,5 +198,8 @@
   }
   .tagline {
     font-size: 1.2rem;
+  }
+  .installCode {
+    font-size: 0.75rem;
   }
 }
