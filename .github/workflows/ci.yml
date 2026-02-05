@@ -33,8 +33,14 @@ jobs:
       - name: Check scalafix rules
         run: sbt "scalafixAll --check"
 
-      - name: Run tests with coverage
+      # Run tests with coverage only on PRs; just run tests on push (faster feedback)
+      - name: Run tests with coverage (PRs)
+        if: github.event_name == 'pull_request'
         run: sbt coverage test coverageReport coverageAggregate
+
+      - name: Run tests (push)
+        if: github.event_name == 'push'
+        run: sbt test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
