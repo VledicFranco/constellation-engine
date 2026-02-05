@@ -6,9 +6,11 @@ const BASE_URL = `http://localhost:${PORT}`;
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0, // Reduced from 2 to speed up CI
   workers: 1, // Sequential — tests share a server
   fullyParallel: false,
+  // Skip screenshot-audit in CI (it's a dev tool for visual inspection)
+  testIgnore: process.env.CI ? ['**/screenshot-audit.spec.ts'] : [],
 
   reporter: [
     ['html', { outputFolder: 'reports', open: 'never' }],
