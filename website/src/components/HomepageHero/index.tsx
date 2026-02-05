@@ -19,14 +19,33 @@ const edges = [
   [10, 11], [11, 12], [12, 13], [13, 14], [14, 15], [15, 16],
 ];
 
-export default function HomepageHero(): JSX.Element {
-  const [copied, setCopied] = useState(false);
-  const installCommand = '"io.constellation" %% "constellation-core" % "0.4.0"';
+const modules = [
+  { name: 'constellation-core', desc: 'Core types & module system', required: true },
+  { name: 'constellation-runtime', desc: 'Pipeline execution engine', required: true },
+  { name: 'constellation-lang-compiler', desc: 'DSL compiler for .cst files', required: false },
+  { name: 'constellation-lang-stdlib', desc: 'Standard library functions', required: false },
+  { name: 'constellation-http-api', desc: 'HTTP server & dashboard', required: false },
+  { name: 'constellation-lang-lsp', desc: 'IDE language server', required: false },
+];
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(installCommand);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+export default function HomepageHero(): JSX.Element {
+  const [copied, setCopied] = useState<string | null>(null);
+  const version = '0.4.0';
+
+  const handleCopy = async (moduleName: string) => {
+    const command = `"io.constellation" %% "${moduleName}" % "${version}"`;
+    await navigator.clipboard.writeText(command);
+    setCopied(moduleName);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleCopyAll = async () => {
+    const allDeps = modules
+      .map(m => `"io.constellation" %% "${m.name}" % "${version}"`)
+      .join(',\n  ');
+    await navigator.clipboard.writeText(allDeps);
+    setCopied('all');
+    setTimeout(() => setCopied(null), 2000);
   };
 
   return (
@@ -70,22 +89,45 @@ export default function HomepageHero(): JSX.Element {
           </Link>
         </div>
         <div className={styles.installSection}>
-          <div className={styles.installBox} onClick={handleCopy}>
-            <code className={styles.installCode}>{installCommand}</code>
-            <button className={styles.copyButton} aria-label="Copy to clipboard">
-              {copied ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                </svg>
-              )}
+          <div className={styles.installHeader}>
+            <span className={styles.installTitle}>Add to your build.sbt</span>
+            <button className={styles.copyAllButton} onClick={handleCopyAll}>
+              {copied === 'all' ? 'Copied!' : 'Copy all'}
             </button>
           </div>
-          <span className={styles.installHint}>Add to your build.sbt</span>
+          <div className={styles.modulesList}>
+            {modules.map((mod) => (
+              <div
+                key={mod.name}
+                className={styles.moduleRow}
+                onClick={() => handleCopy(mod.name)}
+              >
+                <div className={styles.moduleInfo}>
+                  <code className={styles.moduleName}>{mod.name}</code>
+                  <span className={styles.moduleDesc}>{mod.desc}</span>
+                </div>
+                <div className={styles.moduleActions}>
+                  {mod.required ? (
+                    <span className={styles.requiredBadge}>required</span>
+                  ) : (
+                    <span className={styles.optionalBadge}>optional</span>
+                  )}
+                  <button className={styles.copyButton} aria-label="Copy to clipboard">
+                    {copied === mod.name ? (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                      </svg>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </header>
