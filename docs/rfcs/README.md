@@ -1,6 +1,9 @@
-# Constellation Engine RFCs
+# RFCs
 
-This directory contains Request for Comments (RFC) documents for proposed features and infrastructure.
+> **Path**: `docs/rfcs/`
+> **Parent**: [docs/](../README.md)
+
+Request for Comments (RFC) documents for proposed features and infrastructure.
 
 ## Status Legend
 
@@ -107,6 +110,37 @@ RFC-015 (terminology rename)
   ├── RFC-015d (persistent store)    ← can start after 015
   └── RFC-015e (dashboard)           ← requires 015a + 015b
 ```
+
+#### QA Iterations
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-015f](./rfc-015f-qa-iteration-1.md) | QA Iteration 1 | Implemented | First QA pass fixes |
+| [RFC-015g](./rfc-015g-qa-iteration-2.md) | QA Iteration 2 | Implemented | Second QA pass fixes |
+
+---
+
+### Project Quality
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-016](./rfc-016-project-qa-audit.md) | Project QA Audit | Implemented | Comprehensive quality audit across all modules |
+
+---
+
+### v1.0 Readiness
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-017](./rfc-017-v1-readiness.md) | v1.0 Readiness | In Progress | Gap analysis and roadmap for v1.0 release |
+
+---
+
+### Future Features
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-018](./rfc-018-mcp-server.md) | MCP Server | Draft | Model Context Protocol server for LLM integration |
 
 ---
 
