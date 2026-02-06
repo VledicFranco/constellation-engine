@@ -1,5 +1,7 @@
 # Documentation Ethos
 
+> Part of the [Documentation Organon](./README.md#organon-guiding-documents). See also: [PHILOSOPHY.md](./PHILOSOPHY.md)
+>
 > Behavioral constraints for LLMs and humans working on this documentation.
 
 ---

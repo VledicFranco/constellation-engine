@@ -1,5 +1,7 @@
 # Documentation Philosophy
 
+> Part of the [Documentation Organon](./README.md#organon-guiding-documents). See also: [ETHOS.md](./ETHOS.md)
+>
 > Why this documentation is structured the way it is.
 
 ---

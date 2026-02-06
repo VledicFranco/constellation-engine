@@ -11,14 +11,15 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 | [rfcs/](./rfcs/) | Design proposals and decisions |
 | [dev/](./dev/) | Benchmarks, research, internal development docs |
 
-## Guiding Documents
+## Organon (Guiding Documents)
 
-| Document | Purpose |
-|----------|---------|
-| [PHILOSOPHY.md](./PHILOSOPHY.md) | Why this documentation is structured the way it is |
-| [ETHOS.md](./ETHOS.md) | Behavioral constraints for LLMs working on this documentation |
-| [../PHILOSOPHY.md](../PHILOSOPHY.md) | Why Constellation exists (product philosophy) |
-| [../ETHOS.md](../ETHOS.md) | Behavioral constraints for the Constellation codebase |
+This project uses the **organon** pattern — a complete guidance system consisting of philosophy, ethos, and protocol at each scope.
+
+| Scope | Philosophy | Ethos | Purpose |
+|-------|------------|-------|---------|
+| **Product** | [../PHILOSOPHY.md](../PHILOSOPHY.md) | [../ETHOS.md](../ETHOS.md) | Why Constellation exists, codebase constraints |
+| **Documentation** | [PHILOSOPHY.md](./PHILOSOPHY.md) | [ETHOS.md](./ETHOS.md) | Why docs are structured this way |
+| **Features** | `features/X/PHILOSOPHY.md` | `features/X/ETHOS.md` | Domain-specific guidance |
 
 ## Features
 
@@ -64,13 +65,15 @@ result = GetUser(id) with retry: 3, timeout: 5s, cache: 15min
 
 ## Documentation Structure
 
-This documentation follows the **philosophy/ethos/protocol** pattern:
+This documentation follows the **organon** pattern — a complete guidance system with three artifacts:
 
-- **Philosophy** — explains *why* decisions were made (for understanding)
-- **Ethos** — prescribes *what* should and shouldn't be done (for behavioral consistency)
-- **Protocols** — specifies *how* to accomplish specific tasks (for execution)
+| Artifact | Question | Audience |
+|----------|----------|----------|
+| **Philosophy** | Why do we do it this way? | Humans understanding the system |
+| **Ethos** | What should we do and not do? | LLMs (and humans) behaving in the system |
+| **Protocol** | How do we accomplish this task? | Agents executing specific tasks |
 
-Each feature has its own philosophy and ethos.
+Each feature has its own organon (philosophy + ethos). See the [Organon methodology](../ethos/) for details.
 
 ## For LLMs
 
