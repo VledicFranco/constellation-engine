@@ -1,147 +1,134 @@
-# Constellation Engine Ethos
+# Documentation Ethos
 
-> Behavioral constraints for LLMs working on this codebase.
+> Behavioral constraints for LLMs and humans working on this documentation.
 
 ---
 
 ## Identity
 
-### What Constellation IS
+### What This Documentation IS
 
-- **A pipeline orchestration framework.** It composes modules into executable DAGs.
-- **A type-safe DSL.** Field accesses and type operations are validated at compile time.
-- **A Scala 3 library.** Modules are Scala functions; the runtime is Cats Effect.
-- **An HTTP service.** Pipelines are executed via REST API or WebSocket LSP.
+- **LLM-optimized.** Structured for token-efficient navigation and context building.
+- **Feature-driven.** Organized by what the system does, not how it's built.
+- **Hierarchical.** A navigable tree where depth = specificity.
+- **Cross-referenced.** Features link to components; no duplication.
 
-### What Constellation is NOT
+### What This Documentation is NOT
 
-- **Not a general-purpose language.** Don't add loops, conditionals beyond `when`/`branch`, or arbitrary computation.
-- **Not a workflow engine.** No human-in-the-loop, no long-running processes, no saga patterns.
-- **Not a streaming system.** Not for Kafka, Flink, or continuous data streams.
-- **Not an ETL tool.** Not optimized for batch data processing. Use Spark/dbt for that.
+- **Not human-first.** For human-readable docs, see `website/docs/`.
+- **Not exhaustive.** Covers concepts and patterns, not every API detail.
+- **Not a tutorial.** For step-by-step guides, see `website/docs/getting-started/`.
+- **Not standalone.** References code as source of truth.
 
 ---
 
 ## Core Invariants
 
-These rules cannot be violated. They are the foundation of the system's integrity.
+1. **Code is the source of truth.** When docs conflict with code, fix one or the other. Never leave conflicts.
 
-1. **Code is the source of truth.** When documentation conflicts with code, one must be fixed. Never leave conflicts unresolved.
+2. **Feature-driven organization.** Primary navigation is by capability, not by module.
 
-2. **Types are structural.** Records are defined by their fields, not by name. Never introduce nominal typing.
+3. **README as router.** Every directory has a README.md with a contents table.
 
-3. **Modules are pure interfaces.** The DSL sees input type → output type. Implementation details stay in Scala.
+4. **Philosophy/Ethos per domain.** Each feature has PHILOSOPHY.md and ETHOS.md.
 
-4. **DAGs are acyclic.** Cycles in pipelines are compile-time errors. Never allow cyclic dependencies.
+5. **Component cross-references.** Feature docs include "Components Involved" tables.
 
-5. **Resilience is declarative.** Retry, timeout, fallback, cache are language constructs. Never embed resilience logic in modules.
-
-6. **Parallelism is automatic.** Independent nodes execute concurrently. Never require manual parallelization.
+6. **No duplication.** Link, don't copy. One source of truth per fact.
 
 ---
 
-## Design Principles
+## File Constraints
 
-In priority order. When principles conflict, higher-ranked principles win.
+### Naming
 
-### 1. Type Safety Over Convenience
+| Pattern | Use |
+|---------|-----|
+| `README.md` | Directory router (required) |
+| `PHILOSOPHY.md` | Why this domain exists |
+| `ETHOS.md` | Behavioral constraints |
+| `lowercase-kebab.md` | Content files |
 
-Reject features that weaken compile-time guarantees, even if they would be convenient. A runtime error in production is worse than a stricter DSL.
+### Size Limits
 
-### 2. Explicit Over Implicit
+| File Type | Max Lines | Action if Exceeded |
+|-----------|-----------|-------------------|
+| README | 100 | Split into subdirectories |
+| Content | 200 | Split into multiple files |
+| Philosophy/Ethos | 150 | Tighten, don't ramble |
 
-Prefer explicit syntax over magic. If behavior isn't visible in the code, it's harder to debug and understand.
+### Required Sections
 
-### 3. Composition Over Extension
+**README.md:**
+- Path/Parent header
+- Brief summary
+- Contents table
+- Quick reference (optional)
 
-Add capabilities by composing existing constructs, not by extending the language. New syntax is expensive; new modules are cheap.
-
-### 4. Declarative Over Imperative
-
-Express *what* should happen, not *how*. The runtime decides execution strategy.
-
-### 5. Simple Over Powerful
-
-Prefer a simple solution that covers 90% of cases over a powerful solution that covers 100% but is harder to understand.
+**Content files:**
+- Path/Parent header
+- Components Involved table
+- Related links
 
 ---
 
 ## Decision Heuristics
 
-When facing ambiguity, use these guidelines:
+### Adding New Documentation
 
-### Adding Language Features
+1. **Find the right feature.** Does it belong in an existing feature, or need a new one?
+2. **Update the parent README.** Add entry to contents table.
+3. **Include component cross-references.** Link to implementation files.
+4. **Keep it focused.** One topic per file.
 
-- **Does it require new syntax?** Prefer stdlib functions or module options over new syntax.
-- **Does it weaken type safety?** Reject unless the trade-off is exceptional.
-- **Can it be expressed with existing constructs?** Composition is preferred.
-- **Is there a clear RFC?** Major features require an RFC before implementation.
+### Modifying Existing Documentation
 
-### Modifying Type System
+1. **Verify against code.** Is the claim still true?
+2. **Update all references.** Search for links to modified content.
+3. **Check both surfaces.** Does `website/docs/` need a parallel update?
 
-- **Does it preserve structural typing?** Never introduce nominal types.
-- **Does it break existing programs?** Backward compatibility matters.
-- **Is the inference decidable?** Type inference must terminate.
+### When Uncertain
 
-### Adding Module Options
-
-- **Is it orthogonal to existing options?** Options should compose independently.
-- **Does the compiler validate it?** Invalid options should be compile-time errors.
-- **Is the default safe?** Unsafe defaults require explicit opt-in.
-
-### Documentation Changes
-
-- **Does it match the code?** Verify claims against implementation.
-- **Is it in the right layer?** Philosophy explains why; ethos constrains behavior; reference documents facts.
-- **Does it follow the structure?** README as router, feature-driven organization.
+- **About structure:** Follow existing patterns in sibling directories.
+- **About content:** Check the code; it's the source of truth.
+- **About audience:** This is for LLMs; keep it factual and navigable.
 
 ---
 
-## Failure Philosophy
+## Consistency with website/docs/
 
-When things go wrong:
+| Aspect | `docs/` (LLM) | `website/docs/` (Human) |
+|--------|---------------|-------------------------|
+| Same feature? | Must exist in both | Must exist in both |
+| Same facts? | Yes, semantically equivalent | Yes, semantically equivalent |
+| Same structure? | No, optimized differently | No, optimized differently |
+| Same wording? | No, concise here | No, narrative there |
 
-1. **Fail at compile time.** Catch errors before execution whenever possible.
-2. **Fail with clear messages.** Error messages should identify the problem and suggest solutions.
-3. **Fail visibly.** Never swallow errors silently. Surface failures to users.
-4. **Fail safely.** When uncertain, reject rather than guess. A false negative is better than silent corruption.
-
----
-
-## Component Boundaries
-
-| Component | Responsibility | Does NOT do |
-|-----------|----------------|-------------|
-| `core` | Type system (CType, CValue) | Parsing, execution, HTTP |
-| `lang-parser` | Syntax → AST | Type checking, execution |
-| `lang-compiler` | AST → DAG, type checking | Execution, HTTP |
-| `runtime` | DAG execution, ModuleBuilder | Parsing, HTTP |
-| `lang-stdlib` | Standard library functions | Core language features |
-| `lang-lsp` | IDE integration | Execution, HTTP serving |
-| `http-api` | REST/WebSocket endpoints | Parsing, compilation (delegates) |
-
-**Dependency rule:** Lower components cannot depend on higher ones. See `CLAUDE.md` for the full dependency graph.
+When updating a feature, check if both surfaces need updates.
 
 ---
 
-## What To Do When Uncertain
+## What Is Out of Scope
 
-1. **Check existing patterns.** How do similar features work?
-2. **Consult the RFCs.** Is there a design document for this area?
-3. **Read the tests.** Test cases often clarify intended behavior.
-4. **Ask the user.** When genuinely ambiguous, ask rather than guess.
+Do not add to `docs/`:
+
+- **Tutorials.** Step-by-step learning paths → `website/docs/getting-started/`
+- **Marketing.** Value propositions, comparisons → `website/docs/`
+- **Changelogs.** Version history → `CHANGELOG.md` at repo root
+- **API specs.** OpenAPI, generated docs → `website/docs/api-reference/`
 
 ---
 
-## What Is Explicitly Out of Scope
+## Maintenance
 
-Do not add features for:
+### After Code Changes
 
-- General-purpose computation (loops, arbitrary functions)
-- Long-running workflows (sagas, human-in-the-loop)
-- Streaming data (Kafka, Flink integration)
-- Batch ETL (Spark-style processing)
-- Multi-tenancy (tenant isolation, per-tenant config)
-- Distributed execution (cross-node DAG execution)
+1. Check if affected features need doc updates.
+2. Verify "Components Involved" tables are still accurate.
+3. Update both `docs/` and `website/docs/` if needed.
 
-These may be future directions, but they are not current goals. Proposals require RFCs.
+### Periodic Review
+
+- Are file sizes within limits?
+- Are cross-references still valid?
+- Do philosophy/ethos docs reflect current practice?

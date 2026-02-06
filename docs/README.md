@@ -15,8 +15,10 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 
 | Document | Purpose |
 |----------|---------|
-| [PHILOSOPHY.md](./PHILOSOPHY.md) | Why Constellation exists and the thinking behind its design |
-| [ETHOS.md](./ETHOS.md) | Behavioral constraints for LLMs working on this codebase |
+| [PHILOSOPHY.md](./PHILOSOPHY.md) | Why this documentation is structured the way it is |
+| [ETHOS.md](./ETHOS.md) | Behavioral constraints for LLMs working on this documentation |
+| [../PHILOSOPHY.md](../PHILOSOPHY.md) | Why Constellation exists (product philosophy) |
+| [../ETHOS.md](../ETHOS.md) | Behavioral constraints for the Constellation codebase |
 
 ## Features
 
