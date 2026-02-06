@@ -40,6 +40,8 @@ Dashboard, LSP integration, and VSCode extension.
 
 | Component | Role | Key Files |
 |-----------|------|-----------|
-| `http-api` | Dashboard static files, LSP WebSocket | `DashboardRoutes.scala`, `LspRoutes.scala` |
-| `lang-lsp` | LSP implementation | `ConstellationLanguageServer.scala` |
-| `vscode-extension` | VSCode integration | `extension.ts` |
+| `http-api` | Dashboard routes, LSP WebSocket | `DashboardRoutes.scala`, `LspWebSocketHandler.scala` |
+| `lang-lsp` | LSP implementation | `ConstellationLanguageServer.scala`, `DocumentManager.scala` |
+| `vscode-extension` | VSCode integration | `extension.ts`, `ScriptRunnerPanel.ts` |
+| `dashboard/` | Browser UI source | `src/main.ts`, `src/dag.ts` |
+| `dashboard-tests/` | Playwright E2E tests | `tests/*.spec.ts` |

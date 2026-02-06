@@ -16,12 +16,12 @@ Compile-time validation of field accesses and type operations.
 
 | File | Description |
 |------|-------------|
-| PHILOSOPHY.md | Why compile-time validation matters |
-| ETHOS.md | Constraints for LLMs working on the type system |
-| record-types.md | Record type syntax and operations |
-| type-algebra.md | Merge, projection, element-wise operations |
-| optionals.md | Optional types and null handling |
-| unions.md | Union types and discrimination |
+| [PHILOSOPHY.md](./PHILOSOPHY.md) | Why compile-time validation matters |
+| [ETHOS.md](./ETHOS.md) | Constraints for LLMs working on the type system |
+| [record-types.md](./record-types.md) | Record type syntax and operations |
+| [type-algebra.md](./type-algebra.md) | Merge, projection, element-wise operations |
+| [optionals.md](./optionals.md) | Optional types and null handling |
+| [unions.md](./unions.md) | Union types and discrimination |
 
 ## Quick Reference
 
@@ -38,5 +38,13 @@ projected = record[field1, field2]   # projection
 
 | Component | Role | Key Files |
 |-----------|------|-----------|
-| `core` | Type definitions (CType) | `TypeSystem.scala` |
-| `lang-compiler` | Type checking, inference | `TypeChecker.scala`, `SemanticType.scala` |
+| `core` | Runtime type/value representation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala` |
+| `lang-parser` | Parse type expressions | `modules/lang-parser/src/main/scala/io/constellation/lang/parser/ConstellationParser.scala` |
+| `lang-compiler` | Type checking, inference | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/TypeChecker.scala` |
+| `lang-compiler` | Semantic type definitions | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/SemanticType.scala` |
+| `lang-compiler` | Subtyping rules | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/Subtyping.scala` |
+
+## See Also
+
+- [docs/language/types/](../../language/types/) - Language reference for all types
+- [docs/language/expressions/](../../language/expressions/) - Expression syntax including type operations
