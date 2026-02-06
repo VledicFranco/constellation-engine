@@ -141,6 +141,7 @@ RFC-015 (terminology rename)
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
 | [RFC-018](./rfc-018-mcp-server.md) | MCP Server | Draft | Model Context Protocol server for LLM integration |
+| [RFC-019](./rfc-019-generated-documentation.md) | Generated Documentation | Draft | Doc generation from code, organon verification, freshness tracking |
 
 ---
 
