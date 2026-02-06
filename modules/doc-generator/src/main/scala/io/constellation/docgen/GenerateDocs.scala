@@ -32,15 +32,23 @@ object GenerateDocs:
   /** Output directory for generated docs */
   val outputDir: Path = Paths.get("docs/generated")
 
+  /** Module target directories to scan for TASTy files */
+  val moduleTargets: List[String] = List(
+    "modules/core/target/scala-3.3.1/classes",
+    "modules/runtime/target/scala-3.3.1/classes",
+    "modules/lang-ast/target/scala-3.3.1/classes",
+    "modules/lang-parser/target/scala-3.3.1/classes",
+    "modules/lang-compiler/target/scala-3.3.1/classes",
+    "modules/lang-stdlib/target/scala-3.3.1/classes",
+    "modules/lang-lsp/target/scala-3.3.1/classes",
+    "modules/http-api/target/scala-3.3.1/classes"
+  )
+
   def main(args: Array[String]): Unit =
     println("Generating Scala documentation catalog...")
 
-    // Get classpath from args or system property
-    val classpath = args.toList match
-      case cp :: _ => cp.split(java.io.File.pathSeparator).toList
-      case _ =>
-        val cp = System.getProperty("java.class.path", "")
-        cp.split(java.io.File.pathSeparator).toList
+    // Use module target directories as classpath
+    val classpath = moduleTargets.filter(p => Files.exists(Paths.get(p)))
 
     println(s"Classpath entries: ${classpath.size}")
 
