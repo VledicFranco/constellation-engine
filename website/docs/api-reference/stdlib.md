@@ -8,6 +8,10 @@ description: "Built-in functions available in every pipeline"
 
 The constellation-lang standard library provides commonly-used functions for pipeline orchestration.
 
+:::tip Most Commonly Used Functions
+The functions you will use most often are: `add`, `concat`, `gt`/`lt` for comparisons, `and`/`or`/`not` for boolean logic, and `list-length`/`list-first` for collections. Start with these before exploring the full library.
+:::
+
 ## Using the Standard Library
 
 ### Quick Start
@@ -47,6 +51,10 @@ val compiler = LangCompilerBuilder()
 ---
 
 ## Function Reference
+
+:::note Type Signature Convention
+Type signatures use arrow notation: `(param1: Type1, param2: Type2) -> ReturnType`. Generic types like `List<Int>` indicate the element type. All functions are pure unless noted otherwise.
+:::
 
 ### Math Operations
 
@@ -468,6 +476,10 @@ out label
 ---
 
 ### Higher-Order Functions
+
+:::tip
+Higher-order functions like `filter`, `map`, `all`, and `any` are processed specially by the compiler and use `InlineTransform` at runtime. They short-circuit when possible (e.g., `any` stops on first `true`).
+:::
 
 | Function | Type Signature | Description |
 |----------|----------------|-------------|

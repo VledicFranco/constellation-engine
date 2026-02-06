@@ -127,6 +127,10 @@ spec:
 
 For WebSocket (LSP) support, ensure your ingress supports WebSocket upgrades.
 
+:::warning
+The LSP WebSocket endpoint (`/lsp`) requires session affinity. Without sticky sessions, WebSocket connections will be randomly distributed across pods and connection state will be lost on each request. See [Session Affinity Requirements](#session-affinity-requirements) below.
+:::
+
 ## Graceful Shutdown
 
 The server supports graceful shutdown:
@@ -139,6 +143,10 @@ The server supports graceful shutdown:
 6. Process exits
 
 The K8s deployment sets `terminationGracePeriodSeconds: 30` to match.
+
+:::tip
+Set `terminationGracePeriodSeconds` to at least your drain timeout plus 15 seconds buffer. If Kubernetes kills the pod before the drain completes, in-flight requests will be terminated abruptly.
+:::
 
 ## Hardened Production Example
 
@@ -174,6 +182,10 @@ docker run -d \
 | `GET /health/live` | Liveness | K8s liveness probe |
 | `GET /health/ready` | Readiness | K8s readiness probe, load balancer |
 | `GET /health/detail` | Diagnostics | Deep health inspection (auth-gated) |
+
+:::note
+Use `/health/live` for liveness probes (should the pod be restarted?) and `/health/ready` for readiness probes (should the pod receive traffic?). Never use `/health/ready` for liveness probes as it returns 503 during graceful shutdown, which would cause unnecessary pod restarts.
+:::
 
 ### Key Metrics to Monitor
 

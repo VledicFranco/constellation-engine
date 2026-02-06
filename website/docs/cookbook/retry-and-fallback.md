@@ -127,6 +127,18 @@ result = SlowApiCall(request) with
     fallback: default
 ```
 
+:::warning
+Only retry idempotent operations. Retrying non-idempotent calls (like payments or order submissions) can cause duplicates or inconsistent state.
+:::
+
+:::tip
+Combine retry with timeout. A retry without a timeout can hang indefinitely if the service is slow. Use `timeout: 2s, retry: 3` to bound total latency.
+:::
+
+:::note
+Exponential backoff (2x multiplier) is preferred for external APIs because it gives recovering services time to stabilize. Linear backoff is better for internal services where you want faster recovery.
+:::
+
 ## Best Practices
 
 1. **Always set a timeout** — prevent hanging calls from blocking the pipeline

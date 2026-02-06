@@ -116,6 +116,14 @@ out deepInsights
 }
 ```
 
+:::note
+When combining multiple resilience options, they are evaluated in this order: (1) timeout wraps the call, (2) retry handles failures, (3) fallback provides a default if all retries fail, (4) on_error applies if no fallback is set, (5) cache stores successful results.
+:::
+
+:::tip
+Start with minimal resilience and add options as you discover failure modes. Over-engineering with every option can mask bugs and make debugging harder. A simple `retry: 2, timeout: 3s` is often enough.
+:::
+
 ## Best Practices
 
 1. **Layer resilience by criticality** — critical data gets retry + fallback; optional enrichment gets `on_error: log`

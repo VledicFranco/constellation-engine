@@ -103,6 +103,10 @@ MemcachedCacheBackend.resource(MemcachedConfig.single()).use { cache =>
 
 ## Implementing a Custom Backend
 
+:::warning Thread Safety Requirement
+Cache methods may be called concurrently from different fibers. Your implementation must be thread-safe. Built-in backends like Caffeine and redis4cats handle this automatically, but custom implementations must ensure proper synchronization or use concurrent data structures.
+:::
+
 There are two approaches depending on whether your backend stores values in-process or over the network.
 
 ### Approach 1: Implement CacheBackend Directly
@@ -290,6 +294,10 @@ In constellation-lang:
 fast = QuickLookup(id) with cache: 30s, cache_backend: "memory"
 slow = ExpensiveCall(id) with cache: 1h, cache_backend: "redis"
 ```
+
+:::tip Testing Custom Backends
+Test your cache implementation with concurrent access patterns before deploying. Use `IO.parTraverseN` to simulate multiple fibers hitting the cache simultaneously, and verify that `stats` returns accurate hit/miss counts under load.
+:::
 
 ## Gotchas
 

@@ -24,6 +24,10 @@ stateDiagram-v2
 | **Draining** | Rejected (`ShutdownRejectedException`) | Allowed to complete | `/health` 200, `/health/ready` 503 |
 | **Stopped** | Rejected | Cancelled | `/health` 503, `/health/ready` 503 |
 
+:::note
+During the **Draining** state, in-flight requests are allowed to complete normally up to the drain timeout. New requests receive `503 Service Unavailable` with a `ShutdownRejectedException`. This allows clients to retry against other instances.
+:::
+
 ## Shutdown Sequence
 
 The shutdown sequence is implemented in `ConstellationLifecycle` (`modules/runtime/.../execution/ConstellationLifecycle.scala`):
@@ -95,6 +99,10 @@ The `/health/ready` endpoint returns 503 during draining so that Kubernetes stop
 
 ## Kubernetes Integration
 
+:::tip
+Set `terminationGracePeriodSeconds` to at least `drainTimeout + 15 seconds`. For example, with the default 30s drain timeout, use `terminationGracePeriodSeconds: 45`. This gives time for SIGTERM delivery, shutdown hook execution, and a safety buffer.
+:::
+
 Configure the pod's `terminationGracePeriodSeconds` to be greater than the drain timeout plus a buffer for SIGTERM delivery and shutdown hook execution:
 
 ```yaml
@@ -159,6 +167,10 @@ The default drain timeout is **30 seconds**.
 | `drainTimeout` | 30 seconds | Maximum time to wait for in-flight executions to complete before cancelling |
 
 ### Choosing a drain timeout
+
+:::warning
+If `terminationGracePeriodSeconds` is shorter than the drain timeout, Kubernetes will send `SIGKILL` and forcibly terminate the pod before graceful shutdown completes. This can leave external systems in an inconsistent state.
+:::
 
 - **Too short** — in-flight executions are cancelled before they complete, potentially leaving external systems in an inconsistent state
 - **Too long** — rolling updates take longer than necessary; Kubernetes may `SIGKILL` the pod if `terminationGracePeriodSeconds` is exceeded

@@ -121,6 +121,14 @@ result = ExternalApi(request) with
     fallback: default
 ```
 
+:::tip
+The `throttle` option uses a token bucket algorithm. This means short bursts above the rate are allowed as long as the average rate stays within limits. For strict rate limiting, combine with `concurrency` to cap simultaneous calls.
+:::
+
+:::warning
+Setting burst size too high can overwhelm external services during traffic spikes. If an API has a strict rate limit (e.g., 10/second with no burst allowance), use a lower throttle value like `8/1s` to leave headroom for retries.
+:::
+
 ## Best Practices
 
 1. **Match throttle to the API's rate limit** — check the external service's documentation for its limits

@@ -54,6 +54,10 @@ out value
 
 ## Chained Coalesce
 
+:::tip
+Chain multiple `??` operators to create a priority-based fallback system: `primary ?? secondary ?? tertiary ?? default`. Each source is tried in order until one succeeds.
+:::
+
 Chain multiple coalesce operators to try fallbacks in order:
 
 ```
@@ -101,6 +105,10 @@ Coalesce removes the `Optional` wrapper:
 | `Optional<{ x: Int }>` | `{ x: Int }` | `{ x: Int }` |
 
 ### Type Compatibility
+
+:::warning
+The fallback type must be compatible with the optional's inner type. `Optional<Int> ?? "default"` is a type error because `String` is not compatible with `Int`.
+:::
 
 The fallback must be compatible with the optional's inner type:
 
@@ -244,6 +252,10 @@ chosen = if (flag) 100 else 0
 ```
 
 ## Short-Circuit Evaluation
+
+:::note
+The coalesce operator uses short-circuit evaluation. Place expensive fallback computations on the right side of `??` to ensure they only run when needed.
+:::
 
 The coalesce operator uses short-circuit evaluation:
 

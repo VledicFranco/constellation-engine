@@ -40,6 +40,10 @@ Requires `enableDetailEndpoint = true` in HealthCheckConfig.
 
 **Symptoms:** `/compile` or `/run` requests are slow.
 
+:::tip
+Always check the cache hit rate first. A hit rate below 0.5 indicates that most requests are triggering full compilation, which is the most expensive operation.
+:::
+
 **Check cache hit rate:**
 ```bash
 curl http://localhost:8080/metrics | jq .cache
@@ -56,6 +60,10 @@ curl http://localhost:8080/metrics | jq .cache
 ### Rate Limit Errors (429)
 
 **Symptoms:** Clients receive `429 Too Many Requests`.
+
+:::warning
+If multiple services share the same API key, they share the same rate limit bucket. Consider using separate API keys for each service to get independent rate budgets.
+:::
 
 **Diagnose:**
 - Check `Retry-After` header in the 429 response
@@ -99,6 +107,10 @@ curl http://localhost:8080/metrics | jq .scheduler
 ### Memory Issues
 
 **Symptoms:** `OutOfMemoryError`, slow GC pauses, process killed by OOM killer.
+
+:::warning
+If the container is killed by the OOM killer without logging an `OutOfMemoryError`, Kubernetes resource limits may be too low. Check `kubectl describe pod` for `OOMKilled` exit reason.
+:::
 
 **Actions:**
 - Increase `JAVA_OPTS` heap size: `-Xmx2g` or higher
@@ -176,6 +188,10 @@ kubectl top pods -l app=constellation -n constellation
 
 ### Emergency: Force Restart
 
+:::danger
+Force-deleting a pod immediately terminates all in-flight requests without graceful shutdown. Only use this when the pod is completely unresponsive and liveness probes are not triggering a restart.
+:::
+
 If a pod is unresponsive and liveness probe hasn't killed it yet:
 
 ```bash
@@ -214,6 +230,10 @@ JAVA_OPTS="-Xms512m -Xmx2g -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 - **GC pause target:** 200ms is a reasonable starting point
 
 ## Alerting Thresholds
+
+:::tip
+Start with these thresholds and adjust based on your workload. Pipeline execution times vary significantly - a 30s P99 latency may be normal for complex data processing pipelines but critical for real-time APIs.
+:::
 
 | Metric | Warning | Critical |
 |--------|---------|----------|

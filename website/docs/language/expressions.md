@@ -58,6 +58,10 @@ result = x * y + 1.5
 - `*` and `/` have higher precedence than `+` and `-`
 - Use parentheses to control evaluation order: `(a + b) * c`
 
+:::tip
+When in doubt about precedence, use parentheses! They make your intent clear and prevent subtle bugs. For example, `a + b * c` means `a + (b * c)`, not `(a + b) * c`.
+:::
+
 ## Comparison Expressions
 
 Compare values and produce Boolean results:
@@ -234,6 +238,10 @@ result = if (flag) a else b  # Type: Int
 
 ## Guard Expressions (`when`)
 
+:::warning
+Guard expressions return `Optional` types. Use the coalesce operator (`??`) to unwrap the result with a fallback value. See [Guard Expressions](./guards.md) for details.
+:::
+
 Attach a boolean guard to any expression for conditional execution:
 
 ```
@@ -279,6 +287,10 @@ value = primary() ?? secondary() ?? default_value
 ```
 
 ## Branch Expressions
+
+:::tip
+Use `branch` instead of nested `if/else` when you have more than two conditions. The `otherwise` clause is required for exhaustiveness, ensuring you handle all cases.
+:::
 
 Multi-way conditional with exhaustive matching:
 
@@ -341,6 +353,10 @@ sorted = sortBy(items, (a, b) => a.score > b.score)
 ```
 
 ## String Interpolation
+
+:::note
+String interpolation uses `${}` syntax (not `#{}` or `%s`). The expression inside the braces is evaluated and converted to a string automatically.
+:::
 
 Embed expressions within string literals using `${}`:
 

@@ -103,6 +103,14 @@ out recommendations
 out socialData
 ```
 
+:::tip
+Choose your error strategy based on criticality: use `fallback` for critical data with a meaningful default, `on_error: log` for optional enrichment you want to monitor, and `on_error: skip` only for truly optional data where failures are expected.
+:::
+
+:::warning
+In parallel branches, an error with `on_error: fail` (the default) will cancel sibling branches and propagate immediately. Use `on_error: log` or `fallback` for non-critical parallel calls to prevent one failure from stopping the entire pipeline.
+:::
+
 ## Best Practices
 
 1. **Default to `fail`** — silent failures hide bugs. Only use `skip`/`log` intentionally

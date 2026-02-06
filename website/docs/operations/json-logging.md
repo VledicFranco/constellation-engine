@@ -39,6 +39,10 @@ Sample output:
 
 ## Adding the JSON Encoder Dependency
 
+:::tip
+JSON logging is recommended for production deployments. Most log aggregation systems (ELK, Datadog, Splunk, CloudWatch) can automatically parse JSON, enabling structured queries and dashboards without custom parsing rules.
+:::
+
 Add the [logstash-logback-encoder](https://github.com/logfellow/logstash-logback-encoder) to your `build.sbt`:
 
 ```scala
@@ -213,6 +217,10 @@ spec:
 ```
 
 ## Correlation IDs
+
+:::note
+Correlation IDs are essential for debugging distributed systems. When a user reports an issue, ask for the `X-Execution-Id` header from their API response - this lets you find all related log entries instantly.
+:::
 
 Each pipeline execution gets a unique `executionId` (UUID). This ID appears in:
 

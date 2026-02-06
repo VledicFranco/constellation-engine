@@ -8,6 +8,10 @@ description: "Scala API for creating modules and building pipelines"
 
 This guide covers programmatic usage of Constellation Engine, including compiling constellation-lang pipelines and creating custom modules.
 
+:::note When to Use the Programmatic API
+Use the programmatic Scala API when you need fine-grained control over pipeline compilation and execution, when embedding Constellation in a larger Scala application, or when building custom tooling. For simple pipeline execution, the [HTTP API](./http-api-overview) may be simpler to integrate.
+:::
+
 ## Table of Contents
 
 - [Compiling Pipelines](#compiling-pipelines)
@@ -219,6 +223,10 @@ val module = ModuleBuilder
 
 ### Basic Execution
 
+:::tip Resource Management with Cats Effect
+Always use `Resource` or `IOApp` patterns to ensure proper cleanup of the Constellation runtime. The `ConstellationImpl.init` method returns an `IO` that should be composed with your application's effect lifecycle.
+:::
+
 ```scala
 import io.constellation._
 import cats.effect.unsafe.implicits.global
@@ -354,6 +362,10 @@ val typ: CType = stringVal.ctype
 ```
 
 ## Error Handling
+
+:::warning
+Avoid using `unsafeRunSync()` in production code. It blocks the current thread and can cause deadlocks. Use `IOApp` or integrate with your application's effect system for proper async execution.
+:::
 
 ### Compile Errors
 

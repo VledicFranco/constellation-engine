@@ -28,6 +28,10 @@ When the scheduler is disabled (default), tasks execute immediately with no conc
 
 ### Authentication
 
+:::danger
+Authentication is **disabled by default**. In production, always set `CONSTELLATION_API_KEYS` to prevent unauthorized access to your pipelines and execution endpoints.
+:::
+
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CONSTELLATION_API_KEYS` | *(none)* | Comma-separated `key:Role` pairs |
@@ -58,7 +62,11 @@ CONSTELLATION_API_KEYS="sk-prod-abc123def456ghi789jkl0:Admin,sk-readonly-xyz987w
 |----------|---------|-------------|
 | `CONSTELLATION_CORS_ORIGINS` | *(none)* | Comma-separated allowed origin URLs |
 
-Use `*` for wildcard (development only). When empty, CORS middleware is not applied.
+:::warning
+Using `*` (wildcard) for CORS origins allows any website to make requests to your API. This is acceptable for local development, but in production always specify exact origin URLs.
+:::
+
+When empty, CORS middleware is not applied.
 
 **Example:**
 ```bash
@@ -72,7 +80,9 @@ CONSTELLATION_CORS_ORIGINS="https://app.example.com,https://admin.example.com"
 | `CONSTELLATION_RATE_LIMIT_RPM` | `100` | Requests per minute per client IP |
 | `CONSTELLATION_RATE_LIMIT_BURST` | `20` | Token bucket burst capacity |
 
-Rate limiting is only active when explicitly enabled via the server builder (`.withRateLimit()`). Two layers are applied:
+:::tip
+Rate limiting is only active when explicitly enabled via the server builder (`.withRateLimit()`). The defaults (100 RPM, 20 burst) are conservative starting points. Adjust based on your expected traffic patterns and pipeline execution times.
+::: Two layers are applied:
 1. **Per-IP** — every client is rate-limited by source IP address
 2. **Per-API-key** — authenticated clients are also rate-limited by their key (200 RPM, burst 40)
 
@@ -315,6 +325,10 @@ The `/health/detail` endpoint can expose sensitive information (queue depths, ca
 3. **Disable in production** — Keep `enableDetailEndpoint = false` (default) if not needed.
 
 ## Security Considerations
+
+:::danger
+The `/health/detail` endpoint exposes internal server state including queue depths, cache statistics, and custom health check results. In production, either keep it disabled (default) or ensure authentication is enabled.
+:::
 
 - API keys are never logged — only counts and role distributions appear in logs
 - CORS origin URLs are never logged — only counts appear

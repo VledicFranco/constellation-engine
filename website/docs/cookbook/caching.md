@@ -107,6 +107,18 @@ result = FlakyService(request) with
 
 The cache stores the successful result. Retries and fallback only apply on cache miss.
 
+:::tip
+Keep cache TTL under 24 hours to avoid serving stale data. For critical data, prefer shorter TTLs (minutes) over longer ones (hours).
+:::
+
+:::warning
+Cache keys are derived from module name + input values. If your inputs contain timestamps or random IDs, every call will be a cache miss. Normalize inputs before caching.
+:::
+
+:::note
+The default in-memory cache is per-instance. For multi-instance deployments, use `cache_backend: "redis"` to share cache across instances.
+:::
+
 ## Best Practices
 
 1. **Choose TTL based on data freshness** — user sessions: 30s; API responses: 5min; reference data: 1h

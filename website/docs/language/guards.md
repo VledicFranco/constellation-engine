@@ -6,6 +6,10 @@ description: "Use guard expressions with the when keyword for conditional execut
 
 # Guard Expressions (`when`)
 
+:::warning
+Guard expressions return `Optional` types. You must use the coalesce operator (`??`) to unwrap the result before using it as a non-optional value. For example: `result = guardedExpr ?? defaultValue`.
+:::
+
 Guard expressions provide conditional execution by attaching a boolean condition to any expression. When the condition is false, the guarded expression produces `None` instead of executing.
 
 ## Syntax
@@ -63,6 +67,10 @@ different = process-alt(data) when value != 0.0
 ## Complex Guard Conditions
 
 ### Boolean Operators
+
+:::tip
+Combine multiple guards using boolean operators for complex conditional logic. Use parentheses to make precedence explicit: `when (a and b) or c`.
+:::
 
 Combine conditions using `and`, `or`, and `not`:
 
@@ -216,6 +224,10 @@ out finalMessage
 See [Coalesce Operator](./coalesce.md) for more details on unwrapping optionals.
 
 ## Comparison with Conditionals
+
+:::note
+Choose guards (`when`) when a computation may not be needed at all. Choose conditionals (`if/else`) when you always need a result and are choosing between two alternatives.
+:::
 
 Guards differ from `if/else` expressions:
 

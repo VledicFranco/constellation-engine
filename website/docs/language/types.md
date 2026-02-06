@@ -6,6 +6,10 @@ description: "Master Constellation's structural type system: primitives, records
 
 # Types
 
+:::note
+New to Constellation? Start with [Core Concepts](/docs/getting-started/concepts) first to understand the overall architecture before diving into the type system.
+:::
+
 Constellation uses a structural type system with support for primitives, records, collections, unions, and optional values. This page covers all type constructs and how they interact.
 
 ## Primitive Types
@@ -47,6 +51,10 @@ type Order = {
 ```
 
 ### Record Subtyping (Width and Depth)
+
+:::warning
+Structural subtyping means that a function expecting `{ name: String }` will accept `{ name: String, age: Int }`. This can lead to subtle bugs if you accidentally pass a record with extra fields that are silently ignored. Be explicit about your expected types when precision matters.
+:::
 
 Constellation uses **structural subtyping** for records. A record type `A` is a subtype of record type `B` if:
 
@@ -242,6 +250,10 @@ in data: Extended  # References the Extended type
 ```
 
 ## Type Inference Rules
+
+:::tip
+Let the type system work for you! In most cases, you don't need explicit type annotations on intermediate variables. The compiler infers types from context, so focus on annotating inputs and outputs.
+:::
 
 Constellation uses **bidirectional type inference**, where types flow both bottom-up (from expressions) and top-down (from context). This enables powerful inference without requiring explicit type annotations everywhere.
 
@@ -440,6 +452,10 @@ in sessions: Map<String, UserSession>
 ```
 
 ## Common Type Errors and How to Fix Them
+
+:::tip
+When you encounter a type error, read the full message carefully. Constellation's error messages include the expected type, the actual type, and often suggest the available fields or alternatives.
+:::
 
 ### TypeMismatch
 

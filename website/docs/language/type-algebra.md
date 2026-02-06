@@ -6,9 +6,17 @@ description: "Use the + operator to merge record types and combine data from mul
 
 # Type Algebra
 
+:::note
+Type algebra is an advanced topic. Make sure you understand [Types](./types.md) first, especially record types and structural subtyping.
+:::
+
 The `+` operator merges record types. This is the core mechanism for combining data from different sources.
 
 ## Record + Record
+
+:::warning
+When merging records, the right-hand side wins on field conflicts. In `A + B`, if both have a `y` field, `B`'s type for `y` will be used. This is intentional but can be surprising.
+:::
 
 Fields are merged; right-hand side wins on conflicts:
 
@@ -49,6 +57,10 @@ result = context + items  # Candidates<{ userId: Int, id: String }>
 ```
 
 ## Record Projection
+
+:::tip
+Use merge (`+`) when you need to **add** fields to a record. Use projection (`[]`) when you need to **select** specific fields. Both are essential tools for reshaping data in pipelines.
+:::
 
 Select a subset of fields from a record using `{}` syntax:
 

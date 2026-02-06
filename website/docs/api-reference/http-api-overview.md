@@ -16,6 +16,10 @@ http://localhost:8080
 
 The port is configurable via the `CONSTELLATION_PORT` environment variable.
 
+:::note
+All endpoints except `/health`, `/health/live`, `/health/ready`, and `/metrics` require API key authentication when authentication is enabled via `CONSTELLATION_API_KEYS`.
+:::
+
 ## Endpoints
 
 ### Core
@@ -72,6 +76,10 @@ The port is configurable via the `CONSTELLATION_PORT` environment variable.
 ---
 
 ## Compile
+
+:::tip Choosing Between /run and /compile + /execute
+Use `/run` for one-off executions where you have all inputs upfront. Use `/compile` followed by `/execute` when you want to compile once and execute multiple times with different inputs, or when you need to inspect the DAG before execution.
+:::
 
 Compile constellation-lang source and return the execution DAG without running it.
 
@@ -293,6 +301,10 @@ Aborts the canary deployment and routes all traffic to the old version.
 ---
 
 ## Authentication
+
+:::warning
+Request body size is limited by the underlying HTTP server configuration. For very large pipeline sources or input payloads, consider chunking your data or increasing server limits via http4s configuration.
+:::
 
 Authentication is opt-in. When enabled, pass the API key in the `Authorization` header:
 

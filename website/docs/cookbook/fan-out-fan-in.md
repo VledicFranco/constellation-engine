@@ -119,6 +119,14 @@ out user
 out product
 ```
 
+:::tip
+Parallelization is automatic. The DAG compiler analyzes data dependencies and runs independent calls concurrently. You never need to write `parMapN` or manage threads — just write sequential-looking code and let the compiler optimize.
+:::
+
+:::note
+Error handling in parallel branches: by default, if one branch fails, sibling branches are cancelled and the error propagates. Use `fallback` or `on_error: log` on individual calls if you want partial results when some branches fail.
+:::
+
 ## Best Practices
 
 1. **No explicit parallelism needed** — independent calls run in parallel automatically

@@ -42,6 +42,10 @@ object MetricsProvider {
 
 ## Built-in Metric Names
 
+:::note Metric Naming Convention
+All built-in metrics use dot-separated names (e.g., `execution.started`, `module.duration_ms`). When implementing a custom provider, preserve these names or map them consistently to your system's naming convention.
+:::
+
 The runtime emits these metrics automatically when a `MetricsProvider` is configured:
 
 | Name | Type | Tags | Description |
@@ -169,6 +173,10 @@ val constellation = ConstellationImpl.builder()
 ```
 
 ## Gotchas
+
+:::tip Cardinality Considerations
+Avoid high-cardinality tags like execution IDs, timestamps, or user IDs that create unbounded metric series. Stick to bounded tags like `dag_name`, `module_name`, and `success`. High cardinality can cause memory issues in your metrics backend and slow down queries.
+:::
 
 - **Thread safety:** The runtime may call metrics methods concurrently from multiple fibers. Ensure your implementation is thread-safe (Micrometer and StatsD clients are thread-safe by default).
 - **Fire-and-forget:** Exceptions thrown from metrics methods are caught and discarded by the runtime. Log errors internally if you need visibility.

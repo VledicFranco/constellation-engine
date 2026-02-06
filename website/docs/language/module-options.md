@@ -6,6 +6,10 @@ description: "Configure module calls with retry, timeout, cache, throttle, and o
 
 # Module Call Options
 
+:::warning
+Options are evaluated at compile time. Runtime values cannot be used as option values. For example, `retry: myVariable` is invalid; use literals like `retry: 3`.
+:::
+
 Module call options allow you to control how module calls execute with built-in resilience, caching, and scheduling features. Options are specified using the `with` clause after a module call.
 
 ## Syntax
@@ -113,6 +117,10 @@ throttle: 1000/1h     # 1000 calls per hour
 
 ## Examples
 
+:::tip
+Combine multiple options to build robust pipelines. A common pattern is `retry: 3, delay: 1s, backoff: exponential, timeout: 30s, fallback: defaultValue` for external API calls.
+:::
+
 ### Basic Retry with Timeout
 
 ```constellation
@@ -206,6 +214,10 @@ out stored
 ## Option Interactions
 
 ### Retry + Timeout
+
+:::note
+Timeout applies **per attempt**, not total. With `retry: 3, timeout: 10s`, total maximum time is 40s (4 attempts x 10s each). Plan your timeout values accordingly to avoid unexpectedly long operations.
+:::
 
 Timeout applies **per attempt**, not total. With `retry: 3, timeout: 10s`, total maximum time is 40s (4 attempts × 10s each).
 
