@@ -44,8 +44,8 @@ Function signatures (for type checking) and module implementations (for executio
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/categories/MathFunctions.scala#mathSignatures,mathModules` |
-| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibTest.scala#allModules should contain all modules` |
+| Implementation | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/categories/MathFunctions.scala#mathSignatures` |
+| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibTest.scala#contain all modules` |
 
 **Exception:** Higher-order functions (filter, map, all, any) have signatures but no module implementations because they are executed via InlineTransform at runtime.
 
@@ -55,8 +55,8 @@ The parameter types and return type declared in a FunctionSignature must align w
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/categories/MathFunctions.scala#addSignature,addModule` |
-| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibTest.scala#Math signatures should have correct types` |
+| Implementation | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/categories/MathFunctions.scala#addSignature` |
+| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibTest.scala#have correct types` |
 
 ### 3. Functions are namespaced consistently
 
@@ -83,7 +83,7 @@ Operations that can fail (division by zero, empty list access) raise explicit er
 | Aspect | Reference |
 |--------|-----------|
 | Implementation | `modules/lang-stdlib/src/main/scala/io/constellation/stdlib/categories/MathFunctions.scala#moduloModule` |
-| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibEdgeCasesTest.scala#List first should raise error for empty list` |
+| Test | `modules/lang-stdlib/src/test/scala/io/constellation/stdlib/StdLibEdgeCasesTest.scala#raise error for empty list` |
 
 ---
 

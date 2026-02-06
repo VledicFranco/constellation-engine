@@ -86,8 +86,8 @@ Every `CValue` instance correctly reports its type via the `ctype` method. The t
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#CValue.ctype` |
-| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#CValue should report correct ctype` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#def ctype: CType` |
+| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#report correct ctype` |
 | Property Test | `modules/core/src/test/scala/io/constellation/property/TypeSystemPropertyTest.scala#CValue should always have a ctype matching its construction type` |
 
 ### 2. Type derivation is deterministic and consistent
@@ -96,8 +96,8 @@ Every `CValue` instance correctly reports its type via the `ctype` method. The t
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#CTypeTag` |
-| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#CTypeTag should not interfere with primitive type tags` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#trait CTypeTag` |
+| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#not interfere with primitive type tags` |
 
 ### 3. Injection and extraction are inverses (roundtrip)
 
@@ -105,8 +105,9 @@ For supported types, `extract(inject(value)) == value`. Injecting a Scala value 
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#CValueInjector, CValueExtractor` |
-| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#Roundtrip should inject and extract values correctly` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#trait CValueInjector` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#trait CValueExtractor` |
+| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#inject and extract values correctly` |
 
 ### 4. Extraction fails with descriptive errors on type mismatch
 
@@ -114,8 +115,8 @@ When extracting a CValue to an incompatible Scala type, extraction raises an `IO
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#CValueExtractor.stringExtractor` |
-| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#CValueExtractor should fail with descriptive error on type mismatch` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#stringExtractor: CValueExtractor[String]` |
+| Test | `modules/core/src/test/scala/io/constellation/TypeSystemTest.scala#fail with descriptive error on type mismatch` |
 
 ### 5. Composite CValues have structurally consistent children
 
@@ -123,7 +124,9 @@ List elements match the declared subtype. Product fields match the declared stru
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#CValue.CList, CValue.CProduct, CValue.CMap` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#final case class CList` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#final case class CProduct` |
+| Implementation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala#final case class CMap` |
 | Test | `modules/core/src/test/scala/io/constellation/property/TypeSystemPropertyTest.scala#CValue structural invariant` |
 
 ### 6. Errors are serializable and machine-readable
@@ -132,8 +135,8 @@ All `ConstellationError` instances provide `errorCode`, `message`, `context`, an
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/core/src/main/scala/io/constellation/ConstellationError.scala#ConstellationError` |
-| Test | `modules/core/src/test/scala/io/constellation/ConstellationErrorTest.scala` |
+| Implementation | `modules/core/src/main/scala/io/constellation/ConstellationError.scala#trait ConstellationError` |
+| Test | `modules/core/src/test/scala/io/constellation/ConstellationErrorTest.scala#serialize to JSON correctly` |
 
 ---
 

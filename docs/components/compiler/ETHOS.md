@@ -91,8 +91,8 @@ The same source code always produces the same AST. Parser memoization is cleared
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-parser/src/main/scala/io/constellation/lang/parser/ConstellationParser.scala#parse` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/property/CompilationPropertyTest.scala#Parser should be deterministic` |
+| Implementation | `modules/lang-parser/src/main/scala/io/constellation/lang/parser/ConstellationParser.scala#def parse` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/property/CompilationPropertyTest.scala#be deterministic: same source always produces same AST` |
 
 ### 2. Type checking is total
 
@@ -100,8 +100,8 @@ Every well-formed AST receives a type judgment (success with TypedPipeline) or a
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/TypeChecker.scala#check` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/TypeCheckerTest.scala` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/TypeChecker.scala#def check` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala#Bidirectional type inference` |
 
 ### 3. Lambda types are inferred from context
 
@@ -109,8 +109,8 @@ Bidirectional type inference allows lambda parameter types to be inferred from t
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala#checkLambdaAgainst` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala#infer lambda parameter types from filter context` |
 
 ### 4. IR preserves type safety
 
@@ -118,8 +118,8 @@ All `asInstanceOf` casts in IR generation and DAG compilation are safe by constr
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/DagCompiler.scala` (see type safety note) |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/integration/EndToEndPipelineTest.scala` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/DagCompiler.scala#Type Safety Note` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/integration/EndToEndPipelineTest.scala#E2E pipeline` |
 
 ### 5. Compilation is deterministic
 
@@ -127,8 +127,8 @@ The same source code with the same function registry always produces the same Da
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/LangCompiler.scala#compile` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/property/CompilationPropertyTest.scala#Compilation should be deterministic` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/LangCompiler.scala#def compile` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/property/CompilationPropertyTest.scala#be deterministic: same source always produces same DagSpec` |
 
 ### 6. Errors include actionable context
 
@@ -136,8 +136,8 @@ Compile errors include source location (line, column), code snippets with caret 
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/ErrorFormatter.scala` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/compiler/ErrorFormatterTest.scala` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/ErrorFormatter.scala#def format` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/compiler/ErrorFormatterTest.scala#include error code in output` |
 
 ### 7. Cache invalidation is hash-based
 
@@ -145,8 +145,8 @@ Compilation cache entries are keyed by source hash and registry hash. Changed so
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/CompilationCache.scala` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/CompilationCacheTest.scala` |
+| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/CompilationCache.scala#def cacheKey` |
+| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/CompilationCacheTest.scala#return None when source hash changes` |
 
 ---
 

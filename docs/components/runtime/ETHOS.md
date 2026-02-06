@@ -49,7 +49,7 @@ Module implementations must not have side effects beyond their declared IO type.
 | Aspect | Reference |
 |--------|-----------|
 | Implementation | `modules/runtime/src/main/scala/io/constellation/ModuleBuilder.scala#implementationPure` |
-| Test | `modules/runtime/src/test/scala/io/constellation/ModuleBuilderTest.scala#pure module` |
+| Test | `modules/runtime/src/test/scala/io/constellation/ModuleBuilderTest.scala#implementationPure` |
 
 ### 2. Layer execution is parallel within layers
 
@@ -57,8 +57,8 @@ Modules in the same DAG layer (no dependencies between them) execute concurrentl
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/runtime/src/main/scala/io/constellation/Runtime.scala#executeLayer` |
-| Test | `modules/runtime/src/test/scala/io/constellation/RuntimeTest.scala#parallel execution` |
+| Implementation | `modules/runtime/src/main/scala/io/constellation/Runtime.scala#parTraverse` |
+| Test | `modules/runtime/src/test/scala/io/constellation/SteppedExecutionTest.scala#group parallel modules in same batch` |
 
 ### 3. Cancellation is cooperative
 
@@ -66,8 +66,8 @@ Modules in the same DAG layer (no dependencies between them) execute concurrentl
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/runtime/src/main/scala/io/constellation/execution/CancellableExecution.scala#cancel` |
-| Test | `modules/runtime/src/test/scala/io/constellation/execution/CancellableExecutionTest.scala#cancellation` |
+| Implementation | `modules/runtime/src/main/scala/io/constellation/execution/CancellableExecution.scala#def cancel` |
+| Test | `modules/runtime/src/test/scala/io/constellation/execution/CancellableExecutionTest.scala#cancel a slow execution` |
 
 ### 4. Graceful shutdown drains before stopping
 
@@ -75,8 +75,8 @@ Modules in the same DAG layer (no dependencies between them) execute concurrentl
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/runtime/src/main/scala/io/constellation/execution/ConstellationLifecycle.scala#shutdown` |
-| Test | `modules/runtime/src/test/scala/io/constellation/execution/ConstellationLifecycleTest.scala#graceful shutdown` |
+| Implementation | `modules/runtime/src/main/scala/io/constellation/execution/ConstellationLifecycle.scala#def shutdown` |
+| Test | `modules/runtime/src/test/scala/io/constellation/execution/ConstellationLifecycleTest.scala#drain in-flight executions` |
 
 ### 5. Circuit breaker state transitions are atomic
 
@@ -85,7 +85,7 @@ Circuit breaker state (Closed, Open, HalfOpen) transitions use atomic references
 | Aspect | Reference |
 |--------|-----------|
 | Implementation | `modules/runtime/src/main/scala/io/constellation/execution/CircuitBreaker.scala#stateRef` |
-| Test | `modules/runtime/src/test/scala/io/constellation/execution/CircuitBreakerTest.scala#concurrent failures` |
+| Test | `modules/runtime/src/test/scala/io/constellation/execution/CircuitBreakerTest.scala#concurrent getOrCreate` |
 
 ---
 

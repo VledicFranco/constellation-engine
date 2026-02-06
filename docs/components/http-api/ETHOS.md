@@ -76,7 +76,7 @@ Each client IP has an independent token bucket refilling at `requestsPerMinute /
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/RateLimitMiddleware.scala#tokenBuckets` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/RateLimitMiddleware.scala#withBuckets` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/RateLimitMiddlewareTest.scala#return 429 when rate limit exceeded` |
 
 ### 5. CORS middleware is disabled when no origins configured
@@ -94,7 +94,7 @@ Empty `allowedOrigins` results in zero middleware overhead. Wildcard (`*`) with 
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/HealthCheckRoutes.scala#liveness` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/HealthCheckRoutes.scala#health" / "live` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/HealthCheckRoutesTest.scala#always return 200 with alive status` |
 
 ### 7. Readiness probe aggregates custom checks
@@ -103,7 +103,7 @@ Empty `allowedOrigins` results in zero middleware overhead. Wildcard (`*`) with 
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/HealthCheckRoutes.scala#readiness` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/HealthCheckRoutes.scala#health" / "ready` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/HealthCheckRoutesTest.scala#return 503 when a custom check fails` |
 
 ### 8. Middleware applies inner to outer
@@ -112,7 +112,7 @@ Middleware composition order is: `Request -> CORS -> RateLimit -> Auth -> Routes
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/ConstellationServer.scala#buildRoutes` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/ConstellationServer.scala#Apply middleware layers` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/ServerBuilderIntegrationTest.scala#AuthMiddleware + CorsMiddleware composition` |
 
 ### 9. Missing inputs suspend execution rather than fail
@@ -121,7 +121,7 @@ When `/execute` or `/run` receives incomplete inputs, the response is 200 OK wit
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/ConstellationRoutes.scala#handleSuspension` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/ConstellationRoutes.scala#buildSuspendedSignature` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/ConstellationRoutesTest.scala#return 200 with suspended status for missing input` |
 
 ### 10. LSP WebSocket uses JSON-RPC 2.0 protocol
@@ -130,7 +130,7 @@ WebSocket messages at `/lsp` follow JSON-RPC 2.0 with `jsonrpc`, `method`, `para
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/http-api/src/main/scala/io/constellation/http/LspWebSocketHandler.scala` |
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/LspWebSocketHandler.scala#parseMessage` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/LspWebSocketHandlerTest.scala#serialize correctly` |
 
 ---

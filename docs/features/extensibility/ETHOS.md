@@ -7,7 +7,7 @@ This document defines the constraints and guidelines for AI agents (LLMs) workin
 
 ## Core Constraints
 
-### 1. Interface Stability
+### Interface Stability
 
 **SPIs are contracts.** Once published, they must remain stable.
 
@@ -40,7 +40,7 @@ trait ExecutionListener {
 }
 ```
 
-### 2. Backward Compatibility
+### Backward Compatibility
 
 **Never break existing implementations.** Users who upgrade Constellation should not need to modify their custom backends unless they want new functionality.
 
@@ -58,7 +58,7 @@ trait ExecutionListener {
 - Minor (0.X.0): Backward-compatible additions
 - Major (X.0.0): Breaking changes (rare, documented migration path)
 
-### 3. Fire-and-Forget Semantics
+### Fire-and-Forget Semantics
 
 **Observability SPIs must never block execution.**
 
@@ -79,7 +79,7 @@ listener.onModuleComplete(execId, moduleId, name, duration)
 - `CacheBackend` methods: May propagate errors (cache miss is not a failure)
 - `PipelineStore` methods: May propagate errors (persistence failure is critical)
 
-### 4. No Side Effects in Trait Definitions
+### No Side Effects in Trait Definitions
 
 **SPI traits contain only method signatures.** No vals, no lazy vals, no initialization logic.
 
@@ -98,7 +98,7 @@ trait CacheBackend {
 }
 ```
 
-### 5. Type Erasure Awareness
+### Type Erasure Awareness
 
 **Generic methods suffer type erasure at runtime.** Document this clearly.
 
@@ -140,7 +140,7 @@ trait CacheBackend {
 
 When implementing or modifying SPIs:
 
-### 1. Check Existing Implementations First
+### Check Existing Implementations First
 
 Before modifying an SPI trait, search for all implementations:
 
@@ -152,21 +152,21 @@ grep -r "with CacheBackend" modules/
 
 Every implementation must still compile after your changes.
 
-### 2. Add Tests for New Capabilities
+### Add Tests for New Capabilities
 
 New SPI methods need tests in:
 - Unit tests for the no-op implementation
 - Integration tests with at least one real implementation
 - Contract tests that verify all implementations behave consistently
 
-### 3. Update Documentation
+### Update Documentation
 
 When modifying SPIs:
 1. Update the trait's ScalaDoc
 2. Update `docs/features/extensibility/<spi-name>.md`
 3. Add migration notes if behavior changes
 
-### 4. Preserve Binary Compatibility
+### Preserve Binary Compatibility
 
 Use MiMa (Migration Manager) to verify binary compatibility:
 
@@ -176,7 +176,7 @@ sbt mimaReportBinaryIssues
 
 If MiMa reports issues, reconsider your changes.
 
-### 5. Consider Performance Impact
+### Consider Performance Impact
 
 SPIs are on the hot path. Profile new methods:
 

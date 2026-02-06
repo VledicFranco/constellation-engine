@@ -63,8 +63,8 @@ Multiple rapid `didChange` notifications for the same document result in only on
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/DocumentManager.scala` |
-| Test | `modules/lang-lsp/src/test/scala/io/constellation/lsp/DocumentManagerTest.scala#concurrent updates` |
+| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/DocumentManager.scala#Ref[IO, Map[String, DocumentState]]` |
+| Test | `modules/lang-lsp/src/test/scala/io/constellation/lsp/DocumentManagerTest.scala#handle concurrent updates` |
 
 ### 4. Completion trie provides O(k) prefix lookup
 
@@ -81,8 +81,8 @@ Each `SessionState` maintains independent execution state. Stepping one session 
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/DebugSessionManager.scala` |
-| Test | `modules/lang-lsp/src/test/scala/io/constellation/lsp/DebugSessionManagerTest.scala#Session isolation` |
+| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/DebugSessionManager.scala#sessionsRef` |
+| Test | `modules/lang-lsp/src/test/scala/io/constellation/lsp/DebugSessionManagerTest.scala#ensure sessions don't interfere` |
 
 ### 6. Semantic tokens are delta-encoded
 
@@ -99,7 +99,7 @@ Malformed or missing request parameters return `InvalidParams` error response. T
 
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/ConstellationLanguageServer.scala` |
+| Implementation | `modules/lang-lsp/src/main/scala/io/constellation/lsp/ConstellationLanguageServer.scala#InvalidParams` |
 | Test | `modules/lang-lsp/src/test/scala/io/constellation/lsp/ConstellationLanguageServerTest.scala#handle malformed completion params gracefully` |
 
 ---
