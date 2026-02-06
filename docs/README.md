@@ -68,7 +68,7 @@ This documentation follows the **philosophy/ethos/protocol** pattern:
 - **Ethos** — prescribes *what* should and shouldn't be done (for behavioral consistency)
 - **Protocols** — specifies *how* to accomplish specific tasks (for execution)
 
-Each feature has its own philosophy and ethos. See [DOCUMENTATION-PHILOSOPHY.md](./DOCUMENTATION-PHILOSOPHY.md) for the full methodology.
+Each feature has its own philosophy and ethos.
 
 ## For LLMs
 

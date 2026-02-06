@@ -104,17 +104,8 @@ These exist only in website/docs/ and are appropriate there:
 
 ## Cross-Reference Improvements
 
-### Add to docs/STRUCTURE.md or README.md:
-```markdown
-## Relationship to website/docs/
-
-| Directory | Audience | Optimization |
-|-----------|----------|--------------|
-| `docs/` | LLMs, agents | Depth-first navigation, small files |
-| `website/docs/` | Humans | Rich formatting, comprehensive pages |
-
-Content should be semantically equivalent but formatted differently.
-```
+> **Note:** docs/STRUCTURE.md was removed during the feature-driven restructure.
+> The relationship to website/docs/ is now documented in docs/README.md.
 
 ---
 
