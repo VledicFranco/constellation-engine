@@ -113,3 +113,14 @@ Circuit breaker state (Closed, Open, HalfOpen) transitions use atomic references
 - HTTP request handling (see [http-api/](../http-api/))
 - Type system definitions (see [core/](../core/))
 - Standard library functions (see [stdlib/](../stdlib/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Resilience](../../features/resilience/) | RetryExecutor, CacheExecutor, TimeoutExecutor, BackoffStrategy, CircuitBreaker |
+| [Parallelization](../../features/parallelization/) | Runtime, LayerExecutor, GlobalScheduler, BoundedGlobalScheduler |
+| [Execution](../../features/execution/) | CancellableExecution, ExecutionStatus, ConstellationLifecycle, SuspensionStore |
+| [Extensibility](../../features/extensibility/) | CacheBackend, MetricsProvider, ExecutionListener, TracerProvider |

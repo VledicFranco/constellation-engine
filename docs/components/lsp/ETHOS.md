@@ -130,3 +130,11 @@ Malformed or missing request parameters return `InvalidParams` error response. T
 - HTTP routing and WebSocket transport (see [http-api/](../http-api/))
 - Core type system definitions (see [core/](../core/))
 - VSCode extension packaging (see [tooling/vscode/](../../tooling/vscode/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Tooling](../../features/tooling/) | ConstellationLanguageServer, DocumentManager, CompletionTrie, SemanticTokenProvider, DebugSessionManager |

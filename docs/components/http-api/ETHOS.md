@@ -161,3 +161,13 @@ WebSocket messages at `/lsp` follow JSON-RPC 2.0 with `jsonrpc`, `method`, `para
 - Type system definitions (see [core/](../core/))
 - LSP protocol implementation details (see [lsp/](../lsp/))
 - Standard library functions (see [stdlib/](../stdlib/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Tooling](../../features/tooling/) | DashboardRoutes, LspWebSocketHandler (dashboard UI and LSP transport) |
+| [Execution](../../features/execution/) | ConstellationRoutes, ExecutionHelper, ExecutionStorage (API for pipeline execution) |
+| [Extensibility](../../features/extensibility/) | HealthCheckRoutes, ReadinessCheck (pluggable health checks) |

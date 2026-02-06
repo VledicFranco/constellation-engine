@@ -176,3 +176,12 @@ Compilation cache entries are keyed by source hash and registry hash. Changed so
 - Type system definitions (see [core/](../core/))
 - Standard library functions (see [stdlib/](../stdlib/))
 - LSP features (see [lsp/](../lsp/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Type Safety](../../features/type-safety/) | TypeChecker, BidirectionalTypeChecker, SemanticType, TypedPipeline |
+| [Resilience](../../features/resilience/) | OptionValidator, OptionParser (compile-time validation of resilience options) |

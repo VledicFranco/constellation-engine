@@ -115,3 +115,13 @@ Operations that can fail (division by zero, empty list access) raise explicit er
 - Type system definitions (see [core/](../core/))
 - HTTP API and WebSocket handling (see [http-api/](../http-api/))
 - User-defined modules (see [example-app/](../example-app/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Type Safety](../../features/type-safety/) | Type conversion functions, type-specific operations (eq-int, eq-string, etc.) |
+
+Note: StdLib provides utility functions used across all features but is not the primary implementation of any single feature.

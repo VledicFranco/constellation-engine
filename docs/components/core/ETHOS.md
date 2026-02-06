@@ -162,3 +162,11 @@ All `ConstellationError` instances provide `errorCode`, `message`, `context`, an
 - Compilation and IR generation (see [compiler/](../compiler/))
 - HTTP server and endpoints (see [http-api/](../http-api/))
 - Standard library functions (see [stdlib/](../stdlib/))
+
+---
+
+## Implements Features
+
+| Feature | Artifacts |
+|---------|-----------|
+| [Type Safety](../../features/type-safety/) | CType, CValue, CTypeTag, CValueInjector, CValueExtractor, TypeSystem |
