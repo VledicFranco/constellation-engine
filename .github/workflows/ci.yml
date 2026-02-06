@@ -33,6 +33,12 @@ jobs:
       - name: Check scalafix rules
         run: sbt "scalafixAll --check"
 
+      - name: Check generated docs freshness
+        run: sbt "docGenerator/runMain io.constellation.docgen.FreshnessChecker"
+
+      - name: Verify ethos invariant references
+        run: sbt "docGenerator/runMain io.constellation.docgen.EthosVerifier"
+
       # Run tests with coverage only on PRs; just run tests on push (faster feedback)
       - name: Run tests with coverage (PRs)
         if: github.event_name == 'pull_request'
