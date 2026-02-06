@@ -1,9 +1,9 @@
 package io.constellation.docgen
 
-import io.constellation.docgen.model.*
-
-import java.time.Instant
 import java.security.MessageDigest
+import java.time.Instant
+
+import io.constellation.docgen.model.*
 
 /** Generates markdown documentation from extracted type information */
 object MarkdownWriter:

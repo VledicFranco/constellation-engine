@@ -1,12 +1,12 @@
 package io.constellation.docgen
 
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+
 import scala.annotation.experimental
+import scala.jdk.CollectionConverters.*
 
 import io.constellation.docgen.model.*
-
-import java.nio.file.{Files, Path, Paths, StandardOpenOption}
-import java.nio.charset.StandardCharsets
-import scala.jdk.CollectionConverters.*
 
 /** Main entry point for generating documentation from compiled Scala code */
 @experimental

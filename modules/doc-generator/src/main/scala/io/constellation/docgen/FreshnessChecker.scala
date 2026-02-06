@@ -1,7 +1,8 @@
 package io.constellation.docgen
 
-import java.nio.file.{Files, Path, Paths}
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths}
+
 import scala.jdk.CollectionConverters.*
 import scala.util.matching.Regex
 

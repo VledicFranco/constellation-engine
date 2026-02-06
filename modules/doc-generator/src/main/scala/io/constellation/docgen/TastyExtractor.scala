@@ -1,13 +1,13 @@
 package io.constellation.docgen
 
+import java.nio.file.{Files, Path, Paths}
+
 import scala.annotation.experimental
+import scala.collection.mutable.ListBuffer
 import scala.quoted.*
 import scala.tasty.inspector.*
 
 import io.constellation.docgen.model.*
-
-import java.nio.file.{Files, Path, Paths}
-import scala.collection.mutable.ListBuffer
 
 /** Extracts type information from TASTy files using Scala 3 TASTy Inspector */
 @experimental
