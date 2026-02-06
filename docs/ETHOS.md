@@ -114,6 +114,8 @@ For adding a new component, see the [Add Component Docs Protocol](./protocols/ad
 
 When updating a feature, check if both surfaces need updates.
 
+For the human docs organon, see [website/PHILOSOPHY.md](../website/PHILOSOPHY.md) and [website/ETHOS.md](../website/ETHOS.md).
+
 ---
 
 ## What Is Out of Scope

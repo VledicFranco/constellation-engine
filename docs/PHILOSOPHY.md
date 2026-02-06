@@ -189,6 +189,8 @@ The ethos verifier (`make verify-ethos`) checks that these references are valid.
 |----------|---------|
 | `docs/` (this) | LLM-optimized documentation |
 | `website/docs/` | Human-optimized documentation |
+| `website/PHILOSOPHY.md` | Why human docs are structured that way |
+| `website/ETHOS.md` | Constraints for human docs |
 | `../ethos/` | Portable methodology (not Constellation-specific) |
 | Repo root `PHILOSOPHY.md` | Constellation product philosophy |
 | Repo root `ETHOS.md` | Constellation product ethos |
