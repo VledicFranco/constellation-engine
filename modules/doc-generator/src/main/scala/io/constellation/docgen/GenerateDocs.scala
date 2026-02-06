@@ -19,14 +19,14 @@ object GenerateDocs:
 
   /** Source directories for hash computation (relative to project root) */
   val sourceMapping: Map[String, String] = Map(
-    "io.constellation" -> "modules/core/src/main/scala/io/constellation",
-    "io.constellation.runtime" -> "modules/runtime/src/main/scala/io/constellation",
-    "io.constellation.ast" -> "modules/lang-ast/src/main/scala/io/constellation",
-    "io.constellation.parser" -> "modules/lang-parser/src/main/scala/io/constellation",
+    "io.constellation"          -> "modules/core/src/main/scala/io/constellation",
+    "io.constellation.runtime"  -> "modules/runtime/src/main/scala/io/constellation",
+    "io.constellation.ast"      -> "modules/lang-ast/src/main/scala/io/constellation",
+    "io.constellation.parser"   -> "modules/lang-parser/src/main/scala/io/constellation",
     "io.constellation.compiler" -> "modules/lang-compiler/src/main/scala/io/constellation",
-    "io.constellation.stdlib" -> "modules/lang-stdlib/src/main/scala/io/constellation",
-    "io.constellation.lsp" -> "modules/lang-lsp/src/main/scala/io/constellation",
-    "io.constellation.http" -> "modules/http-api/src/main/scala/io/constellation"
+    "io.constellation.stdlib"   -> "modules/lang-stdlib/src/main/scala/io/constellation",
+    "io.constellation.lsp"      -> "modules/lang-lsp/src/main/scala/io/constellation",
+    "io.constellation.http"     -> "modules/http-api/src/main/scala/io/constellation"
   )
 
   /** Output directory for generated docs */
@@ -66,14 +66,19 @@ object GenerateDocs:
     // Generate markdown for each package
     byPackage.foreach { case (pkg, pkgTypes) =>
       val sourceDir = findSourceDir(pkg)
-      val hash = MarkdownWriter.computeHash(sourceDir)
-      val catalog = PackageCatalog(pkg, sourceDir, pkgTypes.toList)
-      val markdown = MarkdownWriter.generate(catalog, hash)
+      val hash      = MarkdownWriter.computeHash(sourceDir)
+      val catalog   = PackageCatalog(pkg, sourceDir, pkgTypes.toList)
+      val markdown  = MarkdownWriter.generate(catalog, hash)
 
-      val fileName = s"$pkg.md"
+      val fileName   = s"$pkg.md"
       val outputPath = outputDir.resolve(fileName)
-      Files.writeString(outputPath, markdown, StandardCharsets.UTF_8,
-        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+      Files.writeString(
+        outputPath,
+        markdown,
+        StandardCharsets.UTF_8,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.TRUNCATE_EXISTING
+      )
       println(s"  Generated: $fileName (${pkgTypes.size} types)")
     }
 
@@ -95,7 +100,9 @@ object GenerateDocs:
     val sb = new StringBuilder
     sb.append("<!-- GENERATED: Do not edit manually -->\n\n")
     sb.append("# Generated Scala Catalog\n\n")
-    sb.append("This directory contains auto-generated documentation extracted from Scala source code.\n\n")
+    sb.append(
+      "This directory contains auto-generated documentation extracted from Scala source code.\n\n"
+    )
     sb.append("## Packages\n\n")
     sb.append("| Package | Description |\n")
     sb.append("|---------|-------------|\n")
@@ -111,6 +118,11 @@ object GenerateDocs:
     sb.append("```\n")
 
     val outputPath = outputDir.resolve("README.md")
-    Files.writeString(outputPath, sb.toString, StandardCharsets.UTF_8,
-      StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+    Files.writeString(
+      outputPath,
+      sb.toString,
+      StandardCharsets.UTF_8,
+      StandardOpenOption.CREATE,
+      StandardOpenOption.TRUNCATE_EXISTING
+    )
     println("  Generated: README.md (index)")

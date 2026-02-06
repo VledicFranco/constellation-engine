@@ -23,9 +23,9 @@ object EthosVerifier:
   )
 
   sealed trait VerificationStatus
-  case class Valid(invariant: Invariant) extends VerificationStatus
-  case class MissingImpl(invariant: Invariant) extends VerificationStatus
-  case class MissingTest(invariant: Invariant) extends VerificationStatus
+  case class Valid(invariant: Invariant)                      extends VerificationStatus
+  case class MissingImpl(invariant: Invariant)                extends VerificationStatus
+  case class MissingTest(invariant: Invariant)                extends VerificationStatus
   case class BrokenImpl(invariant: Invariant, reason: String) extends VerificationStatus
   case class BrokenTest(invariant: Invariant, reason: String) extends VerificationStatus
 
@@ -59,7 +59,7 @@ object EthosVerifier:
   private val refPattern: Regex = """^(.+)#(.+)$""".r
 
   def main(args: Array[String]): Unit =
-    val docsDir = Paths.get("docs")
+    val docsDir    = Paths.get("docs")
     val sourceRoot = Paths.get(".")
 
     println("Ethos Verification Report")
@@ -123,7 +123,8 @@ object EthosVerifier:
   def findEthosFiles(dir: Path): List[Path] =
     if !Files.exists(dir) then return Nil
 
-    Files.walk(dir)
+    Files
+      .walk(dir)
       .filter(p => p.getFileName.toString == "ETHOS.md")
       .toList
       .asScala
@@ -131,12 +132,12 @@ object EthosVerifier:
 
   def parseEthosFile(file: Path): List[Invariant] =
     val content = Files.readString(file, StandardCharsets.UTF_8)
-    val lines = content.linesIterator.toList
+    val lines   = content.linesIterator.toList
 
     val invariants = scala.collection.mutable.ListBuffer[Invariant]()
     var currentInvariant: Option[(Int, String, Int)] = None // (number, name, startLine)
-    var implRef: Option[Reference] = None
-    var testRef: Option[Reference] = None
+    var implRef: Option[Reference]                   = None
+    var testRef: Option[Reference]                   = None
 
     lines.zipWithIndex.foreach { case (line, idx) =>
       line match
@@ -153,13 +154,11 @@ object EthosVerifier:
         case implRefPattern(ref) =>
           ref match
             case refPattern(f, s) => implRef = Some(Reference(f, s))
-            case _ => // Invalid format, ignore
-
+            case _                => // Invalid format, ignore
         case testRefPattern(ref) =>
           ref match
             case refPattern(f, s) => testRef = Some(Reference(f, s))
-            case _ => // Invalid format, ignore
-
+            case _                => // Invalid format, ignore
         case _ => // Other lines, ignore
     }
 
@@ -176,23 +175,23 @@ object EthosVerifier:
         case None => Left(MissingImpl(inv))
         case Some(ref) =>
           checkReference(ref, sourceRoot) match
-            case Right(_) => Right(())
+            case Right(_)     => Right(())
             case Left(reason) => Left(BrokenImpl(inv, reason))
 
       val testStatus = inv.test match
         case None => Left(MissingTest(inv))
         case Some(ref) =>
           checkReference(ref, sourceRoot) match
-            case Right(_) => Right(())
+            case Right(_)     => Right(())
             case Left(reason) => Left(BrokenTest(inv, reason))
 
       (implStatus, testStatus) match
-        case (Right(_), Right(_)) => Valid(inv)
+        case (Right(_), Right(_))      => Valid(inv)
         case (Left(m: MissingImpl), _) => m
-        case (Left(b: BrokenImpl), _) => b
+        case (Left(b: BrokenImpl), _)  => b
         case (_, Left(m: MissingTest)) => m
-        case (_, Left(b: BrokenTest)) => b
-        case _ => Valid(inv) // Shouldn't happen
+        case (_, Left(b: BrokenTest))  => b
+        case _                         => Valid(inv) // Shouldn't happen
     }
 
     Report(
@@ -206,8 +205,7 @@ object EthosVerifier:
   private def checkReference(ref: Reference, sourceRoot: Path): Either[String, Unit] =
     val file = sourceRoot.resolve(ref.file)
 
-    if !Files.exists(file) then
-      return Left(s"File not found: ${ref.file}")
+    if !Files.exists(file) then return Left(s"File not found: ${ref.file}")
 
     val content = Files.readString(file, StandardCharsets.UTF_8)
 

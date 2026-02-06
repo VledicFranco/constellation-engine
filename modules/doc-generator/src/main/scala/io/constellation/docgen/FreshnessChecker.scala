@@ -15,9 +15,9 @@ object FreshnessChecker:
   )
 
   sealed trait FreshnessStatus
-  case class Fresh(doc: Path, metadata: DocMetadata) extends FreshnessStatus
+  case class Fresh(doc: Path, metadata: DocMetadata)                      extends FreshnessStatus
   case class Stale(doc: Path, metadata: DocMetadata, currentHash: String) extends FreshnessStatus
-  case class Invalid(doc: Path, reason: String) extends FreshnessStatus
+  case class Invalid(doc: Path, reason: String)                           extends FreshnessStatus
 
   case class Report(
       fresh: List[Fresh],
@@ -25,15 +25,15 @@ object FreshnessChecker:
       invalid: List[Invalid]
   ):
     def isHealthy: Boolean = stale.isEmpty && invalid.isEmpty
-    def totalDocs: Int = fresh.size + stale.size + invalid.size
+    def totalDocs: Int     = fresh.size + stale.size + invalid.size
 
-  private val sourcePattern: Regex = """<!-- Source: (.+) -->""".r
-  private val hashPattern: Regex = """<!-- Hash: ([a-f0-9]+) -->""".r
+  private val sourcePattern: Regex    = """<!-- Source: (.+) -->""".r
+  private val hashPattern: Regex      = """<!-- Hash: ([a-f0-9]+) -->""".r
   private val generatedPattern: Regex = """<!-- Generated: (.+) -->""".r
 
   def main(args: Array[String]): Unit =
     val generatedDir = Paths.get("docs/generated")
-    val report = check(generatedDir)
+    val report       = check(generatedDir)
 
     println("Documentation Freshness Report")
     println("=" * 40)
@@ -73,7 +73,8 @@ object FreshnessChecker:
     if !Files.exists(generatedDir) then
       return Report(Nil, Nil, List(Invalid(generatedDir, "Directory does not exist")))
 
-    val docs = Files.list(generatedDir)
+    val docs = Files
+      .list(generatedDir)
       .filter(p => p.toString.endsWith(".md") && p.getFileName.toString != "README.md")
       .toList
       .asScala
@@ -89,19 +90,20 @@ object FreshnessChecker:
 
   private def checkDoc(doc: Path): FreshnessStatus =
     val content = Files.readString(doc, StandardCharsets.UTF_8)
-    val lines = content.linesIterator.take(10).toList
+    val lines   = content.linesIterator.take(10).toList
 
-    val sourceOpt = lines.collectFirst { case sourcePattern(s) => s }
-    val hashOpt = lines.collectFirst { case hashPattern(h) => h }
+    val sourceOpt    = lines.collectFirst { case sourcePattern(s) => s }
+    val hashOpt      = lines.collectFirst { case hashPattern(h) => h }
     val generatedOpt = lines.collectFirst { case generatedPattern(g) => g }
 
     (sourceOpt, hashOpt, generatedOpt) match
       case (Some(source), Some(hash), Some(generated)) =>
-        val metadata = DocMetadata(source, hash, generated)
+        val metadata    = DocMetadata(source, hash, generated)
         val currentHash = MarkdownWriter.computeHash(source)
 
         if currentHash == hash then Fresh(doc, metadata)
-        else if currentHash == "unknown" then Fresh(doc, metadata) // Source dir not found, assume fresh
+        else if currentHash == "unknown" then
+          Fresh(doc, metadata) // Source dir not found, assume fresh
         else Stale(doc, metadata, currentHash)
 
       case (None, _, _) =>

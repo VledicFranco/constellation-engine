@@ -42,7 +42,8 @@ case class ClassInfo(
 ) extends TypeInfo
 
 object ClassInfo:
-  given encoder: Encoder[ClassInfo] = deriveEncoder[ClassInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("class"))))
+  given encoder: Encoder[ClassInfo] =
+    deriveEncoder[ClassInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("class"))))
   given decoder: Decoder[ClassInfo] = deriveDecoder[ClassInfo]
 
 /** Information about an object (singleton) */
@@ -55,7 +56,8 @@ case class ObjectInfo(
 ) extends TypeInfo
 
 object ObjectInfo:
-  given encoder: Encoder[ObjectInfo] = deriveEncoder[ObjectInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("object"))))
+  given encoder: Encoder[ObjectInfo] =
+    deriveEncoder[ObjectInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("object"))))
   given decoder: Decoder[ObjectInfo] = deriveDecoder[ObjectInfo]
 
 /** Information about a trait */
@@ -69,7 +71,8 @@ case class TraitInfo(
 ) extends TypeInfo
 
 object TraitInfo:
-  given encoder: Encoder[TraitInfo] = deriveEncoder[TraitInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("trait"))))
+  given encoder: Encoder[TraitInfo] =
+    deriveEncoder[TraitInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("trait"))))
   given decoder: Decoder[TraitInfo] = deriveDecoder[TraitInfo]
 
 /** Information about an enum */
@@ -81,7 +84,8 @@ case class EnumInfo(
 ) extends TypeInfo
 
 object EnumInfo:
-  given encoder: Encoder[EnumInfo] = deriveEncoder[EnumInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("enum"))))
+  given encoder: Encoder[EnumInfo] =
+    deriveEncoder[EnumInfo].mapJson(_.deepMerge(Json.obj("kind" -> Json.fromString("enum"))))
   given decoder: Decoder[EnumInfo] = deriveDecoder[EnumInfo]
 
 /** Information about a field */

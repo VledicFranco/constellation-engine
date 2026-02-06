@@ -23,8 +23,8 @@ object MarkdownWriter:
     // Group by type
     val objects = catalog.types.collect { case o: ObjectInfo => o }.sortBy(_.name)
     val classes = catalog.types.collect { case c: ClassInfo => c }.sortBy(_.name)
-    val traits = catalog.types.collect { case t: TraitInfo => t }.sortBy(_.name)
-    val enums = catalog.types.collect { case e: EnumInfo => e }.sortBy(_.name)
+    val traits  = catalog.types.collect { case t: TraitInfo => t }.sortBy(_.name)
+    val enums   = catalog.types.collect { case e: EnumInfo => e }.sortBy(_.name)
 
     if objects.nonEmpty then
       sb.append("## Objects\n\n")
@@ -64,7 +64,7 @@ object MarkdownWriter:
       sb.append("| Method | Signature | Description |\n")
       sb.append("|--------|-----------|-------------|\n")
       obj.methods.foreach { m =>
-        val sig = formatSignature(m)
+        val sig  = formatSignature(m)
         val desc = m.scaladoc.map(_.takeWhile(_ != '\n')).getOrElse("")
         sb.append(s"| `${m.name}` | `$sig` | $desc |\n")
       }
@@ -72,13 +72,12 @@ object MarkdownWriter:
 
   private def writeClass(sb: StringBuilder, cls: ClassInfo): Unit =
     val typeParamStr = if cls.typeParams.isEmpty then "" else s"[${cls.typeParams.mkString(", ")}]"
-    val casePrefix = if cls.isCaseClass then "case class" else "class"
+    val casePrefix   = if cls.isCaseClass then "case class" else "class"
     sb.append(s"### $casePrefix ${cls.name}$typeParamStr\n\n")
 
     cls.scaladoc.foreach(doc => sb.append(s"$doc\n\n"))
 
-    if cls.parents.nonEmpty then
-      sb.append(s"**Extends:** ${cls.parents.mkString(", ")}\n\n")
+    if cls.parents.nonEmpty then sb.append(s"**Extends:** ${cls.parents.mkString(", ")}\n\n")
 
     if cls.fields.nonEmpty then
       sb.append("**Fields:**\n\n")
@@ -95,7 +94,7 @@ object MarkdownWriter:
       sb.append("| Method | Signature | Description |\n")
       sb.append("|--------|-----------|-------------|\n")
       cls.methods.foreach { m =>
-        val sig = formatSignature(m)
+        val sig  = formatSignature(m)
         val desc = m.scaladoc.map(_.takeWhile(_ != '\n')).getOrElse("")
         sb.append(s"| `${m.name}` | `$sig` | $desc |\n")
       }
@@ -107,15 +106,14 @@ object MarkdownWriter:
 
     trt.scaladoc.foreach(doc => sb.append(s"$doc\n\n"))
 
-    if trt.parents.nonEmpty then
-      sb.append(s"**Extends:** ${trt.parents.mkString(", ")}\n\n")
+    if trt.parents.nonEmpty then sb.append(s"**Extends:** ${trt.parents.mkString(", ")}\n\n")
 
     if trt.methods.nonEmpty then
       sb.append("**Methods:**\n\n")
       sb.append("| Method | Signature | Description |\n")
       sb.append("|--------|-----------|-------------|\n")
       trt.methods.foreach { m =>
-        val sig = formatSignature(m)
+        val sig  = formatSignature(m)
         val desc = m.scaladoc.map(_.takeWhile(_ != '\n')).getOrElse("")
         sb.append(s"| `${m.name}` | `$sig` | $desc |\n")
       }
@@ -129,14 +127,19 @@ object MarkdownWriter:
     sb.append("| Case | Parameters |\n")
     sb.append("|------|------------|\n")
     enm.cases.foreach { c =>
-      val params = if c.params.isEmpty then "" else c.params.map(p => s"${p.name}: ${p.typeName}").mkString(", ")
+      val params =
+        if c.params.isEmpty then ""
+        else c.params.map(p => s"${p.name}: ${p.typeName}").mkString(", ")
       sb.append(s"| `${c.name}` | $params |\n")
     }
     sb.append("\n")
 
   private def formatSignature(method: MethodInfo): String =
-    val typeParams = if method.typeParams.isEmpty then "" else s"[${method.typeParams.mkString(", ")}]"
-    val params = if method.params.isEmpty then "()" else method.params.map(p => s"${p.name}: ${p.typeName}").mkString("(", ", ", ")")
+    val typeParams =
+      if method.typeParams.isEmpty then "" else s"[${method.typeParams.mkString(", ")}]"
+    val params =
+      if method.params.isEmpty then "()"
+      else method.params.map(p => s"${p.name}: ${p.typeName}").mkString("(", ", ", ")")
     s"$typeParams$params: ${method.returnType}"
 
   /** Compute hash of source directory for freshness tracking */
@@ -148,7 +151,8 @@ object MarkdownWriter:
     if !Files.exists(path) then return "unknown"
 
     val md = MessageDigest.getInstance("SHA-256")
-    Files.walk(path)
+    Files
+      .walk(path)
       .filter(p => p.toString.endsWith(".scala"))
       .sorted()
       .forEach { file =>

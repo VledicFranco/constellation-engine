@@ -9,9 +9,8 @@ import io.constellation.docgen.model.*
 import java.nio.file.{Files, Path, Paths}
 import scala.collection.mutable.ListBuffer
 
-@experimental
-
 /** Extracts type information from TASTy files using Scala 3 TASTy Inspector */
+@experimental
 object TastyExtractor:
 
   /** Extract types from all TASTy files in the given classpath */
@@ -21,20 +20,18 @@ object TastyExtractor:
     // Find all .tasty files
     val tastyFiles = classpath.flatMap { cp =>
       val path = Paths.get(cp)
-      if Files.isDirectory(path) then
-        findTastyFiles(path)
-      else
-        Nil
+      if Files.isDirectory(path) then findTastyFiles(path)
+      else Nil
     }
 
-    if tastyFiles.nonEmpty then
-      TastyInspector.inspectTastyFiles(tastyFiles)(inspector)
+    if tastyFiles.nonEmpty then TastyInspector.inspectTastyFiles(tastyFiles)(inspector)
 
     inspector.extractedTypes.toList
 
   private def findTastyFiles(dir: Path): List[String] =
     import scala.jdk.CollectionConverters.*
-    Files.walk(dir)
+    Files
+      .walk(dir)
       .filter(p => p.toString.endsWith(".tasty"))
       .map(_.toString)
       .toList
@@ -62,8 +59,8 @@ private class TypeExtractorInspector(targetPackages: List[String]) extends Inspe
         stats.foreach(extractFromTree)
 
       case ClassDef(name, constr, parents, selfOpt, body) if shouldExtract(tree.symbol) =>
-        val sym = tree.symbol
-        val pkg = sym.owner.fullName
+        val sym      = tree.symbol
+        val pkg      = sym.owner.fullName
         val scaladoc = sym.docstring
 
         if sym.flags.is(Flags.Case) && sym.flags.is(Flags.Module) then
@@ -72,13 +69,13 @@ private class TypeExtractorInspector(targetPackages: List[String]) extends Inspe
         else if sym.flags.is(Flags.Module) then
           // Object
           val methods = extractMethods(sym)
-          val fields = extractFields(sym)
+          val fields  = extractFields(sym)
           extractedTypes += ObjectInfo(name, pkg, scaladoc, methods, fields)
         else if sym.flags.is(Flags.Trait) then
           // Trait
-          val typeParams = extractTypeParams(sym)
+          val typeParams  = extractTypeParams(sym)
           val parentNames = parents.collect { case t: TypeTree => t.tpe.typeSymbol.name }
-          val methods = extractMethods(sym)
+          val methods     = extractMethods(sym)
           extractedTypes += TraitInfo(name, pkg, scaladoc, typeParams, parentNames, methods)
         else if sym.flags.is(Flags.Enum) then
           // Enum
@@ -86,12 +83,21 @@ private class TypeExtractorInspector(targetPackages: List[String]) extends Inspe
           extractedTypes += EnumInfo(name, pkg, scaladoc, cases)
         else
           // Class
-          val typeParams = extractTypeParams(sym)
+          val typeParams  = extractTypeParams(sym)
           val parentNames = parents.collect { case t: TypeTree => t.tpe.typeSymbol.name }
-          val fields = extractFields(sym)
-          val methods = extractMethods(sym)
+          val fields      = extractFields(sym)
+          val methods     = extractMethods(sym)
           val isCaseClass = sym.flags.is(Flags.Case)
-          extractedTypes += ClassInfo(name, pkg, scaladoc, typeParams, parentNames, fields, methods, isCaseClass)
+          extractedTypes += ClassInfo(
+            name,
+            pkg,
+            scaladoc,
+            typeParams,
+            parentNames,
+            fields,
+            methods,
+            isCaseClass
+          )
 
       case _ =>
         // Skip other tree types
@@ -120,7 +126,9 @@ private class TypeExtractorInspector(targetPackages: List[String]) extends Inspe
   private def extractMethods(using Quotes)(sym: quotes.reflect.Symbol): List[MethodInfo] =
     import quotes.reflect.*
     sym.methodMembers
-      .filter(m => m.flags.is(Flags.Method) && !m.flags.is(Flags.Private) && !m.flags.is(Flags.Protected))
+      .filter(m =>
+        m.flags.is(Flags.Method) && !m.flags.is(Flags.Private) && !m.flags.is(Flags.Protected)
+      )
       .filter(m => !m.name.startsWith("$") && m.name != "<init>")
       .map { method =>
         val typeParams = method.paramSymss.flatten.filter(_.isTypeParam).map(_.name)
@@ -147,12 +155,12 @@ private class TypeExtractorInspector(targetPackages: List[String]) extends Inspe
     import quotes.reflect.*
     tpe match
       case AppliedType(tycon, args) =>
-        val base = tycon.typeSymbol.name
+        val base    = tycon.typeSymbol.name
         val argsStr = args.map(formatType).mkString(", ")
         s"$base[$argsStr]"
       case MethodType(_, _, res) => formatType(res)
       case PolyType(_, _, res)   => formatType(res)
-      case other => other.typeSymbol.name
+      case other                 => other.typeSymbol.name
 
   private def extractEnumCases(using Quotes)(sym: quotes.reflect.Symbol): List[EnumCaseInfo] =
     import quotes.reflect.*
