@@ -211,6 +211,21 @@ lazy val exampleApp = (project in file("modules/example-app"))
     }
   )
 
+// Doc Generator - extracts Scala type information to markdown (not published)
+lazy val docGenerator = (project in file("modules/doc-generator"))
+  .dependsOn(core, runtime, langAst, langParser, langCompiler, langStdlib, langLsp, httpApi)
+  .settings(
+    name := "constellation-doc-generator",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "org.scala-lang" %% "scala3-tasty-inspector" % scalaVersion.value,
+      "io.circe" %% "circe-core" % "0.14.6",
+      "io.circe" %% "circe-generic" % "0.14.6",
+      "io.circe" %% "circe-parser" % "0.14.6",
+      "org.scalatest" %% "scalatest" % "3.2.17" % Test,
+    )
+  )
+
 // Root project aggregates all modules
 lazy val root = (project in file("."))
   .aggregate(
@@ -223,7 +238,8 @@ lazy val root = (project in file("."))
     langLsp,
     httpApi,
     cacheMemcached,
-    exampleApp
+    exampleApp,
+    docGenerator
   )
   .settings(
     name := "constellation-engine",

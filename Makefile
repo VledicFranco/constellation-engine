@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos
 
 # Default target
 help:
@@ -71,6 +71,11 @@ help:
 	@echo "  make docs-install   - Install website dependencies"
 	@echo "  make docs-serve     - Serve production build locally"
 	@echo "  make docs-sync      - Sync docs from source into website/"
+	@echo ""
+	@echo "Generated Documentation (RFC-019):"
+	@echo "  make generate-docs  - Generate Scala type catalog to docs/generated/"
+	@echo "  make check-docs     - Check if generated docs are stale"
+	@echo "  make verify-ethos   - Verify ethos invariant references"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -370,6 +375,25 @@ docs-serve:
 # Sync docs from source into website/docs/
 docs-sync:
 	bash website/scripts/sync-docs.sh
+
+# =============================================================================
+# Generated Documentation (RFC-019)
+# =============================================================================
+
+# Generate Scala type catalog to docs/generated/
+generate-docs:
+	@echo "Generating Scala documentation catalog..."
+	sbt "docGenerator/run"
+
+# Check if generated docs are stale
+check-docs:
+	@echo "Checking documentation freshness..."
+	sbt "docGenerator/runMain io.constellation.docgen.FreshnessChecker"
+
+# Verify ethos invariant references
+verify-ethos:
+	@echo "Verifying ethos invariants..."
+	sbt "docGenerator/runMain io.constellation.docgen.EthosVerifier"
 
 # =============================================================================
 # Utilities
