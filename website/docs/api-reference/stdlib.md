@@ -12,6 +12,29 @@ The constellation-lang standard library provides commonly-used functions for pip
 The functions you will use most often are: `add`, `concat`, `gt`/`lt` for comparisons, `and`/`or`/`not` for boolean logic, and `list-length`/`list-first` for collections. Start with these before exploring the full library.
 :::
 
+## Finding the Right Function
+
+### By Task
+
+| I want to... | Function | Example |
+|--------------|----------|---------|
+| Transform text | `Uppercase`, `Lowercase`, `Trim` | `Uppercase("hello")` → `"HELLO"` |
+| Work with numbers | `Add`, `Multiply`, `Max`, `Min` | `Add(1, 2)` → `3` |
+| Process lists | `Map`, `Filter`, `Reduce`, `Length` | `Length([1,2,3])` → `3` |
+| Format strings | `Concat`, `Format` | `Concat("a", "b")` → `"ab"` |
+| Handle nulls | `Coalesce`, `IsEmpty` | `Coalesce(null, "default")` |
+| Compare values | `Equals`, `GreaterThan`, `Contains` | `Contains("abc", "b")` → `true` |
+
+### By Category
+
+The standard library is organized into categories:
+
+- **String functions** — Text manipulation and formatting
+- **Numeric functions** — Arithmetic and math operations
+- **List functions** — Collection processing with higher-order functions
+- **Logic functions** — Boolean operations and comparisons
+- **Utility functions** — Type conversion and null handling
+
 ## Using the Standard Library
 
 ### Quick Start

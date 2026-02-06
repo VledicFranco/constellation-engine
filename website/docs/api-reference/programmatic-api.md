@@ -8,9 +8,24 @@ description: "Scala API for creating modules and building pipelines"
 
 This guide covers programmatic usage of Constellation Engine, including compiling constellation-lang pipelines and creating custom modules.
 
-:::note When to Use the Programmatic API
-Use the programmatic Scala API when you need fine-grained control over pipeline compilation and execution, when embedding Constellation in a larger Scala application, or when building custom tooling. For simple pipeline execution, the [HTTP API](./http-api-overview) may be simpler to integrate.
-:::
+## When to Use the Programmatic API
+
+Choose the programmatic API when you need tight integration with your Scala application and maximum performance. For distributed or polyglot architectures, consider the [HTTP API](./http-api-overview) instead.
+
+| Scenario | Recommendation |
+|----------|----------------|
+| **Tight Scala integration** | Programmatic - direct type safety, no serialization |
+| **Microservice architecture** | HTTP API - language-agnostic, easier scaling |
+| **High-throughput, low-latency** | Programmatic - no network overhead |
+| **Multiple client languages** | HTTP API - universal REST interface |
+| **Dynamic pipeline loading** | Either - both support hot reload |
+
+### Quick Decision Guide
+
+- **Building a Scala application?** → Use programmatic API for best performance
+- **Building a polyglot system?** → Use HTTP API for flexibility
+- **Need to scale independently?** → Use HTTP API with multiple instances
+- **Embedding in existing Scala service?** → Use programmatic API
 
 ## Table of Contents
 
@@ -223,8 +238,8 @@ val module = ModuleBuilder
 
 ### Basic Execution
 
-:::tip Resource Management with Cats Effect
-Always use `Resource` or `IOApp` patterns to ensure proper cleanup of the Constellation runtime. The `ConstellationImpl.init` method returns an `IO` that should be composed with your application's effect lifecycle.
+:::tip Resource Management
+Always use `Resource` or `use` to ensure proper cleanup. The `Constellation` instance manages thread pools and caches that need graceful shutdown. When using `IOApp`, the runtime handles this automatically. For other contexts, compose with your application's effect lifecycle.
 :::
 
 ```scala

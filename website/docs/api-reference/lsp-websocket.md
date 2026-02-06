@@ -8,6 +8,42 @@ description: "WebSocket protocol for IDE integration"
 
 The Constellation Engine provides an LSP (Language Server Protocol) endpoint via WebSocket for IDE integration.
 
+## IDE Setup Checklist
+
+### VSCode (Recommended)
+
+1. **Install the extension** — Search "Constellation" in Extensions marketplace
+2. **Start the server** — Run `make server` or `sbt "exampleApp/run"`
+3. **Open a `.cst` file** — Syntax highlighting activates automatically
+4. **Verify connection** — Status bar shows "Constellation: Connected"
+
+### Other Editors (Generic LSP)
+
+For Neovim, Emacs, Sublime Text, or other LSP-capable editors:
+
+1. **Configure LSP client** to connect to `ws://localhost:8080/lsp`
+2. **Set file type** — Associate `.cst` files with the Constellation language
+3. **Start server first** — The LSP endpoint requires a running server
+
+### Troubleshooting Connection
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "Connection refused" | Server not running | Start with `make server` |
+| No autocomplete | Wrong port | Check `CONSTELLATION_PORT` env var |
+| Diagnostics stale | WebSocket disconnected | Restart editor LSP client |
+
+### Verify It's Working
+
+Type this in a `.cst` file and check for autocomplete:
+
+```constellation
+in x: Int
+result = Upp  # Should show Uppercase suggestion
+```
+
+If autocomplete appears, LSP is connected and working.
+
 ## Connection
 
 **Endpoint:** `ws://localhost:8080/lsp`

@@ -51,6 +51,35 @@ Errors serialize to a consistent JSON shape:
 
 ---
 
+## Quick Debugging Guide
+
+### Most Common Errors
+
+| Error | Likely Cause | Quick Fix |
+|-------|--------------|-----------|
+| "field not found" | Typo in field name | Check spelling, use autocomplete |
+| "type mismatch" | Wrong type in operation | Check expected vs actual types |
+| "module not found" | Missing module registration | Verify module is registered in Scala |
+| "cannot unify types" | Incompatible merge/projection | Use explicit type annotation |
+
+### Debugging Steps
+
+1. **Read the error location** — Line and column point to the exact problem
+2. **Check the expected type** — Error shows what was expected vs found
+3. **Hover in VSCode** — See inferred types at any expression
+4. **Simplify the expression** — Break complex expressions into steps
+
+### Error Code Ranges
+
+| Range | Category | Example |
+|-------|----------|---------|
+| E001-E099 | Parse errors | Syntax issues, missing tokens |
+| E100-E199 | Type errors | Type mismatches, field access |
+| E200-E299 | Semantic errors | Undefined variables, cycles |
+| E300-E399 | Runtime errors | Module failures, timeouts |
+
+---
+
 ## Type Errors
 
 Category: `type`

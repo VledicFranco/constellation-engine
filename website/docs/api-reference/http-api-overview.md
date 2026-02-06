@@ -75,6 +75,56 @@ All endpoints except `/health`, `/health/live`, `/health/ready`, and `/metrics` 
 
 ---
 
+## Common Workflows
+
+### Validate a Pipeline Without Executing
+
+Use `/compile` when you want to check syntax and types without running the pipeline. This is useful for CI/CD validation or IDE integration.
+
+```bash
+curl -X POST http://localhost:8080/compile \
+  -H "Content-Type: text/plain" \
+  -d 'in x: Int; out x'
+```
+
+### Run a Pipeline Once (Development)
+
+Use `/run` for ad-hoc execution during development. It compiles and executes in a single request—convenient but slower for repeated calls.
+
+```bash
+curl -X POST http://localhost:8080/run \
+  -H "Content-Type: application/json" \
+  -d '{"source": "in x: Int; out x", "input": {"x": 42}}'
+```
+
+### Execute a Pre-Compiled Pipeline (Production)
+
+Use `/compile` once, then `/execute` repeatedly for production workloads. This avoids recompilation overhead.
+
+```bash
+# Step 1: Compile and get pipeline ID
+PIPELINE_ID=$(curl -s -X POST http://localhost:8080/compile \
+  -H "Content-Type: text/plain" \
+  -d @pipeline.cst | jq -r '.pipelineId')
+
+# Step 2: Execute by ID (fast, no recompilation)
+curl -X POST "http://localhost:8080/execute/${PIPELINE_ID}" \
+  -H "Content-Type: application/json" \
+  -d '{"x": 42}'
+```
+
+### Check Server Health
+
+Use the health endpoints for monitoring and load balancer configuration.
+
+| Endpoint | Use Case |
+|----------|----------|
+| `GET /health` | Quick health check |
+| `GET /health/live` | Kubernetes liveness probe |
+| `GET /health/ready` | Kubernetes readiness probe |
+
+---
+
 ## Compile
 
 :::tip Choosing Between /run and /compile + /execute
