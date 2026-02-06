@@ -1,6 +1,7 @@
 ---
 title: "Tracer Provider"
 sidebar_position: 2
+description: "SPI guide for distributed tracing with OpenTelemetry, Jaeger, or Zipkin integration."
 ---
 
 # TracerProvider Integration Guide

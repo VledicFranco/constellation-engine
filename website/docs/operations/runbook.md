@@ -1,6 +1,7 @@
 ---
 title: "Runbook"
 sidebar_position: 3
+description: "Operational procedures for health checks, troubleshooting, performance tuning, and alerting."
 ---
 
 # Operational Runbook

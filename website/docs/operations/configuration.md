@@ -1,6 +1,7 @@
 ---
 title: "Configuration"
 sidebar_position: 1
+description: "Complete reference for environment variables, auth, CORS, rate limiting, and health checks."
 ---
 
 # Configuration Reference

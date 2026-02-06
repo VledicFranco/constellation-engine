@@ -1,6 +1,7 @@
 ---
 title: "Memcached Cache"
 sidebar_position: 2
+description: "Distributed cache backend using Memcached with spymemcached client for non-blocking I/O."
 ---
 
 # Memcached Cache Backend

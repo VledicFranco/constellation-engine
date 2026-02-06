@@ -1,6 +1,7 @@
 ---
 title: "Execution Storage"
 sidebar_position: 5
+description: "SPI guide for persisting execution history to a database for long-term retention and querying."
 ---
 
 # ExecutionStorage Integration Guide

@@ -1,6 +1,7 @@
 ---
 title: "Data Statistics"
 sidebar_position: 4
+description: "Calculate summary statistics like sum, average, min, and max on numeric lists for data analysis and ML features."
 ---
 
 # Data Statistics Pipeline

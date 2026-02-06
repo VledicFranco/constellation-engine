@@ -1,6 +1,7 @@
 ---
 title: "cache"
 sidebar_position: 4
+description: "Cache module results for a specified duration to avoid redundant computations and improve performance."
 ---
 
 # cache

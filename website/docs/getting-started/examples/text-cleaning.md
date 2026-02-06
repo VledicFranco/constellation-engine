@@ -1,6 +1,7 @@
 ---
 title: "Text Cleaning"
 sidebar_position: 2
+description: "Normalize and clean text input by trimming whitespace, adjusting case, and replacing unwanted patterns."
 ---
 
 # Text Cleaning Pipeline

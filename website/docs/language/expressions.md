@@ -1,6 +1,7 @@
 ---
 title: "Expressions"
 sidebar_position: 5
+description: "Reference for constellation-lang expressions: arithmetic, comparisons, conditionals, guards, and string interpolation."
 ---
 
 # Expressions

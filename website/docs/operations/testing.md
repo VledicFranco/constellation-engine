@@ -1,6 +1,7 @@
 ---
 title: "Testing Guide"
 sidebar_position: 5
+description: "Guide for unit testing, integration testing, mocking, and property-based testing patterns."
 ---
 
 # Testing Guide

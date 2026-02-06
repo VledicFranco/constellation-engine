@@ -1,6 +1,7 @@
 ---
 title: "Error Messages"
 sidebar_position: 15
+description: "Understand constellation-lang compiler errors with precise line and column information for quick debugging."
 ---
 
 # Error Messages

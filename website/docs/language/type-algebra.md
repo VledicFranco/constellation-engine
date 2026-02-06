@@ -1,6 +1,7 @@
 ---
 title: "Type Algebra"
 sidebar_position: 6
+description: "Use the + operator to merge record types and combine data from multiple sources in your pipelines."
 ---
 
 # Type Algebra

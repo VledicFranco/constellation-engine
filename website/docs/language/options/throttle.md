@@ -1,6 +1,7 @@
 ---
 title: "throttle"
 sidebar_position: 8
+description: "Limit the rate of module calls using a token bucket algorithm to respect external API rate limits."
 ---
 
 # throttle

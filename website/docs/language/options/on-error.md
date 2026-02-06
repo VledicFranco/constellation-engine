@@ -1,6 +1,7 @@
 ---
 title: "on-error"
 sidebar_position: 10
+description: "Control error handling strategy using propagate, skip, log, or wrap to determine failure behavior."
 ---
 
 # on_error

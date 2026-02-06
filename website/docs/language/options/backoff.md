@@ -1,6 +1,7 @@
 ---
 title: "backoff"
 sidebar_position: 7
+description: "Control how delay between retry attempts changes over time using fixed, linear, or exponential strategies."
 ---
 
 # backoff

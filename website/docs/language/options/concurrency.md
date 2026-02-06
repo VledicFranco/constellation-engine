@@ -1,6 +1,7 @@
 ---
 title: "concurrency"
 sidebar_position: 9
+description: "Limit the number of parallel executions of a module to control resource usage and prevent overload."
 ---
 
 # concurrency

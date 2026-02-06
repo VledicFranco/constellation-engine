@@ -1,6 +1,7 @@
 ---
 title: "retry"
 sidebar_position: 1
+description: "Automatically retry module execution on failure up to a specified number of attempts."
 ---
 
 # retry

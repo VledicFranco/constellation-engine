@@ -1,6 +1,7 @@
 ---
 title: "Examples"
 sidebar_position: 14
+description: "Complete constellation-lang examples from hello world to production pipelines with API composition and ML workflows."
 ---
 
 # Examples

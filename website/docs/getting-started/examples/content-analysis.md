@@ -1,6 +1,7 @@
 ---
 title: "Content Analysis"
 sidebar_position: 3
+description: "Extract text metrics like word count, character count, and keyword detection for content moderation and SEO."
 ---
 
 # Content Analysis Pipeline

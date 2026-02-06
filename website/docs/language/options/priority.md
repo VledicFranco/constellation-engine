@@ -1,6 +1,7 @@
 ---
 title: "priority"
 sidebar_position: 12
+description: "Set the scheduling priority for module execution to control task ordering when resources are constrained."
 ---
 
 # priority

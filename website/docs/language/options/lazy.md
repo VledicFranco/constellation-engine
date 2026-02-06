@@ -1,6 +1,7 @@
 ---
 title: "lazy"
 sidebar_position: 11
+description: "Defer module execution until the result is actually needed, with automatic memoization on first access."
 ---
 
 # lazy

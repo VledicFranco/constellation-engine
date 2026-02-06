@@ -1,6 +1,7 @@
 ---
 title: "Pipeline Structure"
 sidebar_position: 2
+description: "Understand pipeline anatomy: declarations, dependency analysis, DAG construction, and parallel execution patterns."
 ---
 
 # Pipeline Structure

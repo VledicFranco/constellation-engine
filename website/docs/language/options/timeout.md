@@ -1,6 +1,7 @@
 ---
 title: "timeout"
 sidebar_position: 2
+description: "Set a maximum execution time for a module call, cancelling the operation if it exceeds the limit."
 ---
 
 # timeout

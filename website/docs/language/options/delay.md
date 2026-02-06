@@ -1,6 +1,7 @@
 ---
 title: "delay"
 sidebar_position: 6
+description: "Set the base wait time between retry attempts, optionally modified by a backoff strategy."
 ---
 
 # delay

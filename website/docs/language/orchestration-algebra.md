@@ -1,6 +1,7 @@
 ---
 title: "Orchestration Algebra"
 sidebar_position: 7
+description: "Learn boolean-based control flow with guards, coalesce, and branch expressions for conditional pipeline execution."
 ---
 
 # Boolean Algebra for Orchestration

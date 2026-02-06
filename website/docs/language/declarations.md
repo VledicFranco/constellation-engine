@@ -1,6 +1,7 @@
 ---
 title: "Declarations"
 sidebar_position: 4
+description: "Define types, inputs, variables, outputs, and imports in constellation-lang pipelines with declaration syntax."
 ---
 
 # Declarations

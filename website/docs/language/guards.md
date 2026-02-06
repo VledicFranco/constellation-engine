@@ -1,6 +1,7 @@
 ---
 title: "Guard Expressions"
 sidebar_position: 8
+description: "Use guard expressions with the when keyword for conditional execution that returns Optional types."
 ---
 
 # Guard Expressions (`when`)

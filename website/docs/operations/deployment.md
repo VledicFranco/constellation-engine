@@ -1,6 +1,7 @@
 ---
 title: "Deployment"
 sidebar_position: 2
+description: "Deploy Constellation Engine with Docker, Kubernetes, load balancing, and autoscaling."
 ---
 
 # Deployment Guide

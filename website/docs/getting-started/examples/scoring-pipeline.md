@@ -1,6 +1,7 @@
 ---
 title: "Scoring Pipeline"
 sidebar_position: 7
+description: "Build multi-factor scoring systems with weighted components and threshold-based classification for ranking."
 ---
 
 # Scoring Pipeline

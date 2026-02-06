@@ -1,6 +1,7 @@
 ---
 title: "Comments"
 sidebar_position: 11
+description: "Learn how to write single-line and multi-line comments to document your constellation-lang pipelines."
 ---
 
 # Comments

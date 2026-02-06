@@ -1,6 +1,7 @@
 ---
 title: "Execution Listener"
 sidebar_position: 3
+description: "SPI guide for observing DAG execution events to send audit logs, metrics, or trigger workflows."
 ---
 
 # ExecutionListener Integration Guide

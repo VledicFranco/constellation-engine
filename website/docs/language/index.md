@@ -1,7 +1,7 @@
 ---
 title: "Language Overview"
 sidebar_position: 1
-description: "constellation-lang reference documentation"
+description: "Complete reference for constellation-lang, a DSL for type-safe data transformation pipelines with strong typing."
 ---
 
 # constellation-lang Reference

@@ -1,6 +1,7 @@
 ---
 title: "Types"
 sidebar_position: 3
+description: "Master Constellation's structural type system: primitives, records, lists, unions, optionals, and subtyping rules."
 ---
 
 # Types

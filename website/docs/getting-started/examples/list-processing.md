@@ -1,6 +1,7 @@
 ---
 title: "List Processing"
 sidebar_position: 5
+description: "Filter and transform lists with higher-order functions like map, filter, all, and any using lambda syntax."
 ---
 
 # List Processing Pipeline

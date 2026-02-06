@@ -1,6 +1,7 @@
 ---
 title: "Metrics Provider"
 sidebar_position: 1
+description: "SPI guide for emitting runtime metrics to Prometheus, Datadog, or other monitoring systems."
 ---
 
 # MetricsProvider Integration Guide

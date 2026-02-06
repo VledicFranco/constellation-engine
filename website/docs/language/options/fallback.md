@@ -1,6 +1,7 @@
 ---
 title: "fallback"
 sidebar_position: 3
+description: "Provide a default value to return when a module call fails instead of propagating the error."
 ---
 
 # fallback

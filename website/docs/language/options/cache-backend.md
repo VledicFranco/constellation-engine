@@ -1,6 +1,7 @@
 ---
 title: "cache_backend"
 sidebar_position: 5
+description: "Select a specific cache storage backend by name, such as in-memory, Memcached, or Redis."
 ---
 
 # cache_backend

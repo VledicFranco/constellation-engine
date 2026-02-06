@@ -1,6 +1,7 @@
 ---
 title: "Lambda Expressions"
 sidebar_position: 10
+description: "Define inline functions with lambda expressions for filter, map, all, and any operations on lists."
 ---
 
 # Lambda Expressions

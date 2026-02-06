@@ -1,6 +1,7 @@
 ---
 title: "Batch Enrichment"
 sidebar_position: 6
+description: "Enrich batched candidates with context data using merge and projection operators for ML ranking pipelines."
 ---
 
 # Batch Data Enrichment Pipeline

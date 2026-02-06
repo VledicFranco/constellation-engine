@@ -1,6 +1,7 @@
 ---
 title: "Resilient Pipelines"
 sidebar_position: 13
+description: "Build fault-tolerant pipelines using retry, timeout, fallback, caching, and circuit breaker patterns."
 ---
 
 # Resilient Pipelines Guide

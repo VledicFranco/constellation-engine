@@ -1,6 +1,7 @@
 ---
 title: "Coalesce Operator"
 sidebar_position: 9
+description: "Use the coalesce operator (??) to provide fallback values for optional expressions and unwrap Optional types."
 ---
 
 # Coalesce Operator (`??`)

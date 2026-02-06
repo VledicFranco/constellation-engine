@@ -1,6 +1,7 @@
 ---
 title: "Cache Backend"
 sidebar_position: 4
+description: "SPI guide for implementing custom cache backends to store module results and compiled DAGs."
 ---
 
 # CacheBackend Integration Guide

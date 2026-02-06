@@ -1,6 +1,7 @@
 ---
 title: "Overview"
 sidebar_position: 1
+description: "Overview of official and community modules that extend Constellation Engine with caching, metrics, and more."
 ---
 
 # Module Ecosystem

@@ -1,6 +1,7 @@
 ---
 title: "Module Options"
 sidebar_position: 12
+description: "Configure module calls with retry, timeout, cache, throttle, and other execution options using the with clause."
 ---
 
 # Module Call Options
