@@ -116,4 +116,4 @@ These exist only in website/docs/ and are appropriate there:
 - [ ] Add CONSTELLATION_DASHBOARD_ENABLED to docs/tooling/dashboard.md
 - [ ] Review types content for backporting
 - [ ] Review stdlib content for backporting
-- [ ] Add cross-reference note to docs/README.md
+- [x] Add cross-reference note to docs/README.md
