@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/lang-stdlib/src/main/scala/io/constellation -->
 <!-- Hash: 1ae78b57c966 -->
-<!-- Generated: 2026-02-06T18:40:29.333629700Z -->
+<!-- Generated: 2026-02-06T18:48:02.473275900Z -->
 
 # io.constellation.stdlib
 
@@ -35,8 +35,8 @@
 | `stringModules` | `(): Map` |  |
 | `utilityModules` | `(): Map` |  |
 | `registerAll` | `(builder: LangCompilerBuilder): LangCompilerBuilder` | /** Register all standard library functions with a LangCompiler builder */ |
-| `stringSignatures` | `(): List` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
+| `stringSignatures` | `(): List` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `allModules` | `(): Map` | /** Get all standard library modules */ |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -65,7 +65,7 @@
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `comparisonModules` | `(): Map` |  |
-| `comparisonSignatures` | `(): List` |  |
 | `booleanSignatures` | `(): List` |  |
+| `comparisonSignatures` | `(): List` |  |
 
 <!-- END GENERATED -->

@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/core/src/main/scala/io/constellation -->
 <!-- Hash: b7fd67b9bb19 -->
-<!-- Generated: 2026-02-06T18:40:29.397089100Z -->
+<!-- Generated: 2026-02-06T18:48:02.563918300Z -->
 
 # io.constellation.examples
 

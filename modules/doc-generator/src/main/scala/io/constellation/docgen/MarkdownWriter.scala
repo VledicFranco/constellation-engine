@@ -142,8 +142,12 @@ object MarkdownWriter:
       else method.params.map(p => s"${p.name}: ${p.typeName}").mkString("(", ", ", ")")
     s"$typeParams$params: ${method.returnType}"
 
-  /** Compute hash of source directory for freshness tracking */
+  /** Compute hash of source directory for freshness tracking.
+    *
+    * Note: Normalizes line endings to LF to ensure consistent hashes across platforms.
+    */
   def computeHash(sourceDir: String): String =
+    import java.nio.charset.StandardCharsets
     import java.nio.file.{Files, Paths}
     import scala.jdk.CollectionConverters.*
 
@@ -156,7 +160,10 @@ object MarkdownWriter:
       .filter(p => p.toString.endsWith(".scala"))
       .sorted()
       .forEach { file =>
-        md.update(Files.readAllBytes(file))
+        // Read as text and normalize line endings to LF for consistent cross-platform hashing
+        val content    = Files.readString(file, StandardCharsets.UTF_8)
+        val normalized = content.replace("\r\n", "\n").replace("\r", "\n")
+        md.update(normalized.getBytes(StandardCharsets.UTF_8))
       }
 
     md.digest().take(6).map("%02x".format(_)).mkString
