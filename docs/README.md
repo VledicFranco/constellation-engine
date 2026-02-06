@@ -8,6 +8,7 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 |------|-------------|
 | [features/](./features/) | **What Constellation does** — capability-oriented documentation |
 | [components/](./components/) | **How Constellation is built** — implementation-oriented documentation |
+| [protocols/](./protocols/) | **How to accomplish tasks** — step-by-step procedures for common documentation tasks |
 | [generated/](./generated/) | **What exists in code** — auto-generated type catalogs |
 | [rfcs/](./rfcs/) | Design proposals and decisions |
 | [dev/](./dev/) | Benchmarks, research, internal development docs |
