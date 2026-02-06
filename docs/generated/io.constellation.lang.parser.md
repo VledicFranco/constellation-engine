@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/core/src/main/scala/io/constellation -->
-<!-- Hash: b7fd67b9bb19 -->
-<!-- Generated: 2026-02-06T18:48:02.518515700Z -->
+<!-- Hash: f7d39e64f47e -->
+<!-- Generated: 2026-02-06T20:56:58.602707700Z -->
 
 # io.constellation.lang.parser
 

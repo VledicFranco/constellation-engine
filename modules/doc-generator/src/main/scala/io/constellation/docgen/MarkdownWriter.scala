@@ -144,7 +144,8 @@ object MarkdownWriter:
 
   /** Compute hash of source directory for freshness tracking.
     *
-    * Note: Normalizes line endings to LF to ensure consistent hashes across platforms.
+    * Note: Normalizes line endings to LF and uses forward slashes for paths
+    * to ensure consistent hashes across platforms.
     */
   def computeHash(sourceDir: String): String =
     import java.nio.charset.StandardCharsets
@@ -155,15 +156,20 @@ object MarkdownWriter:
     if !Files.exists(path) then return "unknown"
 
     val md = MessageDigest.getInstance("SHA-256")
-    Files
+    // Collect files and sort by normalized path (forward slashes) for consistent ordering
+    val files = Files
       .walk(path)
       .filter(p => p.toString.endsWith(".scala"))
-      .sorted()
-      .forEach { file =>
-        // Read as text and normalize line endings to LF for consistent cross-platform hashing
-        val content    = Files.readString(file, StandardCharsets.UTF_8)
-        val normalized = content.replace("\r\n", "\n").replace("\r", "\n")
-        md.update(normalized.getBytes(StandardCharsets.UTF_8))
-      }
+      .toList
+      .asScala
+      .toList
+      .sortBy(_.toString.replace('\\', '/'))
+
+    files.foreach { file =>
+      // Read as text and normalize line endings to LF for consistent cross-platform hashing
+      val content    = Files.readString(file, StandardCharsets.UTF_8)
+      val normalized = content.replace("\r\n", "\n").replace("\r", "\n")
+      md.update(normalized.getBytes(StandardCharsets.UTF_8))
+    }
 
     md.digest().take(6).map("%02x".format(_)).mkString
