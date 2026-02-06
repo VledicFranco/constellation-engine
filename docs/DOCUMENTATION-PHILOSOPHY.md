@@ -194,6 +194,43 @@ This enables LLMs to navigate efficiently:
 2. Read area README → understand area, pick topic or go deeper
 3. Read leaf file → get specific information needed
 
+### Feature Map at Root
+
+The root README should include a **feature map table** — a structured overview of all major capabilities with metadata that helps LLMs understand and navigate the system:
+
+```markdown
+## Core Features
+
+| Feature | Description | Components | Level | Docs |
+|---------|-------------|------------|-------|------|
+| Feature A | One-line description | module1, module2 | Basic | [docs/area/](./area/) |
+| Feature B | One-line description | module3 | Intermediate | [docs/other.md](./other.md) |
+| Feature C | One-line description | module1, module4 | Advanced | [docs/deep/](./deep/) |
+```
+
+**Column purposes:**
+
+| Column | Purpose |
+|--------|---------|
+| Feature | Scannable name for quick identification |
+| Description | One sentence explaining what it does |
+| Components | Which code modules implement this (navigation hint to source) |
+| Level | Complexity indicator (Basic/Intermediate/Advanced) |
+| Docs | Direct link to detailed documentation |
+
+**Why this matters for LLMs:**
+
+1. **Capability discovery** — LLM can scan what the system does without reading everything
+2. **Component mapping** — Links features to code areas for investigation
+3. **Complexity signal** — Helps LLM gauge how much context is needed
+4. **Direct navigation** — Jumps to relevant docs without tree traversal
+
+**Anti-patterns:**
+- Feature names that are marketing-speak instead of technical terms
+- Missing component mapping (LLM can't find relevant code)
+- No complexity indicator (LLM doesn't know if it needs more context)
+- Links to directories instead of specific files when a specific file exists
+
 ### Leaf File Format
 
 ```markdown
