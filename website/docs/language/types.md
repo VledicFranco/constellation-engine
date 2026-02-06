@@ -737,3 +737,10 @@ Constellation has a **bottom type** called `Nothing` that is a subtype of all ot
 - **Type error recovery**: When type checking fails in one branch, other branches can still be checked
 
 You cannot explicitly write `Nothing` in Constellation code, but understanding it helps explain why empty lists work with any expected list type.
+
+## Related
+
+- [Type Algebra](./type-algebra.md) — Record merge and projection operations
+- [Expressions](./expressions.md) — Expression syntax and operators
+- [Guards](./guards.md) — How guards produce `Optional<T>` types
+- [Error Messages](./error-messages.md) — Common type error messages

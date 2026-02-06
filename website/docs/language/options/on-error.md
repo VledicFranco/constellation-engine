@@ -20,6 +20,14 @@ result = Module(args) with on_error: <strategy>
 
 The `on_error` option determines what happens when a module call fails. Unlike `fallback` which provides a specific value, `on_error` defines a general error handling strategy.
 
+:::warning skip uses type-specific zero values
+With `skip`, failures return the zero value for the return type (0 for Int, "" for String, etc.). Ensure downstream code can handle these sentinel values without misinterpreting them as valid results.
+:::
+
+:::tip Combine on_error: log with fallback
+Use `on_error: log, fallback: value` to get both visibility (logged errors) and graceful degradation (specific fallback value). The log strategy alone only provides zero values.
+:::
+
 ## Strategies
 
 ### propagate (default)

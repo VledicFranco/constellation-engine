@@ -20,6 +20,14 @@ result = Module(args) with retry: <count>
 
 The `retry` option specifies the maximum number of retry attempts if a module call fails. The first execution is not counted as a retry, so `retry: 3` means up to 4 total attempts (1 initial + 3 retries).
 
+:::note Total attempts = retry + 1
+A common source of confusion: `retry: 3` means **4 total attempts** (1 initial + 3 retries). If you want exactly 3 attempts total, use `retry: 2`.
+:::
+
+:::tip Always pair with timeout
+Without timeout, a hanging call blocks forever and never retries. Combine with `timeout` to ensure failed attempts actually fail and allow retries to proceed.
+:::
+
 ## Examples
 
 ### Basic Retry

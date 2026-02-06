@@ -128,3 +128,9 @@ in a: Int
 in b: String
 result = a + b  # Error: Cannot merge types: Int + String
 ```
+
+## Related
+
+- [Types](./types.md) — Complete type system reference
+- [Expressions](./expressions.md) — Merge and projection syntax
+- [Error Messages](./error-messages.md) — Understanding merge errors

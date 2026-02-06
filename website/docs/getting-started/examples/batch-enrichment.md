@@ -10,6 +10,10 @@ Enrich batched ML candidates with context data - a core pattern for recommendati
 
 ## Use Case
 
+:::tip Core ML Pattern
+Batch enrichment is the foundation of recommendation systems, search ranking, and ad serving. It efficiently adds context to every candidate in a single operation.
+:::
+
 You have a batch of candidate items (e.g., products, recommendations, search results) and need to:
 - Add contextual information to each item
 - Select specific fields for downstream processing
@@ -189,6 +193,10 @@ out forScoring
 
 ### Field Overwriting
 
+:::warning Merge Semantics
+When merging records with overlapping field names, the right-side value always wins. Be explicit about which source should take precedence.
+:::
+
 When merging, right-side fields overwrite left-side on conflicts:
 
 ```
@@ -254,6 +262,10 @@ Candidates<{a: Int, b: Int}>[a] = Candidates<{a: Int}>
 - Include region data for localization
 
 ## Best Practices
+
+:::note Memory Efficiency
+Project out unused fields as early as possible. Large batches with many fields consume more memory during pipeline execution.
+:::
 
 1. **Project early**: Remove unused fields to reduce data size
 2. **Document field conflicts**: Be explicit about which source "wins"

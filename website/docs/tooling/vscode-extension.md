@@ -107,6 +107,10 @@ Default layout direction for DAG visualization:
 
 ## Keyboard Shortcuts
 
+:::tip Most Used Shortcuts
+The two shortcuts you'll use most often are `Ctrl+Shift+R` (Run Script) and `Ctrl+Shift+D` (Show DAG). Learn these first for a faster development workflow.
+:::
+
 | Shortcut | Windows/Linux | Mac | Action |
 |----------|---------------|-----|--------|
 | Run Script | `Ctrl+Shift+R` | `Cmd+Shift+R` | Execute the current `.cst` file |
@@ -126,6 +130,10 @@ Open Keyboard Shortcuts (`Ctrl+K Ctrl+S`) and search for "Constellation" to rebi
 - `constellation.executePipeline`
 
 ## Debugging Workflow
+
+:::warning Server Required
+The VSCode extension requires a running Constellation server to provide LSP features. Without a server, you will only have basic syntax highlighting - no autocomplete, diagnostics, or pipeline execution.
+:::
 
 ### Prerequisites
 
@@ -473,6 +481,10 @@ Triggered by `Ctrl+Space` or typing:
 - **Variables:** Previously declared variables in scope
 
 ### Hover Information
+
+:::note Rich Documentation on Hover
+Hovering over module names shows their full documentation including version, description, and type signatures. This is a great way to discover module capabilities without leaving your code.
+:::
 
 Hover over identifiers to see:
 

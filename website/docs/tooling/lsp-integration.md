@@ -35,6 +35,10 @@ The LSP server runs inside your HTTP API server, accessible via WebSocket at `/l
 
 ## Quick Start
 
+:::note Prerequisites
+Before starting, ensure you have a Constellation server application with your modules registered. The LSP server is automatically included when you use `ConstellationServer.builder()`.
+:::
+
 ### 1. Start the Server
 
 Start your Constellation application with HTTP API and LSP support:
@@ -479,6 +483,10 @@ The LSP uses **full document sync** - the entire file content is sent on every c
 
 ### Module Loading
 
+:::warning Hot Reloading Not Supported
+Modules are loaded at server startup and cannot be dynamically reloaded. If you add new modules, restart the server to make them available for autocomplete and validation.
+:::
+
 - Modules loaded once at server startup
 - Autocomplete queries are fast (in-memory lookup)
 - Compilation happens on-demand for validation
@@ -497,6 +505,10 @@ Potential features to add:
 8. **Workspace Symbols** - Search across multiple files
 
 ## Resources
+
+:::tip Other Editors
+While we provide a VSCode extension, any editor with LSP support can connect to the Constellation Language Server. Popular alternatives include Neovim (with nvim-lspconfig), Emacs (with lsp-mode), and Sublime Text (with LSP package).
+:::
 
 - **LSP Specification:** https://microsoft.github.io/language-server-protocol/
 - **JSON-RPC 2.0:** https://www.jsonrpc.org/specification

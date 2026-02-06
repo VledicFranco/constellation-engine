@@ -68,6 +68,10 @@ out result
 - Parallel execution is automatic
 - Type mismatches are caught at compile time
 
+:::tip Testing Individual Modules
+Each module can be unit tested in isolation with standard Scala testing frameworks. The pipeline only tests the composition of modules.
+:::
+
 ### Key Concepts
 
 | Concept | Description |
@@ -174,6 +178,10 @@ LSP WebSocket: ws://localhost:8080/lsp
 ```
 
 ### Verify Installation
+
+:::tip Quick Health Check
+Always verify the server is running before trying to execute pipelines.
+:::
 
 Test the server is running:
 
@@ -538,6 +546,10 @@ val textProcessor = ModuleBuilder
 3. **Tags**: For categorization and discovery
 4. **Implementation**: Pure (no side effects) or IO-based
 
+:::warning Field Name Matching
+The field names in your case classes must exactly match the parameter names used in constellation-lang. A mismatch like `userName` vs `username` will cause a runtime error.
+:::
+
 ### Create Your First Module
 
 Create `modules/example-app/src/main/scala/io/constellation/examples/app/modules/TutorialModules.scala`:
@@ -619,6 +631,10 @@ object TutorialModules {
 ```
 
 ### Register the Module
+
+:::note Server Restart Required
+After registering a new module, you must restart the server (`make server`) for it to be available in constellation-lang scripts.
+:::
 
 Add to `modules/example-app/src/main/scala/io/constellation/examples/app/ExampleLib.scala`:
 

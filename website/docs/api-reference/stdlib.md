@@ -872,3 +872,10 @@ val compiler = StdLib.registerAll(LangCompilerBuilder())
 3. **Prefer pure implementations** - Use `implementationPure` when possible
 4. **Handle errors gracefully** - Raise meaningful exceptions with clear messages
 5. **Follow naming conventions** - Use lowercase-with-hyphens for function names
+
+## Related
+
+- [Programmatic API](./programmatic-api.md) — Register stdlib functions with your compiler
+- [HTTP API Overview](./http-api-overview.md) — Execute pipelines using stdlib functions
+- [Error Reference](./error-reference.md) — Runtime errors from stdlib functions
+- [Language Syntax](../language/index.md) — constellation-lang syntax for calling functions

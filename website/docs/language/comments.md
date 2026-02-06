@@ -182,6 +182,10 @@ tier3Bonus = 10 when finalScore >= 50
 tieredBonus = tier1Bonus ?? tier2Bonus ?? tier3Bonus ?? 0
 ```
 
+:::tip Documentation Value
+Good comments explain the "why" behind decisions, not just the "what" of the code. Document business rules, assumptions, and edge cases. Future maintainers (including yourself) will thank you.
+:::
+
 ## Best Practices
 
 ### Do: Explain Why, Not What
@@ -225,6 +229,10 @@ Pick a style and stick with it throughout your pipeline:
 # FIXME: Mark known issues
 # NOTE: Important callouts
 ```
+
+:::note Section Headers
+For large pipelines, use visual separator comments (like `# ===...===`) to delineate major sections. This improves navigability and makes the pipeline structure visible at a glance.
+:::
 
 ### Don't: Over-Comment Simple Code
 

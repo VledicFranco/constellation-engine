@@ -8,6 +8,17 @@ description: "Defer module execution until the result is actually needed, with a
 
 Defer module execution until the result is actually needed.
 
+## Quick Reference
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `lazy` | Boolean | Defer execution until result needed |
+
+**Syntax:**
+```constellation
+result = ExpensiveModule(input) with lazy: true
+```
+
 ## Syntax
 
 ```constellation
@@ -23,6 +34,14 @@ result = Module(args) with lazy: true
 The `lazy` option defers the execution of a module until its result is actually used. The deferred computation is wrapped in a `LazyValue` that executes on first access and memoizes the result for subsequent accesses.
 
 This is useful for expensive computations that may not always be needed, or for breaking circular dependencies.
+
+:::warning Errors occur when forced, not defined
+With lazy evaluation, errors happen when the lazy value is first accessed, not when defined. This can make debugging harder since the stack trace points to the access site, not the definition. Add logging at access points for complex lazy chains.
+:::
+
+:::note Memoization guarantees
+Once a lazy value is forced, the result is cached for all subsequent accesses. The module executes exactly once, even if accessed from multiple places. This includes errors: if the first access fails, subsequent accesses will re-throw the same error.
+:::
 
 ## Examples
 

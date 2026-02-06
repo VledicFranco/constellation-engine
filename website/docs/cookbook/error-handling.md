@@ -84,6 +84,16 @@ out safeCritical
 }
 ```
 
+### Output
+```json
+{
+  "skipped": "",
+  "logged": "",
+  "robustResult": "flaky service result: flaky-request",
+  "safeCritical": "safe-default-value"
+}
+```
+
 ## Variations
 
 ### Non-critical enrichment

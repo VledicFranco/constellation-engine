@@ -70,6 +70,10 @@ out totalBonus
 
 Guards produce `Optional<T>` values. Coalesce unwraps them. Together they replace explicit `if/else` patterns for conditional values with defaults.
 
+:::warning
+Guards produce `Optional<T>`, not `T`. You must coalesce (`??`) before using the value in arithmetic or passing it to a module that expects a non-optional type.
+:::
+
 ## Running the Example
 
 ### Input
@@ -111,6 +115,10 @@ bonus = tier1 ?? tier2 ?? tier3 ?? 0
 
 out bonus
 ```
+
+:::tip
+Chained coalesce (`a ?? b ?? c ?? default`) reads like a priority list. The first non-None value wins. Use this pattern for tiered defaults.
+:::
 
 ## Best Practices
 

@@ -251,6 +251,10 @@ For modules that perform IO (HTTP calls, database queries, file reads):
 }
 ```
 
+:::note Pure vs IO Implementations
+Use `implementationPure` for CPU-bound, side-effect-free operations. Use `implementation` (returns `IO`) for anything involving external resources, network calls, or blocking operations.
+:::
+
 ### Register the Module
 
 ```scala
@@ -301,6 +305,10 @@ val constellation = ConstellationImpl.builder()
 ```
 
 ### Bounded Scheduler
+
+:::tip Production Recommendation
+The default scheduler is unbounded — every task runs immediately. For production, use a bounded scheduler with priority ordering to prevent resource exhaustion under load.
+:::
 
 The default scheduler is unbounded — every task runs immediately. For production, use a bounded scheduler with priority ordering:
 
@@ -365,6 +373,10 @@ for {
 ```
 
 Lifecycle states: `Running` → `Draining` → `Stopped`.
+
+:::warning Resource Cleanup
+Always use `ConstellationLifecycle.shutdown()` before application exit. This ensures in-flight executions complete gracefully and resources are properly released.
+:::
 
 ### Circuit Breakers
 

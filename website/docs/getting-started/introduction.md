@@ -22,6 +22,10 @@ z = data[email]        # Compile error: field 'email' not found in record
 
 Constellation catches these errors **at compile time**, before your pipeline runs.
 
+:::warning Common Pitfall
+These errors silently pass Scala's compiler when you use dynamic types like `Map[String, Any]` or `Json`. Constellation's type system extends validation to the pipeline layer.
+:::
+
 ## How It Works
 
 You define pipeline logic in a declarative DSL called **constellation-lang** (`.cst` files), and implement the underlying functions as **Scala modules**. The compiler validates every field access and type, then the runtime executes your pipeline with automatic parallelization.
@@ -94,7 +98,15 @@ val fetchCustomer = ModuleBuilder
 | **IDE Support** | VSCode extension with autocomplete, inline errors, hover types |
 | **Production Ready** | Docker, K8s, auth, CORS, rate limiting, health checks, SPI |
 
+:::tip VSCode Extension
+Install the Constellation Engine VSCode extension for the best development experience. It provides syntax highlighting, real-time error checking, autocomplete, hover types, and one-click pipeline execution.
+:::
+
 ## Requirements
+
+:::note Prerequisites
+Ensure you have the following installed before starting:
+:::
 
 - JDK 17+
 - SBT 1.10+

@@ -8,6 +8,10 @@ description: "Practical recipes and patterns for Constellation Engine"
 
 Practical recipes for common pipeline patterns. Each page includes a runnable `.cst` pipeline, an explanation of how it works, sample input/output, and variations.
 
+:::tip Start Here
+New to Constellation? Work through the recipes in order. Each builds on concepts from the previous ones.
+:::
+
 ## Getting Started
 
 Simple pipelines that introduce core concepts.
@@ -45,6 +49,10 @@ Real-world data transformation and analysis patterns.
 | [Lead Scoring](lead-scoring.md) | Record types, arithmetic, conditionals, guards |
 | [Fan-Out / Fan-In](fan-out-fan-in.md) | Parallel service calls, merge, project |
 | [Conditional Branching](conditional-branching.md) | Route execution with `when`, `??`, `branch` |
+
+:::note Running the Examples
+All recipes include sample input and expected output. Start the server with `make server`, then use the dashboard at `http://localhost:8080/dashboard` to run them interactively.
+:::
 
 ## Resilience
 

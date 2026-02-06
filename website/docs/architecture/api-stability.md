@@ -276,3 +276,10 @@ Use this checklist when upgrading Constellation versions:
 | Implement all trait methods | Default implementations may not be optimal |
 | Test against latest patch | SPI contracts are tested in CI |
 | Report compatibility issues | We want to hear about problems |
+
+## Related
+
+- [Technical Architecture](./technical-architecture.md) — How Constellation Engine processes pipelines
+- [Security Model](./security-model.md) — Trust boundaries and HTTP hardening
+- [Programmatic API](../api-reference/programmatic-api.md) — Stable Scala embedding API
+- [HTTP API Overview](../api-reference/http-api-overview.md) — Stable REST endpoints

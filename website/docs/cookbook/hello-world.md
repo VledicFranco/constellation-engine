@@ -37,6 +37,10 @@ out trimmed_greeting
 
 The `@example("Alice")` annotation provides a default value for testing — the dashboard and API use it when no input is supplied.
 
+:::tip
+The `@example` annotation is not just for documentation. The dashboard pre-fills input forms with these values, enabling one-click testing.
+:::
+
 ## Running the Example
 
 ### Input
@@ -80,6 +84,10 @@ greeting = "Hello, ${name}! Welcome aboard."
 
 out greeting
 ```
+
+:::note
+String interpolation with `${...}` is preferred over `concat()` for readability. See [String Interpolation](string-interpolation.md) for the full syntax.
+:::
 
 ## Best Practices
 

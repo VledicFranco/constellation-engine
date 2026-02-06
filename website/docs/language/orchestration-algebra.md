@@ -64,6 +64,10 @@ Guards interact with the type system through an `Optional<T>` wrapper:
 
 ## Syntax Reference
 
+:::tip Guards vs Conditionals
+Use guard expressions (`when`) for skip-or-execute decisions where you may want `None`. Use `branch` expressions when you need to choose between multiple concrete values. Guards compose well with `??` for fallback chains.
+:::
+
 ### 1. Guard Expressions (`when`) ✅
 
 > **Status:** Implemented in #15
@@ -298,6 +302,10 @@ error_result = error-response("Validation failed") when valid_items == None
 out processed ?? error_result
 ```
 
+:::note Optional Types
+When a guard is applied, the result type becomes `Optional<T>`. Use the coalesce operator (`??`) to unwrap optionals with a fallback value, or chain multiple guarded expressions for a priority-based selection.
+:::
+
 ## Compile-Time Optimizations
 
 The boolean algebra enables several optimizations:
@@ -342,3 +350,10 @@ Potential extensions to the algebra:
 | Unwrap default | `a ?: b` | Explicit None handling | 🔮 Future |
 
 This set of primitives, grounded in boolean algebra, provides expressive orchestration control while preserving the declarative DAG semantics of constellation-lang.
+
+## Related
+
+- [Guards](./guards.md) — Detailed guide to `when` expressions
+- [Coalesce](./coalesce.md) — Detailed guide to `??` operator
+- [Lambdas](./lambdas.md) — Lambda expressions for `all`, `any`, `filter`, `map`
+- [Expressions](./expressions.md) — Complete expression syntax reference

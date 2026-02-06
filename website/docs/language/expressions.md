@@ -420,3 +420,10 @@ Group expressions for clarity:
 ```
 result = (a + b)[field1, field2]
 ```
+
+## Related
+
+- [Types](./types.md) — Type system and type compatibility
+- [Guards](./guards.md) — Conditional execution with `when`
+- [Coalesce](./coalesce.md) — Fallback values with `??`
+- [Lambdas](./lambdas.md) — Inline functions for collections

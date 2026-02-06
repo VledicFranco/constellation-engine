@@ -8,6 +8,10 @@ description: "Understand constellation-lang compiler errors with precise line an
 
 constellation-lang provides precise error messages with line and column information.
 
+:::tip Debugging Strategy
+When you encounter an error, check the line and column numbers first. The error location points to where the problem was detected, which is often (but not always) where the fix should be applied. For type errors, trace back to where the variable was defined.
+:::
+
 ## Undefined Variable
 
 ```
@@ -66,6 +70,10 @@ result = a + b
 Error at 3:10: Cannot merge types: Int + String
 ```
 
+:::note Common Merge Confusion
+The `+` operator in constellation-lang is for merging record types, not numeric addition. For arithmetic, use function calls like `add(a, b)` from stdlib.math. Merge only works between compatible record types.
+:::
+
 ## Parse Errors
 
 ```
@@ -75,3 +83,13 @@ out @invalid
 ```
 Error at 2:5: Parse error: expected identifier
 ```
+
+:::warning Check Syntax Carefully
+Parse errors often indicate a syntax issue on the previous line, such as a missing comma or closing bracket. If the indicated line looks correct, check the line above it.
+:::
+
+## Related
+
+- [Types](./types.md) — Type system reference and common type errors
+- [Expressions](./expressions.md) — Valid expression syntax
+- [Type Algebra](./type-algebra.md) — Record merge and projection rules

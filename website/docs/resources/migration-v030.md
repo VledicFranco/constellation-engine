@@ -8,6 +8,10 @@ description: "Upgrading from v0.2.x to v0.3.0"
 
 This guide covers upgrading from v0.2.x to v0.3.0. All new features are **opt-in** — existing code continues to work without changes.
 
+:::tip Smooth Upgrade Path
+v0.3.0 is fully backward-compatible. You can upgrade dependencies, verify tests pass, and adopt new features incrementally. No code changes are required for the upgrade itself.
+:::
+
 ## Summary
 
 v0.3.0 introduces:
@@ -20,6 +24,10 @@ v0.3.0 introduces:
 - **Documentation** — embedding guide, security model, performance tuning, error reference
 
 ## Non-Breaking Changes
+
+:::note Zero-Overhead by Default
+All new features are disabled by default, meaning your application has the exact same behavior and performance characteristics as v0.2.x until you explicitly opt in.
+:::
 
 All new features are disabled by default. Your existing code works identically:
 
@@ -76,6 +84,10 @@ val constellation = ConstellationImpl.builder()
 ```
 
 ### CancellableExecution
+
+:::warning API Changed in v1.0
+The `runDagCancellable` method was removed in v1.0. Use `IO.timeout` for cancellation as shown below.
+:::
 
 New trait for cancelling running pipelines:
 

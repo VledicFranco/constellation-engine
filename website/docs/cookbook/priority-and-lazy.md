@@ -106,6 +106,19 @@ Lazy evaluation is useful when a pipeline has conditional branches — if the re
 }
 ```
 
+### Output
+```json
+{
+  "quickResult": "quick check: simple data",
+  "expensiveResult": "deep analysis: simple data",
+  "backgroundResult": "computed: simple data",
+  "lazyComputed": "computed: complex data requiring analysis",
+  "lazyAndCached": "query result for: simple data",
+  "criticalResult": "query result for: critical-query",
+  "backgroundJob": "api response from: background-job"
+}
+```
+
 ## Variations
 
 ### Priority-based pipeline ordering

@@ -8,6 +8,17 @@ description: "Limit the rate of module calls using a token bucket algorithm to r
 
 Limit the rate of module calls.
 
+## Quick Reference
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `throttle` | Rate | Maximum calls per time period |
+
+**Syntax:**
+```constellation
+result = ExternalAPI(input) with throttle: 100/1min
+```
+
 ## Syntax
 
 ```constellation
@@ -21,6 +32,14 @@ result = Module(args) with throttle: <count>/<duration>
 The `throttle` option limits how frequently a module can be called. Calls that exceed the rate limit are queued and executed when capacity becomes available. This is useful for respecting external API rate limits or controlling resource usage.
 
 The rate is specified as `count/duration`, where `count` is the maximum number of calls allowed in the given `duration` window.
+
+:::tip Token bucket allows bursting
+The throttle uses a token bucket algorithm, which means up to `count` calls can execute instantly (the "burst"), then subsequent calls are rate-limited. This is ideal for APIs that allow short bursts but enforce average rate limits.
+:::
+
+:::note Throttle vs concurrency
+Use `throttle` to limit calls per time period (rate limiting). Use `concurrency` to limit simultaneous calls (parallelism). They can be combined: `throttle: 100/1min, concurrency: 10` means max 10 parallel calls, with max 100 total per minute.
+:::
 
 ## Examples
 

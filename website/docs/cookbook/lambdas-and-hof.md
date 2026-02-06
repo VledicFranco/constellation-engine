@@ -109,6 +109,10 @@ out passing
 out allPassing
 ```
 
+:::tip
+Filter before map. Running `map(filter(list, pred), transform)` is more efficient than `filter(map(list, transform), pred)` because fewer elements are transformed.
+:::
+
 ## Best Practices
 
 1. **Import the right namespaces** — `stdlib.collection` for HOF, `stdlib.compare` for comparison functions, `stdlib.math` for arithmetic

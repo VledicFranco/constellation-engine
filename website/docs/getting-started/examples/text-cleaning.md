@@ -10,6 +10,10 @@ A common requirement in ML pipelines is to normalize and clean text input before
 
 ## Use Case
 
+:::note When to Use
+This pattern is essential as a preprocessing step before any text analysis, search indexing, or ML feature extraction.
+:::
+
 You receive user-generated text that may have:
 - Leading/trailing whitespace
 - Inconsistent casing
@@ -96,6 +100,10 @@ out step5
 
 ### With Metrics
 
+:::tip Debugging Tip
+Output both original and cleaned metrics to verify your cleaning steps are working as expected.
+:::
+
 Output both cleaned text and original metrics:
 
 ```
@@ -115,6 +123,10 @@ out cleanedLength
 ```
 
 ## Best Practices
+
+:::warning Order Matters
+Always `Trim` before case conversion. Trimming after case conversion may behave unexpectedly with certain Unicode whitespace characters.
+:::
 
 1. **Order matters**: Trim before case conversion to avoid trimming issues
 2. **Chain carefully**: Each step should have a single responsibility

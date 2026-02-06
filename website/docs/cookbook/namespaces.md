@@ -53,6 +53,10 @@ out trimmed_greeting
 
 After `use stdlib.math`, all functions in that namespace are available directly. Aliases with `as` provide short prefixes to avoid name collisions.
 
+:::tip
+Use aliases when importing multiple namespaces that might have overlapping function names. `use stdlib.string as str` lets you call `str.trim()` without ambiguity.
+:::
+
 ## Running the Example
 
 ### Input
@@ -93,6 +97,10 @@ out doubled
 out isLarge
 out trimmed
 ```
+
+:::note
+Fully qualified calls like `stdlib.math.multiply(a, b)` always work, even without a `use` declaration. Prefer this for one-off calls to avoid cluttering the import section.
+:::
 
 ## Best Practices
 

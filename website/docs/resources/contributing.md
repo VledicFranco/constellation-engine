@@ -8,6 +8,10 @@ description: "How to contribute to Constellation Engine"
 
 Thank you for your interest in contributing to Constellation Engine! This guide will help you get started with development.
 
+:::tip First-Time Contributors
+New to the codebase? Start with issues labeled `good first issue` on GitHub. These are self-contained tasks that introduce you to the project structure without requiring deep domain knowledge.
+:::
+
 ## Table of Contents
 
 1. [Prerequisites](#prerequisites)
@@ -167,6 +171,11 @@ core → runtime → lang-compiler → http-api
 ## Running Tests
 
 ### All Tests
+
+:::note Test Before Committing
+Always run `make test` before pushing. CI runs the full test suite, and PRs with failing tests cannot be merged.
+:::
+
 ```bash
 make test
 # Or: sbt test
@@ -312,6 +321,10 @@ npm run compile
 ---
 
 ## Code Style
+
+:::warning Formatting Requirements
+All Scala code must pass `scalafmt` checks before merging. Run `sbt scalafmtCheck` locally to verify formatting. PRs with formatting violations will fail CI.
+:::
 
 - **Scala:** Follow standard Scala 3 conventions
 - **TypeScript:** Follow existing patterns in the codebase

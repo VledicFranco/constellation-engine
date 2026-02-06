@@ -20,6 +20,10 @@ result = Module(args) with retry: N, delay: D, backoff: <strategy>
 
 The `backoff` option determines how the delay between retry attempts increases (or stays constant). It works together with `delay` to calculate the actual wait time before each retry.
 
+:::tip When to use each strategy
+Use **exponential** for external APIs with rate limits (respects "back off" signals). Use **linear** when you expect gradual service recovery. Use **fixed** for internal services with predictable behavior.
+:::
+
 ## Strategies
 
 ### fixed

@@ -45,6 +45,10 @@ out summary
 
 The `+` operator performs a right-biased merge: when both records have a field with the same name, the right operand's value wins. The `[]` operator projects (selects) specific fields — the compiler verifies that every listed field exists.
 
+:::warning Right-Bias Matters
+In `a + b`, fields from `b` overwrite same-named fields from `a`. Order matters when merging records with overlapping field names.
+:::
+
 ## Running the Example
 
 ### Input
@@ -99,6 +103,10 @@ is_top = gt(combined.rank, 0)
 out display_name
 out is_top
 ```
+
+:::tip
+Use projection `[field1, field2]` immediately after merging to document and enforce the expected output shape.
+:::
 
 ## Best Practices
 

@@ -219,7 +219,11 @@ x ──► Transform ──► a ──┐
 y ──► Transform ──► b ──┘
 ```
 
-### Parallel Execution
+#:::tip Maximize Parallelism
+Design pipelines with independent computation paths when possible. The runtime automatically parallelizes operations that do not depend on each other, reducing overall execution time.
+:::
+
+## Parallel Execution
 
 Independent computations execute in parallel automatically:
 
@@ -556,6 +560,10 @@ out safeResult
 ```
 
 ---
+
+:::note Pipeline Organization
+Large pipelines benefit from clear section headers using comments. Group related declarations together: types at the top, then inputs, processing logic, and finally outputs.
+:::
 
 ## Pipeline File Conventions
 

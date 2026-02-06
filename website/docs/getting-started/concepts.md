@@ -81,6 +81,10 @@ The runtime type system ensures type safety across the entire pipeline:
 - Every runtime value carries its `CType`, enabling type checking at DAG boundaries
 - Automatic derivation maps Scala case classes to/from CType and CValue
 
+:::tip Type Safety Benefit
+The CType/CValue system ensures type mismatches are caught at pipeline boundaries, not deep inside module implementations. This makes debugging significantly easier.
+:::
+
 ## Pipeline Lifecycle
 
 A constellation-lang source file goes through several stages before execution:
@@ -114,6 +118,10 @@ Source (.cst)
 ```
 
 Each stage catches different classes of errors: the parser catches syntax errors, the type checker catches field typos and type mismatches, and the DAG compiler validates module availability.
+
+:::note Early Error Detection
+Errors are caught as early as possible in the pipeline. Syntax errors fail at parse time, type errors at type-check time, and missing modules at DAG compile time. You will never see a "field not found" error at runtime.
+:::
 
 ## Content-Addressed Storage
 
@@ -168,6 +176,10 @@ Pipelines support **partial execution**. If some inputs are missing, the pipelin
 4. The caller can later resume with the missing inputs via `POST /executions/{id}/resume`
 
 This enables **incremental execution** -- provide inputs as they become available, and the pipeline picks up where it left off.
+
+:::tip Use Case
+Suspend and resume is ideal for long-running workflows where some inputs arrive asynchronously (e.g., user approval, external API callback, file upload completion).
+:::
 
 ## Resilience
 

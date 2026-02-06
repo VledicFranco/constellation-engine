@@ -24,7 +24,13 @@ The `priority` option provides a hint to the scheduler about the relative import
 
 Priority can be specified as a named level or as a numeric value.
 
-> **Note:** Priority only affects scheduling when the bounded scheduler is enabled. See [Scheduler Configuration](#scheduler-configuration) below.
+:::warning Scheduler disabled by default
+Priority has **no effect** unless the bounded scheduler is enabled. By default, Constellation uses an unbounded scheduler that executes all tasks immediately. Set `CONSTELLATION_SCHEDULER_ENABLED=true` to enable priority-based scheduling.
+:::
+
+:::note Starvation prevention
+The scheduler includes an aging mechanism: waiting tasks gain +10 effective priority every 5 seconds. This ensures low-priority tasks eventually execute even under sustained high-priority load.
+:::
 
 ## Priority Levels
 

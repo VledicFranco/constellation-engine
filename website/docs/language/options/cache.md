@@ -24,6 +24,14 @@ The cache key is computed from the module name and all input values, ensuring th
 
 By default, results are cached in-memory. Use [`cache_backend`](./cache-backend.md) to select a distributed backend (Memcached, Redis, etc.) or set a global default via `ConstellationBuilder.withCache()`.
 
+:::warning Only cache pure functions
+Caching is only safe for modules where the same inputs always produce the same outputs. Avoid caching modules with side effects or time-dependent results (e.g., `GetCurrentTime`).
+:::
+
+:::note Retry happens before caching
+When combined with `retry`, the module is retried until success (or exhaustion), and only the final successful result is cached. Errors are never cached.
+:::
+
 ## Examples
 
 ### Basic Caching

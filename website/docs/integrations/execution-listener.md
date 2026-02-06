@@ -266,3 +266,10 @@ All listeners receive every event. If one listener throws, the others still exec
 - **Concurrency:** Module callbacks (`onModuleStart`, `onModuleComplete`) may fire concurrently for independent modules. Ensure your implementation is thread-safe.
 - **Duration accuracy:** `durationMs` is wall-clock time measured by the runtime. It includes scheduling overhead but not queue wait time.
 - **Cancellation:** `onExecutionCancelled` is only called when `CancellableExecution.cancel` is invoked. It defaults to no-op — override it if you need cancellation tracking.
+
+## Related
+
+- [Metrics Provider](./metrics-provider.md) — Emit metrics from execution events
+- [Tracer Provider](./tracer-provider.md) — Distributed tracing for execution spans
+- [Execution Storage](./execution-storage.md) — Persist execution history to a database
+- [Programmatic API](../api-reference/programmatic-api.md) — Wire listeners into your application

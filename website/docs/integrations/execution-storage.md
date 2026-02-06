@@ -287,3 +287,10 @@ val storage = SqliteExecutionStorage.create("constellation-executions.db")
 - **Concurrent writes:** Multiple executions may complete simultaneously. Use database-level concurrency control (transactions, optimistic locking) for the `update` method.
 - **Connection pooling:** Always use connection pools (HikariCP via `doobie-hikari`) in production. A single connection will bottleneck under concurrent execution.
 - **DagVizIR:** The `dagVizIR` field contains the DAG visualization intermediate representation. It can be large for complex pipelines. Consider storing it in a separate table or omitting it for long-term storage.
+
+## Related
+
+- [Execution Listener](./execution-listener.md) — Stream execution events in real-time
+- [Cache Backend](./cache-backend.md) — Cache module results for faster re-execution
+- [HTTP API Overview](../api-reference/http-api-overview.md) — REST endpoints for execution history
+- [Metrics Provider](./metrics-provider.md) — Monitor execution counts and durations

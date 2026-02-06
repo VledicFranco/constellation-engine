@@ -10,6 +10,10 @@ Use higher-order functions to filter and transform lists - the foundation of fun
 
 ## Use Case
 
+:::tip Functional Style
+If you are familiar with functional programming, these operations (`map`, `filter`, `all`, `any`) work exactly as you would expect from Scala, Haskell, or similar languages.
+:::
+
 You have a list of items and need to:
 - Filter items matching criteria
 - Transform each item
@@ -203,11 +207,19 @@ Lambdas in constellation-lang use arrow syntax:
 
 ## Performance Considerations
 
+:::note Short-Circuit Evaluation
+`any` stops at the first matching element, and `all` stops at the first non-matching element. This makes them efficient for early exit conditions.
+:::
+
 1. **Filter early**: Reduce list size before expensive operations
 2. **Avoid redundant passes**: Combine conditions when possible
 3. **Use short-circuit evaluation**: `any` stops at first match, `all` stops at first failure
 
 ## Best Practices
+
+:::warning Lambda Complexity
+Keep lambdas to single expressions. If you need complex logic, break it into multiple pipeline steps with meaningful variable names.
+:::
 
 1. **Keep lambdas simple**: Complex logic should be in separate steps
 2. **Name intermediate results**: Makes pipeline readable and debuggable

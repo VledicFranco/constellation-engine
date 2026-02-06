@@ -10,6 +10,10 @@ Calculate summary statistics on numeric data - a fundamental building block for 
 
 ## Use Case
 
+:::note Common Pattern
+Statistics calculations are often the first step in feature engineering for ML models, providing normalization bounds and baseline values.
+:::
+
 You have a list of numbers and need to compute:
 - Total sum
 - Average value
@@ -105,6 +109,10 @@ out formattedAvg
 
 ### With Filtering
 
+:::tip Filter First
+When working with large lists, filter first to reduce the dataset before computing expensive statistics.
+:::
+
 Calculate statistics on filtered subsets:
 
 ```
@@ -161,6 +169,10 @@ Generate summary reports:
 - Averages for performance metrics
 
 ## Best Practices
+
+:::warning Empty List Handling
+`Min`, `Max`, and `Average` on empty lists may return unexpected values or errors. Validate list length before computing statistics.
+:::
 
 1. **Handle empty lists**: Some functions may behave unexpectedly with empty lists
 2. **Consider data types**: `Average` returns `Float` even for `Int` lists

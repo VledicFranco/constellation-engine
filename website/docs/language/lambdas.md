@@ -48,6 +48,10 @@ Lambdas can accept multiple parameters:
 (x, y) => x > y
 ```
 
+:::note Import Required
+Remember to import the required stdlib namespaces (`stdlib.collection`, `stdlib.compare`, `stdlib.math`) before using higher-order functions and comparison operations in lambdas.
+:::
+
 ## Higher-Order Functions
 
 Lambda expressions are primarily used with higher-order functions from the standard library.
@@ -308,6 +312,10 @@ Explicit type annotations are optional but can improve clarity:
 doubled = map(numbers, (x: Int) => multiply(x, 2))
 ```
 
+:::warning Current Limitations
+Lambda expressions do not yet support closure capture (referencing variables from outer scope). Use literals directly in lambda bodies, or restructure your pipeline to pass values through function parameters.
+:::
+
 ## Current Limitations
 
 Lambda expressions have the following current limitations:
@@ -327,6 +335,10 @@ scaled = map(numbers, (x) => multiply(x, 2))  # Use literal instead
 
 2. **Function calls in predicates**: Comparisons in lambda bodies currently use function calls (`gt`, `lt`, etc.) rather than operators (`>`, `<`).
 
+:::tip Keep It Simple
+If your lambda logic becomes complex (nested calls, multiple operations), consider extracting it to a named module instead. Lambdas work best for simple predicates and transformations.
+:::
+
 ## Best Practices
 
 1. **Use meaningful parameter names**: `(item) => ...` is clearer than `(x) => ...` for complex operations
@@ -334,3 +346,10 @@ scaled = map(numbers, (x) => multiply(x, 2))  # Use literal instead
 3. **Chain operations**: Build pipelines by chaining filter, map, all, any
 4. **Import required functions**: Remember to `use` stdlib namespaces for comparison and math functions
 5. **Validate early**: Use `all` and `any` for early validation before expensive processing
+
+## Related
+
+- [Types](./types.md) — Understanding `List<T>` and collection types
+- [Expressions](./expressions.md) — Expression syntax reference
+- [Guards](./guards.md) — Combining lambdas with conditional execution
+- [Orchestration Algebra](./orchestration-algebra.md) — Higher-order functions in pipelines

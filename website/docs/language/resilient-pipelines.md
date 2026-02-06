@@ -18,6 +18,10 @@ Resilient pipelines combine multiple options to handle failures gracefully:
 - **Cache** for performance and availability
 - **Rate control** to respect limits
 
+:::warning Option Interactions
+When combining multiple options, be aware of their interactions. For example, `timeout` applies to each individual retry attempt, not the total time. A call with `retry: 3, timeout: 5s` could take up to 15 seconds (plus backoff delays) in the worst case.
+:::
+
 ## Pattern 1: External API Integration
 
 When calling external APIs, handle network issues, rate limits, and service unavailability.
@@ -248,6 +252,10 @@ out result
 
 Tries premium service first, falls back through standard and basic, finally returns empty if all fail.
 
+:::tip Start Simple
+Begin with basic resilience (`retry: 2, timeout: 5s`) and add options incrementally as you understand your failure modes. Over-engineering resilience can hide underlying issues.
+:::
+
 ## Best Practices Summary
 
 | Pattern | Key Options | Use Case |
@@ -260,6 +268,10 @@ Tries premium service first, falls back through standard and basic, finally retu
 | Lazy Evaluation | lazy, cache | Conditional expensive ops |
 | Circuit Breaker | cache, fallback, on_error | Unstable services |
 | Graceful Degradation | nested fallback | Service tiers |
+
+:::note Cache Hit Rates
+Monitor your cache hit rates regularly. A hit rate below 50% may indicate the cache TTL is too short or the data changes more frequently than expected. Adjust accordingly.
+:::
 
 ## Monitoring
 

@@ -403,3 +403,11 @@ See the [Programmatic API](./programmatic-api) guide for full details on setting
 ## WebSocket (LSP)
 
 The `/lsp` endpoint provides Language Server Protocol support for IDEs. See the [LSP WebSocket](./lsp-websocket) documentation for the protocol details.
+
+## Next Steps
+
+- [Programmatic API](./programmatic-api.md) — Embed Constellation in your Scala application
+- [LSP WebSocket](./lsp-websocket.md) — IDE integration via Language Server Protocol
+- [Error Reference](./error-reference.md) — HTTP error codes and resolution guides
+- [Security Model](../architecture/security-model.md) — Authentication, CORS, and rate limiting
+- [Standard Library](./stdlib.md) — Built-in functions available in pipelines

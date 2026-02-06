@@ -406,3 +406,10 @@ boundedResource.use { scheduler =>
 - This is often normal under sustained load
 - If problematic, increase concurrency or reduce starvation timeout
 - Consider whether priority assignments are appropriate
+
+## Next Steps
+
+- [Configuration](./configuration.md) — Environment variables for scheduler settings
+- [Performance Tuning](./performance-tuning.md) — Concurrency sizing and monitoring
+- [Runbook](./runbook.md) — Troubleshooting scheduler queue issues
+- [Deployment](./deployment.md) — Kubernetes deployment with resource limits

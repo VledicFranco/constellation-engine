@@ -244,3 +244,11 @@ Start with these thresholds and adjust based on your workload. Pipeline executio
 | Response latency (P99) | > 5s | > 30s |
 | Error rate (5xx) | > 1% | > 5% |
 | Memory usage | > 80% of limit | > 95% of limit |
+
+## Next Steps
+
+- [Configuration](./configuration.md) — Environment variables and server settings
+- [Deployment](./deployment.md) — Kubernetes deployment and scaling
+- [Performance Tuning](./performance-tuning.md) — Scheduler, caching, and JVM optimization
+- [Graceful Shutdown](./graceful-shutdown.md) — Drain behavior during restarts
+- [JSON Logging](./json-logging.md) — Structured logging for easier debugging

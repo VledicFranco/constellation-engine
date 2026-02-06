@@ -77,6 +77,10 @@ These three patterns compose naturally:
 - Use `when` + `??` when you want to try conditional values with fallbacks
 - Use `branch` for routing keys, `when` + `??` for conditional messages/bonuses
 
+:::tip Choosing the Right Pattern
+Use `branch` for exhaustive classification (every input maps to exactly one output). Use `when` + `??` for optional enrichment (a value that might not exist).
+:::
+
 ## Running the Example
 
 ### Input
@@ -120,6 +124,10 @@ notification = alert ?? "No action required"
 out severity
 out notification
 ```
+
+:::note
+All three patterns produce values (they are expressions, not statements). You can assign the result to a variable, interpolate it, or pass it to a module.
+:::
 
 ## Best Practices
 

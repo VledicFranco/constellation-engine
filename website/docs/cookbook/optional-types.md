@@ -78,6 +78,10 @@ out totalWaitTime
 
 Optional inputs appear as `null` or are absent from the JSON input. The `??` operator provides the fallback value.
 
+:::tip
+Define defaults immediately after declaring optional inputs. This keeps the pipeline logic simple and avoids passing `Optional<T>` through multiple steps.
+:::
+
 ## Running the Example
 
 ### Input (all optionals omitted)
@@ -132,6 +136,10 @@ Optional inputs appear as `null` or are absent from the JSON input. The `??` ope
   "totalWaitTime": 300
 }
 ```
+
+:::warning
+Don't overuse `Optional<T>`. Required inputs catch missing data at the API boundary. Only use optional for truly optional parameters like configuration overrides.
+:::
 
 ## Best Practices
 

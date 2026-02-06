@@ -83,6 +83,15 @@ The `+` operator merges the fields from both records. The `[]` operator selects 
 }
 ```
 
+### Output
+```json
+{
+  "profile": "flaky service result: user-42",
+  "activity": "api response from: product-99",
+  "prefs": "query result for: https://api.example.com/prefs"
+}
+```
+
 ## Variations
 
 ### With resilience

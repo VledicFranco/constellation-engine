@@ -187,3 +187,10 @@ Constellation uses Cats Effect `Resource` for managing server and runtime lifecy
 5. Thread pools (graceful termination)
 
 This ordering ensures that the server stops accepting traffic before draining executions, and infrastructure resources are released last.
+
+## Next Steps
+
+- [Deployment](./deployment.md) — Kubernetes deployment with health probes
+- [Configuration](./configuration.md) — Server and scheduler configuration
+- [Runbook](./runbook.md) — Operational procedures including rolling restarts
+- [Clustering](./clustering.md) — Multi-node deployment and load balancing

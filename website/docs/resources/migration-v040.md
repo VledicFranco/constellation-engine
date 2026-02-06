@@ -8,6 +8,10 @@ description: "Upgrading from v0.3.x to v0.4.0"
 
 This guide covers upgrading from v0.3.x to v0.4.0. The release focuses on distributed caching infrastructure with minimal breaking changes.
 
+:::tip Before You Start
+Back up your `build.sbt` and take note of any custom `CacheStats` imports. The only breaking change is a moved type, which is easy to fix with a find-and-replace.
+:::
+
 ## Summary
 
 v0.4.0 introduces:
@@ -19,6 +23,10 @@ v0.4.0 introduces:
 - **LangCompilerBuilder.withCacheBackend** — Custom cache backends for compilation results
 
 ## Breaking Changes
+
+:::danger Import Path Changed
+The `CacheStats` type has moved to a new package. If you import it directly, update the import path or your code will fail to compile.
+:::
 
 ### CacheStats Type Location Changed
 
@@ -283,6 +291,10 @@ curl http://localhost:8080/metrics | jq '.cache'
 ```
 
 ## Rollback Procedure
+
+:::note Rollback Is Safe
+Rolling back to v0.3.x only requires reverting dependency versions and removing v0.4.0-specific API calls. No data migration is needed.
+:::
 
 If you need to rollback to v0.3.x:
 

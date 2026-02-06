@@ -24,6 +24,10 @@ This directory contains real-world examples demonstrating constellation-lang pat
 
 ## Running Examples
 
+:::tip Quick Start
+The easiest way to run these examples is with the VSCode extension. Copy the code, paste into a `.cst` file, and press `Ctrl+Shift+R`.
+:::
+
 ### In VSCode
 1. Copy the code block to a `.cst` file
 2. Press `Ctrl+Shift+R` to run
@@ -41,6 +45,10 @@ curl -X POST http://localhost:8080/run \
 
 ## Prerequisites
 
+:::note Server Required
+Both the VSCode extension and HTTP API methods require a running Constellation server.
+:::
+
 Make sure the server is running:
 ```bash
 make server
@@ -56,6 +64,10 @@ make server
 | List Processing | Intermediate | Higher-order functions, lambdas |
 | Batch Enrichment | Intermediate | Candidates, merge, projection |
 | Scoring Pipeline | Advanced | Conditionals, type algebra, custom types |
+
+:::tip Learning Path
+Start with the Beginner examples (Text Cleaning, Data Statistics) to understand the basics, then progress to Intermediate patterns (List Processing, Batch Enrichment) before tackling the Advanced Scoring Pipeline.
+:::
 
 ## Next Steps
 

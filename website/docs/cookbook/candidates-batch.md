@@ -52,6 +52,10 @@ out ids_with_user
 
 When you merge a `Candidates<T>` with a record, the record is merged into every item in the batch. Similarly, projection applies to every item. This eliminates the need for manual `.traverse` or `.map` calls.
 
+:::tip
+`Candidates<T>` automatically broadcasts single records to each item in the batch. No explicit loops required.
+:::
+
 ## Running the Example
 
 ### Input
@@ -117,6 +121,10 @@ pricing = with_discount[sku, price, discount]
 
 out pricing
 ```
+
+:::note
+Projection on a batch (`items[field1, field2]`) creates a new batch with only the specified fields in each item, reducing memory and serialization overhead.
+:::
 
 ## Best Practices
 

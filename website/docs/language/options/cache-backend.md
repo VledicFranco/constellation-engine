@@ -22,6 +22,14 @@ The `cache_backend` option selects a specific cache storage backend by name. Thi
 
 This option requires `cache` to be specified. Without `cache`, specifying a backend generates a compiler warning.
 
+:::tip Use distributed caching in production
+In multi-instance deployments, use `memcached` or a custom Redis backend so all instances share the same cache. The default `memory` backend is per-instance and causes cache misses when requests hit different servers.
+:::
+
+:::note Fallback behavior
+If the named backend is not registered, the runtime creates a new in-memory cache as a fallback. Check your startup logs to ensure the expected backend is loaded.
+:::
+
 ## Examples
 
 ### Memcached Backend

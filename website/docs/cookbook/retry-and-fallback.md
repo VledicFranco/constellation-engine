@@ -101,6 +101,16 @@ Units: `ms` (milliseconds), `s` (seconds), `min` (minutes), `h` (hours).
 }
 ```
 
+### Output
+```json
+{
+  "reliableResult": "flaky service result: process this request",
+  "timeoutResult": "timeout prone result: timeout test request",
+  "safeResult": "default fallback response",
+  "apiResult": "api response from: https://flaky-api.example.com/data"
+}
+```
+
 ## Variations
 
 ### Linear backoff

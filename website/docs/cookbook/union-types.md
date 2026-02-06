@@ -112,6 +112,10 @@ in input: ScoringResult
 out input
 ```
 
+:::tip
+Name your union types at the top of the file. `type Result = Success | Error` is much clearer than repeating `{ value: Int } | { error: String }` everywhere.
+:::
+
 ## Best Practices
 
 1. **Use unions for variant returns** — API responses, parsing results, and validation outcomes naturally have multiple shapes

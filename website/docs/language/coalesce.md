@@ -292,3 +292,10 @@ This pattern is common for conditional computation with defaults.
 3. **Chain for priority**: Use chained coalesce for multi-source data
 4. **Leverage short-circuit**: Put expensive computations on the right
 5. **Combine with guards**: Natural pairing for conditional execution with defaults
+
+## Related
+
+- [Guards](./guards.md) — Conditional execution with the `when` keyword
+- [Types](./types.md) — Understanding `Optional<T>` and other types
+- [Expressions](./expressions.md) — Complete expression syntax reference
+- [Orchestration Algebra](./orchestration-algebra.md) — Boolean-based control flow patterns

@@ -21,6 +21,10 @@ This guide covers common issues encountered when using Constellation Engine and 
 
 ## Compilation Errors
 
+:::warning Case Sensitivity
+Constellation module names are **case-sensitive**. `Uppercase`, `uppercase`, and `UPPERCASE` are three different names. Always use exact PascalCase for module names as defined in your Scala code.
+:::
+
 ### "Module 'X' not found"
 
 **Error Code:** `MODULE_NOT_FOUND`
@@ -524,6 +528,10 @@ Cannot convert from JSON Array to CProduct: expected object
 
 ## Debug Mode
 
+:::tip Enable Debug Mode First
+When investigating any issue, enabling debug mode should be your first step. It provides detailed type validation errors and diagnostic logging that can quickly pinpoint the root cause.
+:::
+
 Constellation Engine includes a debug mode that provides additional runtime validation and logging.
 
 ### Enabling Debug Mode
@@ -600,6 +608,10 @@ logging {
 If you can't resolve an issue using this guide:
 
 ### GitHub Issues
+
+:::note Before Opening an Issue
+Search existing issues first - your problem may already have a solution. Include the exact error message, your constellation-lang code, and reproduction steps to get faster help.
+:::
 
 Report bugs and request features:
 - **Repository:** [VledicFranco/constellation-engine](https://github.com/VledicFranco/constellation-engine)

@@ -10,6 +10,10 @@ Analyze text content to extract metrics and detect patterns - essential for cont
 
 ## Use Case
 
+:::tip Multiple Applications
+Content analysis pipelines serve content moderation (keyword detection), SEO analysis (content length, keyword density), and ML feature engineering (text statistics).
+:::
+
 Given a piece of text content, you want to:
 - Count words and characters
 - Check for specific keywords
@@ -93,6 +97,10 @@ out firstLine
 ```
 
 ### CSV-like Data Parsing
+
+:::warning Not a Full CSV Parser
+This pattern handles simple delimited data. For complex CSV with quoted fields, escaping, or multi-line values, use a dedicated parsing module.
+:::
 
 Parse delimited data:
 
@@ -189,6 +197,10 @@ out contentWords
 - Create content fingerprints
 
 ## Best Practices
+
+:::note Case Sensitivity
+Keyword detection is case-sensitive by default. Always normalize both content and keyword to the same case before using `Contains`.
+:::
 
 1. **Normalize before comparing**: Use `Lowercase` for case-insensitive matching
 2. **Trim inputs**: Clean whitespace before analysis with `Trim`

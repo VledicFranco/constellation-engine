@@ -10,6 +10,10 @@ Build a multi-factor scoring system with conditional logic - essential for lead 
 
 ## Use Case
 
+:::tip Business Applications
+Multi-factor scoring is used across industries: lead scoring (sales), credit risk (finance), recommendation ranking (e-commerce), and content quality (social media).
+:::
+
 You need to score entities based on multiple factors:
 - Combine numeric scores with weights
 - Apply conditional adjustments
@@ -105,6 +109,10 @@ out isQualified
 ## Variations
 
 ### With Conditional Bonus
+
+:::tip A/B Testing
+Conditional adjustments are ideal for A/B testing different scoring strategies. Pass the variant as a boolean input and apply different bonuses accordingly.
+:::
 
 Apply conditional score adjustments:
 
@@ -210,6 +218,10 @@ out output
 
 ### Score Normalization
 
+:::warning Boundary Conditions
+Always clamp normalized scores to valid ranges. Raw calculations can produce values outside 0-100 due to outliers in the input data.
+:::
+
 Normalize scores to a standard range:
 
 ```
@@ -283,6 +295,10 @@ Apply adjustments based on flags.
 - Filter by minimum threshold
 
 ## Best Practices
+
+:::note Explainability
+Log intermediate scores (each component contribution) to make the final score explainable. This is critical for debugging and for regulated industries requiring score justification.
+:::
 
 1. **Externalize weights**: Make weights configurable, not hardcoded
 2. **Document thresholds**: Explain what each threshold means

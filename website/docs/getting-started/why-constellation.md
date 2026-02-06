@@ -8,7 +8,9 @@ description: "When and why to use Constellation Engine for pipeline orchestratio
 
 ## The Problem
 
+:::note Pain Point
 Backend services that aggregate data from multiple sources accumulate a specific class of bugs over time: **runtime type errors in pipeline composition**. Field name typos, type mismatches, and null values hide in code that compiles fine but fails at production runtime.
+:::
 
 Consider a typical Scala service that fetches user data from three APIs, merges the results, and returns a subset of fields:
 
@@ -47,7 +49,9 @@ result = merged[usrName, activityScore]
 
 The compiler knows the exact shape of `merged` — `{ userName: String, email: String, activityScore: Int, lastLogin: String, theme: String }` — and rejects any access to a field that doesn't exist.
 
+:::tip Separation of Concerns
 This works because Constellation separates **pipeline definition** (a declarative `.cst` script) from **module implementation** (Scala functions with typed inputs/outputs). The compiler can reason about the entire pipeline graph before execution.
+:::
 
 ### What you get
 
@@ -71,6 +75,10 @@ You take a batch of records, enrich each with data from external sources, and fi
 You already use Scala 3, Cats Effect, and value compile-time guarantees. Constellation extends those guarantees to your pipeline composition layer.
 
 ## When Not to Use Constellation
+
+:::warning Know the Limits
+Constellation is designed for pipeline orchestration within a single JVM. It is not a replacement for distributed compute frameworks or stream processing systems.
+:::
 
 | Use case | Better tool | Why |
 |---|---|---|

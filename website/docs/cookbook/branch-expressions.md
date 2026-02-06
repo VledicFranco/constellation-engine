@@ -78,6 +78,10 @@ out department
 
 Branch expressions are expressions — they produce a value that can be assigned to a variable, interpolated into a string, or passed to a module.
 
+:::warning
+Conditions are evaluated top-to-bottom. The first matching condition wins, so order from most specific to least specific.
+:::
+
 ## Running the Example
 
 ### Input
@@ -119,6 +123,10 @@ pass_fail = if (score >= 60) "Pass" else "Fail"
 out grade_branch
 out pass_fail
 ```
+
+:::tip
+The `otherwise` clause is required. The compiler will reject a branch expression without a fallback, ensuring every input produces a result.
+:::
 
 ## Best Practices
 

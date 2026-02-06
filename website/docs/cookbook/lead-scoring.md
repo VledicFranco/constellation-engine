@@ -8,6 +8,10 @@ description: "Comprehensive B2B lead scoring with record types, arithmetic, and 
 
 A realistic B2B lead scoring pipeline that demonstrates record types, field access, arithmetic, conditionals, namespace imports, guards, and coalesce — most constellation-lang features in a single pipeline.
 
+:::note
+This recipe combines most constellation-lang features in one pipeline. Study it after completing the simpler recipes to see how features compose.
+:::
+
 ## Use Case
 
 Score business leads based on company size, revenue, engagement signals, and text analysis. Classify each lead as hot, warm, or cold.
@@ -141,6 +145,23 @@ out tieredBonus
   "scoreMultiplier": 2
 }
 ```
+
+### Output
+```json
+{
+  "finalScore": 77,
+  "isHotLead": false,
+  "isWarmLead": true,
+  "isQualified": true,
+  "isHighPriority": true,
+  "meetsMinimum": true,
+  "tieredBonus": 30
+}
+```
+
+:::tip
+Use intermediate boolean variables like `isLargeCompany` and `hasHighEngagement`. They make complex scoring logic readable and self-documenting.
+:::
 
 ## Best Practices
 

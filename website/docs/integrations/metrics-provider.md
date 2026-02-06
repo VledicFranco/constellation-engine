@@ -182,3 +182,10 @@ Avoid high-cardinality tags like execution IDs, timestamps, or user IDs that cre
 - **Fire-and-forget:** Exceptions thrown from metrics methods are caught and discarded by the runtime. Log errors internally if you need visibility.
 - **Performance:** Metrics calls are on the hot path. Keep implementations fast — avoid synchronous network calls. StatsD and Micrometer both use non-blocking approaches.
 - **Tag cardinality:** Avoid high-cardinality tags (e.g., execution IDs) that create unbounded metric series. Stick to `dag_name`, `module_name`, and `success`.
+
+## Related
+
+- [Tracer Provider](./tracer-provider.md) — Distributed tracing for end-to-end visibility
+- [Execution Listener](./execution-listener.md) — Event streaming for detailed audit logs
+- [HTTP API Overview](../api-reference/http-api-overview.md) — The `/metrics` endpoint for scraping
+- [Programmatic API](../api-reference/programmatic-api.md) — Wire metrics into your application

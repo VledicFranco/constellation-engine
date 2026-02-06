@@ -106,6 +106,21 @@ Throttle limits are shared across all calls to the same module. If you have 5 ca
 }
 ```
 
+### Output
+```json
+{
+  "resp1": "rate limited response: request-1",
+  "resp2": "rate limited response: request-2",
+  "resp3": "rate limited response: request-3",
+  "resp4": "rate limited response: request-4",
+  "resp5": "rate limited response: request-5",
+  "resultA": "intensive result: task-A",
+  "resultB": "intensive result: task-B",
+  "resultC": "intensive result: task-C",
+  "heavyResult": "intensive result: heavy-task"
+}
+```
+
 ## Variations
 
 ### Rate-limited with retry

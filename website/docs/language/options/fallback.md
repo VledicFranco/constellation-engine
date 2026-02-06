@@ -8,6 +8,17 @@ description: "Provide a default value to return when a module call fails instead
 
 Provide a default value to use when a module call fails.
 
+## Quick Reference
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `fallback` | Expression | Default value returned on failure |
+
+**Syntax:**
+```constellation
+result = Module(input) with fallback: defaultValue
+```
+
 ## Syntax
 
 ```constellation
@@ -21,6 +32,14 @@ result = Module(args) with fallback: <expression>
 The `fallback` option specifies a value to return when a module call fails, instead of propagating the error. When combined with `retry`, the fallback is used only after all retry attempts are exhausted.
 
 The fallback expression must have the same type as the module's return type. This is validated at compile time.
+
+:::note Lazy evaluation
+The fallback expression is only evaluated if the module fails. If the module succeeds, the fallback is never computed. This allows expensive fallback expressions without performance penalty on success.
+:::
+
+:::tip Use for graceful degradation
+Fallback is ideal for providing degraded but functional behavior (e.g., cached data, default config). For error visibility, combine with `on_error: log` to ensure failures are still recorded.
+:::
 
 ## Examples
 

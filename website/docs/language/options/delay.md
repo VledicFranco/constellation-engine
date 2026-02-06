@@ -22,6 +22,10 @@ The `delay` option specifies the wait time between retry attempts. It is typical
 
 Without `backoff` or with `backoff: fixed`, the delay remains constant. With other backoff strategies, the `delay` value serves as the base delay that gets modified.
 
+:::warning delay requires retry
+Using `delay` without `retry` has no effect and generates a compiler warning. The delay only applies between retry attempts, not before the initial execution.
+:::
+
 ## Examples
 
 ### Fixed Delay

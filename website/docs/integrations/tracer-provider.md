@@ -181,3 +181,10 @@ val constellation = ConstellationImpl.builder()
 - **Performance:** Span creation and attribute setting should be fast. Avoid expensive serialization in attributes.
 - **No-op default:** When `TracerProvider.noop` is used (the default), the `body` computation passes through with zero overhead — no span objects are created.
 - **Concurrency:** Modules execute in parallel. Each module span is independent. The execution span is the parent of all module spans within that DAG run.
+
+## Related
+
+- [Metrics Provider](./metrics-provider.md) — Emit metrics alongside traces
+- [Execution Listener](./execution-listener.md) — Event callbacks for audit logging
+- [Programmatic API](../api-reference/programmatic-api.md) — Wire tracer into your application
+- [Technical Architecture](../architecture/technical-architecture.md) — How parallel execution works

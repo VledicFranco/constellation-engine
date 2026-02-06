@@ -11,9 +11,17 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+:::note Versioning Policy
+We follow semantic versioning strictly: **MAJOR** for breaking changes, **MINOR** for new features (backward-compatible), **PATCH** for bug fixes. The `[Unreleased]` section shows what will ship in the next release.
+:::
+
 ## [Unreleased]
 
 ### Removed (Breaking)
+
+:::danger Breaking Changes Ahead
+The following APIs have been removed in the v1.0 release candidate. If you are upgrading from v0.x, review each removal carefully and update your code before upgrading. See the [Migration Guide](/docs/resources/migration-v040) for step-by-step instructions.
+:::
 
 #### Deprecated API Removal (v1 RC)
 - **`DagRegistry`**: Deleted `DagRegistry` trait and `DagRegistryImpl` class. Use `PipelineStore` for storing and retrieving compiled pipelines.
@@ -156,6 +164,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Case-insensitive matching for better discoverability
   - Cached keyword completions (built once at initialization)
   - Module completions automatically updated when registry changes
+
+:::tip Checking Your Version
+Run `curl http://localhost:8080/health` to see the current server version, or check `build.sbt` for the library version in your project.
+:::
 
 ## [0.2.0] - 2026-01-22
 

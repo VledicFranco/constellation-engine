@@ -365,3 +365,10 @@ Standard error codes:
 2. **Text sync**: Use `textDocumentSync: 1` (full document sync)
 3. **Diagnostics**: Published automatically after `didOpen` and `didChange`
 4. **Completion triggers**: `(`, `,`, ` `, `.` trigger completion suggestions
+
+## Related
+
+- [HTTP API Overview](./http-api-overview.md) — REST endpoints for pipeline execution
+- [Error Reference](./error-reference.md) — Error codes returned by the LSP server
+- [Standard Library](./stdlib.md) — Functions available for autocompletion
+- [Programmatic API](./programmatic-api.md) — Scala API for custom integrations

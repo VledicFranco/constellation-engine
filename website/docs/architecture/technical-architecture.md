@@ -171,3 +171,11 @@ The source code is organized by module:
 | lang-parser | `modules/lang-parser/` | constellation-lang parser |
 | lang-compiler | `modules/lang-compiler/` | Type checking and DAG compilation |
 | http-api | `modules/http-api/` | HTTP server and WebSocket LSP |
+
+## Next Steps
+
+- [Programmatic API](../api-reference/programmatic-api.md) — Embed Constellation in your Scala application
+- [HTTP API Overview](../api-reference/http-api-overview.md) — REST endpoints for pipeline execution
+- [Security Model](./security-model.md) — Trust boundaries and HTTP hardening
+- [Metrics Provider](../integrations/metrics-provider.md) — Add observability to your pipelines
+- [API Stability](./api-stability.md) — Versioning policy and stability guarantees

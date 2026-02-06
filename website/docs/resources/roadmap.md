@@ -8,6 +8,10 @@ description: "Public roadmap for Constellation Engine"
 
 This page tracks what has shipped, what is planned, and what is explicitly out of scope. It is updated with each release.
 
+:::note Roadmap Priorities
+Items in **v1.1 Planned** are committed for the next release. Items in **v2.0 Ideas** are under consideration and may change based on community feedback.
+:::
+
 ## v1.0 — Shipped
 
 The v1.0 release provides a stable foundation for type-safe pipeline orchestration.
@@ -67,6 +71,10 @@ These are directions under consideration, not commitments.
 
 ## Explicitly Out of Scope
 
+:::warning Not a General-Purpose Tool
+Constellation is purpose-built for type-safe pipeline orchestration. If your use case matches one of the items below, consider the suggested alternatives instead.
+:::
+
 These are things Constellation Engine is not intended to become:
 
 | Area | Rationale |
@@ -77,6 +85,10 @@ These are things Constellation Engine is not intended to become:
 | Database or storage layer | Constellation orchestrates calls to external systems; it doesn't store data |
 
 ## How to Influence the Roadmap
+
+:::tip Want a Feature?
+Open a GitHub Issue with the `enhancement` label and describe your use case. Issues with clear business value and community upvotes are prioritized for future releases.
+:::
 
 - **Feature requests** — open a [GitHub Issue](https://github.com/VledicFranco/constellation-engine/issues) with the `enhancement` label
 - **Bug reports** — open an issue with reproduction steps

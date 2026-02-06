@@ -62,6 +62,10 @@ out formattedTotal
 
 Steps 3's four aggregation calls are independent — they all depend on `scaled` but not on each other — so they run in parallel.
 
+:::tip Automatic Parallelization
+The runtime detects that `SumList`, `Average`, `Max`, and `Min` are independent and executes them concurrently. No explicit parallel constructs needed.
+:::
+
 ## Running the Example
 
 ### Input
@@ -101,6 +105,10 @@ total = SumList(above)
 out count
 out total
 ```
+
+:::note
+Filtering early (`FilterGreaterThan` before `MultiplyEach`) reduces the number of items processed by downstream steps, improving performance.
+:::
 
 ## Best Practices
 

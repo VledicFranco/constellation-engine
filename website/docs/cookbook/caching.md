@@ -82,6 +82,17 @@ The cache key is derived from: **module name + input values**. Two calls with th
 }
 ```
 
+### Output
+```json
+{
+  "result1": "query result for: SELECT * FROM users",
+  "result2": "query result for: SELECT * FROM users",
+  "result3": "query result for: SELECT * FROM orders",
+  "computed": "computed: transform this data",
+  "apiResult": "api response from: https://api.example.com/slow"
+}
+```
+
 ### Performance
 
 | Call | Without cache | With cache |

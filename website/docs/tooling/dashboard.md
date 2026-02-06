@@ -78,6 +78,10 @@ The following paths are always accessible without authentication:
 
 ### Path Traversal Protection
 
+:::warning Security Note
+Never expose the dashboard to the public internet without proper authentication configured. Always use `withAuth()` when deploying in production environments.
+:::
+
 The file browser API validates all file paths to prevent directory traversal attacks. Requests that attempt to access files outside the configured `cstDirectory` are rejected with a 400 Bad Request.
 
 ### File Size Limits
@@ -301,6 +305,10 @@ curl http://localhost:8080/api/v1/executions/{executionId}/dag
 
 ## Keyboard Shortcuts
 
+:::tip Productivity Boost
+Master the keyboard shortcuts to speed up your workflow. `Ctrl+Enter` to execute and `Escape` to close panels are the most frequently used shortcuts.
+:::
+
 | Shortcut | Context | Action |
 |----------|---------|--------|
 | `Ctrl+Enter` / `Cmd+Enter` | Editor | Execute current script |
@@ -339,6 +347,10 @@ Currently, themes are not user-configurable. To customize colors, modify the CSS
 ```
 
 ## Performance Tuning for Large DAGs
+
+:::note Browser Requirements
+For optimal performance, use Chrome or Firefox with hardware acceleration enabled. Safari and Edge work but may have slower WebGL rendering for large DAGs.
+:::
 
 ### Rendering Performance
 

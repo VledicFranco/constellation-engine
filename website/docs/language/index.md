@@ -8,6 +8,10 @@ description: "Complete reference for constellation-lang, a DSL for type-safe dat
 
 constellation-lang is a domain-specific language for defining data transformation pipelines. It provides a declarative syntax with strong typing, type algebra, and field projections.
 
+:::note Learning Path
+If you are new to constellation-lang, start with [Pipeline Structure](./pipeline-structure.md), then explore [Types](./types.md) and [Declarations](./declarations.md). The orchestration features build on these fundamentals.
+:::
+
 ## Table of Contents
 
 ### Core Language
@@ -35,6 +39,10 @@ constellation-lang is a domain-specific language for defining data transformatio
   - [Rate Control Options](./options/retry.md) - throttle, concurrency
   - [Advanced Options](./options/retry.md) - on_error, lazy, priority
 - [Resilient Pipelines Guide](./resilient-pipelines.md) - Real-world patterns
+
+:::tip Module Options for Production
+When building production pipelines, explore the [Module Options Reference](./module-options.md) for resilience features like retry, timeout, and caching that make your pipelines robust.
+:::
 
 ### Reference
 

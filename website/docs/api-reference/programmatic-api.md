@@ -504,3 +504,11 @@ object MyPipeline extends IOApp.Simple {
   } yield ()
 }
 ```
+
+## Next Steps
+
+- [HTTP API Overview](./http-api-overview.md) — REST API for polyglot architectures
+- [Standard Library](./stdlib.md) — Built-in functions to register with your compiler
+- [Error Reference](./error-reference.md) — Compile and runtime error handling
+- [Technical Architecture](../architecture/technical-architecture.md) — How pipelines are compiled and executed
+- [Cache Backend](../integrations/cache-backend.md) — Implement custom caching for module results

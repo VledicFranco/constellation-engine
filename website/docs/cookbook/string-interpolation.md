@@ -70,6 +70,10 @@ out formalGreeting
 
 Interpolation expressions are evaluated at runtime. Any expression valid in an assignment can appear inside `${}`.
 
+:::tip
+Keep interpolation expressions simple. For complex logic, compute the value in a separate variable first, then interpolate it.
+:::
+
 ## Running the Example
 
 ### Input
@@ -105,6 +109,10 @@ welcome = "Welcome ${user.name}, you are logged in as ${user.role}."
 
 out welcome
 ```
+
+:::warning
+Don't forget to escape `$` with `\$` when you need a literal dollar sign. `"Price: $100"` will fail; use `"Price: \$100"` instead.
+:::
 
 ## Best Practices
 

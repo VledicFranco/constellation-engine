@@ -295,3 +295,10 @@ Since modules run with full JVM permissions:
 1. **API keys** — use strong random strings (32+ characters), rotate regularly
 2. **Environment variables** — prefer env vars over hardcoded keys in source
 3. **Secrets management** — in Kubernetes, use Secrets rather than ConfigMaps for API keys
+
+## Related
+
+- [HTTP API Overview](../api-reference/http-api-overview.md) — REST endpoints and authentication
+- [Error Reference](../api-reference/error-reference.md) — HTTP error codes (401, 403, 429)
+- [Technical Architecture](./technical-architecture.md) — How pipelines are sandboxed
+- [API Stability](./api-stability.md) — Stability guarantees for security APIs

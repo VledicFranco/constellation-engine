@@ -8,6 +8,10 @@ description: "Why ML pipeline orchestration is hard and how Constellation addres
 
 ## Executive Summary
 
+:::note Context
+This document provides background on ML orchestration challenges in 2026 and explains how Constellation's design addresses them. It serves as a technical deep-dive for architects and engineering leaders evaluating orchestration solutions.
+:::
+
 Machine learning orchestration has evolved from simple pipeline automation to managing "Compound AI Systems"—complex ecosystems of agents, multiple LLMs, retrieval systems, and real-time data streams. While orchestration is the "connective tissue" that keeps ML systems running, it remains one of the most significant bottlenecks in production AI.
 
 **Constellation Engine** addresses these challenges through a **type-safe, composable orchestration framework** that treats ML pipelines as first-class data structures, enabling rapid iteration, safe deployment, and clear observability.
@@ -198,6 +202,10 @@ All automatically, within 24 hours.
 ## Part 2: How Constellation Solves These Challenges
 
 ### Core Innovation: Type-Safe Orchestration-as-Code
+
+:::tip Key Differentiator
+Unlike workflow schedulers (Airflow, Dagster) that treat steps as opaque tasks, Constellation's type-safe approach catches schema mismatches at compile time, before they cause production failures.
+:::
 
 Constellation treats ML pipelines as **composable, type-safe data structures** rather than imperative scripts.
 
@@ -705,7 +713,11 @@ out final_results
    - Data scientists and engineers collaborate
    - Example: Product teams shipping ML features
 
-### ⚠️ Less Suitable For
+### Less Suitable For
+
+:::warning Right Tool for the Job
+Constellation adds value when you have multi-step pipelines with type safety requirements. For simpler use cases, lightweight tools may be more appropriate.
+:::
 
 1. **Simple Batch Jobs**
    - If you just need "run this script daily," use cron

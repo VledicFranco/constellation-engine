@@ -23,6 +23,10 @@ Constellation provides multiple debugging tools:
 
 ---
 
+:::tip Start with the Dashboard
+The dashboard at `http://localhost:8080/dashboard` is the fastest way to debug. Run your script, see which nodes fail (red border), and click them to inspect values and errors.
+:::
+
 ## 1. Common Debugging Patterns
 
 ### Pattern: Isolate the Failing Step
@@ -366,6 +370,10 @@ value = maybeValue ?? "default"
 result = Uppercase(value)
 out result
 ```
+
+:::warning
+Always coalesce `Optional<T>` before passing to modules. `Uppercase(maybeValue)` will fail; use `Uppercase(maybeValue ?? "default")` instead.
+:::
 
 ### Using Debug Mode for Type Validation
 

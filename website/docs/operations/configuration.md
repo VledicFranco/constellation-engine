@@ -335,3 +335,10 @@ The `/health/detail` endpoint exposes internal server state including queue dept
 - API keys are stored as SHA-256 hashes in memory (not plaintext)
 - Bearer tokens in `Authorization` headers are hashed before use as rate limit bucket keys
 - The `/health/detail` endpoint exposes internal state and requires authentication by default
+
+## Next Steps
+
+- [Deployment](./deployment.md) — Docker, Kubernetes, and production deployment
+- [Scheduler](./scheduler.md) — Priority-based task scheduling with bounded concurrency
+- [JSON Logging](./json-logging.md) — Structured logging for production environments
+- [Runbook](./runbook.md) — Operational procedures and troubleshooting

@@ -56,6 +56,10 @@ out result
 
 **Advantages:** The compiler verifies that `userName`, `activityScore`, and `theme` exist in the merged record. The three service calls run in parallel automatically (they have no data dependencies). A typo in a field name is a compile error.
 
+:::tip Automatic Parallelization
+The DAG compiler analyzes data dependencies between module calls. When calls are independent (like the three service calls above), they run concurrently without any explicit parallelization code.
+:::
+
 ---
 
 ## 2. Resilient API Calls
@@ -115,6 +119,10 @@ out result
 
 **Advantages:** All resilience concerns are declarative options on the module call. The runtime handles retry loops, backoff scheduling, timeout races, and fallback substitution. Changing the retry count is a one-character edit.
 
+:::note Zero Boilerplate
+Compare the 30+ lines of manual retry/timeout code to the 5-line Constellation equivalent. The `with` clause centralizes all resilience configuration in one readable block.
+:::
+
 ---
 
 ## 3. Batch Enrichment
@@ -159,6 +167,10 @@ out summary
 ```
 
 **Advantages:** The `+` operator merges `Context` fields into each item in the batch. The `[]` projection verifies that `id` and `userId` exist in the merged type. Adding a new field to `Context` automatically makes it available for projection without changing intermediate types.
+
+:::warning Type Safety Boundary
+In manual Scala, adding a field to `Context` requires updating the `Enriched` and `Summary` case classes. In Constellation, the type algebra propagates the change automatically.
+:::
 
 ---
 

@@ -439,3 +439,10 @@ All compile errors include:
 - **Error code** — E001-E900 (see `ErrorCode.scala`)
 - **Suggestions** — "did you mean?" based on Levenshtein distance
 - **Formatted output** — code snippet with caret marker pointing to the error location
+
+## Related
+
+- [HTTP API Overview](./http-api-overview.md) — REST endpoints and response formats
+- [Programmatic API](./programmatic-api.md) — Scala API error handling patterns
+- [Error Messages Guide](../language/error-messages.md) — constellation-lang compile-time errors
+- [Security Model](../architecture/security-model.md) — HTTP error responses and access control

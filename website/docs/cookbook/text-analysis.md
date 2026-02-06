@@ -51,6 +51,10 @@ out lines
 
 Steps 3, 4, and 5 are independent of each other (they each depend only on `normalized` or `cleaned`). The runtime executes them in parallel automatically.
 
+:::tip Automatic Parallelization
+Constellation analyzes dependencies and runs independent operations in parallel. You write sequential-looking code; the runtime optimizes execution.
+:::
+
 ## Running the Example
 
 ### Input
@@ -87,6 +91,10 @@ out lower
 out upper
 out length
 ```
+
+:::note
+Outputting intermediate values like `cleaned` is useful for debugging. In production, remove unnecessary outputs to reduce response size.
+:::
 
 ## Best Practices
 

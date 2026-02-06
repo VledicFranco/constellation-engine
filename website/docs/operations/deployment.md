@@ -544,3 +544,11 @@ spec:
           type: AverageValue
           averageValue: "50"  # Scale up when avg queue > 50
 ```
+
+## Next Steps
+
+- [Configuration](./configuration.md) — Environment variables, auth, CORS, and rate limiting
+- [Graceful Shutdown](./graceful-shutdown.md) — Drain behavior and Kubernetes integration
+- [Clustering](./clustering.md) — Distributed deployment with shared state
+- [JSON Logging](./json-logging.md) — Structured logging for log aggregation
+- [Runbook](./runbook.md) — Operational procedures and troubleshooting

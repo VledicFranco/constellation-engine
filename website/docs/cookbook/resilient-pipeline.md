@@ -116,6 +116,17 @@ out deepInsights
 }
 ```
 
+### Output
+```json
+{
+  "userData": "flaky service result: user-123",
+  "productData": "api response from: product-456",
+  "recommendation": "computed: flaky service result: user-123",
+  "enrichedData": "rate limited response: https://enrichment-api.example.com",
+  "deepInsights": "deep analysis: api response from: product-456"
+}
+```
+
 :::note
 When combining multiple resilience options, they are evaluated in this order: (1) timeout wraps the call, (2) retry handles failures, (3) fallback provides a default if all retries fail, (4) on_error applies if no fallback is set, (5) cache stores successful results.
 :::

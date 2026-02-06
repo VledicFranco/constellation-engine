@@ -38,6 +38,10 @@ out result
 
 Module names use PascalCase (`Uppercase`, `WordCount`, `Trim`). The name must exactly match the module registered in the Scala runtime.
 
+:::warning
+Module names are case-sensitive. `Uppercase` works, but `uppercase` or `UPPERCASE` will fail with a "module not found" error.
+:::
+
 ## Running the Example
 
 ### Input
@@ -82,6 +86,10 @@ out upper
 out lower
 out length
 ```
+
+:::tip
+Stdlib functions (like `trim`, `concat`) use lowercase. Custom modules (like `Uppercase`, `WordCount`) use PascalCase. The convention helps distinguish built-in functions from user-defined modules.
+:::
 
 ## Best Practices
 

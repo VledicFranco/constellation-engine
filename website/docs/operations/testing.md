@@ -731,3 +731,10 @@ def debugIO[A](label: String)(io: IO[A]): IO[A] =
   IO.println(s"Starting: $label") *>
     io.flatTap(a => IO.println(s"Completed: $label = $a"))
 ```
+
+## Next Steps
+
+- [Deployment](./deployment.md) — Running tests in CI/CD pipelines
+- [Performance Tuning](./performance-tuning.md) — Performance benchmarks and targets
+- [Configuration](./configuration.md) — Test environment configuration
+- [Runbook](./runbook.md) — Debugging production issues

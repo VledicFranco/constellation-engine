@@ -8,6 +8,10 @@ description: "Complete constellation-lang examples from hello world to productio
 
 This page provides progressively complex examples of constellation-lang pipelines, from simple transformations to production-ready systems.
 
+:::note Running the Examples
+To run these examples, save the code to a `.cst` file and execute using the constellation runtime or dashboard. The `@example` annotations provide sample input values for testing.
+:::
+
 ## Example 1: Hello World
 
 The simplest possible pipeline - take a name and create a greeting.
@@ -133,6 +137,10 @@ out summary
 - Formatting for output
 
 ---
+
+:::tip Learning Progression
+Work through the examples in order. Each builds on concepts from the previous ones. After Example 3, you will understand the fundamentals. Examples 4-7 introduce production patterns like resilience and ML workflows.
+:::
 
 ## Example 4: API Composition with Resilience
 

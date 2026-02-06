@@ -20,6 +20,14 @@ result = Module(args) with concurrency: <limit>
 
 The `concurrency` option limits how many instances of a module can execute simultaneously. When the limit is reached, additional calls wait until a slot becomes available. This is useful for controlling resource usage and preventing overload.
 
+:::tip Use concurrency: 1 for mutex behavior
+Setting `concurrency: 1` ensures only one call executes at a time, effectively creating a mutex. This is useful for non-thread-safe modules or singleton resources.
+:::
+
+:::warning Always pair with timeout
+Without a timeout, slow calls can block the semaphore indefinitely. Combine with `timeout` to prevent deadlock scenarios where all slots are held by stalled executions.
+:::
+
 ## Examples
 
 ### Limit Parallel Database Connections

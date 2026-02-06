@@ -96,6 +96,17 @@ Request arrives
 }
 ```
 
+### Output
+```json
+{
+  "userSession": "session: user-42",
+  "userData": "query result for: user-42",
+  "appConfig": "query result for: SELECT config FROM app_settings",
+  "exchangeRates": "api response from: https://exchange-rates.example.com/latest",
+  "resilientCached": "flaky service result: user-42"
+}
+```
+
 ## Variations
 
 ### Write-through pattern

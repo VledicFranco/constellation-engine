@@ -307,3 +307,10 @@ Test your cache implementation with concurrent access patterns before deploying.
 - **Memory:** In-process caches consume heap memory. Set `maxEntries` appropriately and monitor eviction counts. If evictions are high, the cache is too small.
 - **Default `getOrCompute`:** The default implementation calls `get`, then `compute` + `set` on miss. Override for atomic implementations (e.g., Caffeine's `get(key, loader)` pattern).
 - **Type erasure:** `get[A]` uses a type parameter erased at runtime. `InMemoryCacheBackend` stores `Any` via `asInstanceOf`. Distributed backends serialize through `CacheSerde[Any]`, which handles type routing.
+
+## Related
+
+- [Execution Storage](./execution-storage.md) — Persist execution history for long-term retention
+- [Metrics Provider](./metrics-provider.md) — Monitor cache hit rates and performance
+- [Programmatic API](../api-reference/programmatic-api.md) — Wire cache backends into your application
+- [Technical Architecture](../architecture/technical-architecture.md) — How caching fits into the execution pipeline

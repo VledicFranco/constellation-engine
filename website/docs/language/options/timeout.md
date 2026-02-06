@@ -20,6 +20,14 @@ result = Module(args) with timeout: <duration>
 
 The `timeout` option sets the maximum time a module call can execute before being cancelled. When combined with `retry`, the timeout applies **per attempt**, not to the total execution time.
 
+:::warning Timeout is per attempt, not total
+With `timeout: 10s, retry: 3`, each of the 4 attempts has a 10-second limit. The **total** maximum time is 40 seconds (plus any delays between retries). Plan accordingly for SLA budgets.
+:::
+
+:::tip Always set timeouts for network calls
+Network operations (HTTP, database, external APIs) should always have explicit timeouts. Without one, a stalled connection can block indefinitely and exhaust resources.
+:::
+
 ## Examples
 
 ### Basic Timeout

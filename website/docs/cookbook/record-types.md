@@ -48,6 +48,10 @@ out is_high_score
 
 Field access is validated at compile time. Writing `user.nme` would produce a compile error: `field 'nme' not found. Did you mean 'name'?`
 
+:::tip
+The compiler catches field access typos at compile time, not runtime. This eliminates entire classes of bugs before your pipeline runs.
+:::
+
 ## Running the Example
 
 ### Input
@@ -101,6 +105,10 @@ totalWait = config.maxRetries * config.timeout
 out greeting
 out totalWait
 ```
+
+:::warning
+Field names are case-sensitive. `user.Name` and `user.name` are different fields. The compiler will report an error if the field doesn't exist.
+:::
 
 ## Best Practices
 

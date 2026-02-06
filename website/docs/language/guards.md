@@ -254,3 +254,10 @@ conditional = if (flag) value * 2 else 0  # Type: Int
 2. **Combine with coalesce**: Provide fallbacks for guarded expressions
 3. **Keep conditions simple**: Complex conditions hurt readability
 4. **Consider short-circuit evaluation**: Boolean operators short-circuit
+
+## Related
+
+- [Coalesce](./coalesce.md) — Unwrap optional values with fallbacks
+- [Types](./types.md) — Understanding `Optional<T>` types
+- [Expressions](./expressions.md) — Boolean operators and comparisons
+- [Orchestration Algebra](./orchestration-algebra.md) — Advanced control flow patterns
