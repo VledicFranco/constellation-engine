@@ -6,36 +6,37 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 
 | Path | Description |
 |------|-------------|
-| [overview/](./overview/) | Core concepts, architecture, when to use |
-| [language/](./language/) | DSL syntax: types, expressions, module options |
-| [runtime/](./runtime/) | Execution engine, scheduling, ModuleBuilder API |
-| [http-api/](./http-api/) | REST endpoints, security, WebSocket LSP |
-| [extensibility/](./extensibility/) | SPI interfaces for custom backends |
-| [tooling/](./tooling/) | Dashboard, VSCode extension, LSP |
-| [stdlib/](./stdlib/) | Standard library functions |
-| [reference/](./reference/) | Errors, troubleshooting, migration guides |
-| [rfcs/](./rfcs/) | Request for Comments — design proposals and decisions |
-| [dev/](./dev/) | Benchmarks, internal development docs |
+| [features/](./features/) | **What Constellation does** — capability-oriented documentation |
+| [components/](./components/) | **How Constellation is built** — implementation-oriented documentation |
+| [rfcs/](./rfcs/) | Design proposals and decisions |
+| [dev/](./dev/) | Benchmarks, research, internal development docs |
 
-## Core Features
+## Guiding Documents
 
-| Feature | Description | Components | Level | Docs |
-|---------|-------------|------------|-------|------|
-| Type-safe pipelines | Compile-time field access and type validation | core, compiler | Basic | [language/types/](./language/types/) |
-| Automatic parallelization | Independent modules execute concurrently | runtime | Basic | [runtime/execution-modes.md](./runtime/execution-modes.md) |
-| Module options | Retry, timeout, cache, throttle, fallback | runtime, compiler | Intermediate | [language/options/](./language/options/) |
-| Hot execution | Compile + run in one request | runtime, http-api | Basic | [runtime/execution-modes.md](./runtime/execution-modes.md) |
-| Cold execution | Pre-compiled, execute by reference | runtime, http-api | Intermediate | [runtime/execution-modes.md](./runtime/execution-modes.md) |
-| Suspend/Resume | Pause on missing inputs, resume later | runtime, http-api | Advanced | [http-api/suspension.md](./http-api/suspension.md) |
-| Priority scheduler | Bounded concurrency with priority ordering | runtime | Advanced | [runtime/scheduling.md](./runtime/scheduling.md) |
-| Type algebra | Record merge, projection, element-wise ops | core, compiler | Intermediate | [language/expressions/](./language/expressions/) |
-| Standard library | 44+ built-in functions (math, string, list) | stdlib | Basic | [stdlib/](./stdlib/) |
-| SPI extensibility | Custom cache, metrics, listeners, storage | runtime | Advanced | [extensibility/](./extensibility/) |
-| HTTP API | REST endpoints for execution and management | http-api | Intermediate | [http-api/](./http-api/) |
-| LSP integration | IDE autocomplete, hover docs, diagnostics | lang-lsp, http-api | Intermediate | [tooling/lsp.md](./tooling/lsp.md) |
-| Web dashboard | Browser-based pipeline editor and runner | http-api | Basic | [tooling/dashboard.md](./tooling/dashboard.md) |
-| Canary deployments | Traffic splitting with auto-rollback | http-api | Advanced | [http-api/pipelines.md](./http-api/pipelines.md) |
-| Pipeline versioning | Content-addressed storage, rollback | http-api | Intermediate | [http-api/pipelines.md](./http-api/pipelines.md) |
+| Document | Purpose |
+|----------|---------|
+| [PHILOSOPHY.md](./PHILOSOPHY.md) | Why Constellation exists and the thinking behind its design |
+| [ETHOS.md](./ETHOS.md) | Behavioral constraints for LLMs working on this codebase |
+
+## Features
+
+| Feature | Description | Components |
+|---------|-------------|------------|
+| [Type Safety](./features/type-safety/) | Compile-time validation of field accesses and type operations | core, compiler |
+| [Resilience](./features/resilience/) | Retry, timeout, fallback, cache, throttle, error handling | compiler, runtime |
+| [Parallelization](./features/parallelization/) | Automatic concurrent execution of independent modules | runtime |
+| [Execution Modes](./features/execution/) | Hot, cold, and suspended execution | runtime, http-api |
+| [Extensibility](./features/extensibility/) | SPI for custom backends, metrics, listeners | runtime |
+| [Tooling](./features/tooling/) | Dashboard, LSP, VSCode extension | http-api, lang-lsp |
+
+## Components
+
+| Component | Description | Module |
+|-----------|-------------|--------|
+| [core](./components/core/) | Type system (CType, CValue) | `modules/core/` |
+| [runtime](./components/runtime/) | Execution engine, ModuleBuilder | `modules/runtime/` |
+| [compiler](./components/compiler/) | Parser, type checker, DAG compiler | `modules/lang-*` |
+| [http-api](./components/http-api/) | REST endpoints, WebSocket, dashboard | `modules/http-api/` |
 
 ## Quick Reference
 
@@ -59,10 +60,23 @@ result = GetUser(id) with retry: 3, timeout: 5s, cache: 15min
 | Cold | `POST /compile` + `POST /execute` | Production, high throughput |
 | Suspended | `POST /run` → `POST /resume` | Multi-step workflows |
 
-## Meta
+## Documentation Structure
 
-| File | Purpose |
-|------|---------|
-| [STRUCTURE.md](./STRUCTURE.md) | Documentation organization ethos |
-| [dev/FEATURE-OVERVIEW.md](./dev/FEATURE-OVERVIEW.md) | Comprehensive feature inventory |
-| [dev/LLM-CONTEXT.md](./dev/LLM-CONTEXT.md) | Ultra-condensed LLM context |
+This documentation follows the **philosophy/ethos/protocol** pattern:
+
+- **Philosophy** — explains *why* decisions were made (for understanding)
+- **Ethos** — prescribes *what* should and shouldn't be done (for behavioral consistency)
+- **Protocols** — specifies *how* to accomplish specific tasks (for execution)
+
+Each feature has its own philosophy and ethos. See [DOCUMENTATION-PHILOSOPHY.md](./DOCUMENTATION-PHILOSOPHY.md) for the full methodology.
+
+## For LLMs
+
+Start with [ETHOS.md](./ETHOS.md) for behavioral constraints, then navigate to the relevant feature. Each feature's `ETHOS.md` contains domain-specific constraints.
+
+**Navigation pattern:**
+```
+"How does X work?"     → features/X/
+"Where is X implemented?" → features/X/*.md → Components table → components/Y/
+"What are the rules for X?" → features/X/ETHOS.md
+```
