@@ -1,12 +1,12 @@
 # RFC-019: Generated Documentation and Organon Verification
 
-> Automated documentation generation from code and verification against organon constraints.
+> Automated Scala catalog generation and verification against organon constraints.
 
 ---
 
 ## Status
 
-- **Status:** Draft
+- **Status:** Accepted
 - **Created:** 2026-02-06
 - **Author:** Claude + Human
 
@@ -14,289 +14,260 @@
 
 ## Summary
 
-This RFC proposes a system for:
-1. Generating reference documentation from Scala code using metaprogramming
-2. Verifying that code satisfies organon constraints via CI
-3. Tracking documentation freshness to prevent drift
+This RFC proposes:
+1. **Scala catalog generation** — Compiler plugin extracts type/method signatures to markdown
+2. **Organon verification** — CI verifies ethos invariants have implementation and test references
+3. **Freshness tracking** — Hash-based staleness detection for generated docs
 
-The goal is to make code the single source of truth for reference documentation while ensuring the organon remains the authority on behavioral constraints.
-
----
-
-## Motivation
-
-### Current Problems
-
-| Problem | Impact |
-|---------|--------|
-| Manual doc updates after code changes | Docs drift out of sync |
-| No verification that code matches ethos | Constraints exist on paper only |
-| Duplicate information (code + docs) | Maintenance burden, divergence |
-| No freshness tracking | Stale docs erode trust |
-
-### Goals
-
-1. **Generate** reference docs (module signatures, types, options) from code
-2. **Verify** code satisfies organon invariants
-3. **Track** freshness so stale docs are visible
-4. **Preserve** manual content (philosophy, ethos, explanations)
+The generator is **Scala-generic**. Constellation-specific semantics live in the organon via semantic mapping tables.
 
 ---
 
-## Design
-
-### Layer Model
+## Layer Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    ORGANON (Manual)                         │
-│   Philosophy, Ethos, Protocols                              │
-│   Governs what SHOULD exist                                 │
+│   Philosophy, Ethos, Semantic Mappings                      │
+│   Defines: What it MEANS, why, how to use                   │
 └─────────────────────────────────────────────────────────────┘
-                              ↑ verifies
+                              ↑ interprets
 ┌─────────────────────────────────────────────────────────────┐
-│               GENERATED DOCS (Automated)                    │
-│   Module signatures, type catalogs, option tables           │
-│   Describes what DOES exist                                 │
+│               GENERATED CATALOG (Automated)                 │
+│   Per-package Scala type/method signatures                  │
+│   Defines: What EXISTS in code                              │
 └─────────────────────────────────────────────────────────────┘
                               ↑ extracts
 ┌─────────────────────────────────────────────────────────────┐
 │                    CODE (Source of Truth)                   │
-│   ModuleBuilder, CType, validation logic                    │
-│   Defines what EXISTS                                       │
+│   Classes, traits, objects, methods                         │
+│   Defines: What IS                                          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Separation of concerns:**
+
+| Layer | Contains | Authored by |
+|-------|----------|-------------|
+| Organon | Why, what it means, constraints | Human/LLM |
+| Generated | What exists (signatures, types) | Compiler |
+| Code | Implementation | Human/LLM |
+
 ---
 
-## Part 1: Documentation Generation
+## Part 1: Scala Catalog Generation
 
-### 1.1 What Gets Generated
+### 1.1 Extraction Mechanism
 
-| Source | Generated Target | Content |
-|--------|------------------|---------|
-| `ModuleBuilder.metadata()` | `docs/components/*/modules.md` | Module name, description, input/output types |
-| `CType` subclasses | `docs/components/core/types.md` | Type hierarchy, field definitions |
-| `StdLib.allSignatures` | `docs/stdlib/*.md` | Function signatures, descriptions |
-| Resilience option validation | `docs/features/resilience/options.md` | Option names, types, defaults, constraints |
-| Exception hierarchy | `docs/components/*/errors.md` | Error types, messages, causes |
+**Compiler plugin + sbt task** — Extracts type info during compilation, writes docs via sbt.
 
-### 1.2 Extraction Mechanism
+The extraction happens in two stages:
 
-**Option A: Compile-time macros (Scala 3)**
+1. **Compiler plugin** collects type information during compilation → writes JSON to `target/`
+2. **sbt task** reads JSON → generates markdown to `docs/generated/`
 
 ```scala
-import scala.quoted.*
+// modules/doc-generator/src/main/scala/DocCompilerPlugin.scala
+class DocCompilerPlugin extends PluginPhase:
+  override def phaseName = "doc-extractor"
 
-object DocExtractor:
-  inline def extractModule[I, O](builder: ModuleBuilder[I, O]): ModuleDoc =
-    ${ extractModuleImpl[I, O]('builder) }
+  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+    val catalog = units.flatMap(extractTypes)
+    val json = catalog.asJson
+    Files.write(Paths.get("target/doc-catalog.json"), json.getBytes)
+    units
 
-  private def extractModuleImpl[I: Type, O: Type](
-    builder: Expr[ModuleBuilder[I, O]]
-  )(using Quotes): Expr[ModuleDoc] =
-    import quotes.reflect.*
-
-    // Extract type info using Mirror
-    val inputFields = TypeRepr.of[I].typeSymbol.caseFields
-    val outputFields = TypeRepr.of[O].typeSymbol.caseFields
-
-    // Generate ModuleDoc at compile time
-    '{ ModuleDoc(
-      inputType = ${ Expr(Type.show[I]) },
-      inputFields = ${ Expr(inputFields.map(_.name)) },
-      outputType = ${ Expr(Type.show[O]) },
-      outputFields = ${ Expr(outputFields.map(_.name)) }
-    )}
+  private def extractTypes(unit: CompilationUnit)(using Context): List[TypeInfo] =
+    // Walk AST, extract classes, objects, methods
+    ???
 ```
 
-**Option B: Runtime reflection + build plugin**
-
 ```scala
-// sbt plugin that runs after compile
-object DocGeneratorPlugin extends AutoPlugin {
-  override def projectSettings = Seq(
-    generateDocs := {
-      val classloader = (Compile / fullClasspath).value
-      val modules = discoverModules(classloader)
-      val docs = modules.map(extractDocumentation)
-      writeMarkdown(docs, baseDirectory.value / "docs")
+// modules/doc-generator/src/main/scala/GenerateDocs.scala
+object GenerateDocs:
+  def main(args: Array[String]): Unit =
+    val catalog = readJson(Paths.get("target/doc-catalog.json"))
+    val markdown = MarkdownWriter.generate(catalog)
+    markdown.foreach { case (pkg, content) =>
+      Files.write(Paths.get(s"docs/generated/$pkg.md"), content.getBytes)
     }
-  )
-}
 ```
 
-**Option C: Annotation processing**
+**Why not pure macros:** Scala 3 macros generate code, not files. A compiler plugin can observe the full AST and write artifacts.
 
-```scala
-@GenerateDoc(
-  feature = "resilience",
-  category = "options"
-)
-case class CacheOption(
-  @DocField("Time-to-live for cached results")
-  ttl: Duration,
+### 1.2 What Gets Extracted
 
-  @DocField("Cache backend identifier", default = "memory")
-  backend: Option[String]
-)
-```
-
-**Recommendation:** Option A (compile-time macros) for type-safe extraction, with Option C annotations for additional metadata.
+| Scala Construct | Extracted Info |
+|-----------------|----------------|
+| `class` / `trait` | Name, type parameters, parent types |
+| `object` | Name, methods, fields |
+| `case class` | Fields with types |
+| `def` | Name, parameters, return type, scaladoc |
+| `enum` | Cases with parameters |
 
 ### 1.3 Output Format
 
-Generated markdown includes metadata header:
+Per-package markdown files:
 
 ```markdown
-<!-- GENERATED: Do not edit manually -->
-<!-- Source: modules/runtime/src/main/scala/io/constellation/modules/TextModules.scala -->
-<!-- Hash: a3f2b1c4d5e6f7 -->
+<!-- GENERATED -->
+<!-- Source: modules/runtime/src/main/scala/io/constellation/runtime/ -->
+<!-- Hash: a3f2b1c4d5e6 -->
 <!-- Generated: 2026-02-06T14:30:00Z -->
 
-# Text Modules
+# io.constellation.runtime
 
-| Module | Description | Input | Output |
-|--------|-------------|-------|--------|
-| Uppercase | Converts text to uppercase | `TextInput` | `TextOutput` |
-| Lowercase | Converts text to lowercase | `TextInput` | `TextOutput` |
-| Trim | Removes leading/trailing whitespace | `TextInput` | `TextOutput` |
+## Objects
+
+### ModuleBuilder
+
+Builder for creating pipeline modules.
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `metadata` | `(name: String, desc: String, major: Int, minor: Int): MetadataStep` | Set module metadata |
+| `implementationPure` | `[I, O](f: I => O): BuildStep[I, O]` | Pure implementation |
+| `implementation` | `[I, O](f: I => IO[O]): BuildStep[I, O]` | Effectful implementation |
+
+## Case Classes
+
+### Module[I, O]
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `String` | Module identifier |
+| `signature` | `FunctionSignature` | Type metadata |
+| `execute` | `I => IO[O]` | Execution function |
 
 <!-- END GENERATED -->
-
-## Usage Notes
-
-(Manual content below the generated section is preserved)
 ```
 
-### 1.4 Build Integration
+### 1.4 File Structure
 
 ```
-sbt compile
-    ↓
-sbt generateDocs
-    ↓
-docs/generated/*.md updated
-    ↓
-CI checks: git diff --exit-code docs/generated/
-    ↓
-Fail if generated docs weren't committed
+docs/
+├── generated/                          # Auto-generated (committed)
+│   ├── io.constellation.runtime.md
+│   ├── io.constellation.TypeSystem.md
+│   ├── io.constellation.compiler.md
+│   └── ...
+├── components/                         # Manual
+│   └── runtime/
+│       ├── ETHOS.md                    # Semantic mapping + invariants
+│       └── README.md
+└── features/                           # Manual
+    └── resilience/
+        └── ETHOS.md
+```
+
+### 1.5 Semantic Mapping (in Component ETHOS)
+
+The organon interprets the raw catalog:
+
+```markdown
+# Runtime Ethos
+
+## Semantic Mapping
+
+| Scala Artifact | Constellation Meaning |
+|----------------|----------------------|
+| `ModuleBuilder` | Factory for creating pipeline modules |
+| `Module[I, O]` | Executable unit in the pipeline DAG |
+| `CValue` | Runtime representation of typed data |
+| `FunctionSignature` | Module metadata exposed to compiler |
+
+For raw signatures, see [generated catalog](/docs/generated/io.constellation.runtime.md).
 ```
 
 ---
 
 ## Part 2: Organon Verification
 
-### 2.1 Ethos Assertions in Code
+### 2.1 Invariant Format
 
-Annotate code with organon references:
+Ethos invariants include implementation and test references:
 
-```scala
-object CacheExecutor {
-  /**
-   * @ethos-invariant Cache keys include all inputs
-   * @ethos-source docs/features/resilience/ETHOS.md
-   */
-  def computeCacheKey(moduleName: String, inputs: CValue*): String = {
-    val inputHash = inputs.map(_.hashCode).mkString("-")
-    s"$moduleName:$inputHash"
-  }
+```markdown
+## Invariants
 
-  /**
-   * @ethos-invariant TTL required, max 24 hours
-   * @ethos-source docs/features/resilience/ETHOS.md
-   */
-  def validateTtl(ttl: Duration): Either[String, Duration] = {
-    if (ttl > 24.hours) Left("TTL exceeds maximum of 24 hours")
-    else if (ttl <= Duration.Zero) Left("TTL must be positive")
-    else Right(ttl)
-  }
-}
+### 1. Cache keys include all inputs
+
+All parameters affecting module output must be included in the cache key.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/runtime/src/main/scala/io/constellation/cache/CacheExecutor.scala#computeCacheKey` |
+| Test | `modules/runtime/src/test/scala/io/constellation/cache/CacheExecutorSpec.scala#cache keys include all inputs` |
+
+### 2. TTL required, max 24 hours
+
+Cache TTL must be explicitly specified and cannot exceed 24 hours.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/runtime/src/main/scala/io/constellation/cache/CacheOption.scala#validate` |
+| Test | `modules/runtime/src/test/scala/io/constellation/cache/CacheOptionSpec.scala#rejects TTL over 24 hours` |
 ```
+
+**Reference format:** `path/to/file.scala#symbolName`
+
+- Uses symbol names, not line numbers (line numbers break easily)
+- Symbol can be function name, test name, or class name
 
 ### 2.2 Verification Tool
 
 ```scala
-object EthosVerifier {
-  case class Assertion(
-    invariant: String,
-    source: String,
-    location: SourceLocation
-  )
-
+// modules/doc-generator/src/main/scala/EthosVerifier.scala
+object EthosVerifier:
   case class Invariant(
-    text: String,
-    source: String
+    name: String,
+    implementation: Reference,
+    test: Reference
   )
 
-  def verify(codebase: Path, docsRoot: Path): VerificationResult = {
-    // 1. Scan code for @ethos-invariant annotations
-    val assertions = scanAssertions(codebase)
+  case class Reference(file: Path, symbol: String)
 
-    // 2. Parse ETHOS.md files for invariants
-    val invariants = parseEthosFiles(docsRoot)
+  def verify(ethosFile: Path, sourceRoot: Path): Report =
+    val invariants = parseInvariants(ethosFile)
 
-    // 3. Match assertions to invariants
-    val matched = assertions.map { assertion =>
-      invariants.find(_.text.contains(assertion.invariant)) match {
-        case Some(inv) => Matched(assertion, inv)
-        case None => Unmatched(assertion)
-      }
+    invariants.map { inv =>
+      val implExists = fileContainsSymbol(sourceRoot, inv.implementation)
+      val testExists = fileContainsSymbol(sourceRoot, inv.test)
+      InvariantStatus(inv, implExists, testExists)
     }
 
-    // 4. Find invariants without assertions (coverage)
-    val uncovered = invariants.filterNot { inv =>
-      assertions.exists(a => inv.text.contains(a.invariant))
-    }
-
-    VerificationResult(matched, uncovered)
-  }
-}
+  private def fileContainsSymbol(root: Path, ref: Reference): Boolean =
+    val file = root.resolve(ref.file)
+    file.exists && Source.fromFile(file).mkString.contains(ref.symbol)
 ```
 
-### 2.3 CI Integration
+### 2.3 Verification Checks
 
-```yaml
-# .github/workflows/organon-verify.yml
-name: Organon Verification
+| Check | Description |
+|-------|-------------|
+| Implementation exists | File exists and contains symbol |
+| Test exists | Test file exists and contains test name |
+| All invariants covered | Every invariant has both references |
+| No orphan tests | Tests claiming invariant coverage are referenced |
 
-on: [push, pull_request]
-
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Verify ethos assertions
-        run: sbt "ethosVerify"
-
-      - name: Check coverage
-        run: |
-          COVERAGE=$(sbt -batch "ethosVerify --coverage" | tail -1)
-          if [ "$COVERAGE" -lt 80 ]; then
-            echo "Ethos coverage below 80%: $COVERAGE%"
-            exit 1
-          fi
-```
-
-### 2.4 Verification Report
+### 2.4 CI Output
 
 ```
 Organon Verification Report
 ===========================
 
-Matched Assertions: 12
-Unmatched Assertions: 1
-  - "Rate limit per client IP" in RateLimitMiddleware.scala:45
-    No matching invariant found in docs/features/resilience/ETHOS.md
+Invariants: 14
+  With implementation: 14 ✓
+  With test: 12 ✗
 
-Invariant Coverage: 85% (12/14)
-Uncovered Invariants:
-  - "Cache miss executes normally" (docs/features/resilience/ETHOS.md)
-  - "Fallback must be type-compatible" (docs/features/resilience/ETHOS.md)
+Missing test references:
+  - docs/features/resilience/ETHOS.md#3: "Fallback must be type-compatible"
+  - docs/features/resilience/ETHOS.md#5: "Throttle respects burst"
 
-FAILED: Unmatched assertions found
+Broken references:
+  - docs/features/type-safety/ETHOS.md#2: CTypeValidator.scala#validate (file moved)
+
+FAILED: 2 missing tests, 1 broken reference
 ```
 
 ---
@@ -305,30 +276,29 @@ FAILED: Unmatched assertions found
 
 ### 3.1 Source Hashing
 
-Each generated doc tracks its source:
+Generated docs include metadata:
 
 ```markdown
-<!-- Source: modules/runtime/src/.../CacheExecutor.scala -->
-<!-- Hash: a3f2b1c4d5e6f7 -->
+<!-- GENERATED -->
+<!-- Source: modules/runtime/src/main/scala/io/constellation/runtime/ -->
+<!-- Hash: a3f2b1c4d5e6 -->
+<!-- Generated: 2026-02-06T14:30:00Z -->
 ```
 
 ### 3.2 Freshness Check
 
 ```scala
-object FreshnessChecker {
-  def check(docsRoot: Path, sourceRoot: Path): FreshnessReport = {
-    val generatedDocs = findGeneratedDocs(docsRoot)
+object FreshnessChecker:
+  def check(generatedDir: Path, sourceRoot: Path): Report =
+    val docs = findGeneratedDocs(generatedDir)
 
-    generatedDocs.map { doc =>
-      val metadata = parseMetadata(doc)
-      val sourceFile = sourceRoot.resolve(metadata.source)
-      val currentHash = computeHash(sourceFile)
+    docs.map { doc =>
+      val meta = parseMetadata(doc)
+      val currentHash = computeHash(sourceRoot.resolve(meta.source))
 
-      if (currentHash == metadata.hash) Fresh(doc)
-      else Stale(doc, metadata.hash, currentHash)
+      if currentHash == meta.hash then Fresh(doc)
+      else Stale(doc, meta.hash, currentHash)
     }
-  }
-}
 ```
 
 ### 3.3 CI Integration
@@ -336,82 +306,99 @@ object FreshnessChecker {
 ```yaml
 - name: Check doc freshness
   run: |
-    sbt "docFreshness"
+    sbt compile
+    sbt docFreshness
     # Fails if any generated docs are stale
 ```
 
-### 3.4 Developer Workflow
+### 3.4 Commit Policy
 
-```
-1. Developer modifies source file
-2. Pre-commit hook runs: sbt generateDocs
-3. Git stages updated docs
-4. CI verifies docs match source
-```
+Generated docs are **committed** (not gitignored):
+- LLMs can read without building
+- Version history preserved
+- Works offline
 
 ---
 
-## File Structure
+## Implementation Phases
 
-```
-modules/
-├── doc-generator/                    # New module
-│   └── src/main/scala/
-│       ├── DocExtractor.scala        # Compile-time extraction
-│       ├── EthosVerifier.scala       # Assertion verification
-│       ├── FreshnessChecker.scala    # Staleness detection
-│       └── MarkdownWriter.scala      # Output formatting
+### Phase 1: Catalog Extraction
 
-docs/
-├── generated/                        # Auto-generated (gitignored patterns)
-│   ├── modules.md
-│   ├── types.md
-│   └── stdlib.md
-├── features/
-│   └── resilience/
-│       ├── ETHOS.md                  # Manual (invariants verified)
-│       ├── options.md                # Mixed (generated table + manual notes)
-│       └── PHILOSOPHY.md             # Manual
+**Goal:** Compiler plugin + sbt task generates per-package markdown.
+
+**Deliverables:**
+- `modules/doc-generator` module
+- `DocCompilerPlugin` compiler plugin
+- `GenerateDocs` main class
+- `docs/generated/*.md` output
+
+**Commands:**
+```bash
+make generate-docs    # sbt docGenerator/run
 ```
+
+**Files:**
+```
+modules/doc-generator/
+├── src/main/scala/
+│   ├── DocCompilerPlugin.scala
+│   ├── GenerateDocs.scala
+│   ├── MarkdownWriter.scala
+│   └── model/
+│       └── TypeInfo.scala
+```
+
+### Phase 2: Freshness Tracking
+
+**Goal:** CI detects stale generated docs.
+
+**Deliverables:**
+- `FreshnessChecker` tool
+- Hash metadata in generated docs
+
+**Commands:**
+```bash
+make check-docs       # sbt "docGenerator/runMain FreshnessChecker"
+```
+
+### Phase 3: Invariant Verification
+
+**Goal:** CI verifies ethos references exist.
+
+**Deliverables:**
+- `EthosVerifier` tool
+- Invariant format protocol
+- CI job with coverage reporting
+
+**Commands:**
+```bash
+make verify-ethos     # sbt "docGenerator/runMain EthosVerifier"
+```
+
+### Phase 4: Semantic Mapping Protocol
+
+**Goal:** Standard format for ethos → code mapping.
+
+**Deliverables:**
+- Protocol added to meta-organon (`ethos/protocols/semantic-mapping.md`)
+- Example semantic mappings in component ETHOS files
+- Documentation
 
 ---
 
-## Annotations Reference
+## Dependencies
 
-| Annotation | Location | Purpose |
-|------------|----------|---------|
-| `@GenerateDoc` | Case class | Include in generated docs |
-| `@DocField` | Field | Field description and default |
-| `@ethos-invariant` | Scaladoc | Link code to ethos constraint |
-| `@ethos-source` | Scaladoc | Path to governing ethos file |
-| `@no-generate` | Any | Exclude from generation |
+```
+Phase 1 (extraction)
+    │
+    ├──→ Phase 2 (freshness)
+    │
+    └──→ Phase 3 (verification)
+              │
+              └──→ Phase 4 (protocol)
+```
 
----
-
-## Migration Path
-
-### Phase 1: Foundation
-1. Create `doc-generator` module
-2. Implement `DocExtractor` for ModuleBuilder
-3. Generate `docs/generated/modules.md`
-4. Add to CI
-
-### Phase 2: Verification
-1. Add `@ethos-invariant` annotations to critical code
-2. Implement `EthosVerifier`
-3. Add coverage target (start at 50%, increase to 80%)
-4. Add to CI
-
-### Phase 3: Expansion
-1. Extend extraction to CType, StdLib, resilience options
-2. Add freshness tracking
-3. Add pre-commit hook
-4. Document workflow in CONTRIBUTING.md
-
-### Phase 4: Refinement
-1. Add IDE support (show ethos coverage in gutter)
-2. Add dashboard widget for organon health
-3. Generate coverage badge for README
+Phases 2 and 3 can run in parallel after Phase 1.
 
 ---
 
@@ -419,24 +406,15 @@ docs/
 
 | Decision | Benefit | Cost |
 |----------|---------|------|
-| Compile-time macros | Type-safe, fast | Complex implementation |
-| Annotation-based | Explicit, flexible | More boilerplate |
-| Separate generated dir | Clear separation | Navigation overhead |
-| 80% coverage target | Practical goal | Some invariants unchecked |
-
----
-
-## Open Questions
-
-1. **Granularity:** Should we generate docs per-module or per-file?
-2. **Mixed content:** How to preserve manual notes in generated files?
-3. **Versioning:** Should generated docs be committed or gitignored?
-4. **IDE integration:** How to surface ethos coverage in editor?
+| Compiler plugin | Full AST access, no runtime cost | Complex implementation |
+| No annotations | No drift risk | Less explicit metadata |
+| Scala-generic | Reusable, domain knowledge in organon | Requires semantic mapping |
+| Committed generated docs | LLM-readable, versioned | PR noise |
+| Symbol-based references | Stable across refactors | May miss renames |
 
 ---
 
 ## References
 
-- [Meta-Organon](../../ethos/) - The methodology this implements
-- [RFC-017](./rfc-017-v1-readiness.md) - V1 readiness (documentation phase)
-- [Scala 3 Macros](https://docs.scala-lang.org/scala3/guides/macros/) - Metaprogramming reference
+- [Meta-Organon](../../../ethos/) - Methodology for organon creation
+- [Scala 3 Macros](https://docs.scala-lang.org/scala3/guides/macros/) - Metaprogramming docs
