@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/lang-stdlib/src/main/scala/io/constellation -->
 <!-- Hash: 1ae78b57c966 -->
-<!-- Generated: 2026-02-06T09:24:15.766719500Z -->
+<!-- Generated: 2026-02-06T18:40:29.333629700Z -->
 
 # io.constellation.stdlib
 

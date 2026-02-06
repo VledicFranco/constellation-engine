@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/lang-lsp/src/main/scala/io/constellation -->
 <!-- Hash: 36cf0b5505ae -->
-<!-- Generated: 2026-02-06T09:24:15.777229800Z -->
+<!-- Generated: 2026-02-06T18:40:29.344135600Z -->
 
 # io.constellation.lsp.diagnostics
 
