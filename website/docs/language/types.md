@@ -12,6 +12,88 @@ New to Constellation? Start with [Core Concepts](/docs/getting-started/concepts)
 
 Constellation uses a structural type system with support for primitives, records, collections, unions, and optional values. This page covers all type constructs and how they interact.
 
+## Quick Reference
+
+| Type | Syntax | Example | Use Case |
+|------|--------|---------|----------|
+| Int | `Int` | `42` | Whole numbers |
+| Float | `Float` | `3.14` | Decimal numbers |
+| String | `String` | `"hello"` | Text |
+| Boolean | `Boolean` | `true` | Conditions |
+| Record | `{ field: Type }` | `{ name: String }` | Structured data |
+| List | `List<T>` | `List<Int>` | Collections |
+| Map | `Map<K, V>` | `Map<String, Int>` | Key-value lookups |
+| Optional | `Optional<T>` | `Optional<Int>` | Nullable values |
+| Union | `A \| B` | `Int \| String` | Multiple possible types |
+
+## Choosing the Right Type
+
+| I have... | Use | Example |
+|-----------|-----|---------|
+| A whole number | `Int` | `in count: Int` |
+| A decimal number | `Float` | `in ratio: Float` |
+| Text data | `String` | `in name: String` |
+| A yes/no condition | `Boolean` | `in enabled: Boolean` |
+| Structured data with named fields | Record `{ field: Type }` | `in person: { name: String, age: Int }` |
+| A collection of items | `List<ItemType>` | `in tags: List<String>` |
+| Key-value pairs | `Map<KeyType, ValueType>` | `in cache: Map<String, Int>` |
+| A value that might be missing | `Optional<T>` | `in maybeAge: Optional<Int>` |
+| Multiple possible types | Union `A \| B` | `in result: String \| Int` |
+
+## Common Patterns
+
+### Pattern 1: API Response Handling
+
+```
+# Success or error response
+type APIResponse = {
+  status: Int,
+  data: { items: List<String> }
+} | {
+  status: Int,
+  error: String
+}
+
+in response: APIResponse
+```
+
+### Pattern 2: Optional with Default
+
+```
+# Value that might be missing, with fallback
+in maybeCount: Optional<Int>
+count = maybeCount ?? 0
+```
+
+### Pattern 3: List of Records with Field Extraction
+
+```
+# Extract a single field from a list of records
+in users: List<{ name: String, email: String }>
+emails = users.email  # Type: List<String>
+```
+
+### Pattern 4: Record Enrichment
+
+```
+# Add context to each item in a list
+in items: List<{ id: String }>
+in context: { source: String }
+enriched = items + context  # Type: List<{ id: String, source: String }>
+```
+
+### Pattern 5: Guarded Computation
+
+```
+# Only run expensive operation when condition is true
+in shouldCompute: Boolean
+in data: String
+result = ExpensiveOp(data) when shouldCompute  # Type: Optional<Result>
+final = result ?? defaultValue
+```
+
+---
+
 ## Primitive Types
 
 | Type | Description | Runtime Representation |

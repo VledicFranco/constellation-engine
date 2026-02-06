@@ -6,6 +6,17 @@ description: "Define types, inputs, variables, outputs, and imports in constella
 
 # Declarations
 
+## Quick Reference
+
+| Declaration | Syntax | Purpose |
+|-------------|--------|---------|
+| Input | `in name: Type` | Declare pipeline input |
+| Output | `out expr` | Declare pipeline output |
+| Variable | `name = expr` | Bind expression to name |
+| Type alias | `type Name = Type` | Create type shorthand |
+| Import | `use namespace.path` | Import module namespace |
+| Annotation | `@example(value)` | Attach metadata to input |
+
 Constellation-lang pipelines consist of five types of declarations: type definitions, input declarations, variable assignments, output declarations, and use declarations. Each pipeline must have at least one output declaration.
 
 ## Declaration Order

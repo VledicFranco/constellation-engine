@@ -1,474 +1,173 @@
 ---
 title: "Technical Architecture"
 sidebar_position: 1
-description: "System design, module graph, compilation pipeline"
+description: "How Constellation Engine processes your pipelines"
 ---
 
 # Architecture
 
-This document describes the technical architecture of Constellation Engine, covering both the core runtime and the constellation-lang compiler.
+This document explains how Constellation Engine works at a high level, helping you understand what happens when you run your pipelines.
 
-## System Overview
+## Overview
 
-Constellation Engine is organized into two main subsystems:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    constellation-lang                            │
-│  ┌─────────┐   ┌─────────────┐   ┌─────────┐   ┌─────────────┐  │
-│  │ Parser  │ → │ TypeChecker │ → │   IR    │ → │ DagCompiler │  │
-│  └─────────┘   └─────────────┘   └─────────┘   └─────────────┘  │
-│       ↓              ↓                ↓              ↓          │
-│      AST         TypedAST        IRPipeline   CompilationOutput  │
-└─────────────────────────────────────────────────────────────────┘
-                                                      │
-                                                      ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                      Core Runtime                                │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────────┐    │
-│  │   DagSpec   │ → │   Runtime   │ → │   Module Execution  │    │
-│  └─────────────┘   └─────────────┘   └─────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Core Runtime
-
-### Type System (`api/TypeSystem.scala`)
-
-The runtime type system provides value representation for DAG execution:
-
-```scala
-// Types
-sealed trait CType
-object CType {
-  case object CString extends CType
-  case object CInt extends CType
-  case object CFloat extends CType
-  case object CBoolean extends CType
-  case class CList(element: CType) extends CType
-  case class CMap(key: CType, value: CType) extends CType
-  case class CProduct(fields: Map[String, CType]) extends CType
-  case class CUnion(fields: Map[String, CType]) extends CType
-}
-
-// Values
-sealed trait CValue {
-  def ctype: CType
-}
-```
-
-### DAG Specification (`api/Spec.scala`)
-
-DAGs are specified as a collection of modules and data nodes with edges:
-
-```scala
-case class DagSpec(
-  metadata: ComponentMetadata,
-  modules: Map[UUID, ModuleNodeSpec],    // Processing nodes
-  data: Map[UUID, DataNodeSpec],         // Data flow nodes
-  inEdges: Set[(UUID, UUID)],            // data → module
-  outEdges: Set[(UUID, UUID)]            // module → data
-)
-
-case class ModuleNodeSpec(
-  metadata: ComponentMetadata,
-  consumes: Map[String, CType],          // Input parameter types
-  produces: Map[String, CType],          // Output parameter types
-  config: ModuleConfig
-)
-
-case class DataNodeSpec(
-  name: String,
-  nicknames: Map[UUID, String],          // moduleId → parameterName
-  cType: CType
-)
-```
-
-### Module System (`api/Runtime.scala`)
-
-Modules are the processing units in the DAG:
-
-```scala
-object Module {
-  // Uninitialized module (template)
-  case class Uninitialized(
-    spec: ModuleNodeSpec,
-    init: (UUID, DagSpec) => IO[Runnable]
-  )
-
-  // Initialized module ready to run
-  case class Runnable(
-    id: UUID,
-    data: MutableDataTable,
-    run: Runtime => IO[Unit]
-  )
-}
-```
-
-### Execution Flow
-
-1. **Initialization**: Modules are initialized with their position in the DAG
-2. **Data Registration**: Each module registers its input/output data slots
-3. **Parallel Execution**: All modules run in parallel, waiting on inputs
-4. **Completion**: Data flows through the DAG as modules complete
-
-```scala
-// High-level API:
-constellation.run(compiled.pipeline, inputs): IO[DataSignature]
-// Low-level (internal):
-Runtime.run(dagSpec, initData, modules): IO[Runtime.State]
-```
-
-## constellation-lang Compiler
-
-### Compilation Pipeline
+Constellation Engine processes your pipelines through four stages:
 
 ```
-Source → Parser → AST → TypeChecker → TypedAST → IRGenerator → IR → DagCompiler → Result
+Source (.cst) → Parse → Type Check → Compile to DAG → Execute
 ```
 
-### Phase 1: Parsing (`lang/parser/`)
+Each stage catches different errors, so problems are found early before execution.
 
-The parser uses [cats-parse](https://github.com/typelevel/cats-parse) for functional parser combinators.
+## How Your Pipeline Runs
 
-**Key Design Decisions:**
-- Position tracking on all AST nodes for precise error messages
-- Backtracking for ambiguous constructs (`outputDecl.backtrack | declaration`)
-- Hyphenated identifiers supported for service and module names
+### 1. Parsing
 
-```scala
-// Position tracking
-case class Position(line: Int, column: Int, offset: Int)
-case class Located[+A](value: A, pos: Position)
+Your `.cst` source code is parsed into an abstract syntax tree (AST). **Syntax errors are caught here** - things like missing parentheses, invalid characters, or malformed statements.
 
-// Parser entry point
-def parse(source: String): Either[CompileError.ParseError, Pipeline]
+Example syntax error:
+```
+Error at line 3, column 15: Expected ')' but found end of line
 ```
 
-### Phase 2: Type Checking (`lang/semantic/`)
+### 2. Type Checking
 
-Type checking validates the pipeline and produces a typed AST.
+The compiler validates all field accesses and type operations. **Type errors appear here** - mismatched types, undefined variables, or invalid field access.
 
-**SemanticType** - Internal type representation:
-
-```scala
-sealed trait SemanticType
-object SemanticType {
-  case object SString, SInt, SFloat, SBoolean
-  case class SRecord(fields: Map[String, SemanticType])
-  case class SCandidates(element: SemanticType)
-  case class SList(element: SemanticType)
-  case class SMap(key: SemanticType, value: SemanticType)
-}
+Example type error:
+```
+Error at line 5: Cannot merge String with Int
 ```
 
-**TypeEnvironment** - Tracks types and variables during checking:
+### 3. DAG Compilation
 
-```scala
-case class TypeEnvironment(
-  types: Map[String, SemanticType],      // Type definitions
-  variables: Map[String, SemanticType],  // Variable bindings
-  functions: FunctionRegistry            // Available functions
-)
-```
-
-**Type Algebra** - Merge semantics:
-
-| Left Type | Right Type | Result |
-|-----------|------------|--------|
-| `SRecord(a)` | `SRecord(b)` | `SRecord(a ++ b)` |
-| `SCandidates(SRecord(a))` | `SCandidates(SRecord(b))` | `SCandidates(SRecord(a ++ b))` |
-| `SCandidates(SRecord(a))` | `SRecord(b)` | `SCandidates(SRecord(a ++ b))` |
-| Other | Other | Error |
-
-### Phase 3: IR Generation (`lang/compiler/IR.scala`, `IRGenerator.scala`)
-
-The IR is a flat graph representation suitable for DAG compilation.
-
-```scala
-sealed trait IRNode {
-  def id: UUID
-  def outputType: SemanticType
-}
-
-object IRNode {
-  case class Input(id: UUID, name: String, outputType: SemanticType)
-  case class ModuleCall(id: UUID, moduleName: String, languageName: String,
-                        inputs: Map[String, UUID], outputType: SemanticType)
-  case class MergeNode(id: UUID, left: UUID, right: UUID, outputType: SemanticType)
-  case class ProjectNode(id: UUID, source: UUID, fields: List[String], outputType: SemanticType)
-  case class ConditionalNode(id: UUID, condition: UUID, thenBranch: UUID,
-                             elseBranch: UUID, outputType: SemanticType)
-  case class LiteralNode(id: UUID, value: Any, outputType: SemanticType)
-}
-```
-
-**IRPipeline** provides dependency analysis and topological sorting:
-
-```scala
-case class IRPipeline(
-  nodes: Map[UUID, IRNode],
-  inputs: List[UUID],
-  output: UUID,
-  outputType: SemanticType
-) {
-  def dependencies(nodeId: UUID): Set[UUID]
-  def topologicalOrder: List[UUID]
-}
-```
-
-### Phase 4: DAG Compilation (`lang/compiler/DagCompiler.scala`)
-
-Converts IR to DagSpec with synthetic modules.
-
-**Synthetic Modules** are generated for language constructs:
-
-| Construct | Synthetic Module |
-|-----------|-----------------|
-| `a + b` | MergeModule - combines records |
-| `x[f1, f2]` | ProjectionModule - selects fields |
-| `if (c) a else b` | ConditionalModule - branching |
-
-```scala
-// Public API (returned by LangCompiler.compile):
-final case class CompilationOutput(
-  pipeline: LoadedPipeline,
-  warnings: List[CompileWarning]
-)
-
-// Internal (used by DagCompiler):
-case class DagCompileOutput(
-  dagSpec: DagSpec,
-  syntheticModules: Map[UUID, Module.Uninitialized]
-)
-```
-
-**Compilation Strategy:**
-
-1. Process IR nodes in topological order
-2. Create DataNodeSpec for each node's output
-3. Create ModuleNodeSpec for function calls
-4. Create synthetic modules for merge/project/conditional
-5. Build edges from data dependencies
-
-## Data Flow
-
-### DAG Structure
+Your pipeline is converted to a **directed acyclic graph (DAG)** where each node is a module call. The compiler analyzes dependencies and identifies which operations can run in parallel.
 
 ```
-                    ┌──────────────┐
-                    │   Input A    │  DataNodeSpec
-                    └──────┬───────┘
-                           │
-                           ↓ inEdge
-                    ┌──────────────┐
-                    │   Module 1   │  ModuleNodeSpec
-                    └──────┬───────┘
-                           │
-                           ↓ outEdge
-                    ┌──────────────┐
-                    │   Data X     │  DataNodeSpec
-                    └──────┬───────┘
-                           │
-          ┌────────────────┼────────────────┐
-          ↓                                 ↓
-   ┌──────────────┐                  ┌──────────────┐
-   │   Module 2   │                  │   Module 3   │
-   └──────┬───────┘                  └──────┬───────┘
-          │                                 │
-          ↓                                 ↓
-   ┌──────────────┐                  ┌──────────────┐
-   │   Data Y     │                  │   Data Z     │
-   └──────────────┘                  └──────────────┘
+          ┌─────────┐
+          │ Input A │
+          └────┬────┘
+               │
+          ┌────▼────┐
+          │ Module1 │
+          └────┬────┘
+               │
+    ┌──────────┼──────────┐
+    │                     │
+┌───▼───┐           ┌─────▼─────┐
+│Module2│           │  Module3  │  ← These run in parallel
+└───┬───┘           └─────┬─────┘
+    │                     │
+    └──────────┬──────────┘
+               │
+          ┌────▼────┐
+          │ Output  │
+          └─────────┘
 ```
 
-### Nicknames
+### 4. Execution
 
-DataNodeSpecs use "nicknames" to map parameter names for different modules:
+The runtime executes your DAG on Cats Effect fibers. **Independent branches run in parallel automatically** - you don't need to manage concurrency.
 
-```scala
-DataNodeSpec(
-  name = "user_data",
-  nicknames = Map(
-    module1Id -> "input",    // Module 1 sees this as "input"
-    module2Id -> "userData"  // Module 2 sees this as "userData"
-  ),
-  cType = CType.CProduct(...)
-)
-```
+## Key Concepts
 
-## Error Handling
+| Concept | What It Means |
+|---------|---------------|
+| DAG | Directed graph of module calls, enabling automatic parallelism |
+| Fiber | Lightweight thread for concurrent execution (much cheaper than OS threads) |
+| Hot reload | Change `.cst` files without restarting the server |
+| Content addressing | Compiled DAGs are cached by source hash for instant reuse |
+| Synthetic modules | Language constructs (merge, project, conditional) become real DAG nodes |
 
-### Compile Errors
+## Pipeline Stages at a Glance
 
-All errors include position information:
-
-```scala
-sealed trait CompileError {
-  def message: String
-  def position: Option[Position]
-  def format: String = position match {
-    case Some(pos) => s"Error at $pos: $message"
-    case None => s"Error: $message"
-  }
-}
-```
-
-Error types:
-- `ParseError` - Syntax errors
-- `TypeError` - General type errors
-- `UndefinedVariable` - Unknown variable reference
-- `UndefinedType` - Unknown type reference
-- `UndefinedFunction` - Unknown function call
-- `TypeMismatch` - Expected vs actual type mismatch
-- `InvalidProjection` - Projecting non-existent field
-- `IncompatibleMerge` - Cannot merge these types
-
-### Runtime Errors
-
-Runtime uses Cats Effect's IO for error handling:
-
-```scala
-Module.Status {
-  case object Unfired
-  case class Fired(latency: FiniteDuration, context: Option[Map[String, Json]])
-  case class Timed(latency: FiniteDuration)  // Timeout
-  case class Failed(error: Throwable)
-}
-```
-
-## Backend SPI Layer
-
-Constellation Engine provides a Service Provider Interface (SPI) for plugging in external infrastructure. All backends are configured through `ConstellationBackends`:
-
-```scala
-final case class ConstellationBackends(
-  metrics:         MetricsProvider    = MetricsProvider.noop,
-  tracer:          TracerProvider     = TracerProvider.noop,
-  listener:        ExecutionListener  = ExecutionListener.noop,
-  cache:           Option[CacheBackend] = None,
-  circuitBreakers: Option[CircuitBreakerRegistry] = None
-)
-```
-
-### SPI Traits
-
-```
-ConstellationBackends
-  ├── MetricsProvider    — counter(), histogram(), gauge()
-  ├── TracerProvider     — span[A](name, attrs)(body: IO[A])
-  ├── ExecutionListener  — onExecutionStart/Complete, onModuleStart/Complete/Failed
-  ├── CacheBackend       — get/set/delete with TTL and stats
-  └── CircuitBreakerRegistry — per-module circuit breakers
-```
-
-All default to no-op implementations with zero overhead. See the [SPI Integration Guides](../integrations/metrics-provider.md) for implementation examples.
-
-### Wiring
-
-```scala
-val backends = ConstellationBackends(
-  metrics  = myPrometheusMetrics,
-  tracer   = myOtelTracer,
-  listener = myKafkaListener,
-  cache    = Some(myRedisCache)
-)
-
-val constellation = ConstellationImpl.builder()
-  .withBackends(backends)
-  .build()
-```
-
-## Execution Lifecycle
-
-### Cancellable Execution
-
-Pipelines can be cancelled or timed out using `IO.timeout`:
-
-```scala
-constellation.run(compiled.pipeline, inputs)
-  .timeout(30.seconds)
-```
-
-### Lifecycle State Machine
-
-`ConstellationLifecycle` manages graceful shutdown:
-
-```
-Running ──(shutdown called)──> Draining ──(all executions complete or timeout)──> Stopped
-```
-
-- **Running:** Accepts new executions
-- **Draining:** Rejects new executions, waits for in-flight to complete
-- **Stopped:** All executions finished
-
-### Circuit Breaker
-
-Per-module circuit breakers prevent cascading failures:
-
-```
-Closed ──(threshold failures)──> Open ──(resetDuration)──> HalfOpen
-  ▲                                                          │
-  └──────────────(probe success)─────────────────────────────┘
-```
-
-### Bounded Scheduler
-
-`GlobalScheduler.bounded()` provides priority-based task scheduling with configurable concurrency limits and starvation prevention.
-
-## HTTP Hardening
-
-The HTTP server supports opt-in security middleware:
-
-```
-Client Request
-  → CORS Middleware      (cross-origin handling)
-    → Rate Limit         (per-IP token bucket)
-      → Auth Middleware  (API key + role validation)
-        → Routes
-```
-
-| Feature | Config | Default |
-|---------|--------|---------|
-| Authentication | `AuthConfig` | Disabled |
-| CORS | `CorsConfig` | Disabled |
-| Rate Limiting | `RateLimitConfig` | Disabled |
-| Health Checks | `HealthCheckConfig` | Basic only |
-
-All features are opt-in via `ConstellationServer.builder()` methods. When not configured, they add zero overhead.
+| Stage | Input | Output | Errors Caught |
+|-------|-------|--------|---------------|
+| Parse | Source code | AST | Syntax errors |
+| Type Check | AST | Typed AST | Type mismatches, undefined variables |
+| IR Generation | Typed AST | Intermediate representation | Dependency analysis |
+| DAG Compile | IR | Executable DAG | Invalid module references |
+| Execute | DAG + inputs | Results | Runtime failures |
 
 ## Extension Points
 
-### Adding New Functions
+### Custom Modules
 
-Register with FunctionRegistry:
-
-```scala
-val registry = FunctionRegistry.empty
-registry.register(FunctionSignature(
-  name = "my-function",
-  params = List("input" -> SemanticType.SString),
-  returns = SemanticType.SInt,
-  moduleName = "my-function-module"
-))
-```
-
-### Creating Custom Modules
-
-Use ModuleBuilder:
+You can add your own processing modules using the ModuleBuilder API:
 
 ```scala
-val module = ModuleBuilder
-  .metadata("my-module", "Description", 1, 0)
-  .implementation[MyInput, MyOutput] { input =>
-    IO.pure(MyOutput(result))
+val myModule = ModuleBuilder
+  .metadata("MyModule", "Description", 1, 0)
+  .implementationPure[MyInput, MyOutput] { input =>
+    MyOutput(transform(input))
   }
   .build
 ```
 
-### Adding New IR Node Types
+Modules are automatically available in your `.cst` pipelines once registered.
 
-1. Add case class to `IRNode` sealed trait
-2. Handle in `IRGenerator.generateExpression`
-3. Handle in `DagCompiler.processNode`
-4. Create synthetic module if needed
+### Backend Integrations
+
+Constellation Engine supports pluggable backends for observability and resilience:
+
+| Backend | Purpose |
+|---------|---------|
+| MetricsProvider | Export metrics to Prometheus, StatsD, etc. |
+| TracerProvider | Distributed tracing with OpenTelemetry |
+| ExecutionListener | Event streaming to Kafka, webhooks, etc. |
+| CacheBackend | Cache compiled pipelines in Redis, Memcached |
+| CircuitBreakerRegistry | Per-module circuit breakers for resilience |
+
+All backends default to no-op implementations with zero overhead.
+
+## Error Messages
+
+Constellation Engine provides detailed error messages with source positions:
+
+```
+TypeError at line 12, column 5:
+  Cannot access field 'email' on type Record(name: String, age: Int)
+  Available fields: name, age
+```
+
+## Execution Features
+
+### Cancellation and Timeouts
+
+Pipelines can be cancelled or timed out:
+
+```scala
+constellation.run(pipeline, inputs)
+  .timeout(30.seconds)
+```
+
+### Graceful Shutdown
+
+The lifecycle manager ensures in-flight executions complete before shutdown:
+
+```
+Running → Draining → Stopped
+```
+
+### Circuit Breakers
+
+Per-module circuit breakers prevent cascading failures when external services are down.
+
+## For Contributors
+
+For implementation details including code structure and internal APIs, see the LLM documentation in the repository's `docs/` directory:
+
+- **Compiler Internals** (`docs/components/compiler/`) - Parser, type checker, IR generation, DAG compilation
+- **Runtime Execution** (`docs/components/runtime/`) - Module system, parallel execution, data flow
+- **Type System** (`docs/components/core/`) - CType, CValue, type algebra
+- **HTTP API** (`docs/components/http-api/`) - Server configuration, middleware, routes
+- **SPI Integration** - See [Integrations](/docs/integrations/metrics-provider) for implementing custom backends
+
+The source code is organized by module:
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| core | `modules/core/` | Type system and specifications |
+| runtime | `modules/runtime/` | Module execution and DAG runtime |
+| lang-parser | `modules/lang-parser/` | constellation-lang parser |
+| lang-compiler | `modules/lang-compiler/` | Type checking and DAG compilation |
+| http-api | `modules/http-api/` | HTTP server and WebSocket LSP |

@@ -8,6 +8,30 @@ description: "Trust boundaries, sandboxing, HTTP hardening"
 
 This document describes the trust model, sandboxing properties, and security controls of Constellation Engine. It is intended for embedders evaluating the library for production use.
 
+:::danger Security Warning
+**Authentication, CORS, and rate limiting are all disabled by default.** An unconfigured Constellation server is open to any HTTP client. Always configure security for production deployments.
+:::
+
+## Production Security Checklist
+
+Before deploying to production, ensure:
+
+- [ ] **API Keys configured** — Set `CONSTELLATION_API_KEYS` environment variable
+- [ ] **CORS restricted** — Set `CONSTELLATION_CORS_ORIGINS` to your domains (not `*`)
+- [ ] **Rate limiting enabled** — Configure `CONSTELLATION_RATE_LIMIT_RPM`
+- [ ] **Health detail disabled** — Don't expose `/health/detail` publicly
+- [ ] **TLS enabled** — Use HTTPS via reverse proxy or load balancer
+- [ ] **Module code reviewed** — All registered modules have been audited
+
+**Quick secure startup:**
+
+```bash
+export CONSTELLATION_API_KEYS="admin-key-$(openssl rand -hex 16):Admin"
+export CONSTELLATION_CORS_ORIGINS="https://your-app.example.com"
+export CONSTELLATION_RATE_LIMIT_RPM=100
+make server
+```
+
 ## Trust Model
 
 Constellation operates with the following trust boundaries:
@@ -55,7 +79,9 @@ Module implementation (full JVM permissions)
 
 ## HTTP Security
 
-All HTTP security features are **opt-in and disabled by default**. When not configured, they add zero overhead.
+:::caution
+All HTTP security features are **opt-in and disabled by default**. When not configured, they add zero overhead — but your server is completely open. See the [Production Security Checklist](#production-security-checklist) above.
+:::
 
 ### Authentication
 
@@ -79,6 +105,20 @@ ConstellationServer.builder(constellation, compiler)
 | `Admin` | Yes | Yes | Yes | Yes |
 | `Execute` | Yes | Yes | No | No |
 | `ReadOnly` | Yes | No | No | No |
+
+## API Roles
+
+| Role | Permissions | Use Case |
+|------|-------------|----------|
+| **Admin** | All operations | Internal tooling, CI/CD pipelines, administrative dashboards |
+| **Execute** | Run pipelines, read data | Application backends, integration services |
+| **ReadOnly** | Health checks, metrics, introspection | Monitoring systems, load balancers, observability tools |
+
+**Best practices for role assignment:**
+
+- **Admin keys**: Use only in trusted environments (internal networks, CI/CD). Rotate frequently.
+- **Execute keys**: Issue to application backends that need to run pipelines. One key per service.
+- **ReadOnly keys**: Issue to monitoring systems. These keys can be more widely distributed.
 
 **Authentication flow:**
 
@@ -224,7 +264,9 @@ Constellation's runtime dependencies are from the Typelevel ecosystem:
 
 ### Network-Exposed Deployments
 
-If your Constellation server is accessible over a network:
+:::tip
+If your Constellation server is accessible over a network, all five of these are required:
+:::
 
 1. **Enable authentication** — configure API keys with appropriate roles
 2. **Set specific CORS origins** — never use wildcard in production

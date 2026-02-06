@@ -6,6 +6,25 @@ description: "Understand pipeline anatomy: declarations, dependency analysis, DA
 
 # Pipeline Structure
 
+## Quick Reference
+
+| Component | Purpose | Required |
+|-----------|---------|----------|
+| `use namespace` | Import module namespace | No |
+| `type Name = ...` | Define reusable type | No |
+| `in name: Type` | Declare input parameter | Yes (at least one for parameterized pipelines) |
+| `name = expr` | Assign computation result | No (but typical) |
+| `out name` | Declare pipeline output | Yes (at least one) |
+
+**Pipeline Anatomy:**
+```
+use declarations     --> imports (optional)
+type definitions     --> custom types (optional)
+input declarations   --> pipeline API (required)
+variable assignments --> transformation logic
+output declarations  --> results (required)
+```
+
 A constellation-lang pipeline is a declarative specification of a data transformation workflow. The compiler analyzes your pipeline and constructs a Directed Acyclic Graph (DAG) that enables optimal parallel execution while respecting data dependencies.
 
 ## Anatomy of a Pipeline File

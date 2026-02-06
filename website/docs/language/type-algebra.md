@@ -12,6 +12,56 @@ Type algebra is an advanced topic. Make sure you understand [Types](./types.md) 
 
 The `+` operator merges record types. This is the core mechanism for combining data from different sources.
 
+## Quick Reference
+
+| Operator | Syntax | What it Does |
+|----------|--------|--------------|
+| Merge | `A + B` | Combine all fields from both records |
+| Projection | `record{field1, field2}` | Select specific fields from a record |
+
+## Common Patterns
+
+### Enriching Data
+
+Combine data from multiple sources:
+
+```constellation
+user = GetUser(id)
+profile = GetProfile(id)
+enriched = user + profile  # Has all fields from both
+```
+
+### Selecting Fields for Output
+
+Pick only the fields you need:
+
+```constellation
+out enriched{name, email, tier}  # Only these 3 fields
+```
+
+### Combining Both
+
+Merge then project for clean API responses:
+
+```constellation
+combined = order + customer + shipping
+out combined{orderId, customerName, estimatedDelivery}
+```
+
+### Adding Context to Collections
+
+Broadcast a record into every element of a collection:
+
+```constellation
+in items: Candidates<{ id: String, name: String }>
+in context: { requestId: String, timestamp: Int }
+result = items + context  # Each item now has requestId and timestamp
+```
+
+---
+
+## Detailed Reference
+
 ## Record + Record
 
 :::warning
@@ -59,7 +109,7 @@ result = context + items  # Candidates<{ userId: Int, id: String }>
 ## Record Projection
 
 :::tip
-Use merge (`+`) when you need to **add** fields to a record. Use projection (`[]`) when you need to **select** specific fields. Both are essential tools for reshaping data in pipelines.
+Use merge (`+`) when you need to **add** fields to a record. Use projection (`{}`) when you need to **select** specific fields. Both are essential tools for reshaping data in pipelines.
 :::
 
 Select a subset of fields from a record using `{}` syntax:

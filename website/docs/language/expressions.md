@@ -6,6 +6,23 @@ description: "Reference for constellation-lang expressions: arithmetic, comparis
 
 # Expressions
 
+## Quick Reference
+
+| Expression | Syntax | Example |
+|------------|--------|---------|
+| Arithmetic | `+`, `-`, `*`, `/` | `x + 1` |
+| Comparison | `==`, `!=`, `<`, `>`, `<=`, `>=` | `x > 0` |
+| Logical | `and`, `or`, `not` | `a and b` |
+| String interpolation | `${}` | `"Hello ${name}"` |
+| Field access | `.field` | `user.name` |
+| Projection | `[field1, field2]` | `data[id, name]` |
+| Merge | `+` | `a + b` |
+| Conditional | `if/else` | `if (x > 0) "pos" else "neg"` |
+| Branch | `branch { ... }` | `branch { cond -> val, otherwise -> default }` |
+| Guard | `expr when cond` | `x when x > 0` |
+| Coalesce | `??` | `optional ?? default` |
+| Lambda | `(param) => expr` | `item => item.score > 0.5` |
+
 ## Variable References
 
 Reference a previously declared variable:
