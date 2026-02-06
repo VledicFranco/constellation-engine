@@ -87,6 +87,8 @@
 3. **Include component cross-references.** Link to implementation files.
 4. **Keep it focused.** One topic per file.
 
+For adding a new component, see the [Add Component Docs Protocol](./protocols/add-component-docs.md).
+
 ### Modifying Existing Documentation
 
 1. **Verify against code.** Is the claim still true?
@@ -137,8 +139,9 @@ Do not add to `docs/`:
 
 ### Semantic Mapping Protocol
 
-Component ETHOS files must include a **Semantic Mapping** section:
+Component ETHOS files must include a **Semantic Mapping** section. See the [Semantic Mapping Protocol](./protocols/semantic-mapping.md) for step-by-step instructions.
 
+Summary:
 1. Map key domain types (public API, core concepts, configuration)
 2. Skip internal implementation details and utilities
 3. Write domain meaning, not API description
@@ -171,6 +174,8 @@ Run `make verify-ethos` to check references are valid.
 ### Freshness
 
 Run `make check-docs` to verify generated docs match current code.
+
+If docs are stale, follow the [Regenerate Docs Protocol](./protocols/regenerate-docs.md).
 
 ---
 

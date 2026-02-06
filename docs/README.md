@@ -17,11 +17,11 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 
 This project uses the **organon** pattern — a complete guidance system consisting of philosophy, ethos, and protocol at each scope.
 
-| Scope | Philosophy | Ethos | Purpose |
-|-------|------------|-------|---------|
-| **Product** | [../PHILOSOPHY.md](../PHILOSOPHY.md) | [../ETHOS.md](../ETHOS.md) | Why Constellation exists, codebase constraints |
-| **Documentation** | [PHILOSOPHY.md](./PHILOSOPHY.md) | [ETHOS.md](./ETHOS.md) | Why docs are structured this way |
-| **Features** | `features/X/PHILOSOPHY.md` | `features/X/ETHOS.md` | Domain-specific guidance |
+| Scope | Philosophy | Ethos | Protocol |
+|-------|------------|-------|----------|
+| **Product** | [../PHILOSOPHY.md](../PHILOSOPHY.md) | [../ETHOS.md](../ETHOS.md) | — |
+| **Documentation** | [PHILOSOPHY.md](./PHILOSOPHY.md) | [ETHOS.md](./ETHOS.md) | [protocols/](./protocols/) |
+| **Features** | `features/X/PHILOSOPHY.md` | `features/X/ETHOS.md` | — |
 
 ## Features
 

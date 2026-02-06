@@ -92,6 +92,8 @@ Each domain has three artifact types:
 
 This pattern repeats at every level: root docs, each feature, each component.
 
+For documentation-specific protocols, see [protocols/](./protocols/).
+
 ### 3. README as Router
 
 Every directory has a README.md that serves as a navigation node:
