@@ -34,6 +34,36 @@ Content is **semantically equivalent** but **formatted differently**. The same f
 
 ---
 
+## Three-Layer Documentation Model
+
+Documentation exists in three layers, each with a distinct purpose:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    ORGANON (Manual)                         │
+│  Philosophy + Ethos + Semantic Mapping                      │
+│  "What it means, why it exists, how to use it"              │
+├─────────────────────────────────────────────────────────────┤
+│                GENERATED CATALOG (Auto)                     │
+│  docs/generated/*.md — TASTy-extracted signatures           │
+│  "What exists in the codebase"                              │
+├─────────────────────────────────────────────────────────────┤
+│                    CODE (Source)                            │
+│  modules/*/src/main/scala/**/*.scala                        │
+│  "The truth"                                                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+| Layer | Content | Maintained By | Changes When |
+|-------|---------|---------------|--------------|
+| Code | Implementation | Developers | Features change |
+| Generated | Type signatures, method lists | `make generate-docs` | Code changes |
+| Organon | Domain meaning, invariants | Developers | Understanding changes |
+
+**Key insight:** Generated catalogs answer "what exists?" Organon answers "what does it mean?" The semantic mapping in component ETHOS files bridges the two.
+
+---
+
 ## Design Decisions
 
 ### 1. Feature-Driven Organization
@@ -105,6 +135,38 @@ This bridges "what it does" to "where it's implemented" without duplicating cont
 | Philosophy/Ethos | 100-150 | Focused principles |
 
 If a file exceeds 200 lines, split it.
+
+### 6. Semantic Mapping in Component ETHOS
+
+Component ETHOS files include a **Semantic Mapping** section that connects generated catalog types to domain meaning:
+
+```markdown
+## Semantic Mapping
+
+| Scala Artifact | Domain Meaning |
+|----------------|----------------|
+| `ModuleBuilder` | Fluent API for creating typed modules |
+| `CancellableExecution` | Handle for in-flight execution |
+
+For complete signatures, see [generated catalog](/docs/generated/io.constellation.md).
+```
+
+This bridges the gap between "what exists" (generated) and "what it means" (organon).
+
+### 7. Invariants with References
+
+Component ETHOS files document invariants with links to implementation and tests:
+
+```markdown
+### 1. Modules are pure functions
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `path/to/Module.scala#methodName` |
+| Test | `path/to/ModuleTest.scala#test name` |
+```
+
+The ethos verifier (`make verify-ethos`) checks that these references are valid.
 
 ---
 

@@ -8,6 +8,7 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 |------|-------------|
 | [features/](./features/) | **What Constellation does** — capability-oriented documentation |
 | [components/](./components/) | **How Constellation is built** — implementation-oriented documentation |
+| [generated/](./generated/) | **What exists in code** — auto-generated type catalogs |
 | [rfcs/](./rfcs/) | Design proposals and decisions |
 | [dev/](./dev/) | Benchmarks, research, internal development docs |
 
@@ -74,6 +75,24 @@ This documentation follows the **organon** pattern — a complete guidance syste
 | **Protocol** | How do we accomplish this task? | Agents executing specific tasks |
 
 Each feature has its own organon (philosophy + ethos). See the [Organon methodology](../ethos/) for details.
+
+## Three-Layer Model
+
+Documentation exists at three layers:
+
+```
+Organon (manual)     ← "What it means" — ETHOS.md with semantic mapping
+Generated (auto)     ← "What exists" — docs/generated/*.md
+Code (source)        ← "The truth" — modules/*/src/**/*.scala
+```
+
+| Command | Purpose |
+|---------|---------|
+| `make generate-docs` | Regenerate catalogs from code |
+| `make check-docs` | Verify catalogs are fresh |
+| `make verify-ethos` | Check invariant references are valid |
+
+Component ETHOS files bridge generated catalogs to domain meaning via **semantic mapping tables**. See [components/runtime/ETHOS.md](./components/runtime/ETHOS.md) for an example.
 
 ## For LLMs
 

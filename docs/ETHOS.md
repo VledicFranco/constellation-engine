@@ -38,6 +38,10 @@
 
 6. **No duplication.** Link, don't copy. One source of truth per fact.
 
+7. **Generated catalogs are read-only.** Never edit `docs/generated/*.md` manually. Regenerate with `make generate-docs`.
+
+8. **Semantic mapping bridges layers.** Component ETHOS files map generated types to domain meaning.
+
 ---
 
 ## File Constraints
@@ -118,6 +122,55 @@ Do not add to `docs/`:
 - **Marketing.** Value propositions, comparisons → `website/docs/`
 - **Changelogs.** Version history → `CHANGELOG.md` at repo root
 - **API specs.** OpenAPI, generated docs → `website/docs/api-reference/`
+
+---
+
+## Generated Documentation
+
+### Three-Layer Model
+
+| Layer | Location | Purpose | Maintained |
+|-------|----------|---------|------------|
+| Code | `modules/*/src/` | Source of truth | By developers |
+| Generated | `docs/generated/` | What exists (signatures) | By `make generate-docs` |
+| Organon | `docs/components/*/ETHOS.md` | What it means (semantics) | By developers |
+
+### Semantic Mapping Protocol
+
+Component ETHOS files must include a **Semantic Mapping** section:
+
+1. Map key domain types (public API, core concepts, configuration)
+2. Skip internal implementation details and utilities
+3. Write domain meaning, not API description
+4. Link to the generated catalog for full signatures
+
+Example:
+```markdown
+## Semantic Mapping
+
+| Scala Artifact | Domain Meaning |
+|----------------|----------------|
+| `ModuleBuilder` | Fluent API for creating typed modules |
+
+For signatures, see [generated catalog](/docs/generated/io.constellation.md).
+```
+
+### Invariant References
+
+Invariants must reference implementation and test files:
+
+```markdown
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `path/to/File.scala#symbolName` |
+| Test | `path/to/FileTest.scala#test name` |
+```
+
+Run `make verify-ethos` to check references are valid.
+
+### Freshness
+
+Run `make check-docs` to verify generated docs match current code.
 
 ---
 
