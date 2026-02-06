@@ -13,6 +13,8 @@ Execution engine, scheduling, and Scala API.
 | [scheduling.md](./scheduling.md) | Priority scheduler, concurrency control |
 | [module-builder.md](./module-builder.md) | Scala API for creating modules |
 | [type-system.md](./type-system.md) | CType, CValue, type derivation |
+| [embedding.md](./embedding.md) | Embedding Constellation in JVM applications |
+| [performance.md](./performance.md) | Performance tuning and optimization |
 
 ## Overview
 

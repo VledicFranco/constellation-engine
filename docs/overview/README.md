@@ -9,6 +9,7 @@ High-level concepts and architecture of Constellation Engine.
 
 | File | Description |
 |------|-------------|
+| [getting-started.md](./getting-started.md) | Tutorial for new users |
 | [when-to-use.md](./when-to-use.md) | Use cases, anti-patterns, comparison with alternatives |
 | [architecture.md](./architecture.md) | System design, module dependencies, data flow |
 | [glossary.md](./glossary.md) | Term definitions |

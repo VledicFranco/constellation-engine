@@ -13,6 +13,7 @@ Type-safe pipeline orchestration for Scala 3. Define pipelines in a declarative 
 | [extensibility/](./extensibility/) | SPI interfaces for custom backends |
 | [tooling/](./tooling/) | Dashboard, VSCode extension, LSP |
 | [stdlib/](./stdlib/) | Standard library functions |
+| [reference/](./reference/) | Errors, troubleshooting, migration guides |
 | [dev/](./dev/) | RFCs, benchmarks, internal development docs |
 
 ## Quick Reference
