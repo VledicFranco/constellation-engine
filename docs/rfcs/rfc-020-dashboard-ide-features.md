@@ -1,9 +1,10 @@
 # RFC-020: Dashboard IDE Features
 
-**Status:** Draft
+**Status:** Approved
 **Priority:** P1 (Strategic)
 **Author:** Human + Claude
 **Created:** 2026-02-07
+**Approved:** 2026-02-07
 **Depends On:** RFC-019 (Architecture recommendations)
 
 ---
@@ -190,7 +191,7 @@ Keep textarea, add LSP features manually:
 - Limited UX (no inline autocomplete dropdown)
 - Custom implementation required
 
-**Recommendation:** Monaco Editor. It's the industry standard for browser IDEs (VSCode, GitHub.dev) and provides the best developer experience with minimal custom code.
+**Decision:** Monaco Editor. It's the industry standard for browser IDEs (VSCode, GitHub.dev) and provides the best developer experience with minimal custom code.
 
 ### Features Enabled
 - Autocomplete as you type (Ctrl+Space)
@@ -387,10 +388,19 @@ Click any DAG node to inspect its computed value:
 - First Lit component migration (template)
 
 **Exit Criteria:**
-- `npm run dev` starts Vite dev server with HMR
-- `npm run test` runs component tests
-- `npm run build` produces optimized bundle
-- One existing component (e.g., error banner) migrated to Lit
+
+| Criterion | Verification |
+|-----------|--------------|
+| Vite dev server | `npm run dev` starts server, HMR works on file save |
+| TypeScript builds | `npm run build` succeeds with no type errors |
+| Component tests | `npm run test` passes, coverage report generated |
+| Lit component | Error banner migrated, renders correctly |
+| Zustand store | `app.store.ts` created, one action tested |
+| API service | `api.ts` typed, one endpoint working |
+| Bundle analysis | `npm run build:analyze` shows chunk sizes |
+| Documentation | `README.md` in `dashboard/` explains dev workflow |
+
+**Phase 0 is complete when all criteria pass.** Do not proceed to Phase 1 until exit criteria are verified.
 
 ### Phase 1: Foundation (Weeks 1-2)
 **Goal:** Enable real-time feedback loop
@@ -683,9 +693,8 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 ```
 
-### Testing Strategy
+### Component Testing (Vitest)
 
-**Unit Tests (Vitest):**
 ```typescript
 // components/module-browser/module-browser.test.ts
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -716,6 +725,55 @@ describe('ModuleBrowser', () => {
     expect(cards.length).toBe(1);
   });
 });
+```
+
+### Lit + Zustand Integration
+
+Lit components subscribe to Zustand stores using the controller pattern:
+
+```typescript
+// utils/zustand-controller.ts
+import { ReactiveController, ReactiveControllerHost } from 'lit';
+import { StoreApi } from 'zustand';
+
+export class StoreController<T> implements ReactiveController {
+  private unsubscribe?: () => void;
+
+  constructor(
+    private host: ReactiveControllerHost,
+    private store: StoreApi<T>,
+    private selector?: (state: T) => unknown
+  ) {
+    host.addController(this);
+  }
+
+  hostConnected() {
+    this.unsubscribe = this.store.subscribe((state, prevState) => {
+      const next = this.selector ? this.selector(state) : state;
+      const prev = this.selector ? this.selector(prevState) : prevState;
+      if (next !== prev) this.host.requestUpdate();
+    });
+  }
+
+  hostDisconnected() {
+    this.unsubscribe?.();
+  }
+
+  get state(): T {
+    return this.store.getState();
+  }
+}
+
+// Usage in component:
+@customElement('dag-visualizer')
+export class DagVisualizer extends LitElement {
+  private executionStore = new StoreController(this, useExecutionStore);
+
+  render() {
+    const { nodeStates } = this.executionStore.state;
+    // Component re-renders when nodeStates changes
+  }
+}
 ```
 
 **E2E Tests (Playwright):** Continue using existing setup for integration tests.
@@ -794,23 +852,198 @@ Existing components (file-browser, dag-visualizer, execution-panel) are migrated
 
 ## Testing Strategy
 
-### Unit Tests
-- Module browser filtering logic
-- Input preset serialization
-- Error panel rendering
+Testing uses three tiers. See [Component Testing](#component-testing-vitest) for Vitest patterns.
+
+### Unit Tests (Vitest)
+
+| Component | Test Coverage |
+|-----------|--------------|
+| `ModuleBrowser` | Filtering, search, category grouping |
+| `InputPresets` | Save/load/delete, LocalStorage serialization |
+| `ErrorPanel` | Error formatting, source highlighting |
+| `ValueInspector` | JSON tree rendering, copy functionality |
+| `ProfileView` | Timing calculations, percentage formatting |
+| Zustand stores | Actions, selectors, state transitions |
 
 ### E2E Tests (Playwright)
-- Live execution: run pipeline, verify nodes update in sequence
-- Module browser: search, select, insert
-- Input presets: save, load, delete
-- Error panel: click error, editor navigates
-- Value inspector: run, click node, verify value displayed
-- Profile view: run, view timing breakdown
 
-### Performance Tests
-- Monaco editor initialization < 500ms
-- Autocomplete response < 100ms
-- Live execution update latency < 50ms
+| Feature | Test Cases |
+|---------|------------|
+| Live execution | Run pipeline, verify nodes update in sequence |
+| Module browser | Search, select, insert into editor |
+| Input presets | Save, reload page, load, delete |
+| Error panel | Click error, verify editor navigates |
+| Value inspector | Click node, verify value displayed |
+| Profile view | View timing breakdown |
+
+### Performance Benchmarks
+
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| Monaco initialization | < 500ms | Lazy load to ready |
+| Autocomplete response | < 100ms | Keystroke to dropdown |
+| Live execution latency | < 50ms | WebSocket event to DOM |
+
+---
+
+## Accessibility
+
+All components must support keyboard navigation and screen readers.
+
+### Requirements
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Keyboard navigation | All interactive elements focusable via Tab |
+| ARIA labels | Custom components include `role` and `aria-*` attributes |
+| Focus indicators | Visible focus ring on all interactive elements |
+| Screen reader | Lit components use `@lit-labs/motion` for announcements |
+| Reduced motion | Respect `prefers-reduced-motion` media query |
+
+### Component Checklist
+
+- [ ] File browser: Arrow keys navigate tree, Enter opens/expands
+- [ ] Code editor: Monaco has built-in accessibility
+- [ ] DAG visualizer: Tab through nodes, Enter selects
+- [ ] Module browser: Tab through list, Enter selects
+- [ ] Error panel: Tab through errors, Enter navigates
+
+---
+
+## Browser Compatibility
+
+### Supported Browsers
+
+| Browser | Version | Notes |
+|---------|---------|-------|
+| Chrome | 90+ | Primary development target |
+| Firefox | 88+ | Full support |
+| Safari | 14+ | WebSocket requires attention |
+| Edge | 90+ | Chromium-based, same as Chrome |
+
+### Required Features
+
+- ES2020+ (optional chaining, nullish coalescing)
+- CSS Grid and Flexbox
+- Web Components v1
+- WebSocket API
+- LocalStorage API
+
+### Polyfills
+
+None required for supported browsers. Vite's `build.target` set to `es2020`.
+
+---
+
+## Bundle Size Budget
+
+### Targets
+
+| Chunk | Max Size (gzipped) | Current Estimate |
+|-------|-------------------|------------------|
+| Main bundle | 50kb | ~30kb |
+| Monaco Editor | 500kb | ~500kb (lazy) |
+| Cytoscape | 150kb | ~150kb (lazy) |
+| Lit runtime | 10kb | ~8kb |
+| Zustand | 2kb | ~1kb |
+| **Total (initial)** | **80kb** | ~40kb |
+| **Total (all loaded)** | **750kb** | ~700kb |
+
+### Enforcement
+
+```typescript
+// vite.config.ts - fail build if budgets exceeded
+build: {
+  chunkSizeWarningLimit: 500, // kb
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        monaco: ['monaco-editor'],
+        cytoscape: ['cytoscape', 'cytoscape-dagre'],
+      },
+    },
+  },
+}
+```
+
+---
+
+## CSS Strategy
+
+### Approach: Lit CSS-in-JS
+
+Each Lit component defines styles within its class using tagged template literals:
+
+```typescript
+static styles = css`
+  :host { display: block; }
+  .container { /* component-specific styles */ }
+`;
+```
+
+### Design Tokens
+
+Shared via CSS custom properties in root stylesheet:
+
+```css
+/* styles/tokens.css */
+:root {
+  --color-bg-primary: #1a1a2e;
+  --color-bg-secondary: #16213e;
+  --color-text-primary: #e0e0e0;
+  --color-accent: #4da6ff;
+  --color-error: #ff6b6b;
+  --color-success: #4ecdc4;
+  --spacing-sm: 4px;
+  --spacing-md: 8px;
+  --spacing-lg: 16px;
+  --border-radius: 4px;
+}
+```
+
+### Migration
+
+Existing CSS in `index.html` moves to `styles/` directory, imported by `main.ts`.
+
+---
+
+## Rollback Plan
+
+If Lit or Zustand prove problematic, fallback options exist.
+
+### Lit Issues
+
+**Symptom:** Complex reactivity bugs, poor debugging experience, team resistance.
+
+**Fallback:** Switch to Preact (3kb, React-compatible API):
+- Similar component model
+- Larger ecosystem
+- Familiar to more developers
+
+**Migration cost:** Medium (rewrite components, keep stores).
+
+### Zustand Issues
+
+**Symptom:** Race conditions, difficult debugging, scaling problems.
+
+**Fallback:** Switch to Jotai (atomic state) or plain event bus:
+- Jotai: Same author as Zustand, atomic model
+- Event bus: Simpler, already documented in RFC-019
+
+**Migration cost:** Low (stores are isolated, API similar).
+
+### Complete Architecture Pivot
+
+**Symptom:** Both choices problematic, need React ecosystem.
+
+**Fallback:** React + React Query + Tailwind:
+- Industry standard
+- Large ecosystem
+- Easy hiring
+
+**Migration cost:** High (full rewrite, but components are isolated).
+
+**Decision criteria:** Evaluate at end of Phase 1. If >30% of development time spent fighting the framework, trigger pivot discussion.
 
 ---
 
