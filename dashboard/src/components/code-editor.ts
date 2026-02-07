@@ -17,7 +17,6 @@ class CodeEditor {
     private textarea: HTMLTextAreaElement | null;
     private highlightPre: HTMLPreElement | null;
     private errorBanner: HTMLElement | null;
-    private newScriptBtn: HTMLElement | null;
     private statusEl: HTMLElement | null;
 
     // State
@@ -36,7 +35,6 @@ class CodeEditor {
         this.textarea = null;
         this.highlightPre = null;
         this.errorBanner = null;
-        this.newScriptBtn = null;
         this.statusEl = null;
 
         // State
@@ -53,13 +51,9 @@ class CodeEditor {
         this.textarea = document.getElementById(this.textareaId) as HTMLTextAreaElement | null;
         this.highlightPre = document.getElementById('code-highlight') as HTMLPreElement | null;
         this.errorBanner = document.getElementById(this.errorBannerId);
-        this.newScriptBtn = document.getElementById('new-script-btn');
         this.statusEl = document.getElementById('editor-status');
 
         if (!this.container || !this.textarea) return;
-
-        // New script button
-        this.newScriptBtn?.addEventListener('click', () => this.newScript());
 
         // Live preview on input with syntax highlighting
         this.textarea.addEventListener('input', () => {
@@ -97,16 +91,6 @@ class CodeEditor {
         this.textarea.value = source || '';
         this.updateHighlighting();
         this.clearErrors();
-    }
-
-    /**
-     * Create a new script with starter template
-     */
-    newScript(): void {
-        const template = '# New script\nin text: String\n\nresult = Uppercase(text)\n\nout result\n';
-        this.loadSource(template);
-        this.textarea?.focus();
-        this.schedulePreview();
     }
 
     /**
