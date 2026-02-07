@@ -7,7 +7,7 @@ import cats.implicits.*
 
 import io.constellation.examples.app.ExampleLib
 import io.constellation.execution.GlobalScheduler
-import io.constellation.http.{ConstellationServer, DashboardConfig}
+import io.constellation.http.{ConstellationServer, DashboardConfig, ExecutionWebSocket}
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.CachingLangCompiler
 import io.constellation.stdlib.StdLib
@@ -60,8 +60,15 @@ object ExampleServer extends IOApp.Simple {
             logger.info("Using unbounded scheduler (default)")
           }
 
-        // Create constellation engine instance with scheduler
-        constellation <- ConstellationImpl.initWithScheduler(scheduler)
+        // Create execution WebSocket for live visualization events
+        executionWs = ExecutionWebSocket()
+
+        // Create constellation engine instance with scheduler and execution listener
+        constellation <- ConstellationImpl
+          .builder()
+          .withScheduler(scheduler)
+          .withListener(executionWs.listener)
+          .build()
 
         // Register all modules (StdLib + ExampleLib) for runtime execution and LSP
         allModules = (StdLib.allModules ++ ExampleLib.allModules).values.toList
@@ -88,6 +95,7 @@ object ExampleServer extends IOApp.Simple {
           .builder(constellation, compiler)
           .withHost("0.0.0.0")
           .withDashboard(dashboardConfig)
+          .withExecutionWebSocket(executionWs)
           .run
       } yield ()
     }

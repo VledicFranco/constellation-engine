@@ -136,7 +136,8 @@ object ConstellationServer {
       rateLimitConfig: Option[RateLimitConfig] = None,
       healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default,
       pipelineLoaderConfig: Option[PipelineLoaderConfig] = None,
-      persistentStorePath: Option[Path] = None
+      persistentStorePath: Option[Path] = None,
+      executionWs: Option[ExecutionWebSocket] = None
   )
 
   /** Builder for creating a Constellation HTTP server */
@@ -243,6 +244,20 @@ object ConstellationServer {
         config.copy(persistentStorePath = Some(directory))
       )
 
+    /** Set the execution WebSocket handler for live visualization events.
+      *
+      * When provided, the WebSocket handler is shared between the server routes and
+      * dashboard routes, enabling real-time execution event streaming to clients.
+      * The listener should already be registered with the Constellation instance.
+      */
+    def withExecutionWebSocket(executionWs: ExecutionWebSocket): ServerBuilder =
+      new ServerBuilder(
+        constellation,
+        compiler,
+        functionRegistry,
+        config.copy(executionWs = Some(executionWs))
+      )
+
     /** Build the HTTP server resource.
       *
       * Validates all configuration at startup. Fails fast with clear errors if any config is
@@ -268,8 +283,8 @@ object ConstellationServer {
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
       val port = Port.fromInt(config.port).getOrElse(port"8080")
 
-      // Create execution WebSocket handler for live visualization (shared with dashboard routes)
-      val executionWs = ExecutionWebSocket()
+      // Use provided execution WebSocket or create new one for live visualization
+      val executionWs = config.executionWs.getOrElse(ExecutionWebSocket())
 
       // Optionally create dashboard routes
       val dashboardRoutesIO: IO[Option[DashboardRoutes]] = config.dashboardConfig match {
