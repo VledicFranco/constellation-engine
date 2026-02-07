@@ -23,6 +23,8 @@ description: "Reference for constellation-lang expressions: arithmetic, comparis
 | Guard | `expr when cond` | `x when x > 0` |
 | Coalesce | `??` | `optional ?? default` |
 | Lambda | `(param) => expr` | `item => item.score > 0.5` |
+| Record literal | `{ field: value }` | `{ name: "Alice", age: 30 }` |
+| List literal | `[value, ...]` | `[1, 2, 3]` |
 
 ## Variable References
 
@@ -461,11 +463,40 @@ status = "Ready: ${isReady and hasPermission}"
 
 ## Literals
 
+### Primitive Literals
+
 ```
 stringVal = "hello world"
 intVal = 42
 floatVal = 3.14
 boolVal = true
+```
+
+### List Literals
+
+```
+numbers = [1, 2, 3]
+names = ["Alice", "Bob"]
+empty = []
+```
+
+### Record Literals
+
+Inline record construction using brace syntax:
+
+```
+user = { name: "Alice", age: 30 }
+config = { timeout: 5000, retries: 3 }
+nested = { outer: { inner: "value" } }
+```
+
+Record literals are commonly used with `@example` annotations for union type inputs:
+
+```
+type ApiResult = { value: Int, status: String } | { error: String, code: Int }
+
+@example({ value: 42, status: "ok" })
+in response: ApiResult
 ```
 
 ## Parentheses

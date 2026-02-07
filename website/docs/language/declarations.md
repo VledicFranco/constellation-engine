@@ -311,13 +311,25 @@ in text: String
 in count: Int
 ```
 
+**Record literal examples:**
+
+Record literals enable `@example` annotations for record and union type inputs:
+
+```constellation
+# Record input with example
+@example({ name: "Alice", age: 30 })
+in user: { name: String, age: Int }
+
+# Union type input with example (uses one variant)
+type ApiResult = { value: Int, status: String } | { error: String, code: Int }
+
+@example({ value: 42, status: "ok" })
+in response: ApiResult
+```
+
 **Limitations:**
 
-- Only literal values (strings, integers, floats, booleans, lists) are fully supported for LSP JSON conversion
 - Variable references and function calls in `@example` are parsed but not converted to JSON for the LSP
-- Record literals (`{ key: value }`) are not supported as expressions
-
-For complex types (records, nested structures), the VSCode extension provides a form-based input UI instead of using `@example`.
 
 ---
 
