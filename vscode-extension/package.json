@@ -90,8 +90,8 @@
         "title": "Constellation: Execute Current Pipeline"
       },
       {
-        "command": "constellation.runScript",
-        "title": "Constellation: Run Script",
+        "command": "constellation.runPipeline",
+        "title": "Constellation: Run Pipeline",
         "icon": "$(play)"
       },
       {
@@ -106,7 +106,7 @@
     ],
     "keybindings": [
       {
-        "command": "constellation.runScript",
+        "command": "constellation.runPipeline",
         "key": "ctrl+shift+r",
         "mac": "cmd+shift+r",
         "when": "editorLangId == constellation"
@@ -121,7 +121,7 @@
     "menus": {
       "editor/title": [
         {
-          "command": "constellation.runScript",
+          "command": "constellation.runPipeline",
           "when": "editorLangId == constellation",
           "group": "navigation"
         },
@@ -133,7 +133,7 @@
       ],
       "editor/context": [
         {
-          "command": "constellation.runScript",
+          "command": "constellation.runPipeline",
           "when": "editorLangId == constellation",
           "group": "1_modification"
         },

@@ -111,9 +111,9 @@ interface CompletedNode {
   durationMs?: number;
 }
 
-export class ScriptRunnerPanel {
-  public static currentPanel: ScriptRunnerPanel | undefined;
-  public static readonly viewType = 'constellationScriptRunner';
+export class PipelineRunnerPanel {
+  public static currentPanel: PipelineRunnerPanel | undefined;
+  public static readonly viewType = 'constellationPipelineRunner';
 
   private readonly _state: PanelState;
   private _steppingSessionId: string | undefined;
@@ -124,21 +124,21 @@ export class ScriptRunnerPanel {
     client: LanguageClient | undefined,
     documentUri: string
   ) {
-    if (ScriptRunnerPanel.currentPanel) {
-      ScriptRunnerPanel.currentPanel._state.panel.reveal(vscode.ViewColumn.Beside);
-      ScriptRunnerPanel.currentPanel._state.client = client;
-      ScriptRunnerPanel.currentPanel._state.currentUri = documentUri;
-      ScriptRunnerPanel.currentPanel._refreshSchema();
+    if (PipelineRunnerPanel.currentPanel) {
+      PipelineRunnerPanel.currentPanel._state.panel.reveal(vscode.ViewColumn.Beside);
+      PipelineRunnerPanel.currentPanel._state.client = client;
+      PipelineRunnerPanel.currentPanel._state.currentUri = documentUri;
+      PipelineRunnerPanel.currentPanel._refreshSchema();
       return;
     }
 
     const panel = createWebviewPanel({
-      viewType: ScriptRunnerPanel.viewType,
-      title: 'Script Runner',
+      viewType: PipelineRunnerPanel.viewType,
+      title: 'Pipeline Runner',
       extensionUri
     });
 
-    ScriptRunnerPanel.currentPanel = new ScriptRunnerPanel(panel, extensionUri, client, documentUri);
+    PipelineRunnerPanel.currentPanel = new PipelineRunnerPanel(panel, extensionUri, client, documentUri);
   }
 
   private constructor(
@@ -523,7 +523,7 @@ export class ScriptRunnerPanel {
 
   public dispose() {
     this._cleanupStepSession();
-    ScriptRunnerPanel.currentPanel = undefined;
+    PipelineRunnerPanel.currentPanel = undefined;
     disposePanel(this._state);
   }
 
@@ -536,7 +536,7 @@ export class ScriptRunnerPanel {
 
     const headerHtml = getHeaderHtml({
       icon: '▶',
-      title: 'Script Runner',
+      title: 'Pipeline Runner',
       fileNameId: 'fileName',
       actions: '<button class="icon-btn" id="refreshBtn" title="Refresh Schema">↻</button>'
     });
@@ -557,7 +557,7 @@ export class ScriptRunnerPanel {
       <div class="action-buttons">
         <button class="primary-btn run-btn" id="runBtn" disabled>
           <span>▶</span>
-          <span>Run Script</span>
+          <span>Run Pipeline</span>
         </button>
         <button class="secondary-btn step-btn" id="stepBtn" disabled title="Start step-through debugging">
           <span>⏸</span>
@@ -596,7 +596,7 @@ export class ScriptRunnerPanel {
     `;
 
     return wrapHtml({
-      title: 'Script Runner',
+      title: 'Pipeline Runner',
       styles,
       body,
       scripts: JS_UTILS + this._getScriptContent()
@@ -1048,7 +1048,7 @@ export class ScriptRunnerPanel {
 
     if (message.type === 'schema') {
       currentSchema = message.inputs || [];
-      fileNameEl.textContent = message.fileName || 'script.cst';
+      fileNameEl.textContent = message.fileName || 'pipeline.cst';
       renderInputs(currentSchema);
       runBtn.disabled = false;
       stepBtn.disabled = false;
@@ -1069,7 +1069,7 @@ export class ScriptRunnerPanel {
       isExecuting = false;
       runBtn.disabled = false;
       stepBtn.disabled = false;
-      runBtn.innerHTML = '<span>▶</span><span>Run Script</span>';
+      runBtn.innerHTML = '<span>▶</span><span>Run Pipeline</span>';
       outputSection.classList.add('visible');
       executionTime.textContent = message.executionTimeMs + 'ms';
       outputContainer.innerHTML = '<div class="output-box success">' + escapeHtml(JSON.stringify(message.outputs, null, 2)) + '</div>';
@@ -1077,7 +1077,7 @@ export class ScriptRunnerPanel {
       isExecuting = false;
       runBtn.disabled = false;
       stepBtn.disabled = false;
-      runBtn.innerHTML = '<span>▶</span><span>Run Script</span>';
+      runBtn.innerHTML = '<span>▶</span><span>Run Pipeline</span>';
       outputSection.classList.add('visible');
       executionTime.textContent = '';
       if (message.errors && message.errors.length > 0) {
@@ -1183,7 +1183,7 @@ export class ScriptRunnerPanel {
 
   function renderInputs(inputs) {
     if (!inputs || inputs.length === 0) {
-      inputsCard.innerHTML = '<div class="no-inputs">No inputs defined in this script.</div>';
+      inputsCard.innerHTML = '<div class="no-inputs">No inputs defined in this pipeline.</div>';
       return;
     }
     var html = '';

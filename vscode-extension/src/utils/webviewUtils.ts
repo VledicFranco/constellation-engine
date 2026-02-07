@@ -327,5 +327,5 @@ export function escapeHtml(text: string): string {
  * Extract filename from a URI string
  */
 export function getFileNameFromUri(uri: string): string {
-  return uri.split('/').pop() || 'script.cst';
+  return uri.split('/').pop() || 'pipeline.cst';
 }

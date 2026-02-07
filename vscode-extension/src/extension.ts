@@ -6,7 +6,7 @@ import {
 } from 'vscode-languageclient/node';
 import * as ws from 'ws';
 import { Duplex } from 'stream';
-import { ScriptRunnerPanel } from './panels/ScriptRunnerPanel';
+import { PipelineRunnerPanel } from './panels/PipelineRunnerPanel';
 import { PerformanceTracker, Operations } from './utils/performanceTracker';
 
 let client: LanguageClient | undefined;
@@ -168,9 +168,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(executeCommand);
 
-  // Register script runner command with webview panel
-  const runScriptCommand = vscode.commands.registerCommand(
-    'constellation.runScript',
+  // Register pipeline runner command with webview panel
+  const runPipelineCommand = vscode.commands.registerCommand(
+    'constellation.runPipeline',
     async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.document.languageId !== 'constellation') {
@@ -181,12 +181,12 @@ export function activate(context: vscode.ExtensionContext) {
       const uri = editor.document.uri.toString();
       const tracker = PerformanceTracker.getInstance();
       const timer = tracker.startOperation(Operations.PANEL_CREATE);
-      ScriptRunnerPanel.createOrShow(context.extensionUri, client, uri);
+      PipelineRunnerPanel.createOrShow(context.extensionUri, client, uri);
       timer.end();
     }
   );
 
-  context.subscriptions.push(runScriptCommand);
+  context.subscriptions.push(runPipelineCommand);
 
   // Register DAG visualizer command - opens dashboard in browser
   const dagVisualizerCommand = vscode.commands.registerCommand(
