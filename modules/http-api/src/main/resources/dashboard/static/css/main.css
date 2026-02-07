@@ -511,30 +511,76 @@ html, body {
 
 .editor-body {
     flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     position: relative;
+    background-color: var(--bg-primary);
 }
 
-.code-textarea {
+/* Code editor with syntax highlighting overlay */
+.code-editor-wrapper {
+    position: relative;
     flex: 1;
-    width: 100%;
+    overflow: auto;
+}
+
+.code-highlight {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
     padding: var(--spacing-md);
     border: none;
-    outline: none;
-    resize: none;
-    background-color: var(--bg-primary);
+    background-color: transparent;
     color: var(--text-primary);
     font-family: 'SF Mono', 'Consolas', monospace;
     font-size: 13px;
     line-height: 1.6;
     tab-size: 4;
     -moz-tab-size: 4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.code-textarea {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding: var(--spacing-md);
+    border: none;
+    outline: none;
+    resize: none;
+    background-color: transparent;
+    color: transparent;
+    caret-color: var(--text-primary);
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    z-index: 1;
 }
 
 .code-textarea::placeholder {
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* Syntax highlighting colors */
+.hl-keyword { color: #ff7b72; }
+.hl-type { color: #79c0ff; }
+.hl-string { color: #a5d6ff; }
+.hl-number { color: #ffa657; }
+.hl-comment { color: #8b949e; font-style: italic; }
+.hl-operator { color: #ff7b72; }
+.hl-function { color: #d2a8ff; }
+.hl-variable { color: #ffa657; }
+.hl-annotation { color: #7ee787; }
 
 .editor-error-banner {
     display: none;

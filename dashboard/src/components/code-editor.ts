@@ -15,6 +15,7 @@ class CodeEditor {
     // DOM elements (bound in init)
     private container: HTMLElement | null;
     private textarea: HTMLTextAreaElement | null;
+    private highlightPre: HTMLPreElement | null;
     private errorBanner: HTMLElement | null;
     private toggleBtn: HTMLElement | null;
     private newScriptBtn: HTMLElement | null;
@@ -35,13 +36,14 @@ class CodeEditor {
         // DOM elements (bound in init)
         this.container = null;
         this.textarea = null;
+        this.highlightPre = null;
         this.errorBanner = null;
         this.toggleBtn = null;
         this.newScriptBtn = null;
         this.statusEl = null;
 
         // State
-        this.expanded = false;
+        this.expanded = true;  // Start expanded by default
         this.previewTimer = null;
         this.previewCounter = 0;
         this.DEBOUNCE_MS = 400;
@@ -53,6 +55,7 @@ class CodeEditor {
     init(): void {
         this.container = document.getElementById(this.containerId);
         this.textarea = document.getElementById(this.textareaId) as HTMLTextAreaElement | null;
+        this.highlightPre = document.getElementById('code-highlight') as HTMLPreElement | null;
         this.errorBanner = document.getElementById(this.errorBannerId);
         this.toggleBtn = document.getElementById('editor-toggle-btn');
         this.newScriptBtn = document.getElementById('new-script-btn');
@@ -66,8 +69,14 @@ class CodeEditor {
         // New script button
         this.newScriptBtn?.addEventListener('click', () => this.newScript());
 
-        // Live preview on input
-        this.textarea.addEventListener('input', () => this.schedulePreview());
+        // Live preview on input with syntax highlighting
+        this.textarea.addEventListener('input', () => {
+            this.updateHighlighting();
+            this.schedulePreview();
+        });
+
+        // Sync scroll between textarea and highlight overlay
+        this.textarea.addEventListener('scroll', () => this.syncScroll());
 
         // Tab key inserts spaces instead of changing focus
         this.textarea.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -79,9 +88,13 @@ class CodeEditor {
                 const value = ta.value;
                 ta.value = value.substring(0, start) + '    ' + value.substring(end);
                 ta.selectionStart = ta.selectionEnd = start + 4;
+                this.updateHighlighting();
                 this.schedulePreview();
             }
         });
+
+        // Initial highlighting
+        this.updateHighlighting();
     }
 
     /**
@@ -90,6 +103,7 @@ class CodeEditor {
     loadSource(source: string): void {
         if (!this.textarea) return;
         this.textarea.value = source || '';
+        this.updateHighlighting();
         this.clearErrors();
     }
 
@@ -255,6 +269,69 @@ class CodeEditor {
         const div = document.createElement('div');
         div.textContent = String(text);
         return div.innerHTML;
+    }
+
+    /**
+     * Sync scroll position between textarea and highlight overlay
+     */
+    private syncScroll(): void {
+        if (!this.textarea || !this.highlightPre) return;
+        this.highlightPre.scrollTop = this.textarea.scrollTop;
+        this.highlightPre.scrollLeft = this.textarea.scrollLeft;
+    }
+
+    /**
+     * Update syntax highlighting in the overlay
+     */
+    private updateHighlighting(): void {
+        if (!this.textarea || !this.highlightPre) return;
+        const code = this.textarea.value;
+        this.highlightPre.innerHTML = this.highlightCode(code);
+    }
+
+    /**
+     * Apply syntax highlighting to constellation-lang code
+     */
+    private highlightCode(code: string): string {
+        if (!code) return '';
+
+        // Escape HTML first
+        let html = this.escapeHtml(code);
+
+        // Comments (# to end of line)
+        html = html.replace(/(#[^\n]*)/g, '<span class="hl-comment">$1</span>');
+
+        // Strings (double-quoted, handling escapes)
+        html = html.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)/g, '<span class="hl-string">$1</span>');
+
+        // Annotations (@example, @description, etc.)
+        html = html.replace(/(@\w+)/g, '<span class="hl-annotation">$1</span>');
+
+        // Keywords
+        const keywords = ['in', 'out', 'type', 'match', 'if', 'else', 'branch', 'otherwise', 'when', 'and', 'or', 'not', 'with', 'use'];
+        const keywordPattern = new RegExp(`\\b(${keywords.join('|')})\\b`, 'g');
+        html = html.replace(keywordPattern, '<span class="hl-keyword">$1</span>');
+
+        // Built-in types
+        const types = ['String', 'Int', 'Float', 'Boolean', 'List', 'Optional', 'Candidates'];
+        const typePattern = new RegExp(`\\b(${types.join('|')})\\b`, 'g');
+        html = html.replace(typePattern, '<span class="hl-type">$1</span>');
+
+        // Numbers (integers and floats)
+        html = html.replace(/\b(\d+\.?\d*)\b/g, '<span class="hl-number">$1</span>');
+
+        // Function calls (PascalCase identifiers followed by parenthesis)
+        html = html.replace(/\b([A-Z][a-zA-Z0-9]*)\s*\(/g, '<span class="hl-function">$1</span>(');
+
+        // Operators
+        html = html.replace(/(\||\+|->|=&gt;|&lt;|&gt;|==|!=|&lt;=|&gt;=|\?\?)/g, '<span class="hl-operator">$1</span>');
+
+        // Add trailing newline to match textarea behavior
+        if (code.endsWith('\n')) {
+            html += '\n';
+        }
+
+        return html;
     }
 }
 

@@ -94,7 +94,7 @@
                         </div>
                         <div class="editor-controls">
                             <span id="editor-status" class="editor-status"></span>
-                            <button id="editor-toggle-btn" class="layout-btn">Edit</button>
+                            <button id="editor-toggle-btn" class="layout-btn">Hide</button>
                             <span class="separator"></span>
                             <h3 class="dag-label">DAG Visualization</h3>
                             <button id="layout-tb" class="layout-btn active" title="Top to Bottom">TB</button>
@@ -107,13 +107,16 @@
                     </div>
 
                     <!-- Editor + DAG Split -->
-                    <div class="editor-dag-split editor-collapsed" id="editor-dag-split">
+                    <div class="editor-dag-split" id="editor-dag-split">
                         <!-- Code Editor (left) -->
-                        <div class="editor-container collapsed" id="editor-container">
+                        <div class="editor-container expanded" id="editor-container">
                             <div class="editor-body">
-                                <textarea id="code-editor-textarea" class="code-textarea"
-                                          spellcheck="false" autocomplete="off"
-                                          placeholder="Write constellation-lang code here..."></textarea>
+                                <div class="code-editor-wrapper">
+                                    <pre id="code-highlight" class="code-highlight" aria-hidden="true"></pre>
+                                    <textarea id="code-editor-textarea" class="code-textarea"
+                                              spellcheck="false" autocomplete="off"
+                                              placeholder="Write constellation-lang code here..."></textarea>
+                                </div>
                                 <div id="editor-error-banner" class="editor-error-banner"></div>
                             </div>
                         </div>
