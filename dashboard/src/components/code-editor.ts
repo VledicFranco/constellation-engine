@@ -94,6 +94,39 @@ class CodeEditor {
     }
 
     /**
+     * Insert text at the current cursor position
+     */
+    insertText(text: string): void {
+        if (!this.textarea) return;
+        const start = this.textarea.selectionStart;
+        const end = this.textarea.selectionEnd;
+        const value = this.textarea.value;
+        this.textarea.value = value.substring(0, start) + text + value.substring(end);
+        this.textarea.selectionStart = this.textarea.selectionEnd = start + text.length;
+        this.textarea.focus();
+        this.updateHighlighting();
+        this.schedulePreview();
+    }
+
+    /**
+     * Move cursor to a specific line and column
+     */
+    gotoLine(line: number, column: number = 1): void {
+        if (!this.textarea) return;
+        const lines = this.textarea.value.split('\n');
+        let pos = 0;
+        for (let i = 0; i < line - 1 && i < lines.length; i++) {
+            pos += lines[i].length + 1; // +1 for newline
+        }
+        pos += Math.min(column - 1, (lines[line - 1] || '').length);
+        this.textarea.selectionStart = this.textarea.selectionEnd = pos;
+        this.textarea.focus();
+        // Scroll the textarea to show the cursor
+        const lineHeight = 21; // Approximate line height in pixels
+        this.textarea.scrollTop = Math.max(0, (line - 5) * lineHeight);
+    }
+
+    /**
      * Schedule a debounced preview compilation
      */
     private schedulePreview(): void {
@@ -179,6 +212,12 @@ class CodeEditor {
             `<div class="editor-error-item">${this.escapeHtml(e)}</div>`
         ).join('');
         this.errorBanner.classList.add('visible');
+
+        // Also notify React error panel
+        const reactBridge = (window as Window & { reactBridge?: { setCompileErrorsFromStrings?: (errors: string[]) => void } }).reactBridge;
+        if (reactBridge?.setCompileErrorsFromStrings) {
+            reactBridge.setCompileErrorsFromStrings(errors);
+        }
     }
 
     /**
@@ -188,6 +227,12 @@ class CodeEditor {
         if (!this.errorBanner) return;
         this.errorBanner.innerHTML = '';
         this.errorBanner.classList.remove('visible');
+
+        // Also clear React error panel
+        const reactBridge = (window as Window & { reactBridge?: { clearCompileErrors?: () => void } }).reactBridge;
+        if (reactBridge?.clearCompileErrors) {
+            reactBridge.clearCompileErrors();
+        }
     }
 
     /**
@@ -273,5 +318,8 @@ class CodeEditor {
     }
 }
 
-// Export for use in main.js
+// Export as ES module
+export { CodeEditor };
+
+// Also assign to window for backward compatibility
 (window as Window).CodeEditor = CodeEditor;

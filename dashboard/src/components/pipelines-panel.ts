@@ -946,5 +946,8 @@ class PipelinesPanel {
     }
 }
 
-// Export for use in main.js
+// Export as ES module
+export { PipelinesPanel };
+
+// Also assign to window for backward compatibility
 (window as Window).PipelinesPanel = PipelinesPanel;

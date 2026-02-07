@@ -2,13 +2,33 @@
   "name": "constellation-dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "Constellation Engine Dashboard (TypeScript sources)",
+  "type": "module",
+  "description": "Constellation Engine Dashboard with Vite + React + Zustand",
   "scripts": {
-    "build": "tsc",
+    "dev": "vite",
+    "build": "vite build",
+    "build:legacy": "tsc",
     "watch": "tsc --watch",
-    "clean": "tsc --build --clean"
+    "clean": "tsc --build --clean",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "@testing-library/react": "^14.1.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "@vitest/ui": "^1.2.0",
+    "jsdom": "^28.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
   }
 }

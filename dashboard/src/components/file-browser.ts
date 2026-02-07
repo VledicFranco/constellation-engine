@@ -231,5 +231,8 @@ class FileBrowser {
     }
 }
 
-// Export for use in main.js
+// Export as ES module
+export { FileBrowser };
+
+// Also assign to window for backward compatibility
 (window as Window).FileBrowser = FileBrowser;

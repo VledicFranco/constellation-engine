@@ -615,5 +615,8 @@ class DagVisualizer {
     }
 }
 
-// Export for use in main.js
+// Export as ES module
+export { DagVisualizer };
+
+// Also assign to window for backward compatibility
 (window as Window).DagVisualizer = DagVisualizer;

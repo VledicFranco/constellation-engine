@@ -2,7 +2,27 @@
  * Constellation Dashboard - Main Application
  *
  * Wires together all components and handles navigation.
+ * Integrates React components for new IDE features.
  */
+
+// Import styles for Vite bundling
+import './styles/main.css';
+
+// React imports
+import { createRoot, Root } from 'react-dom/client';
+import { createElement } from 'react';
+import { App } from './App.js';
+import type { NodeValue } from './components/ValueInspector.js';
+
+// Import legacy components (they self-register on window)
+import { FileBrowser } from './components/file-browser.js';
+import { DagVisualizer } from './components/dag-visualizer.js';
+import { ExecutionPanel } from './components/execution-panel.js';
+import { CodeEditor } from './components/code-editor.js';
+import { PipelinesPanel } from './components/pipelines-panel.js';
+
+// React root for IDE features
+let reactRoot: Root | null = null;
 
 class ConstellationDashboard {
     // Components
@@ -15,7 +35,7 @@ class ConstellationDashboard {
     // State
     private currentView: 'scripts' | 'pipelines' | 'history';
     private currentScriptPath: string | null;
-    private currentDagVizIR: DagVizIR | null;
+    private _currentDagVizIR: DagVizIR | null; // Prefixed with _ to indicate intentionally unused for now
 
     // DOM elements
     private elements: DashboardElements;
@@ -31,7 +51,7 @@ class ConstellationDashboard {
         // State
         this.currentView = 'scripts';
         this.currentScriptPath = null;
-        this.currentDagVizIR = null;
+        this._currentDagVizIR = null;
 
         // DOM elements
         this.elements = {
@@ -64,6 +84,9 @@ class ConstellationDashboard {
         this.showLoading('Initializing...');
 
         try {
+            // Initialize React for new IDE features
+            this.initReact();
+
             // Initialize components
             this.initFileBrowser();
             this.initDagVisualizer();
@@ -89,6 +112,50 @@ class ConstellationDashboard {
             this.hideLoading();
             this.setStatus('Initialization failed');
         }
+    }
+
+    /**
+     * Initialize React for new IDE features
+     */
+    private initReact(): void {
+        const reactRootElement = document.getElementById('react-root');
+        if (!reactRootElement) {
+            console.warn('React root element not found');
+            return;
+        }
+
+        reactRoot = createRoot(reactRootElement);
+
+        // Create React app with bridge callbacks
+        const appProps = {
+            onInsertCode: (code: string) => {
+                if (this.codeEditor) {
+                    this.codeEditor.insertText(code);
+                }
+            },
+            onGotoLine: (line: number, column?: number) => {
+                if (this.codeEditor) {
+                    this.codeEditor.gotoLine(line, column);
+                }
+            },
+            onLoadPreset: (inputs: Record<string, unknown>) => {
+                if (this.executionPanel) {
+                    this.executionPanel.loadInputValues(inputs);
+                }
+            },
+            onSavePreset: (name: string) => {
+                if (this.executionPanel) {
+                    const values = this.executionPanel.getInputValues();
+                    // The React component handles storage, we just need to get current values
+                    const reactBridge = (window as Window & { reactBridge?: { addPreset?: (name: string, inputs: Record<string, unknown>) => void } }).reactBridge;
+                    if (reactBridge?.addPreset) {
+                        reactBridge.addPreset(name, values);
+                    }
+                }
+            },
+        };
+
+        reactRoot.render(createElement(App, appProps));
     }
 
     /**
@@ -196,11 +263,11 @@ class ConstellationDashboard {
     private handleLivePreview(dagVizIR: DagVizIR | null, errors: string[], inputs: InputParam[]): void {
         if (dagVizIR) {
             this.dagVisualizer!.render(dagVizIR);
-            this.currentDagVizIR = dagVizIR;
+            this._currentDagVizIR = dagVizIR;
         } else if (!errors || errors.length === 0) {
             // Empty source -- clear the DAG
             this.dagVisualizer!.clear();
-            this.currentDagVizIR = null;
+            this._currentDagVizIR = null;
         }
 
         if (inputs && inputs.length > 0) {
@@ -363,6 +430,12 @@ class ConstellationDashboard {
             this.elements.currentFile.textContent = path;
             this.elements.runBtn.disabled = false;
 
+            // Notify React of script path change (for presets)
+            const reactBridge = (window as Window & { reactBridge?: { setCurrentScriptPath?: (path: string) => void } }).reactBridge;
+            if (reactBridge?.setCurrentScriptPath) {
+                reactBridge.setCurrentScriptPath(path);
+            }
+
             // Load script metadata
             const scriptData = await this.executionPanel!.loadScript(path);
 
@@ -460,6 +533,19 @@ class ConstellationDashboard {
             return;
         }
 
+        // Also update React's ValueInspector
+        const reactBridge = (window as Window & { reactBridge?: { setSelectedNodeValue?: (value: NodeValue | null) => void } }).reactBridge;
+        if (reactBridge?.setSelectedNodeValue) {
+            reactBridge.setSelectedNodeValue({
+                nodeId: nodeData.label,
+                nodeName: nodeData.label,
+                status: nodeData.status?.toLowerCase() as 'pending' | 'running' | 'completed' | 'failed' || 'pending',
+                value: nodeData.value,
+                error: nodeData.error,
+                durationMs: nodeData.durationMs,
+            });
+        }
+
         const kindClass = (nodeData.kind || 'default').toLowerCase();
 
         this.elements.nodeDetails.innerHTML = `
@@ -511,6 +597,12 @@ class ConstellationDashboard {
         this.elements.nodeDetails.innerHTML = '<p class="placeholder-text">Click a node to see details</p>';
         this.elements.nodeDetailsPanel.style.display = 'none';
         this.dagVisualizer!.deselectAll();
+
+        // Also clear React's ValueInspector
+        const reactBridge = (window as Window & { reactBridge?: { setSelectedNodeValue?: (value: NodeValue | null) => void } }).reactBridge;
+        if (reactBridge?.setSelectedNodeValue) {
+            reactBridge.setSelectedNodeValue(null);
+        }
     }
 
     /**

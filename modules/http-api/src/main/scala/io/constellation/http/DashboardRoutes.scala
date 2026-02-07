@@ -53,7 +53,7 @@ class DashboardRoutes(
     case GET -> Root / "dashboard" =>
       serveResource("dashboard/index.html", MediaType.text.html)
 
-    // Serve dashboard static files
+    // Serve dashboard static files (both /dashboard/static/* and /static/* paths)
     case GET -> Root / "dashboard" / "static" / "css" / file =>
       serveResource(s"dashboard/static/css/$file", MediaType.text.css)
 
@@ -61,6 +61,16 @@ class DashboardRoutes(
       serveResource(s"dashboard/static/js/$file", MediaType.application.javascript)
 
     case GET -> Root / "dashboard" / "static" / "js" / "components" / file =>
+      serveResource(s"dashboard/static/js/components/$file", MediaType.application.javascript)
+
+    // Also serve at /static/* for Vite-generated HTML references
+    case GET -> Root / "static" / "css" / file =>
+      serveResource(s"dashboard/static/css/$file", MediaType.text.css)
+
+    case GET -> Root / "static" / "js" / file =>
+      serveResource(s"dashboard/static/js/$file", MediaType.application.javascript)
+
+    case GET -> Root / "static" / "js" / "components" / file =>
       serveResource(s"dashboard/static/js/components/$file", MediaType.application.javascript)
 
     // ========================================
@@ -193,6 +203,26 @@ class DashboardRoutes(
             storageStats = stats
           )
         )
+      } yield response
+
+    // ========================================
+    // Modules API
+    // ========================================
+
+    // List all available modules
+    case GET -> Root / "api" / "v1" / "modules" =>
+      for {
+        modules <- constellation.getModules
+        moduleInfos = modules.map { spec =>
+          ApiModels.ModuleInfo(
+            name = spec.name,
+            description = spec.description,
+            version = s"${spec.majorVersion}.${spec.minorVersion}",
+            inputs = spec.consumes.map { case (k, v) => k -> v.toString },
+            outputs = spec.produces.map { case (k, v) => k -> v.toString }
+          )
+        }
+        response <- Ok(ApiModels.ModuleListResponse(moduleInfos))
       } yield response
   }
 

@@ -4,6 +4,9 @@
  * Handles input forms, execution results, and execution history.
  */
 
+import type { DagVisualizer } from './dag-visualizer.js';
+import { startExecutionWithVisualization } from '../hooks/useExecutionVisualization.js';
+
 class ExecutionPanel {
     private inputsFormId: string;
     private outputsDisplayId: string;
@@ -137,7 +140,7 @@ class ExecutionPanel {
     /**
      * Get input values from the form
      */
-    private getInputValues(): Record<string, unknown> {
+    getInputValues(): Record<string, unknown> {
         const values: Record<string, unknown> = {};
 
         this.currentInputs.forEach(input => {
@@ -170,11 +173,43 @@ class ExecutionPanel {
     }
 
     /**
+     * Load input values from a preset
+     */
+    loadInputValues(values: Record<string, unknown>): void {
+        this.currentInputs.forEach(input => {
+            const element = document.getElementById(`input-${input.name}`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+            if (!element) return;
+
+            const value = values[input.name];
+            if (value === undefined || value === null) return;
+
+            const type = input.paramType.toLowerCase();
+
+            if (type === 'boolean' || type === 'bool') {
+                element.value = String(value);
+            } else if (typeof value === 'object') {
+                element.value = JSON.stringify(value);
+            } else {
+                element.value = String(value);
+            }
+        });
+    }
+
+    // Track cleanup function for live visualization
+    private cleanupVisualization: (() => void) | null = null;
+
+    /**
      * Execute the current script
      */
     async execute(scriptPath: string, dagVisualizer: DagVisualizer): Promise<DashboardExecuteResponse> {
         const outputsDisplay = document.getElementById(this.outputsDisplayId)!;
         const inputs = this.getInputValues();
+
+        // Cleanup any previous visualization subscription
+        if (this.cleanupVisualization) {
+            this.cleanupVisualization();
+            this.cleanupVisualization = null;
+        }
 
         outputsDisplay.innerHTML = `
             <div class="loading-indicator">
@@ -197,6 +232,14 @@ class ExecutionPanel {
             const result: DashboardExecuteResponse = await response.json();
 
             if (result.success) {
+                // Start live visualization if we have an execution ID
+                if (result.executionId && dagVisualizer) {
+                    this.cleanupVisualization = startExecutionWithVisualization(
+                        result.executionId,
+                        dagVisualizer
+                    );
+                }
+
                 this.displaySuccess(outputsDisplay, result);
 
                 // Update DAG with execution state if available
@@ -472,5 +515,8 @@ class ExecutionPanel {
     }
 }
 
-// Export for use in main.js
+// Export as ES module
+export { ExecutionPanel };
+
+// Also assign to window for backward compatibility
 (window as Window).ExecutionPanel = ExecutionPanel;

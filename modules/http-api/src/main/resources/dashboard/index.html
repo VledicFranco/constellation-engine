@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Constellation Dashboard</title>
-    <link rel="stylesheet" href="/dashboard/static/css/main.css">
+    <title>Constellation Dashboard</title>
     <!-- Cytoscape.js for DAG visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
     <!-- Dagre for hierarchical layouts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+  <script type="module" crossorigin src="/static/js/main.js"></script>
+  <link rel="modulepreload" crossorigin href="/static/js/zustand-BwY1I4TT.js">
+  <link rel="modulepreload" crossorigin href="/static/js/react-Bi0AA0xA.js">
+  <link rel="stylesheet" crossorigin href="/static/css/main.css">
 </head>
 <body>
+    <!-- Global Error Banner Mount -->
+    <div id="error-banner-mount"></div>
+
     <div id="app">
         <!-- Header -->
         <header class="app-header">
@@ -32,6 +38,11 @@
                 <button class="nav-btn" data-view="history">History</button>
             </nav>
             <div class="header-actions">
+                <button id="module-browser-btn" class="icon-btn" title="Module Browser">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                    </svg>
+                </button>
                 <button id="refresh-btn" class="icon-btn" title="Refresh">
                     <svg viewBox="0 0 24 24" width="20" height="20">
                         <path fill="currentColor" d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -73,7 +84,10 @@
                     <!-- Input/Output Section -->
                     <div class="io-container">
                         <div class="io-panel inputs-panel">
-                            <h3>Inputs</h3>
+                            <div class="io-panel-header">
+                                <h3>Inputs</h3>
+                                <div id="input-presets-mount"></div>
+                            </div>
                             <div id="inputs-form" class="inputs-form">
                                 <p class="placeholder-text">Load a script to see inputs</p>
                             </div>
@@ -115,6 +129,7 @@
                                               placeholder="Write constellation-lang code here..."></textarea>
                                 </div>
                                 <div id="editor-error-banner" class="editor-error-banner"></div>
+                                <div id="error-panel-mount"></div>
                             </div>
                         </div>
 
@@ -220,12 +235,9 @@
     <!-- DAG Tooltip (positioned fixed, managed by dag-visualizer.js) -->
     <div id="dag-tooltip" class="dag-tooltip"></div>
 
-    <!-- Scripts -->
-    <script src="/dashboard/static/js/components/file-browser.js"></script>
-    <script src="/dashboard/static/js/components/dag-visualizer.js"></script>
-    <script src="/dashboard/static/js/components/execution-panel.js"></script>
-    <script src="/dashboard/static/js/components/code-editor.js"></script>
-    <script src="/dashboard/static/js/components/pipelines-panel.js"></script>
-    <script src="/dashboard/static/js/main.js"></script>
+    <!-- React root for IDE features -->
+    <div id="react-root"></div>
+
+    <!-- Vite entry point -->
 </body>
 </html>
