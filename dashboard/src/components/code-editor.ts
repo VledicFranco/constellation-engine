@@ -17,12 +17,10 @@ class CodeEditor {
     private textarea: HTMLTextAreaElement | null;
     private highlightPre: HTMLPreElement | null;
     private errorBanner: HTMLElement | null;
-    private toggleBtn: HTMLElement | null;
     private newScriptBtn: HTMLElement | null;
     private statusEl: HTMLElement | null;
 
     // State
-    private expanded: boolean;
     private previewTimer: ReturnType<typeof setTimeout> | null;
     private previewCounter: number;
     private readonly DEBOUNCE_MS: number;
@@ -38,12 +36,10 @@ class CodeEditor {
         this.textarea = null;
         this.highlightPre = null;
         this.errorBanner = null;
-        this.toggleBtn = null;
         this.newScriptBtn = null;
         this.statusEl = null;
 
         // State
-        this.expanded = true;  // Start expanded by default
         this.previewTimer = null;
         this.previewCounter = 0;
         this.DEBOUNCE_MS = 400;
@@ -57,14 +53,10 @@ class CodeEditor {
         this.textarea = document.getElementById(this.textareaId) as HTMLTextAreaElement | null;
         this.highlightPre = document.getElementById('code-highlight') as HTMLPreElement | null;
         this.errorBanner = document.getElementById(this.errorBannerId);
-        this.toggleBtn = document.getElementById('editor-toggle-btn');
         this.newScriptBtn = document.getElementById('new-script-btn');
         this.statusEl = document.getElementById('editor-status');
 
         if (!this.container || !this.textarea) return;
-
-        // Toggle expand/collapse
-        this.toggleBtn?.addEventListener('click', () => this.toggle());
 
         // New script button
         this.newScriptBtn?.addEventListener('click', () => this.newScript());
@@ -108,49 +100,11 @@ class CodeEditor {
     }
 
     /**
-     * Expand the editor body
-     */
-    expand(): void {
-        if (!this.container) return;
-        this.expanded = true;
-        this.container.classList.remove('collapsed');
-        this.container.classList.add('expanded');
-        if (this.toggleBtn) this.toggleBtn.textContent = 'Hide';
-        const split = document.getElementById('editor-dag-split');
-        if (split) split.classList.remove('editor-collapsed');
-    }
-
-    /**
-     * Collapse the editor body
-     */
-    collapse(): void {
-        if (!this.container) return;
-        this.expanded = false;
-        this.container.classList.remove('expanded');
-        this.container.classList.add('collapsed');
-        if (this.toggleBtn) this.toggleBtn.textContent = 'Edit';
-        const split = document.getElementById('editor-dag-split');
-        if (split) split.classList.add('editor-collapsed');
-    }
-
-    /**
-     * Toggle between expanded and collapsed
-     */
-    toggle(): void {
-        if (this.expanded) {
-            this.collapse();
-        } else {
-            this.expand();
-        }
-    }
-
-    /**
      * Create a new script with starter template
      */
     newScript(): void {
         const template = '# New script\nin text: String\n\nresult = Uppercase(text)\n\nout result\n';
         this.loadSource(template);
-        this.expand();
         this.textarea?.focus();
         this.schedulePreview();
     }

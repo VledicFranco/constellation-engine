@@ -188,17 +188,6 @@ class ConstellationDashboard {
             // Notify Cytoscape to recalculate after resize
             this.dagVisualizer?.fit();
         });
-
-        // Refit DAG when editor is toggled (container size changes)
-        const toggleBtn = document.getElementById('editor-toggle-btn');
-        toggleBtn?.addEventListener('click', () => {
-            // Wait for layout reflow before refitting
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.dagVisualizer?.fit();
-                });
-            });
-        });
     }
 
     /**
