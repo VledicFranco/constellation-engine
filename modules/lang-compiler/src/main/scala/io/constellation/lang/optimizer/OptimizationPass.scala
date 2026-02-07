@@ -97,6 +97,8 @@ trait OptimizationPass {
         n.copy(source = replace(n.source))
       case n: IRNode.ListLiteralNode =>
         n.copy(elements = n.elements.map(replace))
+      case n: IRNode.RecordLitNode =>
+        n.copy(fields = n.fields.map { case (k, v) => k -> replace(v) })
       case n: IRNode.MatchNode =>
         n.copy(
           scrutinee = replace(n.scrutinee),

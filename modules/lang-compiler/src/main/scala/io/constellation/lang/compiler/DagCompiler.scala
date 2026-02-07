@@ -170,6 +170,9 @@ object DagCompiler {
       case IRNode.ListLiteralNode(id, elements, elementType, _) =>
         processListLiteralNode(id, elements, elementType)
 
+      case IRNode.RecordLitNode(id, fields, outputType, _) =>
+        processRecordLitNode(id, fields, outputType)
+
       case IRNode.MatchNode(id, scrutinee, cases, resultType, _) =>
         processMatchNode(id, scrutinee, cases, resultType)
     }
@@ -847,6 +850,36 @@ object DagCompiler {
           cType = outputCType,
           inlineTransform = Some(InlineTransform.ListLiteralTransform(elements.size)),
           transformInputs = elemDataIds.toMap
+        ))
+        nodeOutputs = nodeOutputs + (id -> outputDataId)
+      }
+    }
+
+    private def processRecordLitNode(
+        id: UUID,
+        fields: List[(String, UUID)],
+        outputType: SemanticType
+    ): Either[DagCompilerError, Unit] = {
+      val outputDataId = UUID.randomUUID()
+
+      // Get data IDs for all field value expressions
+      val fieldDataIdsResult = fields.traverse { case (fieldName, fieldNodeId) =>
+        getNodeOutput(fieldNodeId, s"field '$fieldName' in record literal").map { dataId =>
+          (fieldName, dataId)
+        }
+      }
+
+      fieldDataIdsResult.map { fieldDataIds =>
+        val outputCType = SemanticType.toCType(outputType)
+        val fieldNames  = fields.map(_._1)
+
+        // Create data node with inline transform
+        dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+          name = s"record_${id.toString.take(8)}_output",
+          nicknames = Map.empty,
+          cType = outputCType,
+          inlineTransform = Some(InlineTransform.RecordBuildTransform(fieldNames)),
+          transformInputs = fieldDataIds.toMap
         ))
         nodeOutputs = nodeOutputs + (id -> outputDataId)
       }

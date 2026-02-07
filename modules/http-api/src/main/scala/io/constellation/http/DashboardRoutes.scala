@@ -444,6 +444,12 @@ class DashboardRoutes(
     // Handle quoted strings
     if trimmed.startsWith("\"") && trimmed.endsWith("\"") then
       Json.fromString(trimmed.substring(1, trimmed.length - 1))
+    // Handle record literals: { field: value, ... }
+    else if trimmed.startsWith("{") && trimmed.endsWith("}") then
+      parseRecordLiteral(trimmed)
+    // Handle list literals: [ value, ... ]
+    else if trimmed.startsWith("[") && trimmed.endsWith("]") then
+      parseListLiteral(trimmed)
     // Handle numbers
     else if trimmed.matches("-?\\d+\\.\\d+") then Json.fromDoubleOrNull(trimmed.toDouble)
     else if trimmed.matches("-?\\d+") then
@@ -457,6 +463,62 @@ class DashboardRoutes(
     else if trimmed == "true" || trimmed == "false" then Json.fromBoolean(trimmed.toBoolean)
     // Default to string
     else Json.fromString(trimmed)
+  }
+
+  /** Parse a constellation-lang record literal to JSON.
+    * Converts `{ name: "Alice", age: 30 }` to `{"name": "Alice", "age": 30}`
+    */
+  private def parseRecordLiteral(raw: String): Json = {
+    val inner = raw.trim.drop(1).dropRight(1).trim // Remove { }
+    if inner.isEmpty then return Json.obj()
+
+    // Split by commas (but not commas inside nested structures)
+    val fields = splitTopLevelCommas(inner)
+    val pairs = fields.flatMap { field =>
+      val colonIdx = field.indexOf(':')
+      if colonIdx > 0 then {
+        val name = field.substring(0, colonIdx).trim
+        val value = field.substring(colonIdx + 1).trim
+        Some(name -> parseExampleValue(value, "Any"))
+      } else None
+    }
+    Json.obj(pairs: _*)
+  }
+
+  /** Parse a constellation-lang list literal to JSON.
+    * Converts `[1, 2, 3]` to `[1, 2, 3]`
+    */
+  private def parseListLiteral(raw: String): Json = {
+    val inner = raw.trim.drop(1).dropRight(1).trim // Remove [ ]
+    if inner.isEmpty then return Json.arr()
+
+    val elements = splitTopLevelCommas(inner)
+    Json.arr(elements.map(e => parseExampleValue(e.trim, "Any")): _*)
+  }
+
+  /** Split a string by commas, but only at the top level (not inside nested { } or [ ]) */
+  private def splitTopLevelCommas(s: String): List[String] = {
+    val result = scala.collection.mutable.ListBuffer[String]()
+    val current = new StringBuilder
+    var depth = 0
+
+    for c <- s do {
+      c match {
+        case '{' | '[' =>
+          depth += 1
+          current.append(c)
+        case '}' | ']' =>
+          depth -= 1
+          current.append(c)
+        case ',' if depth == 0 =>
+          result += current.toString.trim
+          current.clear()
+        case _ =>
+          current.append(c)
+      }
+    }
+    if current.nonEmpty then result += current.toString.trim
+    result.toList
   }
 
   /** Execute a script and store the result */

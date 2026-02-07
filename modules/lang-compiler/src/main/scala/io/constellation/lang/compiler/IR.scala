@@ -246,6 +246,14 @@ object IRNode {
     def outputType: SemanticType = SemanticType.SList(elementType)
   }
 
+  /** A record literal node containing field name to value node mappings */
+  final case class RecordLitNode(
+      id: UUID,
+      fields: List[(String, UUID)], // fieldName -> fieldValueNodeId
+      outputType: SemanticType,
+      debugSpan: Option[Span] = None
+  ) extends IRNode
+
   /** Match expression node for structural pattern matching.
     * Evaluates patterns in order, returns first matching case's expression.
     */
@@ -337,6 +345,7 @@ final case class IRPipeline(
     case Some(IRNode.HigherOrderNode(_, _, source, _, _, _)) =>
       Set(source) // Lambda body nodes are evaluated separately per element
     case Some(IRNode.ListLiteralNode(_, elements, _, _)) => elements.toSet
+    case Some(IRNode.RecordLitNode(_, fields, _, _))     => fields.map(_._2).toSet
     case Some(IRNode.MatchNode(_, scrutinee, cases, _, _)) =>
       Set(scrutinee) ++ cases.map(_.bodyId).toSet
     case None => Set.empty

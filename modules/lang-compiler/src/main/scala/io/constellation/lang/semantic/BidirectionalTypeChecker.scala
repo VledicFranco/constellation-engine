@@ -270,6 +270,23 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         }
       }
 
+    case Expression.RecordLit(fields) =>
+      if fields.isEmpty then {
+        // Empty record literal: {}
+        TypedExpression.RecordLiteral(Nil, SRecord(Map.empty), span).validNel
+      } else {
+        fields
+          .traverse { case (fieldName, fieldExpr) =>
+            inferExpr(fieldExpr.value, fieldExpr.span, env, context).map { typedExpr =>
+              (fieldName, typedExpr)
+            }
+          }
+          .map { typedFields =>
+            val fieldTypes = typedFields.map { case (name, te) => name -> te.semanticType }.toMap
+            TypedExpression.RecordLiteral(typedFields, SRecord(fieldTypes), span)
+          }
+      }
+
     case Expression.Compare(left, op, right) =>
       (
         inferExpr(left.value, left.span, env, context),
@@ -409,6 +426,47 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
               .invalidNel
           }
       }
+
+    // Record literal: check fields against expected record type
+    case (Expression.RecordLit(fields), expected @ SRecord(expectedFields)) =>
+      // Check each field value against expected field type (if exists)
+      fields
+        .traverse { case (fieldName, fieldExpr) =>
+          expectedFields.get(fieldName) match {
+            case Some(expectedFieldType) =>
+              // Check field expression against expected type
+              checkExpr(fieldExpr.value, fieldExpr.span, env, Check(expectedFieldType), context)
+                .map(typedExpr => (fieldName, typedExpr))
+            case None =>
+              // Extra field - infer its type (record width subtyping allows extra fields)
+              inferExpr(fieldExpr.value, fieldExpr.span, env, context)
+                .map(typedExpr => (fieldName, typedExpr))
+          }
+        }
+        .andThen { typedFields =>
+          val actualFieldTypes = typedFields.map { case (name, te) => name -> te.semanticType }.toMap
+          val actualRecordType = SRecord(actualFieldTypes)
+          // Check that all required fields are present
+          val missingFields = expectedFields.keys.toSet -- actualFieldTypes.keys.toSet
+          if missingFields.nonEmpty then {
+            CompileError
+              .TypeError(
+                s"Record literal is missing required field(s): ${missingFields.mkString(", ")}",
+                Some(span)
+              )
+              .invalidNel
+          } else if Subtyping.isSubtype(actualRecordType, expected) then {
+            TypedExpression.RecordLiteral(typedFields, actualRecordType, span).validNel
+          } else {
+            CompileError
+              .TypeMismatch(
+                expected.prettyPrint,
+                actualRecordType.prettyPrint,
+                Some(span)
+              )
+              .invalidNel
+          }
+        }
 
     // Default: infer then check subtyping (subsumption rule)
     case _ =>

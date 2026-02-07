@@ -246,6 +246,18 @@ class SemanticTokenProvider {
           tokens ++= extractExpressionTokens(elem)
         }
 
+      case Expression.RecordLit(fields) =>
+        // Extract tokens from each field value expression
+        fields.foreach { case (_, fieldExpr) =>
+          tokens ++= extractExpressionTokens(fieldExpr)
+        }
+
+      case Expression.Match(scrutinee, cases) =>
+        tokens ++= extractExpressionTokens(scrutinee)
+        cases.foreach { matchCase =>
+          tokens ++= extractExpressionTokens(matchCase.body)
+        }
+
       case Expression.Compare(left, _, right) =>
         tokens ++= extractExpressionTokens(left)
         tokens ++= extractExpressionTokens(right)

@@ -208,6 +208,14 @@ object DagVizCompiler:
           typeSignature = s"List<${formatType(elementType)}>"
         )
 
+      case IRNode.RecordLitNode(_, fields, outputType, _) =>
+        VizNode(
+          id = id.toString,
+          kind = NodeKind.Literal,
+          label = s"{ ${fields.map(_._1).take(3).mkString(", ")}${if fields.length > 3 then ", ..." else ""} }",
+          typeSignature = formatType(outputType)
+        )
+
       case IRNode.MatchNode(_, _, cases, resultType, _) =>
         VizNode(
           id = id.toString,
@@ -236,6 +244,7 @@ object DagVizCompiler:
       case IRNode.StringInterpolationNode(_, _, _, _)        => SemanticType.SString
       case IRNode.HigherOrderNode(_, _, _, _, outputType, _) => outputType
       case IRNode.ListLiteralNode(_, _, elementType, _)      => SemanticType.SList(elementType)
+      case IRNode.RecordLitNode(_, _, outputType, _)         => outputType
       case IRNode.MatchNode(_, _, _, resultType, _)          => resultType
     }
 
@@ -385,6 +394,17 @@ object DagVizCompiler:
               elemId.toString,
               targetId.toString,
               Some(s"[$idx]"),
+              EdgeKind.Data
+            )
+          }
+
+        case IRNode.RecordLitNode(_, fields, _, _) =>
+          fields.map { case (fieldName, fieldNodeId) =>
+            VizEdge(
+              nextEdgeId(),
+              fieldNodeId.toString,
+              targetId.toString,
+              Some(fieldName),
               EdgeKind.Data
             )
           }

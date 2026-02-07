@@ -185,11 +185,13 @@ object JsonCValueConverter {
         }
 
       case CType.CUnion(structure) =>
-        // Expect format: {"tag": "...", "value": ...}
+        // Try format: {"tag": "...", "value": ...} first
+        // If that fails, try to auto-detect variant by matching fields
         json.asObject match {
           case Some(obj) =>
             (obj("tag"), obj("value")) match {
               case (Some(tagJson), Some(valueJson)) =>
+                // Tagged format
                 tagJson.asString match {
                   case Some(tag) =>
                     structure.get(tag) match {
@@ -209,7 +211,8 @@ object JsonCValueConverter {
                     Left(fieldError(path, "union tag must be a string"))
                 }
               case _ =>
-                Left(fieldError(path, "union must have 'tag' and 'value' fields"))
+                // No tag/value - try to auto-detect variant by matching record fields
+                tryAutoDetectUnionVariant(json, obj, structure, path)
             }
           case None =>
             Left(
@@ -224,6 +227,62 @@ object JsonCValueConverter {
         } else {
           jsonToCValue(json, innerType, path).map(v => CValue.CSome(v, innerType))
         }
+    }
+  }
+
+  /** Try to auto-detect which union variant a JSON object represents by matching its fields.
+    *
+    * For a union like `{ value: Int, status: String } | { error: String, code: Int }`,
+    * if the JSON is `{"value": 42, "status": "ok"}`, we match it to the first variant.
+    *
+    * @param json The JSON value
+    * @param obj The JSON object
+    * @param structure The union type structure (tag -> variant type)
+    * @param path The current path for error messages
+    * @return Either an error or the converted CValue
+    */
+  private def tryAutoDetectUnionVariant(
+      json: Json,
+      obj: io.circe.JsonObject,
+      structure: Map[String, CType],
+      path: String
+  ): Either[String, CValue] = {
+    val jsonKeys = obj.keys.toSet
+
+    // Find matching variants - a variant matches if the JSON has all required fields
+    val matches = structure.toList.flatMap { case (tag, variantType) =>
+      variantType match {
+        case CType.CProduct(fields) =>
+          val requiredKeys = fields.keySet
+          // Match if JSON contains all required fields (may have extra fields)
+          if requiredKeys.subsetOf(jsonKeys) then {
+            // Try to convert - if successful, this variant matches
+            jsonToCValue(json, variantType, path) match {
+              case Right(value) => Some((tag, value, requiredKeys.size))
+              case Left(_)      => None
+            }
+          } else None
+        case _ => None
+      }
+    }
+
+    matches match {
+      case Nil =>
+        Left(
+          fieldError(
+            path,
+            s"could not match fields to any union variant. " +
+              s"JSON keys: ${jsonKeys.mkString(", ")}. " +
+              s"Expected one of: ${structure.keys.mkString(", ")}"
+          )
+        )
+      case single :: Nil =>
+        // Exactly one match
+        Right(CValue.CUnion(single._2, structure, single._1))
+      case multiple =>
+        // Multiple matches - prefer the one with most matching fields (most specific)
+        val best = multiple.maxBy(_._3)
+        Right(CValue.CUnion(best._2, structure, best._1))
     }
   }
 

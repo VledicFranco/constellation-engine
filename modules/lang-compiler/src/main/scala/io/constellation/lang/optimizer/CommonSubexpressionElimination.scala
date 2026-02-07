@@ -119,6 +119,11 @@ object CommonSubexpressionElimination extends OptimizationPass {
     case IRNode.ListLiteralNode(_, elements, elementType, _) =>
       s"list:${elements.mkString(",")}:${elementType.prettyPrint}"
 
+    // Record literals
+    case IRNode.RecordLitNode(_, fields, outputType, _) =>
+      val fieldsSig = fields.map { case (k, v) => s"$k=$v" }.mkString(",")
+      s"record:$fieldsSig:${outputType.prettyPrint}"
+
     // Match nodes
     case IRNode.MatchNode(_, scrutinee, cases, resultType, _) =>
       val casesSig = cases.map(c => s"${c.bodyId}").mkString(",")

@@ -199,6 +199,15 @@ object TypedExpression {
       semanticType: SemanticType,
       span: Span
   ) extends TypedExpression
+
+  /** Record literal: { name: "Alice", age: 30 }
+    * Contains typed field expressions and the resulting record type.
+    */
+  final case class RecordLiteral(
+      fields: List[(String, TypedExpression)],
+      semanticType: SemanticType,
+      span: Span
+  ) extends TypedExpression
 }
 
 /** A single typed case in a match expression */
@@ -638,6 +647,22 @@ object TypeChecker {
             val elementType = Subtyping.commonType(typedElements.map(_.semanticType))
             TypedExpression.ListLiteral(typedElements, elementType, span).validNel
         }
+
+    case Expression.RecordLit(fields) =>
+      if fields.isEmpty then
+        // Empty record literal: {}
+        TypedExpression.RecordLiteral(Nil, SemanticType.SRecord(Map.empty), span).validNel
+      else
+        fields
+          .traverse { case (fieldName, fieldExpr) =>
+            checkExpression(fieldExpr.value, fieldExpr.span, env).map { typedExpr =>
+              (fieldName, typedExpr)
+            }
+          }
+          .map { typedFields =>
+            val fieldTypes = typedFields.map { case (name, te) => name -> te.semanticType }.toMap
+            TypedExpression.RecordLiteral(typedFields, SemanticType.SRecord(fieldTypes), span)
+          }
 
     case Expression.Compare(left, op, right) =>
       (checkExpression(left.value, left.span, env), checkExpression(right.value, right.span, env))

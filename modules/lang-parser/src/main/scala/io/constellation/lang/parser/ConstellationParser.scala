@@ -680,16 +680,28 @@ object ConstellationParser extends MemoizationSupport {
     (openBracket *> withSpan(P.defer(expression)).repSep0(comma) <* closeBracket)
       .map(elements => Expression.ListLit(elements.toList))
 
+  // Record literal field: fieldName: expression
+  private lazy val recordLitField: P[(String, Located[Expression])] =
+    (identifier ~ (colon *> withSpan(P.defer(expression))))
+      .map { case (id, expr) => (id, expr) }
+
+  // Record literal: { name: "Alice", age: 30 }
+  // Distinguished from record patterns by the colon after field name
+  private lazy val recordLit: P[Expression.RecordLit] =
+    (openBrace *> recordLitField.repSep0(comma) <* closeBrace)
+      .map(fields => Expression.RecordLit(fields.toList))
+
   // Optimized literal parsing using P.oneOf for efficient matching
   // Each literal type has distinctive starting characters
   private val literal: P[Expression] =
     P.oneOf(
       List(
-        interpolatedString, // starts with '"'
-        listLit,            // starts with '['
-        boolLit.backtrack,  // 'true' or 'false' - need backtrack for keyword prefix
-        floatLit.backtrack, // digits with '.' - try before intLit
-        intLit              // digits only
+        interpolatedString,  // starts with '"'
+        listLit,             // starts with '['
+        recordLit.backtrack, // starts with '{' - need backtrack to distinguish from other brace uses
+        boolLit.backtrack,   // 'true' or 'false' - need backtrack for keyword prefix
+        floatLit.backtrack,  // digits with '.' - try before intLit
+        intLit               // digits only
       )
     )
 

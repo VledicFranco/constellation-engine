@@ -319,4 +319,14 @@ object InlineTransform {
     override def apply(inputs: Map[String, Any]): Any =
       (0 until numElements).map(i => inputs(s"elem$i")).toList
   }
+
+  /** Record literal transform - assembles named field values into a record (Map).
+    *
+    * @param fieldNames
+    *   The ordered list of field names in the record
+    */
+  final case class RecordBuildTransform(fieldNames: List[String]) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any =
+      fieldNames.map(name => name -> inputs(name)).toMap
+  }
 }

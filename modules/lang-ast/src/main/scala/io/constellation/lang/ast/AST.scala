@@ -365,6 +365,9 @@ object Expression {
   /** List literal: [1, 2, 3] or ["a", "b", "c"] */
   final case class ListLit(elements: List[Located[Expression]]) extends Expression
 
+  /** Record literal: { name: "Alice", age: 30 } */
+  final case class RecordLit(fields: List[(String, Located[Expression])]) extends Expression
+
   /** Comparison expression: a == b, x < y, etc. */
   final case class Compare(
       left: Located[Expression],

@@ -250,12 +250,26 @@ class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
     result.left.exists(_.contains("invalid union tag 'invalid'")) shouldBe true
   }
 
-  it should "fail when Union is missing tag" in {
+  it should "fail when Union is missing tag and has no matching record variant" in {
+    // When tag is missing, we try to auto-detect by matching record fields.
+    // If no variant is a record type (or fields don't match), it fails.
     val structure = Map("str" -> CType.CString)
     val json      = Json.obj("value" -> Json.fromString("hello"))
     val result    = JsonCValueConverter.jsonToCValue(json, CType.CUnion(structure))
     result.isLeft shouldBe true
-    result.left.exists(_.contains("union must have 'tag' and 'value' fields")) shouldBe true
+    result.left.exists(_.contains("could not match fields to any union variant")) shouldBe true
+  }
+
+  it should "auto-detect union variant from record fields" in {
+    // When tag is missing but the JSON matches a record variant's fields, auto-detect it
+    val structure = Map(
+      "{ name: String }" -> CType.CProduct(Map("name" -> CType.CString)),
+      "{ age: Int }" -> CType.CProduct(Map("age" -> CType.CInt))
+    )
+    val json   = Json.obj("name" -> Json.fromString("Alice"))
+    val result = JsonCValueConverter.jsonToCValue(json, CType.CUnion(structure))
+    result.isRight shouldBe true
+    result.map(_.asInstanceOf[CValue.CUnion].tag) shouldBe Right("{ name: String }")
   }
 
   it should "fail when Union tag is not a string" in {

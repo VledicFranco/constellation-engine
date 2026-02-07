@@ -230,6 +230,18 @@ object IRGenerator {
       val node = IRNode.ListLiteralNode(id, elemIds, elementType, Some(span))
       (elemCtx.addNode(node), id)
 
+    case TypedExpression.RecordLiteral(fields, semanticType, span) =>
+      // Generate IR for all field expressions
+      val (fieldsCtx, fieldNodeIds) = fields.foldLeft((ctx, List.empty[(String, UUID)])) {
+        case ((currentCtx, ids), (fieldName, fieldExpr)) =>
+          val (newCtx, fieldId) = generateExpression(fieldExpr, currentCtx)
+          (newCtx, ids :+ (fieldName -> fieldId))
+      }
+
+      val id   = UUID.randomUUID()
+      val node = IRNode.RecordLitNode(id, fieldNodeIds, semanticType, Some(span))
+      (fieldsCtx.addNode(node), id)
+
     case TypedExpression.Lambda(params, body, funcType, span) =>
       // Lambdas shouldn't appear standalone - they should only appear as arguments
       // to higher-order functions, which are handled in FunctionCall case.

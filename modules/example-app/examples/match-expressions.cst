@@ -29,6 +29,11 @@ type ProcessResult = { output: String } | { failure: String }
 # Input Declarations
 # =============================================================================
 
+# Note: @example annotations with record literals are supported, but match
+# expressions on union types have a runtime bug that needs to be fixed.
+# Once fixed, you can add examples like:
+#   @example({ value: 42, status: "ok" })
+
 in apiResponse: ApiResult
 
 in userState: UserState
