@@ -3,6 +3,9 @@
 > **Path**: `docs/features/tooling/dashboard.md`
 > **Parent**: [tooling/](./README.md)
 
+> **Status: BETA**
+> The dashboard is currently in beta. Features are functional but may have rough edges. We welcome feedback and bug reports. Some advanced features (Monaco Editor, Performance Profiling) are experimental.
+
 Browser-based UI for browsing scripts, executing pipelines, and visualizing DAGs.
 
 ---
@@ -138,6 +141,24 @@ The right panel renders the pipeline graph using Cytoscape.js:
 | + | Zoom in |
 | - | Zoom out |
 | Fit | Fit graph to viewport |
+
+### IDE Features (Beta)
+
+The dashboard includes experimental IDE features accessible from the toolbar:
+
+| Feature | Icon | Description |
+|---------|------|-------------|
+| **Module Browser** | Hamburger menu | Search and browse available modules with documentation |
+| **Performance Profile** | Bar chart | View execution timing waterfall after running a pipeline |
+| **Monaco Editor** | Code brackets | Advanced editor with Constellation syntax highlighting |
+| **Value Inspector** | (auto) | Click DAG nodes to inspect intermediate values |
+| **Input Presets** | (in panel) | Save and load input configurations per script |
+| **Error Panel** | (auto) | Enhanced compilation errors with source context |
+
+These features are in beta and may change. To use:
+1. Click the toolbar buttons to open features
+2. Value Inspector appears when clicking executed DAG nodes
+3. Error Panel shows automatically on compilation errors
 
 ### Execution History
 
