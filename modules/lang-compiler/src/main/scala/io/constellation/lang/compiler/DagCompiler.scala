@@ -169,6 +169,9 @@ object DagCompiler {
 
       case IRNode.ListLiteralNode(id, elements, elementType, _) =>
         processListLiteralNode(id, elements, elementType)
+
+      case IRNode.MatchNode(id, scrutinee, cases, resultType, _) =>
+        processMatchNode(id, scrutinee, cases, resultType)
     }
 
     private def processModuleCall(
@@ -642,6 +645,156 @@ object DagCompiler {
             )
           }
       )
+
+    private def processMatchNode(
+        id: UUID,
+        scrutinee: UUID,
+        cases: List[MatchCaseIR],
+        resultType: SemanticType
+    ): Either[DagCompilerError, Unit] = {
+      val moduleId     = UUID.randomUUID()
+      val outputDataId = UUID.randomUUID()
+
+      // Get the scrutinee data ID
+      getNodeOutput(scrutinee, "scrutinee of match expression").flatMap { scrutineeDataId =>
+        // Get data IDs for all case bodies
+        val bodyDataIdsResult = cases.zipWithIndex.traverse { case (matchCase, idx) =>
+          getNodeOutput(matchCase.bodyId, s"body of match case $idx").map { dataId =>
+            (s"body$idx", dataId)
+          }
+        }
+
+        bodyDataIdsResult.map { bodyDataIds =>
+          val scrutineeCType = dataNodes(scrutineeDataId).cType
+
+          // Build consumes map: scrutinee + all case bodies
+          val consumesMap = Map("scrutinee" -> scrutineeCType) ++
+            bodyDataIds.map { case (name, dataId) =>
+              name -> dataNodes(dataId).cType
+            }.toMap
+
+          val outputCType = SemanticType.toCType(resultType)
+
+          // Create synthetic match module
+          val spec = ModuleNodeSpec(
+            metadata = ComponentMetadata.empty(s"$dagName.match-${id.toString.take(8)}"),
+            consumes = consumesMap,
+            produces = Map("out" -> outputCType)
+          )
+          moduleNodes = moduleNodes + (moduleId -> spec)
+
+          // Create synthetic module implementation
+          val syntheticModule = createMatchModule(spec, cases, outputCType)
+          syntheticModules = syntheticModules + (moduleId -> syntheticModule)
+
+          // Update nicknames for input data nodes
+          dataNodes = dataNodes.updatedWith(scrutineeDataId) {
+            case Some(spec) =>
+              Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "scrutinee")))
+            case None => None
+          }
+          bodyDataIds.foreach { case (name, dataId) =>
+            dataNodes = dataNodes.updatedWith(dataId) {
+              case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> name)))
+              case None       => None
+            }
+          }
+
+          // Connect edges
+          inEdges = inEdges + ((scrutineeDataId, moduleId))
+          bodyDataIds.foreach { case (_, dataId) =>
+            inEdges = inEdges + ((dataId, moduleId))
+          }
+
+          // Create output data node
+          dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
+            name = s"match_${id.toString.take(8)}_output",
+            nicknames = Map(moduleId -> "out"),
+            cType = outputCType
+          ))
+
+          // Connect module output to data node
+          outEdges = outEdges + ((moduleId, outputDataId))
+          nodeOutputs = nodeOutputs + (id -> outputDataId)
+        }
+      }
+    }
+
+    /** Create a match module that evaluates patterns in order.
+      * Returns the expression for the first matching pattern.
+      */
+    private def createMatchModule(
+        spec: ModuleNodeSpec,
+        cases: List[MatchCaseIR],
+        outputCType: CType
+    ): Module.Uninitialized =
+      Module.Uninitialized(
+        spec = spec,
+        init = (moduleId, dagSpec) =>
+          for {
+            consumesNs <- Module.Namespace.consumes(moduleId, dagSpec)
+            producesNs <- Module.Namespace.produces(moduleId, dagSpec)
+            // Create deferreds for scrutinee and all case bodies
+            scrutineeDeferred <- cats.effect.Deferred[IO, Any]
+            bodyDeferreds     <- cases.indices.toList.traverse(_ => cats.effect.Deferred[IO, Any])
+            outDeferred       <- cats.effect.Deferred[IO, Any]
+            // Get name IDs
+            scrutineeId <- consumesNs.nameId("scrutinee")
+            bodyIds     <- cases.indices.toList.traverse(i => consumesNs.nameId(s"body$i"))
+            outId       <- producesNs.nameId("out")
+          } yield {
+            val dataMap = List((scrutineeId, scrutineeDeferred)) ++
+              bodyIds.zip(bodyDeferreds) ++
+              List((outId, outDeferred))
+            Module.Runnable(
+              id = moduleId,
+              data = dataMap.toMap,
+              run = runtime => {
+                for {
+                  scrutineeValue <- runtime.getTableData(scrutineeId)
+                  // Find the first matching pattern
+                  matchingIdx = cases.zipWithIndex.find { case (matchCase, _) =>
+                    patternMatches(matchCase.pattern, scrutineeValue)
+                  }.map(_._2)
+                  result <- matchingIdx match {
+                    case Some(idx) => runtime.getTableData(bodyIds(idx))
+                    case None =>
+                      // No pattern matched - this shouldn't happen if exhaustiveness was checked
+                      IO.raiseError(
+                        new MatchError(s"No pattern matched value: $scrutineeValue")
+                      )
+                  }
+                  _ <- runtime.setTableData(outId, result)
+                  // Also store in state for output extraction
+                  cValue = Runtime.anyToCValue(result, outputCType)
+                  _ <- runtime.setStateData(outId, cValue)
+                } yield ()
+              }
+            )
+          }
+      )
+
+    /** Check if a pattern matches a value at runtime */
+    private def patternMatches(pattern: PatternIR, value: Any): Boolean = pattern match {
+      case PatternIR.Record(fields, _) =>
+        value match {
+          case m: Map[String, ?] @unchecked =>
+            fields.forall(m.contains)
+          case _ => false
+        }
+
+      case PatternIR.TypeTest(typeName, _) =>
+        typeName match {
+          case "String"  => value.isInstanceOf[String]
+          case "Int"     => value.isInstanceOf[Long] || value.isInstanceOf[Int]
+          case "Float"   => value.isInstanceOf[Double] || value.isInstanceOf[Float]
+          case "Boolean" => value.isInstanceOf[Boolean]
+          case _         => false // Unknown type
+        }
+
+      case PatternIR.Wildcard() =>
+        true // Wildcard matches anything
+    }
 
     private def processHigherOrderNode(
         id: UUID,

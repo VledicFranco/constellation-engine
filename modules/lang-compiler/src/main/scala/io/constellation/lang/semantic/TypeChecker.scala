@@ -189,6 +189,49 @@ object TypedExpression {
       semanticType: SemanticType.SFunction,
       span: Span
   ) extends TypedExpression
+
+  /** Match expression: pattern matching over union types.
+    * Provides structural discrimination between union variants with exhaustiveness checking.
+    */
+  final case class Match(
+      scrutinee: TypedExpression,
+      cases: List[TypedMatchCase],
+      semanticType: SemanticType,
+      span: Span
+  ) extends TypedExpression
+}
+
+/** A single typed case in a match expression */
+final case class TypedMatchCase(
+    pattern: TypedPattern,
+    bindings: Map[String, SemanticType], // Variables bound by the pattern
+    body: TypedExpression,
+    span: Span
+)
+
+/** Typed pattern representation */
+sealed trait TypedPattern {
+  def span: Span
+}
+
+object TypedPattern {
+
+  /** Record pattern: matches records with specified fields */
+  final case class Record(
+      fields: List[String],
+      matchedType: SemanticType.SRecord,
+      span: Span
+  ) extends TypedPattern
+
+  /** Type test pattern: matches values of a specific type */
+  final case class TypeTest(
+      typeName: String,
+      matchedType: SemanticType,
+      span: Span
+  ) extends TypedPattern
+
+  /** Wildcard pattern: matches any value */
+  final case class Wildcard(span: Span) extends TypedPattern
 }
 
 /** Type checker for constellation-lang.
@@ -746,6 +789,15 @@ object TypeChecker {
           TypedExpression.Lambda(paramTypes, typedBody, funcType, span)
         }
       }
+
+    case Expression.Match(scrutinee, cases) =>
+      // Match expressions are handled by the BidirectionalTypeChecker
+      CompileError
+        .TypeError(
+          "Match expressions are only supported via BidirectionalTypeChecker",
+          Some(span)
+        )
+        .invalidNel
   }
 
   /** Type check a lambda expression with expected type context for type inference */

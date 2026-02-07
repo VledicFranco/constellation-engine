@@ -19,6 +19,7 @@ description: "Reference for constellation-lang expressions: arithmetic, comparis
 | Merge | `+` | `a + b` |
 | Conditional | `if/else` | `if (x > 0) "pos" else "neg"` |
 | Branch | `branch { ... }` | `branch { cond -> val, otherwise -> default }` |
+| Match | `match { ... }` | `match x { { a } -> a, _ -> 0 }` |
 | Guard | `expr when cond` | `x when x > 0` |
 | Coalesce | `??` | `optional ?? default` |
 | Lambda | `(param) => expr` | `item => item.score > 0.5` |
@@ -334,6 +335,60 @@ output = branch {
   length(data) > 1000 -> heavy-processor(data),
   length(data) > 100 -> standard-processor(data),
   otherwise -> light-processor(data)
+}
+```
+
+## Match Expressions
+
+:::tip
+Use `match` to discriminate between union type variants. The compiler checks exhaustiveness at compile time, ensuring you handle all possible cases.
+:::
+
+Pattern match on union types with exhaustive case handling:
+
+```
+result = match scrutinee {
+  { field1, field2 } -> expression1,
+  { otherField } -> expression2,
+  _ -> default_expression
+}
+```
+
+Each pattern binds its fields as variables in the body expression:
+
+```
+type Result = { value: Int, status: String } | { error: String, code: Int }
+in response: Result
+
+message = match response {
+  { value, status } -> "Got ${value} with status ${status}",
+  { error, code } -> "Error ${code}: ${error}"
+}
+out message
+```
+
+### Pattern Types
+
+| Pattern | Matches | Binds |
+|---------|---------|-------|
+| `{ field1, field2 }` | Records with these fields | Each field as a variable |
+| `_` | Any value (wildcard) | Nothing |
+
+### Exhaustiveness
+
+The compiler verifies all union variants are covered:
+
+```
+type State = { active: Boolean } | { pending: Int } | { banned: String }
+in state: State
+
+# This will compile error - missing { pending } and { banned }
+# result = match state { { active } -> active }
+
+# This is valid - wildcard covers remaining variants
+result = match state {
+  { active } -> active,
+  _ -> false
 }
 ```
 

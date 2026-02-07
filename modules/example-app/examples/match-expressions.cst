@@ -1,0 +1,101 @@
+# Match Expressions Demo
+# =============================================================================
+# Demonstrates: Pattern matching on union types with `match { ... }`
+#
+# LANGUAGE FEATURES DEMONSTRATED:
+# 1. Match expressions (match scrutinee { pattern -> result, ... })
+# 2. Record patterns ({ field1, field2 } -> ...)
+# 3. Wildcard patterns (_ -> ...)
+# 4. Field binding in pattern bodies
+# 5. Exhaustiveness checking
+#
+# Match expressions enable discriminating between union type variants
+# at runtime with compile-time exhaustiveness checking.
+
+# =============================================================================
+# Type Definitions
+# =============================================================================
+
+# API response type: success or error
+type ApiResult = { value: Int, status: String } | { error: String, code: Int }
+
+# User state variants
+type UserState = { active: Boolean, name: String } | { banned: String } | { pending: Int }
+
+# Simple two-variant result
+type ProcessResult = { output: String } | { failure: String }
+
+# =============================================================================
+# Input Declarations
+# =============================================================================
+
+in apiResponse: ApiResult
+
+in userState: UserState
+
+in processResult: ProcessResult
+
+# =============================================================================
+# Basic Match Expression
+# =============================================================================
+
+# Match on API response - handle success and error cases
+# Pattern { value, status } binds those fields in the body
+responseMessage = match apiResponse {
+  { value, status } -> "Success: ${status} with value ${value}",
+  { error, code } -> "Error ${code}: ${error}"
+}
+
+# =============================================================================
+# Three-Way Match
+# =============================================================================
+
+# Handle all three user state variants
+# Each pattern binds the relevant fields for use in the body
+userMessage = match userState {
+  { active, name } -> "User ${name} is active: ${active}",
+  { banned } -> "Account banned: ${banned}",
+  { pending } -> "Pending approval: ${pending} days"
+}
+
+# =============================================================================
+# Match with Wildcard
+# =============================================================================
+
+# Use wildcard to catch remaining variants
+# Useful when you only care about specific cases
+isSuccess = match processResult {
+  { output } -> true,
+  _ -> false
+}
+
+# =============================================================================
+# Match Returning Different Types
+# =============================================================================
+
+# Match can return any type - here returning Int
+statusCode = match apiResponse {
+  { value, status } -> 200,
+  { error, code } -> code
+}
+
+# =============================================================================
+# Field Access from Bound Variables
+# =============================================================================
+
+# Bound fields can be used in complex expressions
+summary = match userState {
+  { active, name } -> "User: ${name}",
+  { banned } -> "Banned user",
+  { pending } -> "Pending user"
+}
+
+# =============================================================================
+# Output Declarations
+# =============================================================================
+
+out responseMessage
+out userMessage
+out isSuccess
+out statusCode
+out summary

@@ -11,6 +11,7 @@ import cats.implicits.*
 
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl
+import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.CompilationOutput
 import io.constellation.stdlib.StdLib
 
@@ -494,6 +495,97 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }
+  }
+
+  // ========== Match Expression Integration Tests ==========
+
+  "Match expression programs" should "compile match on union type" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      output = match x { { value } -> "ok", { error } -> "fail" }
+      out output
+    """
+    val result = compiler.compile(source, "match-union-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("output")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CString
+  }
+
+  it should "compile match with field binding in body" in {
+    val source = """
+      type User = { name: String, age: Int } | { error: String }
+      in user: User
+      message = match user {
+        { name, age } -> "Hello ${name}",
+        { error } -> "Error: ${error}"
+      }
+      out message
+    """
+    val result = compiler.compile(source, "match-binding-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("message")
+    outputBinding.isDefined shouldBe true
+  }
+
+  it should "compile match with wildcard pattern" in {
+    val source = """
+      type State = { active: Boolean } | { pending: Int } | { banned: String }
+      in state: State
+      isActive = match state { { active } -> active, _ -> false }
+      out isActive
+    """
+    val result = compiler.compile(source, "match-wildcard-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("isActive")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CBoolean
+  }
+
+  it should "compile match returning Int from bound field" in {
+    val source = """
+      type Result = { value: Int } | { code: Int }
+      in result: Result
+      num = match result { { value } -> value, { code } -> code }
+      out num
+    """
+    val result = compiler.compile(source, "match-int-dag")
+    result.isRight shouldBe true
+
+    val compiled      = result.toOption.get
+    val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("num")
+    outputBinding.isDefined shouldBe true
+
+    val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
+    outputNode.isDefined shouldBe true
+    outputNode.get.cType shouldBe CType.CInt
+  }
+
+  it should "reject non-exhaustive match" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      output = match x { { value } -> "ok" }
+      out output
+    """
+    val result = compiler.compile(source, "match-nonexhaustive-dag")
+    result.isLeft shouldBe true
+
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.NonExhaustiveMatch]) shouldBe true
   }
 
   // ========== Guard Expression Integration Tests ==========

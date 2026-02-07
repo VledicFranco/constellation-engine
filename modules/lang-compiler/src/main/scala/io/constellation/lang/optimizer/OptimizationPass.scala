@@ -97,6 +97,11 @@ trait OptimizationPass {
         n.copy(source = replace(n.source))
       case n: IRNode.ListLiteralNode =>
         n.copy(elements = n.elements.map(replace))
+      case n: IRNode.MatchNode =>
+        n.copy(
+          scrutinee = replace(n.scrutinee),
+          cases = n.cases.map(c => c.copy(bodyId = replace(c.bodyId)))
+        )
     }
 
     val newNodes    = ir.nodes.map { case (id, node) => id -> replaceInNode(node) }

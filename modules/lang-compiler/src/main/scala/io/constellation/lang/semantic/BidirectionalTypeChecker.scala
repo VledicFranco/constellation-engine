@@ -367,6 +367,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     case Expression.Lambda(params, body) =>
       // In inference mode, all parameters must have type annotations
       inferLambda(params, body, span, env)
+
+    case Expression.Match(scrutinee, cases) =>
+      inferMatchExpr(scrutinee, cases, span, env, context)
   }
 
   /** Checking mode (⇓): Check expression against expected type */
@@ -1031,6 +1034,167 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
             Some(leftSpan)
           )
           .invalidNel
+    }
+
+  // ============================================================================
+  // Match Expression Type Checking
+  // ============================================================================
+
+  /** Type check a match expression with exhaustiveness checking */
+  private def inferMatchExpr(
+      scrutinee: Located[Expression],
+      cases: List[MatchCase],
+      span: Span,
+      env: TypeEnvironment,
+      context: TypeContext
+  ): TypeResult[TypedExpression] = {
+    // First, infer the type of the scrutinee
+    inferExpr(scrutinee.value, scrutinee.span, env, context).andThen { typedScrutinee =>
+      val scrutineeType = typedScrutinee.semanticType
+
+      // Extract union members (or treat single type as a one-element set)
+      val unionMembers: Set[SemanticType] = scrutineeType match {
+        case SUnion(members) => members
+        case other           => Set(other)
+      }
+
+      // Type check all cases
+      cases
+        .traverse { matchCase =>
+          checkPattern(matchCase.pattern.value, matchCase.pattern.span, unionMembers, env)
+            .andThen { case (typedPattern, bindings, matchedTypes, isWildcard) =>
+              // Add bindings to environment for the body
+              val bodyEnv = bindings.foldLeft(env) { case (e, (name, typ)) =>
+                e.addVariable(name, typ)
+              }
+
+              // Type check the body with bindings in scope
+              inferExpr(matchCase.body.value, matchCase.body.span, bodyEnv, context).map {
+                typedBody =>
+                  (
+                    TypedMatchCase(
+                      typedPattern,
+                      bindings,
+                      typedBody,
+                      Span(matchCase.pattern.span.start, matchCase.body.span.end)
+                    ),
+                    matchedTypes,
+                    isWildcard,
+                    typedBody.semanticType
+                  )
+              }
+            }
+        }
+        .andThen { typedCasesInfo =>
+          // Extract information from typed cases
+          val typedCasesList = typedCasesInfo.map(_._1)
+          val coveredTypes   = typedCasesInfo.flatMap(_._2).toSet
+          val hasWildcard    = typedCasesInfo.exists(_._3)
+          val resultTypes    = typedCasesInfo.map(_._4)
+
+          // Check exhaustiveness: all union members must be covered or there must be a wildcard
+          val uncoveredTypes = unionMembers -- coveredTypes
+          if uncoveredTypes.nonEmpty && !hasWildcard then {
+            CompileError
+              .NonExhaustiveMatch(
+                scrutineeType.prettyPrint,
+                uncoveredTypes.map(_.prettyPrint).toList.sorted,
+                Some(span)
+              )
+              .invalidNel
+          } else {
+            // Compute result type as LUB of all body types
+            val resultType = Subtyping.commonType(resultTypes)
+
+            TypedExpression
+              .Match(typedScrutinee, typedCasesList, resultType, span)
+              .validNel
+          }
+        }
+    }
+  }
+
+  /** Check a pattern against possible union member types.
+    * Returns the typed pattern, bindings, matched types, and whether it's a wildcard.
+    */
+  private def checkPattern(
+      pattern: Pattern,
+      span: Span,
+      possibleTypes: Set[SemanticType],
+      env: TypeEnvironment
+  ): TypeResult[(TypedPattern, Map[String, SemanticType], Set[SemanticType], Boolean)] =
+    pattern match {
+      case Pattern.Record(fields) =>
+        // Find record types that have exactly these fields
+        val matchingRecords = possibleTypes.collect {
+          case r @ SRecord(recordFields) if fields.forall(recordFields.contains) => r
+        }
+
+        if matchingRecords.isEmpty then {
+          CompileError
+            .PatternTypeMismatch(
+              s"{ ${fields.mkString(", ")} }",
+              possibleTypes.map(_.prettyPrint).mkString(" | "),
+              Some(span)
+            )
+            .invalidNel
+        } else {
+          // Use the first matching record for bindings (they should all have compatible field types)
+          val matchedRecord = matchingRecords.head
+          val bindings = fields.map { field =>
+            field -> matchedRecord.fields(field)
+          }.toMap
+
+          (
+            TypedPattern.Record(fields, matchedRecord, span),
+            bindings,
+            matchingRecords.asInstanceOf[Set[SemanticType]],
+            false
+          ).validNel
+        }
+
+      case Pattern.TypeTest(typeName) =>
+        // Find primitive types that match the type name
+        val matchedType: Option[SemanticType] = typeName match {
+          case "String"  => Some(SString)
+          case "Int"     => Some(SInt)
+          case "Float"   => Some(SFloat)
+          case "Boolean" => Some(SBoolean)
+          case other =>
+            // Check if it's a type reference in the environment
+            env.lookupType(other)
+        }
+
+        matchedType match {
+          case Some(typ) if possibleTypes.contains(typ) =>
+            (
+              TypedPattern.TypeTest(typeName, typ, span),
+              Map.empty[String, SemanticType],
+              Set(typ),
+              false
+            ).validNel
+          case Some(typ) =>
+            CompileError
+              .PatternTypeMismatch(
+                s"is $typeName",
+                possibleTypes.map(_.prettyPrint).mkString(" | "),
+                Some(span)
+              )
+              .invalidNel
+          case None =>
+            CompileError
+              .UndefinedType(typeName, Some(span))
+              .invalidNel
+        }
+
+      case Pattern.Wildcard() =>
+        // Wildcard matches all remaining types
+        (
+          TypedPattern.Wildcard(span),
+          Map.empty[String, SemanticType],
+          possibleTypes, // Matches everything
+          true
+        ).validNel
     }
 
   // ============================================================================

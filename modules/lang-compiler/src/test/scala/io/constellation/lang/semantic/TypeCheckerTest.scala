@@ -4891,4 +4891,167 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val typedPipeline = result.toOption.get
     typedPipeline.warnings.isEmpty shouldBe true
   }
+
+  // Match expression tests
+
+  it should "type check simple match expression on union type" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      result = match x { { value } -> "ok", { error } -> "fail" }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check match expression on single record type" in {
+    val source = """
+      in x: { a: Int, b: String }
+      result = match x { { a, b } -> a }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check match expression with wildcard pattern" in {
+    val source = """
+      type R = { a: Int } | { b: String } | { c: Float }
+      in x: R
+      result = match x { { a } -> 1, _ -> 0 }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "reject non-exhaustive match expression" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      result = match x { { value } -> "ok" }
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+    val errors = result.left.toOption.get
+    errors.exists(_.isInstanceOf[CompileError.NonExhaustiveMatch]) shouldBe true
+  }
+
+  it should "reject match with no cases" in {
+    val source = """
+      in x: { a: Int }
+      result = match x { }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    // Parser should reject empty match cases
+    result.isLeft shouldBe true
+  }
+
+  it should "type check match with all union variants covered" in {
+    val source = """
+      type ThreeWay = { a: Int } | { b: String } | { c: Float }
+      in x: ThreeWay
+      result = match x {
+        { a } -> "int",
+        { b } -> "string",
+        { c } -> "float"
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "bind pattern fields to correct types in match body" in {
+    val source = """
+      type Result = { value: Int, status: String } | { error: String, code: Int }
+      in x: Result
+      result = match x {
+        { value, status } -> value,
+        { error, code } -> code
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "reject match with pattern field not in record" in {
+    val source = """
+      in x: { a: Int }
+      result = match x { { b } -> "ok" }
+      out result
+    """
+    val result = check(source)
+    result.isLeft shouldBe true
+  }
+
+  it should "type check match with string interpolation in body" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      result = match x {
+        { value } -> "Success: ${value}",
+        { error } -> "Error: ${error}"
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
+
+  it should "type check match with bound fields used in body" in {
+    val source = """
+      type Numbers = { a: Int } | { b: Int }
+      in x: Numbers
+      result = match x {
+        { a } -> a,
+        { b } -> b
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "unify branch types in match expression" in {
+    val source = """
+      type R = { a: Int } | { b: String }
+      in x: R
+      result = match x {
+        { a } -> 1,
+        { b } -> 2
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SInt
+  }
+
+  it should "type check nested match expressions" in {
+    val source = """
+      type Outer = { inner: { a: Int } | { b: String } }
+      in x: Outer
+      inner = x.inner
+      result = match inner {
+        { a } -> "int",
+        { b } -> "string"
+      }
+      out result
+    """
+    val result = check(source)
+    result.isRight shouldBe true
+    getOutputType(result.toOption.get) shouldBe SemanticType.SString
+  }
 }

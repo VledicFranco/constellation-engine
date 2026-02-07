@@ -49,6 +49,8 @@ object ConstellationParser extends MemoizationSupport {
   private val otherwiseKw: P[Unit] = keyword("otherwise")
   private val withKw: P[Unit]      = keyword("with")
   private val lazyKw: P[Unit]      = keyword("lazy")
+  private val matchKw: P[Unit]     = keyword("match")
+  private val isKw: P[Unit]        = keyword("is")
 
   // Reserved words
   private val reserved: Set[String] = Set(
@@ -68,7 +70,9 @@ object ConstellationParser extends MemoizationSupport {
     "branch",
     "otherwise",
     "with",
-    "lazy"
+    "lazy",
+    "match",
+    "is"
   )
 
   // Identifiers: allow hyphens for function names like "ide-ranker-v2"
@@ -493,12 +497,13 @@ object ConstellationParser extends MemoizationSupport {
     }
 
   // Optimized exprPrimary using P.oneOf for efficient alternative matching
-  // Order: distinctive keywords first (if, branch), then structures, then fallbacks
+  // Order: distinctive keywords first (if, branch, match), then structures, then fallbacks
   private lazy val exprPrimary: P[Expression] =
     P.oneOf(
       List(
         conditional.backtrack,  // 'if' keyword is distinctive
         branchExpr.backtrack,   // 'branch' keyword is distinctive
+        matchExpr.backtrack,    // 'match' keyword is distinctive
         parenExpr.backtrack,    // '(' is distinctive
         functionCall.backtrack, // qualified name followed by '('
         literal,                // literals have distinctive prefixes
@@ -564,6 +569,45 @@ object ConstellationParser extends MemoizationSupport {
           P.failWith("Branch must have an otherwise clause as the last item")
       }
     }
+
+  // ============================================================================
+  // Match Expression (Pattern Matching)
+  // ============================================================================
+
+  /** Record pattern: { field1, field2 }
+    * Matches records that have the specified fields.
+    */
+  private lazy val recordPattern: P[Pattern.Record] =
+    (openBrace *> identifier.repSep(comma) <* closeBrace)
+      .map(fields => Pattern.Record(fields.toList))
+
+  /** Wildcard pattern: _
+    * Matches any value.
+    */
+  private lazy val wildcardPattern: P[Pattern.Wildcard] =
+    token(P.char('_') <* P.not(identifierCont)).as(Pattern.Wildcard())
+
+  /** Type test pattern: is String
+    * Matches values of the specified type.
+    */
+  private lazy val typeTestPattern: P[Pattern.TypeTest] =
+    (isKw *> typeIdentifier).map(Pattern.TypeTest(_))
+
+  /** Pattern: one of the pattern variants */
+  private lazy val pattern: P[Pattern] =
+    recordPattern.backtrack | wildcardPattern.backtrack | typeTestPattern
+
+  /** Match case: pattern -> expression */
+  private lazy val matchCase: P[MatchCase] =
+    (withSpan(pattern) ~ (arrow *> withSpan(P.defer(expression))))
+      .map { case (pat, body) => MatchCase(pat, body) }
+
+  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 }
+    * Provides structural pattern matching over union types.
+    */
+  private lazy val matchExpr: P[Expression.Match] =
+    (matchKw *> withSpan(P.defer(exprPrimary)) ~ (openBrace *> matchCase.repSep(comma) <* closeBrace))
+      .map { case (scrutinee, cases) => Expression.Match(scrutinee, cases.toList) }
 
   // Literals
 

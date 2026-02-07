@@ -207,6 +207,14 @@ object DagVizCompiler:
           label = s"[${elements.length} items]",
           typeSignature = s"List<${formatType(elementType)}>"
         )
+
+      case IRNode.MatchNode(_, _, cases, resultType, _) =>
+        VizNode(
+          id = id.toString,
+          kind = NodeKind.Branch, // Reuse Branch kind for match
+          label = s"match (${cases.length} cases)",
+          typeSignature = formatType(resultType)
+        )
     }
 
   /** Extract the output type from an IR node */
@@ -228,6 +236,7 @@ object DagVizCompiler:
       case IRNode.StringInterpolationNode(_, _, _, _)        => SemanticType.SString
       case IRNode.HigherOrderNode(_, _, _, _, outputType, _) => outputType
       case IRNode.ListLiteralNode(_, _, elementType, _)      => SemanticType.SList(elementType)
+      case IRNode.MatchNode(_, _, _, resultType, _)          => resultType
     }
 
   /** Build edges from IR dependencies */
@@ -379,6 +388,25 @@ object DagVizCompiler:
               EdgeKind.Data
             )
           }
+
+        case IRNode.MatchNode(_, scrutinee, cases, _, _) =>
+          val scrutineeEdge = VizEdge(
+            nextEdgeId(),
+            scrutinee.toString,
+            targetId.toString,
+            Some("scrutinee"),
+            EdgeKind.Data
+          )
+          val caseEdges = cases.zipWithIndex.map { case (matchCase, idx) =>
+            VizEdge(
+              nextEdgeId(),
+              matchCase.bodyId.toString,
+              targetId.toString,
+              Some(s"case$idx"),
+              EdgeKind.Data
+            )
+          }
+          scrutineeEdge :: caseEdges
       }
     }.toList
 

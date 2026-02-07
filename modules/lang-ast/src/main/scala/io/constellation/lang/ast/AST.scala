@@ -427,6 +427,42 @@ object Expression {
       params: List[LambdaParam],
       body: Located[Expression]
   ) extends Expression
+
+  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 }
+    * Provides structural pattern matching over union types with exhaustiveness checking.
+    */
+  final case class Match(
+      scrutinee: Located[Expression],
+      cases: List[MatchCase]
+  ) extends Expression
+}
+
+/** A single case in a match expression */
+final case class MatchCase(
+    pattern: Located[Pattern],
+    body: Located[Expression]
+)
+
+/** Patterns for match expressions */
+sealed trait Pattern
+
+object Pattern {
+
+  /** Record pattern: matches records with specified fields.
+    * Example: { value, status } matches any record with fields "value" and "status".
+    * The matched field values are bound to variables with the same names.
+    */
+  final case class Record(fields: List[String]) extends Pattern
+
+  /** Type test pattern: matches values of a specific primitive type.
+    * Example: is String matches string values in a String | Int union.
+    */
+  final case class TypeTest(typeName: String) extends Pattern
+
+  /** Wildcard pattern: matches any value.
+    * Example: _ matches anything and is used to make patterns exhaustive.
+    */
+  final case class Wildcard() extends Pattern
 }
 
 /** Compile errors with span information */
@@ -541,6 +577,34 @@ object CompileError {
   ) extends CompileError {
     def message: String =
       s"Fallback type mismatch: module returns $expected but fallback is $actual"
+  }
+
+  /** Non-exhaustive match expression */
+  final case class NonExhaustiveMatch(
+      scrutineeType: String,
+      missingPatterns: List[String],
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Non-exhaustive match on type $scrutineeType. Missing patterns for: ${missingPatterns.mkString(", ")}"
+  }
+
+  /** Pattern type mismatch */
+  final case class PatternTypeMismatch(
+      patternDesc: String,
+      expectedType: String,
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String =
+      s"Pattern $patternDesc cannot match type $expectedType"
+  }
+
+  /** Invalid pattern for scrutinee type */
+  final case class InvalidPattern(
+      details: String,
+      span: Option[Span]
+  ) extends CompileError {
+    def message: String = s"Invalid pattern: $details"
   }
 }
 

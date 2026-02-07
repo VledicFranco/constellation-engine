@@ -9,18 +9,14 @@ Tagged variants for sum types (discriminated unions).
 
 ```constellation
 # Define union type
-type Result = Success | Error
+type Result = { value: Int, status: String } | { error: String, code: Int }
 
-type ApiResponse =
-  | Success { data: UserData }
-  | Error { code: Int, message: String }
+in response: Result
 
-# Handle variants with branch
-in result: Success | Error
-
-output = branch result {
-  Success => "Operation succeeded"
-  Error => "Operation failed"
+# Pattern match on union variants
+output = match response {
+  { value, status } -> "Success: ${value}",
+  { error, code } -> "Error ${code}: ${error}"
 }
 ```
 
@@ -73,80 +69,84 @@ validation = ValidateInput(data)
 
 **Note:** Union values are created by modules, not by literals in the DSL. The DSL handles union values returned from modules.
 
-## Pattern Matching with Branch
+## Pattern Matching with Match
 
-Use `branch` expression to handle variants:
+Use `match` expression to discriminate between union variants:
 
-### Basic Branch
+### Basic Match
 
 ```constellation
-in result: Success | Error
+type Result = { value: Int } | { error: String }
+in result: Result
 
-output = branch result {
-  Success => "It worked!"
-  Error => "Something went wrong"
+output = match result {
+  { value } -> "Got value: ${value}",
+  { error } -> "Error: ${error}"
 }
 # Type: String
 ```
 
-### Accessing Variant Data
+### Field Binding
+
+Pattern fields become variables in the match body:
 
 ```constellation
-in response: Success { data: String } | Error { message: String }
+type User = { name: String, age: Int } | { error: String, code: Int }
+in user: User
 
-output = branch response {
-  Success => response.data
-  Error => response.message
+message = match user {
+  { name, age } -> "Hello ${name}, you are ${age}",
+  { error, code } -> "Error ${code}: ${error}"
 }
 # Type: String
 ```
 
-### Otherwise Clause
+### Wildcard Pattern
 
-The `otherwise` clause provides a default:
+Use `_` to match any remaining variants:
 
 ```constellation
-in status: Pending | Processing | Complete | Failed
+type State = { active: Boolean } | { pending: Int } | { banned: String }
+in state: State
 
-message = branch status {
-  Complete => "Done!"
-  otherwise => "Not yet complete"
+isActive = match state {
+  { active } -> active,
+  _ -> false
 }
+# Type: Boolean
 ```
 
 ## Exhaustiveness Checking
 
-The compiler ensures all variants are handled:
+The compiler ensures all union variants are covered:
 
 ```constellation
-in status: Pending | Processing | Complete | Failed
+type State = { active: Boolean } | { pending: Int } | { banned: String }
+in state: State
 
-# Compile error: missing variants 'Failed', 'Refunded'
-output = branch status {
-  Pending => "waiting"
-  Complete => "done"
-  # Error: Non-exhaustive match
+# Compile error: missing { pending } and { banned }
+output = match state {
+  { active } -> "active"
+  # Error: Non-exhaustive match. Missing: { pending: Int }, { banned: String }
 }
 ```
 
 To fix, either:
-1. Add cases for all variants
-2. Use `otherwise` for a catch-all
+1. Add patterns for all variants
+2. Use `_` wildcard for a catch-all
 
 ```constellation
 # Option 1: Handle all cases
-output = branch status {
-  Pending => "waiting"
-  Processing => "in progress"
-  Complete => "done"
-  Failed => "failed"
+output = match state {
+  { active } -> if (active) "active" else "inactive",
+  { pending } -> "pending",
+  { banned } -> "banned"
 }
 
-# Option 2: Use otherwise
-output = branch status {
-  Complete => "done"
-  Failed => "failed"
-  otherwise => "in progress"
+# Option 2: Use wildcard
+output = match state {
+  { active } -> if (active) "active" else "inactive",
+  _ -> "not active"
 }
 ```
 
@@ -208,9 +208,12 @@ The compiler uses LUB (Least Upper Bound) to find the common type:
 | Component | Role | Key Files |
 |-----------|------|-----------|
 | `core` | Runtime union representation | `modules/core/src/main/scala/io/constellation/TypeSystem.scala` (`CType.CUnion`, `CValue.CUnion`) |
-| `lang-parser` | Parse union type syntax and branch expressions | `modules/lang-parser/src/main/scala/io/constellation/lang/parser/ConstellationParser.scala` |
+| `lang-ast` | Match expression AST | `modules/lang-ast/src/main/scala/io/constellation/lang/ast/AST.scala` (`Expression.Match`, `Pattern`) |
+| `lang-parser` | Parse union type syntax and match expressions | `modules/lang-parser/src/main/scala/io/constellation/lang/parser/ConstellationParser.scala` |
 | `lang-compiler` | Union type resolution | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/SemanticType.scala` (`SUnion`) |
-| `lang-compiler` | Branch expression type checking | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/TypeChecker.scala:693-717` |
+| `lang-compiler` | Match expression type checking & exhaustiveness | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala` |
+| `lang-compiler` | Match IR generation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/IR.scala` (`MatchNode`) |
+| `lang-compiler` | Match DAG compilation | `modules/lang-compiler/src/main/scala/io/constellation/lang/compiler/DagCompiler.scala` |
 | `lang-compiler` | Union subtyping | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/Subtyping.scala:79-84` |
 | `lang-compiler` | LUB computation for unions | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/Subtyping.scala:114-131` |
 
@@ -301,7 +304,7 @@ def lub(a: SemanticType, b: SemanticType): SemanticType =
 | Purpose | Value might be absent | Value is one of N types |
 | Variants | 2 (Some, None) | N (user-defined) |
 | Data | Single inner type | Different data per variant |
-| Pattern match | `??` coalesce | `branch` expression |
+| Pattern match | `??` coalesce | `match` expression |
 | Use case | Nullable values | Sum types, ADTs |
 
 ```constellation
@@ -315,19 +318,21 @@ result: Success { data: User } | NotFound | Forbidden
 ## Best Practices
 
 1. **Use unions for domain variants.** Payment statuses, order states, response types.
-2. **Prefer exhaustive matching.** Handle all cases explicitly rather than using `otherwise`.
-3. **Keep variant count small.** Large unions (10+ variants) suggest refactoring.
-4. **Document variant semantics.** What does each variant mean in the domain?
-5. **Use Optional for simple absence.** Don't create `Present | Absent` when `Optional` suffices.
+2. **Prefer exhaustive matching.** Handle all cases explicitly rather than using `_` wildcard.
+3. **Use `match` for union discrimination.** The compiler checks exhaustiveness.
+4. **Keep variant count small.** Large unions (10+ variants) suggest refactoring.
+5. **Document variant semantics.** What does each variant mean in the domain?
+6. **Use Optional for simple absence.** Don't create `Present | Absent` when `Optional` suffices.
 
 ## Limitations
 
 Current limitations of union types:
 
 1. **No variant constructors in DSL.** Union values come from modules, not literals.
-2. **No nested pattern matching.** Can't match on nested union structure.
-3. **No type narrowing.** After branch, the variable keeps the union type.
+2. **No nested pattern matching.** Can't match on nested union structure in one pattern.
+3. **No type narrowing.** After match, bound variables have the field type from the matched pattern.
 4. **No generic unions.** Can't parameterize union types (e.g., `Result<T, E>`).
+5. **No type test patterns for primitives.** `is String` syntax is parsed but not yet fully implemented.
 
 These may be addressed in future RFCs.
 

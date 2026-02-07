@@ -329,5 +329,8 @@ object ErrorCodes {
     case _: CompileError.TypeError             => GeneralTypeError
     case _: CompileError.ParseError            => ParseError
     case _: CompileError.InternalError         => InternalError
+    case _: CompileError.NonExhaustiveMatch    => GeneralTypeError
+    case _: CompileError.PatternTypeMismatch   => TypeMismatch
+    case _: CompileError.InvalidPattern        => GeneralTypeError
   }
 }

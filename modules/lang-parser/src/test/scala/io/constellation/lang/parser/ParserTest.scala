@@ -2692,4 +2692,128 @@ class ParserTest extends AnyFlatSpec with Matchers {
     funcCall.name shouldBe QualifiedName(List("stdlib", "compute", "process"))
     funcCall.options.retry shouldBe Some(3)
   }
+
+  // Match expression tests
+
+  it should "parse simple match expression with record patterns" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      result = match x { { value } -> "ok", { error } -> "fail" }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe a[Expression.Match]
+
+    val matchExpr = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.scrutinee.value shouldBe Expression.VarRef("x")
+    matchExpr.cases should have size 2
+  }
+
+  it should "parse match expression with single case" in {
+    val source = """
+      in x: { a: Int }
+      result = match x { { a } -> a }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases should have size 1
+    matchExpr.cases.head.pattern.value shouldBe Pattern.Record(List("a"))
+  }
+
+  it should "parse match expression with wildcard pattern" in {
+    val source = """
+      in x: Int
+      result = match x { _ -> "default" }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases should have size 1
+    matchExpr.cases.head.pattern.value shouldBe Pattern.Wildcard()
+  }
+
+  it should "parse match expression with type test pattern" in {
+    val source = """
+      type StringOrInt = String | Int
+      in x: StringOrInt
+      result = match x { is String -> "string", is Int -> "int" }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases should have size 2
+    matchExpr.cases.head.pattern.value shouldBe Pattern.TypeTest("String")
+    matchExpr.cases(1).pattern.value shouldBe Pattern.TypeTest("Int")
+  }
+
+  it should "parse match expression with multiple fields in record pattern" in {
+    val source = """
+      in x: { a: Int, b: String, c: Float }
+      result = match x { { a, b, c } -> "all" }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases.head.pattern.value shouldBe Pattern.Record(List("a", "b", "c"))
+  }
+
+  it should "parse match expression with complex body expressions" in {
+    val source = """
+      type Result = { value: Int } | { error: String }
+      in x: Result
+      result = match x {
+        { value } -> value + 1,
+        { error } -> 0
+      }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases should have size 2
+    matchExpr.cases.head.body.value shouldBe a[Expression.Arithmetic]
+  }
+
+  it should "parse match expression with mixed patterns" in {
+    val source = """
+      type R = { a: Int } | { b: String } | { c: Float }
+      in x: R
+      result = match x { { a } -> 1, _ -> 0 }
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(2).asInstanceOf[Declaration.Assignment]
+    val matchExpr  = assignment.value.value.asInstanceOf[Expression.Match]
+    matchExpr.cases should have size 2
+    matchExpr.cases.head.pattern.value shouldBe Pattern.Record(List("a"))
+    matchExpr.cases(1).pattern.value shouldBe Pattern.Wildcard()
+  }
 }

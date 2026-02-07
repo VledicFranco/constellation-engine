@@ -245,6 +245,47 @@ object IRNode {
   ) extends IRNode {
     def outputType: SemanticType = SemanticType.SList(elementType)
   }
+
+  /** Match expression node for structural pattern matching.
+    * Evaluates patterns in order, returns first matching case's expression.
+    */
+  final case class MatchNode(
+      id: UUID,
+      scrutinee: UUID,
+      cases: List[MatchCaseIR],
+      resultType: SemanticType,
+      debugSpan: Option[Span] = None
+  ) extends IRNode {
+    def outputType: SemanticType = resultType
+  }
+}
+
+/** A single case in a match expression at IR level */
+final case class MatchCaseIR(
+    pattern: PatternIR,
+    bindings: Map[String, SemanticType], // Variable bindings from pattern
+    bodyId: UUID                         // IR node ID for the case body
+)
+
+/** Pattern representation at IR level */
+sealed trait PatternIR
+
+object PatternIR {
+
+  /** Record pattern: matches records with specified fields */
+  final case class Record(
+      fields: List[String],
+      matchedType: SemanticType.SRecord
+  ) extends PatternIR
+
+  /** Type test pattern: matches values of a specific primitive type */
+  final case class TypeTest(
+      typeName: String,
+      matchedType: SemanticType
+  ) extends PatternIR
+
+  /** Wildcard pattern: matches any value */
+  final case class Wildcard() extends PatternIR
 }
 
 /** Higher-order operation types */
@@ -296,7 +337,9 @@ final case class IRPipeline(
     case Some(IRNode.HigherOrderNode(_, _, source, _, _, _)) =>
       Set(source) // Lambda body nodes are evaluated separately per element
     case Some(IRNode.ListLiteralNode(_, elements, _, _)) => elements.toSet
-    case None                                            => Set.empty
+    case Some(IRNode.MatchNode(_, scrutinee, cases, _, _)) =>
+      Set(scrutinee) ++ cases.map(_.bodyId).toSet
+    case None => Set.empty
   }
 
   /** Topologically sort nodes for execution order */

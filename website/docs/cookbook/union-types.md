@@ -70,8 +70,67 @@ out fallbackMessage
 
 Union types are useful for modeling variant data from external APIs where the response shape depends on success or failure.
 
-:::note
-Runtime pattern matching for union type discrimination is not yet implemented. Union types currently support type declaration and pass-through. Pattern matching is planned for a future release.
+## Pattern Matching
+
+Use `match` expressions to discriminate between union variants:
+
+```constellation
+type Result = { value: Int, status: String } | { error: String, code: Int }
+in response: Result
+
+message = match response {
+  { value, status } -> "Success: ${value}",
+  { error, code } -> "Error ${code}: ${error}"
+}
+out message
+```
+
+### How It Works
+
+| Pattern | Matches When |
+|---------|--------------|
+| `{ field1, field2 }` | Record has exactly these fields |
+| `_` | Any value (wildcard) |
+
+The compiler verifies exhaustiveness at compile time. If any union variant is not covered, you get a compile error:
+
+```
+TypeError: Non-exhaustive match on type Result
+  Missing patterns for: { error: String, code: Int }
+```
+
+### Field Binding
+
+Pattern fields become variables in the match body:
+
+```constellation
+type User = { name: String, age: Int } | { error: String }
+in user: User
+
+greeting = match user {
+  { name, age } -> "Hello ${name}, you are ${age} years old",
+  { error } -> "Error: ${error}"
+}
+out greeting
+```
+
+### Wildcard Patterns
+
+Use `_` to match any remaining variants:
+
+```constellation
+type State = { active: Boolean } | { pending: Int } | { banned: String }
+in state: State
+
+isActive = match state {
+  { active } -> active,
+  _ -> false
+}
+out isActive
+```
+
+:::warning Exhaustiveness Required
+All union variants must be covered by patterns. The compiler will error if any variant is unmatched unless you include a wildcard pattern.
 :::
 
 ## Running the Example

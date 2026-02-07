@@ -238,6 +238,46 @@ object IRGenerator {
         s"Lambda expression at $span cannot be used in this context. " +
           "Lambdas can only be used as arguments to higher-order functions like filter, map, etc."
       )
+
+    case TypedExpression.Match(scrutinee, cases, semanticType, span) =>
+      val (scrutineeCtx, scrutineeId) = generateExpression(scrutinee, ctx)
+
+      // Generate IR for all case bodies
+      val (casesCtx, irCases) = cases.foldLeft((scrutineeCtx, List.empty[MatchCaseIR])) {
+        case ((currentCtx, irCaseList), typedCase) =>
+          // Create field access nodes for pattern bindings
+          // Each bound variable is a field access on the scrutinee
+          val (bindingCtx, _) = typedCase.bindings.foldLeft((currentCtx, List.empty[UUID])) {
+            case ((ctx, ids), (fieldName, fieldType)) =>
+              val fieldId   = UUID.randomUUID()
+              val fieldNode = IRNode.FieldAccessNode(fieldId, scrutineeId, fieldName, fieldType, None)
+              val newCtx    = ctx.addNode(fieldNode).bind(fieldName, fieldId)
+              (newCtx, ids :+ fieldId)
+          }
+
+          // Generate body with bindings in scope
+          val (bodyCtx, bodyId) = generateExpression(typedCase.body, bindingCtx)
+          val patternIR         = toPatternIR(typedCase.pattern)
+          val irCase            = MatchCaseIR(patternIR, typedCase.bindings, bodyId)
+          // Return original context (don't pollute outer scope with bindings)
+          // but keep all generated nodes
+          val outCtx = currentCtx.copy(nodes = bodyCtx.nodes)
+          (outCtx, irCaseList :+ irCase)
+      }
+
+      val id   = UUID.randomUUID()
+      val node = IRNode.MatchNode(id, scrutineeId, irCases, semanticType, Some(span))
+      (casesCtx.addNode(node), id)
+  }
+
+  /** Convert a typed pattern to IR pattern representation */
+  private def toPatternIR(pattern: TypedPattern): PatternIR = pattern match {
+    case TypedPattern.Record(fields, matchedType, _) =>
+      PatternIR.Record(fields, matchedType)
+    case TypedPattern.TypeTest(typeName, matchedType, _) =>
+      PatternIR.TypeTest(typeName, matchedType)
+    case TypedPattern.Wildcard(_) =>
+      PatternIR.Wildcard()
   }
 
   /** Check if a module name corresponds to a higher-order function */
