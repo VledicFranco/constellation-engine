@@ -537,9 +537,9 @@ class ConstellationDashboard {
         const reactBridge = (window as Window & { reactBridge?: { setSelectedNodeValue?: (value: NodeValue | null) => void } }).reactBridge;
         if (reactBridge?.setSelectedNodeValue) {
             reactBridge.setSelectedNodeValue({
-                nodeId: nodeData.label,
+                nodeId: nodeData.id,
                 nodeName: nodeData.label,
-                status: nodeData.status?.toLowerCase() as 'pending' | 'running' | 'completed' | 'failed' || 'pending',
+                status: (nodeData.status?.toLowerCase() || 'pending') as 'pending' | 'running' | 'completed' | 'failed',
                 value: nodeData.value,
                 error: nodeData.error,
                 durationMs: nodeData.durationMs,
