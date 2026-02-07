@@ -666,13 +666,16 @@ object DagCompiler {
         val bodyEvaluatorsResult = cases.zipWithIndex.traverse { case (matchCase, idx) =>
           getNodeOutput(matchCase.bodyId, s"body of match case $idx").map { bodyDataId =>
             val bodySpec = dataNodes(bodyDataId)
+            // Build mapping from transform input names (expr0, etc.) to field names
+            val exprToFieldMapping = buildExprToFieldMapping(bodySpec, scrutineeDataId)
             // Create evaluator that extracts bindings from scrutinee and computes body
             createMatchBodyEvaluator(
               matchCase.pattern,
               matchCase.bindings,
               bodyDataId,
               bodySpec,
-              scrutineeCType
+              scrutineeCType,
+              exprToFieldMapping
             )
           }
         }
@@ -704,15 +707,40 @@ object DagCompiler {
       }
     }
 
+    /** Build a mapping from transform input names (expr0, expr1, etc.) to field names.
+      * This traces the body's transform inputs to find field accesses on the scrutinee.
+      */
+    private def buildExprToFieldMapping(
+        bodySpec: DataNodeSpec,
+        scrutineeDataId: UUID
+    ): Map[String, String] =
+      bodySpec.transformInputs.flatMap { case (inputName, inputDataId) =>
+        dataNodes.get(inputDataId).flatMap { inputSpec =>
+          inputSpec.inlineTransform match {
+            case Some(InlineTransform.FieldAccessTransform(fieldName, _)) =>
+              // Check if this field access is on the scrutinee
+              inputSpec.transformInputs.get("source") match {
+                case Some(sourceId) if sourceId == scrutineeDataId =>
+                  Some(inputName -> fieldName)
+                case _ => None
+              }
+            case _ => None
+          }
+        }
+      }
+
     /** Create an evaluator function for a match case body.
       * This function extracts bindings from the scrutinee and evaluates the body expression.
+      *
+      * @param exprToFieldMapping Maps transform input names (expr0, etc.) to field names
       */
     private def createMatchBodyEvaluator(
         pattern: PatternIR,
         bindings: Map[String, SemanticType],
         bodyDataId: UUID,
         bodySpec: DataNodeSpec,
-        scrutineeCType: CType
+        scrutineeCType: CType,
+        exprToFieldMapping: Map[String, String]
     ): Any => Any = { (scrutineeValue: Any) =>
       // Unwrap union value if necessary
       val recordValue = scrutineeValue match {
@@ -720,24 +748,36 @@ object DagCompiler {
         case other                => other
       }
 
-      // Extract field bindings from the record
-      val bindingValues = recordValue match {
-        case m: Map[String, Any] @unchecked =>
-          bindings.keys.map(name => name -> m.getOrElse(name, null)).toMap
-        case _ =>
-          Map.empty[String, Any]
+      // Extract all field values from the record
+      val fieldValues = recordValue match {
+        case m: Map[String, Any] @unchecked => m
+        case _                              => Map.empty[String, Any]
       }
 
-      // If body has an inline transform, evaluate it with bindings as inputs
+      // If body has an inline transform, evaluate it with properly mapped inputs
       bodySpec.inlineTransform match {
+        // Case 1: Body is a direct field access (e.g., match body is just `code`)
+        case Some(InlineTransform.FieldAccessTransform(fieldName, _)) =>
+          fieldValues.getOrElse(fieldName, InlineTransform.MatchBindingMissing)
+
+        // Case 2: Body is a literal value
+        case Some(InlineTransform.LiteralTransform(value)) =>
+          value
+
+        // Case 3: Body uses field accesses as inputs (e.g., string interpolation)
         case Some(transform) =>
-          // Merge bindings with any other transform inputs
-          // For string interpolation, the bindings are the expression values
-          transform.apply(bindingValues)
+          // Build inputs using the expr-to-field mapping
+          // This maps expr0 -> fieldValue, expr1 -> fieldValue, etc.
+          val transformInputs = exprToFieldMapping.map { case (exprName, fieldName) =>
+            exprName -> fieldValues.getOrElse(fieldName, InlineTransform.MatchBindingMissing)
+          }
+          transform.apply(transformInputs)
+
         case None =>
-          // No inline transform - body is a literal or direct reference
-          // This case handles simple patterns like `_ -> 42`
-          bindingValues.values.headOption.getOrElse(null)
+          // No inline transform - try to get a field value if this is a simple field reference
+          bindings.keys.headOption
+            .flatMap(fieldValues.get)
+            .getOrElse(null)
       }
     }
 
