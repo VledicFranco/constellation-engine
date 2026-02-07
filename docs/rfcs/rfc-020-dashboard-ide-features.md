@@ -375,7 +375,24 @@ Click any DAG node to inspect its computed value:
 
 ## Implementation Phases
 
-### Phase 1: Foundation (Week 1-2)
+### Phase 0: Architecture Foundation (Week 0)
+**Goal:** Establish sustainable frontend architecture
+
+**Deliverables:**
+- Vite build system with HMR
+- Zustand stores (app, execution, editor, modules)
+- Typed API service layer
+- WebSocket service with reconnection
+- Vitest setup for component testing
+- First Lit component migration (template)
+
+**Exit Criteria:**
+- `npm run dev` starts Vite dev server with HMR
+- `npm run test` runs component tests
+- `npm run build` produces optimized bundle
+- One existing component (e.g., error banner) migrated to Lit
+
+### Phase 1: Foundation (Weeks 1-2)
 **Goal:** Enable real-time feedback loop
 
 1. **Live Execution Visualization** - See execution progress in real-time
@@ -384,37 +401,346 @@ Click any DAG node to inspect its computed value:
 
 **Deliverables:**
 - WebSocket endpoint for execution events
-- Real-time node status in DAG
-- LocalStorage presets
-- Error panel with source context
+- `execution.store.ts` with real-time updates
+- Real-time node status in DAG (subscribe to store)
+- `InputPresets` Lit component with LocalStorage
+- `ErrorPanel` Lit component with source context
 
-### Phase 2: Discovery (Week 3-4)
+### Phase 2: Discovery (Weeks 3-4)
 **Goal:** Help users discover and use modules
 
 4. **Module Browser** - Find and learn about modules
 5. **Value Inspector** - Inspect intermediate values
 
 **Deliverables:**
-- Modules API endpoint
-- Module browser panel with search
-- Node click shows full value details
+- `GET /api/v1/modules` endpoint
+- `modules.store.ts` with caching
+- `ModuleBrowser` Lit component with search
+- `ValueInspector` Lit component with JSON tree
 
-### Phase 3: IDE Experience (Week 5-6)
+### Phase 3: IDE Experience (Weeks 5-6)
 **Goal:** Full IDE capabilities in the browser
 
 6. **Monaco Editor Integration** - Autocomplete, hover, diagnostics
 7. **Performance Profiling View** - Identify bottlenecks
 
 **Deliverables:**
-- Monaco Editor replacing textarea
-- LSP connection for autocomplete
-- Execution profile visualization
+- Monaco Editor integration (lazy loaded)
+- `LspClient` service connecting Monaco to WebSocket
+- `ProfileView` Lit component with timing visualization
 
 ---
 
-## Architecture Changes
+## Frontend Architecture (Phase 0)
 
-### Backend
+Before implementing features, establish a sustainable frontend architecture. This is **Phase 0** and must complete before Phase 1.
+
+### Current Problems
+
+| Problem | Impact |
+|---------|--------|
+| Script tag loading | Order-dependent, no tree-shaking, global namespace |
+| No state management | Callback chains, hard to coordinate components |
+| No module system | Can't share code, no lazy loading |
+| Vanilla DOM manipulation | Verbose, error-prone, no reactivity |
+| No component testing | Only E2E tests, slow feedback |
+
+### Target Architecture
+
+```
+dashboard/
+├── src/
+│   ├── main.ts                 # Entry point, app initialization
+│   ├── store/
+│   │   ├── index.ts            # Central store export
+│   │   ├── app.store.ts        # App-wide state (current file, view)
+│   │   ├── execution.store.ts  # Execution state, live updates
+│   │   ├── editor.store.ts     # Editor content, cursor, errors
+│   │   └── modules.store.ts    # Module catalog cache
+│   ├── components/
+│   │   ├── file-browser/
+│   │   │   ├── FileBrowser.ts
+│   │   │   ├── FileTree.ts
+│   │   │   └── file-browser.test.ts
+│   │   ├── code-editor/
+│   │   │   ├── CodeEditor.ts   # Monaco wrapper
+│   │   │   ├── ErrorPanel.ts
+│   │   │   └── code-editor.test.ts
+│   │   ├── dag-visualizer/
+│   │   │   ├── DagVisualizer.ts
+│   │   │   ├── NodeTooltip.ts
+│   │   │   └── dag-visualizer.test.ts
+│   │   ├── execution-panel/
+│   │   │   ├── ExecutionPanel.ts
+│   │   │   ├── InputForm.ts
+│   │   │   ├── InputPresets.ts
+│   │   │   ├── OutputDisplay.ts
+│   │   │   └── execution-panel.test.ts
+│   │   ├── module-browser/
+│   │   │   ├── ModuleBrowser.ts
+│   │   │   ├── ModuleCard.ts
+│   │   │   └── module-browser.test.ts
+│   │   ├── profile-view/
+│   │   │   ├── ProfileView.ts
+│   │   │   ├── FlameGraph.ts
+│   │   │   └── profile-view.test.ts
+│   │   └── value-inspector/
+│   │       ├── ValueInspector.ts
+│   │       ├── JsonTreeView.ts
+│   │       └── value-inspector.test.ts
+│   ├── services/
+│   │   ├── api.ts              # HTTP client, typed endpoints
+│   │   ├── websocket.ts        # WebSocket manager, reconnection
+│   │   └── lsp-client.ts       # LSP protocol for Monaco
+│   ├── types/
+│   │   ├── api.types.ts        # API response types
+│   │   ├── store.types.ts      # Store state types
+│   │   └── component.types.ts  # Component prop types
+│   └── utils/
+│       ├── dom.ts              # DOM helpers
+│       ├── format.ts           # Value formatting
+│       └── debounce.ts         # Timing utilities
+├── tests/
+│   ├── setup.ts                # Test environment setup
+│   └── mocks/                  # API mocks for unit tests
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
+```
+
+### Build System: Vite
+
+```typescript
+// vite.config.ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  root: 'src',
+  build: {
+    outDir: '../dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          monaco: ['monaco-editor'],
+          cytoscape: ['cytoscape', 'cytoscape-dagre'],
+        },
+      },
+    },
+  },
+  optimizeDeps: {
+    include: ['monaco-editor', 'cytoscape'],
+  },
+});
+```
+
+**Benefits:**
+- ES modules with hot module replacement (HMR)
+- Automatic code splitting for Monaco (~500kb) and Cytoscape (~300kb)
+- TypeScript compilation with path aliases
+- Dev server with proxy to backend
+
+### State Management: Zustand
+
+Lightweight store (~1kb) with TypeScript support:
+
+```typescript
+// store/execution.store.ts
+import { create } from 'zustand';
+
+interface ExecutionState {
+  currentExecutionId: string | null;
+  nodeStates: Record<string, NodeExecutionState>;
+  isRunning: boolean;
+
+  // Actions
+  startExecution: (id: string) => void;
+  updateNodeState: (nodeId: string, state: NodeExecutionState) => void;
+  completeExecution: () => void;
+}
+
+export const useExecutionStore = create<ExecutionState>((set) => ({
+  currentExecutionId: null,
+  nodeStates: {},
+  isRunning: false,
+
+  startExecution: (id) => set({
+    currentExecutionId: id,
+    nodeStates: {},
+    isRunning: true
+  }),
+
+  updateNodeState: (nodeId, state) => set((prev) => ({
+    nodeStates: { ...prev.nodeStates, [nodeId]: state }
+  })),
+
+  completeExecution: () => set({ isRunning: false }),
+}));
+```
+
+**Why Zustand over Redux/MobX:**
+- Minimal boilerplate
+- No providers/context needed
+- Works with vanilla JS (no React required)
+- Easy to test
+
+### Component Pattern: Custom Elements + Lit
+
+Use Web Components for encapsulation with Lit for reactivity:
+
+```typescript
+// components/module-browser/ModuleBrowser.ts
+import { LitElement, html, css } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { useModulesStore } from '../../store/modules.store';
+
+@customElement('module-browser')
+export class ModuleBrowser extends LitElement {
+  @state() private searchQuery = '';
+  @state() private selectedModule: ModuleInfo | null = null;
+
+  static styles = css`
+    :host { display: flex; flex-direction: column; }
+    .search-input { padding: 8px; }
+    .module-list { flex: 1; overflow-y: auto; }
+  `;
+
+  private get filteredModules() {
+    const modules = useModulesStore.getState().modules;
+    if (!this.searchQuery) return modules;
+    return modules.filter(m =>
+      m.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+    );
+  }
+
+  render() {
+    return html`
+      <input
+        class="search-input"
+        placeholder="Search modules..."
+        @input=${(e: InputEvent) => this.searchQuery = (e.target as HTMLInputElement).value}
+      />
+      <div class="module-list">
+        ${this.filteredModules.map(m => html`
+          <module-card
+            .module=${m}
+            @select=${() => this.selectedModule = m}
+          ></module-card>
+        `)}
+      </div>
+      ${this.selectedModule ? html`
+        <module-detail .module=${this.selectedModule}></module-detail>
+      ` : null}
+    `;
+  }
+}
+```
+
+**Why Lit over React/Vue:**
+- Web Components work anywhere (no framework lock-in)
+- Small runtime (~5kb)
+- Native browser APIs
+- Easy integration with Monaco and Cytoscape
+
+### Service Layer: Typed API Client
+
+```typescript
+// services/api.ts
+const BASE_URL = '/api/v1';
+
+export const api = {
+  modules: {
+    list: () => fetchJson<ModulesResponse>(`${BASE_URL}/modules`),
+  },
+
+  executions: {
+    run: (request: ExecuteRequest) =>
+      fetchJson<ExecuteResponse>(`${BASE_URL}/execute`, {
+        method: 'POST',
+        body: JSON.stringify(request)
+      }),
+    get: (id: string) =>
+      fetchJson<StoredExecution>(`${BASE_URL}/executions/${id}`),
+    subscribe: (id: string, onEvent: (e: ExecutionEvent) => void) =>
+      createWebSocket(`/executions/${id}/events`, onEvent),
+  },
+
+  preview: {
+    compile: (source: string) =>
+      fetchJson<PreviewResponse>(`${BASE_URL}/preview`, {
+        method: 'POST',
+        body: JSON.stringify({ source }),
+      }),
+  },
+};
+
+async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!response.ok) throw new ApiError(response);
+  return response.json();
+}
+```
+
+### Testing Strategy
+
+**Unit Tests (Vitest):**
+```typescript
+// components/module-browser/module-browser.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { ModuleBrowser } from './ModuleBrowser';
+import { useModulesStore } from '../../store/modules.store';
+
+describe('ModuleBrowser', () => {
+  beforeEach(() => {
+    useModulesStore.setState({
+      modules: [
+        { name: 'Uppercase', description: 'Convert to uppercase' },
+        { name: 'Lowercase', description: 'Convert to lowercase' },
+      ]
+    });
+  });
+
+  it('filters modules by search query', async () => {
+    const el = new ModuleBrowser();
+    document.body.appendChild(el);
+
+    const input = el.shadowRoot!.querySelector('input')!;
+    input.value = 'upper';
+    input.dispatchEvent(new InputEvent('input'));
+
+    await el.updateComplete;
+
+    const cards = el.shadowRoot!.querySelectorAll('module-card');
+    expect(cards.length).toBe(1);
+  });
+});
+```
+
+**E2E Tests (Playwright):** Continue using existing setup for integration tests.
+
+### Migration Path
+
+The architecture migration happens incrementally alongside features:
+
+| Week | Architecture Work | Feature Work |
+|------|-------------------|--------------|
+| 0.1 | Vite setup, ES modules | — |
+| 0.2 | Zustand stores, API service | — |
+| 1 | Lit components for error panel | Live execution, error panel |
+| 2 | Input form as Lit component | Input presets |
+| 3 | Module browser (new Lit component) | Module browser |
+| 4 | Value inspector (new Lit component) | Value inspector |
+| 5 | Monaco integration | Monaco editor |
+| 6 | Profile view (new Lit component) | Profiling view |
+
+Existing components (file-browser, dag-visualizer, execution-panel) are migrated incrementally as they're touched for features.
+
+---
+
+## Backend Changes
+
 | Change | Module | Files |
 |--------|--------|-------|
 | Execution WebSocket | http-api | `ExecutionWebSocket.scala` (new) |
@@ -422,21 +748,22 @@ Click any DAG node to inspect its computed value:
 | Profile endpoint | http-api | `DashboardRoutes.scala` |
 | Intermediate value storage | http-api | `ExecutionStorage.scala` |
 
-### Frontend
-| Change | Files |
-|--------|-------|
-| Live execution | `dag-visualizer.ts`, `execution-panel.ts` |
-| Module browser | `modules-panel.ts` (new) |
-| Input presets | `execution-panel.ts` |
-| Error panel | `error-panel.ts` (new) |
-| Value inspector | `node-details.ts` (new) |
-| Monaco integration | `code-editor.ts` (major rewrite) |
-| Profile view | `profile-view.ts` (new) |
+---
 
-### Build System
-- Add Vite for bundling (per RFC-019 recommendation)
-- Add Monaco Editor dependency
-- Configure Monaco workers for syntax highlighting
+## Frontend Changes Summary
+
+| Change | Pattern | Files |
+|--------|---------|-------|
+| Build system | Vite | `vite.config.ts`, `package.json` |
+| State management | Zustand stores | `store/*.ts` |
+| API layer | Typed service | `services/api.ts`, `services/websocket.ts` |
+| Live execution | Store + WebSocket | `execution.store.ts`, `DagVisualizer.ts` |
+| Input presets | Lit component | `InputPresets.ts` |
+| Error panel | Lit component | `ErrorPanel.ts` |
+| Module browser | Lit component | `ModuleBrowser.ts`, `ModuleCard.ts` |
+| Value inspector | Lit component | `ValueInspector.ts`, `JsonTreeView.ts` |
+| Code editor | Monaco wrapper | `CodeEditor.ts`, `LspClient.ts` |
+| Profile view | Lit component | `ProfileView.ts`, `FlameGraph.ts` |
 
 ---
 
@@ -455,10 +782,13 @@ Click any DAG node to inspect its computed value:
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
+| Architecture migration complexity | Delays feature work | Phase 0 isolated, incremental component migration |
+| Lit learning curve | Slower initial development | Clear patterns, component templates, pair programming |
 | Monaco bundle size (+500kb) | Slower initial load | Code splitting, lazy load editor |
 | WebSocket complexity | Connection management | Reconnection logic, fallback to polling |
 | Intermediate value memory | High memory for large pipelines | Opt-in storage, size limits, TTL |
 | LSP performance | Slow autocomplete | Cache, debounce, timeout |
+| Store synchronization | Race conditions | Zustand middleware, optimistic updates with rollback |
 
 ---
 
