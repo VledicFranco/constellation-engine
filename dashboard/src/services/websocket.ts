@@ -80,7 +80,7 @@ export class ExecutionWebSocket {
 
       switch (event.type) {
         case 'execution:start':
-          store.startExecution(event.executionId);
+          store.startExecution(event.executionId, event.dagName);
           break;
 
         case 'module:start':
@@ -89,6 +89,13 @@ export class ExecutionWebSocket {
               status: 'running' as NodeStatus,
               startTime: event.timestamp,
             });
+            // Store node name mapping
+            if (event.moduleName) {
+              const state = useExecutionStore.getState();
+              useExecutionStore.setState({
+                nodeNames: { ...state.nodeNames, [event.moduleId]: event.moduleName }
+              });
+            }
           }
           break;
 

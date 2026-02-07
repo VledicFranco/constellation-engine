@@ -373,10 +373,12 @@ object ConstellationServer {
           ) // Allow long-running LSP sessions but prevent resource exhaustion
           .withHttpWebSocketApp { wsb =>
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
-            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb) <+> executionWs.routes(wsb)
+            // Note: executionWs routes MUST come FIRST because both httpRoutes and dashboardRoutes have
+            // catch-all patterns `GET /api/v1/executions/:id` that would match "events" as an ID
+            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
-              case Some(dashboardRoutes) => dashboardRoutes.routes <+> coreRoutes
-              case None                  => coreRoutes
+              case Some(dashboardRoutes) => executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes
+              case None                  => executionWs.routes(wsb) <+> coreRoutes
             }
 
             // Apply middleware layers (inner to outer): Auth → Rate Limit → CORS

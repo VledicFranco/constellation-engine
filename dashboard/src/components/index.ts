@@ -18,3 +18,9 @@ export type { ModuleBrowserProps, ModuleInfo } from './ModuleBrowser.js';
 
 export { ValueInspector, JsonTreeView } from './ValueInspector.js';
 export type { ValueInspectorProps, NodeValue } from './ValueInspector.js';
+
+export { ProfileView } from './ProfileView.js';
+export type { ProfileViewProps, ExecutionProfile, NodeProfile } from './ProfileView.js';
+
+export { MonacoEditor } from './MonacoEditor.js';
+export type { MonacoEditorProps } from './MonacoEditor.js';

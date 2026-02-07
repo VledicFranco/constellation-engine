@@ -5,13 +5,17 @@
  * Uses React portals to render into specific DOM locations.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { ErrorBanner } from './components/ErrorBanner.js';
 import { ErrorPanel, CompileError } from './components/ErrorPanel.js';
 import { InputPresets } from './components/InputPresets.js';
 import { ModuleBrowser, ModuleInfo } from './components/ModuleBrowser.js';
 import { ValueInspector, NodeValue } from './components/ValueInspector.js';
+import { ProfileView, ExecutionProfile } from './components/ProfileView.js';
+
+// Lazy load Monaco Editor for code splitting
+const MonacoEditor = lazy(() => import('./components/MonacoEditor.js'));
 
 export interface AppProps {
   // Callbacks to integrate with vanilla JS dashboard
@@ -39,6 +43,14 @@ export function App({ onInsertCode, onGotoLine, onLoadPreset, onSavePreset }: Ap
   // Current script path for presets
   const [currentScriptPath, setCurrentScriptPath] = useState<string>('');
 
+  // Profile view state
+  const [executionProfile, setExecutionProfile] = useState<ExecutionProfile | null>(null);
+  const [showProfileView, setShowProfileView] = useState(false);
+
+  // Monaco editor state
+  const [showMonacoEditor, setShowMonacoEditor] = useState(false);
+  const [monacoValue, setMonacoValue] = useState('');
+
   // Mount points
   const [errorBannerMount, setErrorBannerMount] = useState<HTMLElement | null>(null);
   const [inputPresetsMount, setInputPresetsMount] = useState<HTMLElement | null>(null);
@@ -56,14 +68,27 @@ export function App({ onInsertCode, onGotoLine, onLoadPreset, onSavePreset }: Ap
     loadModules();
   }, []);
 
-  // Set up module browser button handler
+  // Set up toolbar button handlers
   useEffect(() => {
-    const btn = document.getElementById('module-browser-btn');
-    if (btn) {
-      const handler = () => setShowModuleBrowser(true);
-      btn.addEventListener('click', handler);
-      return () => btn.removeEventListener('click', handler);
-    }
+    const moduleBrowserBtn = document.getElementById('module-browser-btn');
+    const profileViewBtn = document.getElementById('profile-view-btn');
+    const monacoEditorBtn = document.getElementById('monaco-editor-btn');
+
+    const handlers: Array<[HTMLElement | null, () => void]> = [
+      [moduleBrowserBtn, () => setShowModuleBrowser(true)],
+      [profileViewBtn, () => setShowProfileView((prev) => !prev)],
+      [monacoEditorBtn, () => setShowMonacoEditor(true)],
+    ];
+
+    handlers.forEach(([btn, handler]) => {
+      if (btn) btn.addEventListener('click', handler);
+    });
+
+    return () => {
+      handlers.forEach(([btn, handler]) => {
+        if (btn) btn.removeEventListener('click', handler);
+      });
+    };
   }, []);
 
   // Expose React state setters to vanilla JS via window
@@ -96,6 +121,19 @@ export function App({ onInsertCode, onGotoLine, onLoadPreset, onSavePreset }: Ap
       showModuleBrowser: () => setShowModuleBrowser(true),
       hideModuleBrowser: () => setShowModuleBrowser(false),
       toggleModuleBrowser: () => setShowModuleBrowser((prev) => !prev),
+      // Profile view methods
+      setExecutionProfile: (profile: ExecutionProfile | null) => {
+        setExecutionProfile(profile);
+        if (profile) setShowProfileView(true);
+      },
+      showProfileView: () => setShowProfileView(true),
+      hideProfileView: () => setShowProfileView(false),
+      toggleProfileView: () => setShowProfileView((prev) => !prev),
+      // Monaco editor methods
+      setMonacoValue: (value: string) => setMonacoValue(value),
+      showMonacoEditor: () => setShowMonacoEditor(true),
+      hideMonacoEditor: () => setShowMonacoEditor(false),
+      toggleMonacoEditor: () => setShowMonacoEditor((prev) => !prev),
     };
 
     (window as Window & { reactBridge?: typeof reactBridge }).reactBridge = reactBridge;
@@ -173,6 +211,39 @@ export function App({ onInsertCode, onGotoLine, onLoadPreset, onSavePreset }: Ap
   const handleCloseValueInspector = useCallback(() => {
     setShowValueInspector(false);
     setSelectedNodeValue(null);
+  }, []);
+
+  const handleCloseProfileView = useCallback(() => {
+    setShowProfileView(false);
+  }, []);
+
+  const handleProfileNodeClick = useCallback((nodeId: string) => {
+    // Find the node in the profile and show its value
+    if (executionProfile) {
+      const node = executionProfile.nodes.find(n => n.nodeId === nodeId);
+      if (node) {
+        setSelectedNodeValue({
+          nodeId: node.nodeId,
+          nodeName: node.nodeName,
+          status: node.status,
+          durationMs: node.durationMs,
+        });
+        setShowValueInspector(true);
+      }
+    }
+  }, [executionProfile]);
+
+  const handleMonacoChange = useCallback((value: string) => {
+    setMonacoValue(value);
+    // Notify vanilla JS of editor changes
+    const monacoMethods = (window as Window & { monacoEditor?: { onValueChange?: (v: string) => void } }).monacoEditor;
+    monacoMethods?.onValueChange?.(value);
+  }, []);
+
+  const handleMonacoSave = useCallback((value: string) => {
+    // Notify vanilla JS of save action
+    const monacoMethods = (window as Window & { monacoEditor?: { onSave?: (v: string) => void } }).monacoEditor;
+    monacoMethods?.onSave?.(value);
   }, []);
 
   return (
@@ -272,6 +343,97 @@ export function App({ onInsertCode, onGotoLine, onLoadPreset, onSavePreset }: Ap
             visible={true}
             onClose={handleCloseValueInspector}
           />
+        </div>
+      )}
+
+      {/* Profile View - Fixed position overlay */}
+      {showProfileView && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            left: '20px',
+            right: '20px',
+            height: '300px',
+            zIndex: 400,
+            boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.3)',
+            borderRadius: 'var(--radius-md, 6px)',
+          }}
+        >
+          <ProfileView
+            profile={executionProfile}
+            visible={true}
+            onClose={handleCloseProfileView}
+            onNodeClick={handleProfileNodeClick}
+          />
+        </div>
+      )}
+
+      {/* Monaco Editor Modal - For advanced editing */}
+      {showMonacoEditor && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.8)',
+            zIndex: 1100,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 16px',
+              background: 'var(--bg-tertiary, #21262d)',
+              borderBottom: '1px solid var(--border-primary, #30363d)',
+            }}
+          >
+            <span style={{ color: 'var(--text-primary, #f0f6fc)', fontSize: '14px', fontWeight: 500 }}>
+              Monaco Editor (Advanced)
+            </span>
+            <button
+              onClick={() => setShowMonacoEditor(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--text-secondary, #8b949e)',
+                cursor: 'pointer',
+                padding: '4px 8px',
+                fontSize: '12px',
+              }}
+            >
+              Close (Esc)
+            </button>
+          </div>
+          <div style={{ flex: 1 }}>
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: 'var(--text-muted, #6e7681)',
+                  }}
+                >
+                  Loading Monaco Editor...
+                </div>
+              }
+            >
+              <MonacoEditor
+                value={monacoValue}
+                onChange={handleMonacoChange}
+                onSave={handleMonacoSave}
+              />
+            </Suspense>
+          </div>
         </div>
       )}
     </>

@@ -24,6 +24,7 @@ export default defineConfig({
         manualChunks: {
           react: ['react', 'react-dom'],
           zustand: ['zustand'],
+          monaco: ['monaco-editor'],
         },
       },
     },
