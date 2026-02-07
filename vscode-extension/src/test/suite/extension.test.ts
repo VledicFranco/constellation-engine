@@ -43,7 +43,7 @@ suite('Extension Activation Tests', () => {
     // Check that our extension commands are registered
     const expectedCommands = [
       'constellation.executePipeline',
-      'constellation.runScript',
+      'constellation.runPipeline',
       'constellation.showDagVisualization',
     ];
 

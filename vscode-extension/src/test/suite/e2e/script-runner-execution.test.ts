@@ -28,7 +28,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       const commands = await vscode.commands.getCommands(true);
       assert.ok(commands.includes('constellation.executePipeline'), 'executePipeline command should exist');
-      assert.ok(commands.includes('constellation.runScript'), 'runScript command should exist');
+      assert.ok(commands.includes('constellation.runPipeline'), 'runPipeline command should exist');
     });
 
     test('Run script should open Script Runner panel', async () => {
@@ -37,7 +37,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Panel should open without error
         assert.ok(true, 'Script Runner panel opened successfully');
@@ -54,7 +54,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // This pipeline has no inputs, so it can execute immediately
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         assert.ok(true, 'Execution attempted for no-input pipeline');
       } catch {
@@ -72,7 +72,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(content.includes('String'), 'File should declare String input');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Panel should render input form for String type
         assert.ok(true, 'Script Runner opened with String input');
@@ -91,7 +91,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(content.includes('Int'), 'File should declare Int input');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Panel should render input form for Int type
         assert.ok(true, 'Script Runner opened with Int input');
@@ -111,7 +111,7 @@ suite('E2E Script Runner Execution Tests', function() {
       try {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         assert.ok(true, 'Both panels opened for execution notification testing');
       } catch {
@@ -126,7 +126,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Execution time is displayed in the output section
         assert.ok(true, 'Execution time tracking in place');
@@ -142,14 +142,14 @@ suite('E2E Script Runner Execution Tests', function() {
 
       try {
         // Open panel
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Trigger multiple opens (should reuse panel)
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 300));
 
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 300));
 
         assert.ok(true, 'Multiple executions handled correctly');
@@ -170,7 +170,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(content.includes('in '), 'File should have input declarations');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'String input form rendered');
       } catch {
@@ -188,7 +188,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(content.includes('Int'), 'File should have Int type');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Int input form rendered');
       } catch {
@@ -203,7 +203,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // The panel shows "No inputs defined" message when inputs array is empty
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Should show "No inputs defined in this script."
         assert.ok(true, 'No inputs message displayed');
@@ -219,7 +219,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       try {
         // Open panel
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Modify document (this triggers schema refresh via onDidChangeTextDocument)
@@ -250,7 +250,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(inputMatches && inputMatches.length >= 2, 'Should have multiple inputs');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Multiple inputs rendered');
       } catch {
@@ -270,7 +270,7 @@ suite('E2E Script Runner Execution Tests', function() {
       assert.ok(content.includes('Int'), 'Should have Int type');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Type badges displayed');
       } catch {
@@ -287,7 +287,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // The setNestedValue function handles dot notation and bracket notation
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Nested path handling infrastructure in place');
       } catch {
@@ -304,7 +304,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // The error container has class="error-category syntax"
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Errors are displayed in the panel
         assert.ok(true, 'Error display infrastructure in place');
@@ -321,7 +321,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         // Error locations with data-line and data-column attributes are rendered
         assert.ok(true, 'Error location click handling in place');
@@ -337,7 +337,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         // Suggestions are rendered in error-suggestion div
         assert.ok(true, 'Error suggestion display in place');
@@ -353,7 +353,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         // Code context is displayed in monospace font
         assert.ok(true, 'Error code context display in place');
@@ -369,7 +369,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         // Multiple error containers can be rendered
         assert.ok(true, 'Multiple error accumulation in place');
@@ -386,7 +386,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // Type errors have category: 'type' in the ErrorInfo interface
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         assert.ok(true, 'Type error category display in place');
       } catch {
@@ -402,7 +402,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // Reference errors occur when referencing unknown modules/variables
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         assert.ok(true, 'Reference error category display in place');
       } catch {
@@ -418,7 +418,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // Runtime errors occur during execution
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Runtime error category display in place');
       } catch {
@@ -433,7 +433,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // The navigateToError postMessage is handled by _navigateToError
@@ -451,7 +451,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // runBtn.disabled = true; stepBtn.disabled = true; on schemaError
         assert.ok(true, 'Button disabling on schema error in place');
@@ -470,7 +470,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Loading spinner is displayed during execution
         assert.ok(true, 'Loading spinner infrastructure in place');
@@ -486,7 +486,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         // runBtn.disabled = true; stepBtn.disabled = true; during execution
         assert.ok(true, 'Button disabling during execution in place');
@@ -502,7 +502,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Output section has display: none by default
         assert.ok(true, 'Output section hidden initially');
@@ -518,7 +518,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Output section becomes visible after execution
         assert.ok(true, 'Output section visible after execution');
@@ -534,7 +534,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Output section shows error display
         assert.ok(true, 'Output section visible for errors');
@@ -550,7 +550,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Execution time badge is displayed
         assert.ok(true, 'Execution time display in place');
@@ -566,7 +566,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Output is pretty-printed JSON
         assert.ok(true, 'JSON formatting in place');
@@ -582,7 +582,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Green left border for success
         assert.ok(true, 'Success styling in place');
@@ -598,7 +598,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         // Initial state shows spinner with "Loading schema..."
         assert.ok(true, 'Schema loading state in place');
@@ -614,7 +614,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Filename is shown in header
         assert.ok(true, 'Filename display in place');
@@ -632,7 +632,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Panel shows error message if LSP unavailable
         assert.ok(true, 'LSP unavailable handling in place');
@@ -648,7 +648,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Schema request is sent to LSP
         assert.ok(true, 'getInputSchema request in place');
@@ -664,7 +664,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         // Execute request is sent to LSP
         assert.ok(true, 'executePipeline request in place');
@@ -680,7 +680,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Timeout errors are caught and displayed
         assert.ok(true, 'LSP timeout handling in place');
@@ -696,7 +696,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Malformed responses are caught and displayed
         assert.ok(true, 'Malformed response handling in place');
@@ -716,7 +716,7 @@ suite('E2E Script Runner Execution Tests', function() {
       try {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'DAG start notification in place');
       } catch {
@@ -733,7 +733,7 @@ suite('E2E Script Runner Execution Tests', function() {
       try {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         assert.ok(true, 'DAG completion notification in place');
       } catch {
@@ -750,7 +750,7 @@ suite('E2E Script Runner Execution Tests', function() {
       try {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
         assert.ok(true, 'DAG failure notification in place');
       } catch {
@@ -771,7 +771,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Execution without DAG panel works');
       } catch {
@@ -788,7 +788,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel created successfully');
       } catch {
@@ -803,9 +803,9 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         assert.ok(true, 'Panel reused correctly');
       } catch {
@@ -824,12 +824,12 @@ suite('E2E Script Runner Execution Tests', function() {
       try {
         // Open panel for file 1
         await vscode.window.showTextDocument(doc1);
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Switch to file 2
         await vscode.window.showTextDocument(doc2);
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         assert.ok(true, 'Panel updates when switching files');
@@ -845,7 +845,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Close all editors (triggers panel dispose)
@@ -865,13 +865,13 @@ suite('E2E Script Runner Execution Tests', function() {
 
       try {
         // Rapid open/close
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 200));
         await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
         await new Promise(resolve => setTimeout(resolve, 200));
 
         await vscode.window.showTextDocument(document);
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 200));
 
         assert.ok(true, 'Rapid cycles handled');
@@ -891,7 +891,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Empty file handled');
       } catch {
@@ -907,7 +907,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Comment-only file handled');
       } catch {
@@ -922,7 +922,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // Long values are handled by truncation in the panel
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Long values handled');
       } catch {
@@ -937,7 +937,7 @@ suite('E2E Script Runner Execution Tests', function() {
 
       // escapeHtml() is used to handle special characters
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Special characters handled');
       } catch {
@@ -952,8 +952,8 @@ suite('E2E Script Runner Execution Tests', function() {
 
       try {
         // Launch multiple runs concurrently (isExecuting flag prevents issues)
-        const promise1 = vscode.commands.executeCommand('constellation.runScript');
-        const promise2 = vscode.commands.executeCommand('constellation.runScript');
+        const promise1 = vscode.commands.executeCommand('constellation.runPipeline');
+        const promise2 = vscode.commands.executeCommand('constellation.runPipeline');
 
         await Promise.all([promise1, promise2]);
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -970,7 +970,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Close the document (simulating file deletion effect)
@@ -991,7 +991,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Button title attributes in place');
       } catch {
@@ -1006,7 +1006,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Step button titles in place');
       } catch {
@@ -1021,7 +1021,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Input label associations in place');
       } catch {
@@ -1036,7 +1036,7 @@ suite('E2E Script Runner Execution Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         assert.ok(true, 'Error message structure in place');
       } catch {

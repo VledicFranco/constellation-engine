@@ -104,7 +104,7 @@ suite('LSP Integration Tests', function() {
 
     // The command should not throw even if server communication fails
     try {
-      await vscode.commands.executeCommand('constellation.runScript');
+      await vscode.commands.executeCommand('constellation.runPipeline');
       // Give time for panel to open
       await new Promise(resolve => setTimeout(resolve, 1000));
       assert.ok(true, 'Command executed without throwing');
@@ -148,7 +148,7 @@ suite('LSP Integration Tests', function() {
 
     // Open Script Runner panel which contains the Step button
     try {
-      await vscode.commands.executeCommand('constellation.runScript');
+      await vscode.commands.executeCommand('constellation.runPipeline');
       // Give time for panel to open and schema to load
       await new Promise(resolve => setTimeout(resolve, 2000));
       assert.ok(true, 'Script Runner with step-through opened without throwing');
@@ -165,8 +165,8 @@ suite('LSP Integration Tests', function() {
 
     // Verify the extension has the necessary infrastructure
     const commands = await vscode.commands.getCommands(true);
-    assert.ok(commands.includes('constellation.runScript'),
-      'runScript command (which provides step-through UI) should be available');
+    assert.ok(commands.includes('constellation.runPipeline'),
+      'runPipeline command (which provides step-through UI) should be available');
 
     // The step-through messages are:
     // - constellation/stepStart: Begin stepping, returns sessionId and initial state

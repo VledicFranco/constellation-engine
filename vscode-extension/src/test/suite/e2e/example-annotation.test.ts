@@ -55,7 +55,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Panel should open without error for file with @example
@@ -79,7 +79,7 @@ suite('E2E @example Annotation Tests', function() {
       assert.ok(content.includes('in enabled: Boolean'), 'Should have Boolean input');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // The ScriptRunnerPanel should:
@@ -99,7 +99,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Panel should handle mix of inputs with/without examples
@@ -120,7 +120,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // The constellation/getInputSchema request is sent when panel opens
@@ -142,7 +142,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // String input should have value="hello world"
@@ -160,7 +160,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Int input should have value="42"
@@ -178,7 +178,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Float input should have value="3.14"
@@ -196,7 +196,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Boolean input should have checked attribute when @example(true)
@@ -212,7 +212,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Boolean input should NOT have checked attribute when @example(false)
@@ -230,7 +230,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Each input with @example should show "Example: <value>" hint
@@ -247,7 +247,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // The 'count' input has no @example, so no hint should appear
@@ -266,7 +266,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Empty string example handled');
       } catch {
@@ -281,7 +281,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Negative number example handled');
       } catch {
@@ -297,7 +297,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Zero example handled correctly');
       } catch {
@@ -312,7 +312,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Special characters escaped');
       } catch {
@@ -326,7 +326,7 @@ suite('E2E @example Annotation Tests', function() {
       const editor = await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Edit document to trigger schema refresh
@@ -355,7 +355,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // The collectInputs() function reads values from input elements
@@ -373,7 +373,7 @@ suite('E2E @example Annotation Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // If user modifies input, their value takes precedence

@@ -68,7 +68,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // Open Script Runner which contains step-through UI
       let panelOpened = false;
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         panelOpened = true;
         // Allow time for panel initialization
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -100,7 +100,7 @@ suite('E2E Step-through Debugging Tests', function() {
 
       // Open Script Runner to prepare for stepping
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Panel opened - step-through UI would show totalBatches
         assert.ok(true, 'Panel opened with step-through capability');
@@ -121,7 +121,7 @@ suite('E2E Step-through Debugging Tests', function() {
       assert.ok(content.includes('Uppercase'), 'Should have module call');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // Step button should be enabled immediately for no-input pipelines
         assert.ok(true, 'No-input pipeline ready for step-through');
@@ -163,7 +163,7 @@ suite('E2E Step-through Debugging Tests', function() {
 
       // Open Script Runner for step-through
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
 
         // In the actual UI, clicking Step would:
@@ -197,7 +197,7 @@ suite('E2E Step-through Debugging Tests', function() {
       assert.ok(content.includes('Repeat'), 'Should have Repeat for combining values');
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel ready to display completed node metadata');
       } catch {
@@ -216,7 +216,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // 3. After completion, nodes transition to "completed"
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         // The WebView would show state transitions during execution
         assert.ok(true, 'Panel can show running state during batch execution');
@@ -242,7 +242,7 @@ suite('E2E Step-through Debugging Tests', function() {
 
       try {
         // Open Script Runner panel
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // After stopping, the UI should:
@@ -268,7 +268,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // 4. Panel returns to ready state
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel can handle mid-execution stop');
       } catch {
@@ -287,12 +287,12 @@ suite('E2E Step-through Debugging Tests', function() {
       // 3. New session gets fresh sessionId
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Simulate stopping and starting again
         // In real UI this would be: Step -> Stop -> Step again
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         assert.ok(true, 'Can start new session after stop');
@@ -323,7 +323,7 @@ suite('E2E Step-through Debugging Tests', function() {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // Open Script Runner for stepping
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // When stepping:
@@ -358,7 +358,7 @@ suite('E2E Step-through Debugging Tests', function() {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         assert.ok(true, 'Panels ready for state transition testing');
@@ -380,7 +380,7 @@ suite('E2E Step-through Debugging Tests', function() {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // DAG visualizer receives valuePreview in notifyBatchUpdate
@@ -404,7 +404,7 @@ suite('E2E Step-through Debugging Tests', function() {
         await vscode.commands.executeCommand('constellation.showDagVisualization');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         assert.ok(true, 'Panels ready for execution complete notification');
@@ -426,7 +426,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // 3. Step button should be disabled
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1500));
         // Panel should show error, not crash
         assert.ok(true, 'Error pipeline handled gracefully');
@@ -446,7 +446,7 @@ suite('E2E Step-through Debugging Tests', function() {
       await vscode.window.showTextDocument(document);
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel can handle runtime errors during stepping');
       } catch {
@@ -467,7 +467,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // - Stop: enabled (always available during stepping)
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel manages button states correctly');
       } catch {
@@ -482,7 +482,7 @@ suite('E2E Step-through Debugging Tests', function() {
 
       try {
         // Open Script Runner for first file
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Open a different file
@@ -491,7 +491,7 @@ suite('E2E Step-through Debugging Tests', function() {
         await vscode.window.showTextDocument(otherDocument);
 
         // Open Script Runner again (should update URI)
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Panel should switch to new file context
@@ -508,8 +508,8 @@ suite('E2E Step-through Debugging Tests', function() {
 
       // The main entry point for step-through is the runScript command
       // which opens the Script Runner panel containing step controls
-      assert.ok(commands.includes('constellation.runScript'),
-        'runScript command should be registered');
+      assert.ok(commands.includes('constellation.runPipeline'),
+        'runPipeline command should be registered');
 
       // DAG visualization for monitoring step progress
       assert.ok(commands.includes('constellation.showDagVisualization'),
@@ -523,10 +523,10 @@ suite('E2E Step-through Debugging Tests', function() {
 
       try {
         // Open Script Runner twice
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
 
         // Should reuse existing panel, not create duplicate
@@ -548,7 +548,7 @@ suite('E2E Step-through Debugging Tests', function() {
       // 4. Show execution time
 
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
         assert.ok(true, 'Panel ready for continue operation');
       } catch {

@@ -45,7 +45,7 @@ suite('E2E User Workflow Tests', function() {
 
       // Verify commands are available (they appear in editor/title menu)
       const commands = await vscode.commands.getCommands(true);
-      assert.ok(commands.includes('constellation.runScript'));
+      assert.ok(commands.includes('constellation.runPipeline'));
       assert.ok(commands.includes('constellation.showDagVisualization'));
     });
   });
@@ -61,7 +61,7 @@ suite('E2E User Workflow Tests', function() {
       let commandExecuted = false;
       try {
         // This will open the Script Runner panel
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         commandExecuted = true;
       } catch {
         // May fail if LSP server not available
@@ -83,7 +83,7 @@ suite('E2E User Workflow Tests', function() {
       // The command should handle non-.cst files gracefully
       // It shows a warning but doesn't throw
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         // If we get here, the command handled the case (maybe showed warning)
         assert.ok(true);
       } catch {
@@ -240,7 +240,7 @@ suite('E2E User Workflow Tests', function() {
       const commands = await vscode.commands.getCommands(true);
 
       // The run script command enables step-through via the panel UI
-      assert.ok(commands.includes('constellation.runScript'), 'runScript command should be registered');
+      assert.ok(commands.includes('constellation.runPipeline'), 'runPipeline command should be registered');
     });
 
     test('Script Runner panel should open for step-through on multi-step pipeline', async () => {
@@ -257,7 +257,7 @@ suite('E2E User Workflow Tests', function() {
       // Open Script Runner which has the Step button
       let commandExecuted = false;
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         commandExecuted = true;
         // Give time for panel to open
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -286,7 +286,7 @@ suite('E2E User Workflow Tests', function() {
 
       // Verify commands don't crash
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         assert.ok(true, 'Script Runner opened without error');
       } catch {
@@ -305,7 +305,7 @@ suite('E2E User Workflow Tests', function() {
 
       // Open Script Runner panel
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         // If we get here, the panel opened successfully
@@ -326,7 +326,7 @@ suite('E2E User Workflow Tests', function() {
 
       // Step-through should work even with pipelines that have no inputs
       try {
-        await vscode.commands.executeCommand('constellation.runScript');
+        await vscode.commands.executeCommand('constellation.runPipeline');
         await new Promise(resolve => setTimeout(resolve, 500));
         assert.ok(true, 'No-input pipeline can be opened for stepping');
       } catch {
