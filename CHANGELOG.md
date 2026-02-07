@@ -5,6 +5,24 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Record Literal Syntax**: Inline record construction in expressions using `{ field: value }` syntax. Enables `@example({ name: "Alice", age: 30 })` annotations for union type inputs.
+- **Pattern Matching on Union Types**: Full support for `match` expressions with union type scrutinees. Each case pattern binds fields from the matched variant.
+- **Match Expression Body Types**: Support for all body expression types in match cases:
+  - String interpolation: `{ value, status } -> "Success: ${status}"`
+  - Field references: `{ error, code } -> code`
+  - Literal values: `{ value, status } -> 200`
+
+### Fixed
+- **Match Expression Runtime**: Fixed eager evaluation bug where all case bodies were computed regardless of pattern match. Now uses lazy `MatchTransform` that only evaluates the matching case body.
+- **String Interpolation in Match Bodies**: Fixed `key not found: expr0` error by properly mapping expression indices to bound field names.
+- **FieldAccessTransform on Missing Fields**: Returns `MatchBindingMissing` sentinel instead of throwing, enabling correct lazy evaluation of non-matching patterns.
+
+### Changed
+- **InlineTransform**: Added `MatchTransform` for lazy pattern evaluation and `MatchBindingMissing` sentinel for missing field handling.
+
 ## [0.4.0] - 2026-02-04
 
 ### Added
