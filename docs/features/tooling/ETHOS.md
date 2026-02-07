@@ -6,13 +6,13 @@
 
 ## Core Invariants
 
-1. **Tooling observes, it does not control.** The dashboard is read-only. LSP provides feedback but does not execute without explicit request.
+1. **Dashboard is a specialized IDE and observability tool.** It provides a complete pipeline development workflow: write, visualize, test, debug, monitor, and manage.
 
 2. **LSP is the single protocol.** All IDE features (autocomplete, diagnostics, hover, semantic tokens) go through LSP. No editor-specific implementations.
 
 3. **Error messages are actionable.** Every diagnostic includes location (line, column), context (expected vs. found), and suggestion (how to fix) when possible.
 
-4. **Dashboard is for visualization, not editing.** Pipelines are viewed and executed from dashboard; editing happens in the IDE.
+4. **Dashboard complements general IDEs.** The dashboard excels at pipeline-specific workflows; developers can also use VSCode/Neovim via LSP for large-scale editing.
 
 5. **WebSocket is the transport.** LSP uses WebSocket for bidirectional communication. HTTP is used only for request-response patterns (REST API, file serving).
 
@@ -30,11 +30,12 @@
 
 ### When Adding Dashboard Features
 
-- **Keep it read-only.** The dashboard displays and executes pipelines. It does not modify pipeline source.
+- **Embrace the specialized IDE role.** The dashboard supports writing, testing, and observing pipelines. Features should enhance this workflow.
 - **Use the existing API.** Dashboard features use `DashboardRoutes` endpoints, not direct module access.
 - **Test with Playwright.** Dashboard features require E2E tests in `dashboard-tests/`.
 - **Follow the dark theme.** UI additions use the established color palette.
 - **Support keyboard navigation.** All interactive elements should be accessible via keyboard.
+- **Optimize for the inner loop.** Features should make write → visualize → test → iterate as fast as possible.
 
 ### When Modifying Error Messages
 
@@ -60,15 +61,16 @@
 - It's accessed outside of editors (CLI, scripts, other tools)
 - It doesn't need real-time bidirectional communication
 
-### "Should the dashboard show this information?"
+### "Should the dashboard include this feature?"
 
 **Yes** if:
 - It helps understand pipeline structure or behavior
-- It's useful during development or debugging
-- It can be visualized effectively
+- It speeds up the write → visualize → test → iterate loop
+- It provides observability into execution or performance
+- It can be visualized or interacted with effectively
 
 **No** if:
-- It requires editing (use the IDE instead)
+- It's better suited to a general IDE (large-scale refactoring, multi-file search)
 - It's internal implementation detail
 - It would clutter the UI without adding insight
 
@@ -152,13 +154,13 @@ Error: Undefined module (E101)
 
 Do not add:
 
-- **Dashboard editing.** Editing pipelines from dashboard. Use IDE instead.
-- **Offline LSP.** LSP without server connection. Server is required.
+- **Offline dashboard.** Dashboard requires server connection for compilation and execution.
 - **Editor-native debugging.** Deep integration with VSCode debugger. Use LSP debug protocol.
 - **Custom editor plugins.** Neovim/Emacs plugins beyond LSP client. LSP is sufficient.
 - **Dashboard authentication.** Dashboard inherits server auth settings. No separate auth.
+- **Large-scale refactoring tools.** Multi-file rename, search-replace across projects. Use a general IDE.
 
-These boundaries are intentional. Expanding scope fragments the tooling story and increases maintenance burden.
+These boundaries are intentional. The dashboard excels at pipeline-specific workflows; general IDEs handle everything else.
 
 ---
 

@@ -15,37 +15,31 @@ This RFC analyzes the dashboard UX against the Constellation tooling organon and
 
 ## Part 1: UX Analysis Against the Organon
 
-### Organon Principles Recap
+### Organon Principles (Updated 2026-02-07)
 
 From `docs/features/tooling/PHILOSOPHY.md` and `ETHOS.md`:
 
-1. **Tooling observes, it does not control.** Dashboard is read-only.
+1. **Dashboard is a specialized IDE and observability tool.** Write, test, visualize, and monitor pipelines in one place.
 2. **LSP is the single protocol.** All IDE features go through LSP.
-3. **Dashboard is for visualization, not editing.** Editing happens in IDE.
+3. **Dashboard complements general IDEs.** Dashboard excels at pipeline-specific workflows; general IDEs handle large-scale editing.
 4. **Error messages are actionable.**
-5. **Dashboard visualizes pipeline structure and execution.**
+5. **Optimize for the inner loop.** Write → visualize → test → iterate should be fast.
 
 ### Current State Assessment
 
 | Feature | Status | Alignment with Organon |
 |---------|--------|------------------------|
-| File browser | Implemented | Aligned - browsing, not editing |
-| Code editor | Implemented | **Misaligned** - violates "read-only" principle |
-| DAG visualization | Implemented | Aligned - visualization |
-| Execution inputs | Implemented | Aligned - run, not edit |
+| File browser | Implemented | Aligned - navigation |
+| Code editor | Implemented | **Aligned** - specialized IDE capability |
+| DAG visualization | Implemented | Aligned - real-time visualization |
+| Execution inputs | Implemented | Aligned - test execution |
 | Execution history | Implemented | Aligned - observation |
 | Pipelines panel | Implemented | Aligned - lifecycle visibility |
 | Suspend/resume UI | Implemented | Aligned - workflow continuation |
 
-### Critical Finding: Code Editor Violates Organon
+### Organon Update Complete
 
-The current code editor component (recently enhanced with syntax highlighting) contradicts the core principle:
-
-> "Dashboard is for visualization, not editing. Pipelines are viewed and executed from dashboard; editing happens in the IDE."
-
-**Decision Required:** Either:
-1. **Remove the editor** - Return to read-only visualization (aligns with organon)
-2. **Update the organon** - Acknowledge dashboard editing as a valid use case
+The tooling organon has been updated to position the dashboard as a **specialized IDE and observability tool** rather than a read-only visualization surface. This aligns with the current implementation and enables future development features.
 
 ### Gaps for Full Pipeline Development Workflow
 
@@ -243,15 +237,9 @@ Adopt React with modern tooling:
 
 ## Decision Points
 
-### Decision 1: Code Editor Fate
+### Decision 1: Code Editor ✅ RESOLVED
 
-| Option | Pros | Cons |
-|--------|------|------|
-| **Remove** | Aligns with organon, clearer separation | Users lose quick iteration |
-| **Keep** | Convenient for quick tests | Violates stated philosophy |
-| **Update organon** | Acknowledges reality | Muddies the separation story |
-
-**Recommendation:** Keep the editor but rename/reframe as "Preview Editor" - explicitly positioned as a convenience for testing, not the primary editing surface. Update organon to acknowledge this exception.
+The organon has been updated to position the dashboard as a "specialized IDE and observability tool." The code editor is now aligned with the philosophy.
 
 ### Decision 2: Build Tool
 
