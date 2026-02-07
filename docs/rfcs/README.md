@@ -79,7 +79,7 @@ result = MyModule(input) with retry: 3, timeout: 30s, cache: 5min
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
-| [RFC-014](./rfc-014-suspendable-execution.md) | Suspendable Execution | Draft | Suspend/resume execution at runtime when inputs are missing or nodes fail |
+| [RFC-014](./rfc-014-suspendable-execution.md) | Suspendable Execution | Implemented | Suspend/resume execution at runtime when inputs are missing or nodes fail |
 
 ---
 
@@ -89,12 +89,12 @@ RFC-015 is a **structured RFC** with a master document defining shared terminolo
 
 | RFC | Feature | Status | Depends On | Description |
 |-----|---------|--------|------------|-------------|
-| [RFC-015](./rfc-015-pipeline-lifecycle.md) | Pipeline Lifecycle (master) | Draft | — | Terminology standardization ("program" → "pipeline"), hot/cold/warm definitions, caching architecture, rename inventory |
-| [RFC-015a](./rfc-015a-suspension-http.md) | Suspension-Aware HTTP | Draft | RFC-015 | Expose suspend/resume over HTTP: extended response models, `POST /executions/:id/resume`, SuspensionStore wiring |
-| [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Pipeline Loader & Reload | Draft | RFC-015 | Startup `.cst` loader, hot-reload endpoint, pipeline versioning with rollback |
-| [RFC-015c](./rfc-015c-canary-releases.md) | Canary Releases | Draft | RFC-015b | Traffic splitting between pipeline versions, per-version metrics, auto-promote/rollback |
-| [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore | Draft | RFC-015 | Filesystem-backed PipelineStore for pipelines that survive restarts |
-| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard Integration | Draft | RFC-015a, 015b, 015c | Pipelines panel, suspend/resume UI, canary visualization, file browser bridge |
+| [RFC-015](./rfc-015-pipeline-lifecycle.md) | Pipeline Lifecycle (master) | Implemented | — | Terminology standardization ("program" → "pipeline"), hot/cold/warm definitions, caching architecture, rename inventory |
+| [RFC-015a](./rfc-015a-suspension-http.md) | Suspension-Aware HTTP | Implemented | RFC-015 | Expose suspend/resume over HTTP: extended response models, `POST /executions/:id/resume`, SuspensionStore wiring |
+| [RFC-015b](./rfc-015b-pipeline-loader-reload.md) | Pipeline Loader & Reload | Implemented | RFC-015 | Startup `.cst` loader, hot-reload endpoint, pipeline versioning with rollback |
+| [RFC-015c](./rfc-015c-canary-releases.md) | Canary Releases | Implemented | RFC-015b | Traffic splitting between pipeline versions, per-version metrics, auto-promote/rollback |
+| [RFC-015d](./rfc-015d-persistent-pipeline-store.md) | Persistent PipelineStore | Implemented | RFC-015 | Filesystem-backed PipelineStore for pipelines that survive restarts |
+| [RFC-015e](./rfc-015e-dashboard-integration.md) | Dashboard Integration | Implemented | RFC-015a, 015b, 015c | Pipelines panel, suspend/resume UI, canary visualization, file browser bridge |
 
 #### Implementation Order
 
@@ -141,7 +141,8 @@ RFC-015 (terminology rename)
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
 | [RFC-018](./rfc-018-mcp-server.md) | MCP Server | Draft | Model Context Protocol server for LLM integration |
-| [RFC-019](./rfc-019-generated-documentation.md) | Generated Documentation | Accepted | Scala catalog generation, organon verification, freshness tracking |
+| [RFC-019](./rfc-019-generated-documentation.md) | Generated Documentation | Implemented | Scala catalog generation, organon verification, freshness tracking |
+| [RFC-020](./rfc-020-dashboard-ide-features.md) | Dashboard IDE Features | Approved | Live execution visualization, Monaco editor, module browser, profiling |
 
 ---
 
