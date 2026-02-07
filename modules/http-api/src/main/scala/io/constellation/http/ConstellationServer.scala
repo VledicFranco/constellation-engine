@@ -268,10 +268,13 @@ object ConstellationServer {
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
       val port = Port.fromInt(config.port).getOrElse(port"8080")
 
+      // Create execution WebSocket handler for live visualization (shared with dashboard routes)
+      val executionWs = ExecutionWebSocket()
+
       // Optionally create dashboard routes
       val dashboardRoutesIO: IO[Option[DashboardRoutes]] = config.dashboardConfig match {
         case Some(dashConfig) if dashConfig.enableDashboard =>
-          DashboardRoutes.withDefaultStorage(constellation, compiler, dashConfig).map(Some(_))
+          DashboardRoutes.withDefaultStorage(constellation, compiler, dashConfig, Some(executionWs)).map(Some(_))
         case _ =>
           IO.pure(None)
       }
@@ -355,7 +358,7 @@ object ConstellationServer {
           ) // Allow long-running LSP sessions but prevent resource exhaustion
           .withHttpWebSocketApp { wsb =>
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
-            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
+            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb) <+> executionWs.routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
               case Some(dashboardRoutes) => dashboardRoutes.routes <+> coreRoutes
               case None                  => coreRoutes

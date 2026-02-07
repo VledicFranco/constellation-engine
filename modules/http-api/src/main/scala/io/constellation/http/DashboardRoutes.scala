@@ -35,7 +35,8 @@ class DashboardRoutes(
     constellation: Constellation,
     compiler: LangCompiler,
     storage: ExecutionStorage[IO],
-    config: DashboardConfig
+    config: DashboardConfig,
+    executionWs: Option[ExecutionWebSocket] = None
 ) {
 
   /** Object for query parameter extraction */
@@ -605,6 +606,18 @@ class DashboardRoutes(
           )
         else EitherT.pure[IO, ApiError](())
 
+      // Publish execution:start event for live visualization
+      _ <- EitherT.liftF(
+        executionWs.fold(IO.unit)(ws => ws.publish(
+          executionId,
+          ExecutionEvent.ExecutionStarted(
+            executionId = executionId,
+            dagName = compiled.pipeline.image.dagSpec.metadata.name,
+            timestamp = System.currentTimeMillis()
+          )
+        ))
+      )
+
       // Convert inputs
       inputs <- convertInputs(req.inputs, compiled.pipeline.image.dagSpec)
 
@@ -615,16 +628,31 @@ class DashboardRoutes(
         }
         .leftSemiflatTap { error =>
           // Record failure in execution storage so dashboard doesn't show perpetually running
-          if shouldStore then
+          val failTime = System.currentTimeMillis()
+          val recordFailure = if shouldStore then
             storage
               .update(executionId) { exec =>
                 exec.copy(
-                  endTime = Some(System.currentTimeMillis()),
+                  endTime = Some(failTime),
                   status = ExecutionStatus.Failed
                 )
               }
               .void
           else IO.unit
+
+          // Publish execution:complete with failed status
+          val publishFailure = executionWs.fold(IO.unit)(ws => ws.publish(
+            executionId,
+            ExecutionEvent.ExecutionCompleted(
+              executionId = executionId,
+              dagName = compiled.pipeline.image.dagSpec.metadata.name,
+              succeeded = false,
+              durationMs = failTime - startTime,
+              timestamp = System.currentTimeMillis()
+            )
+          ))
+
+          recordFailure *> publishFailure
         }
 
       // Extract outputs from DataSignature
@@ -646,6 +674,20 @@ class DashboardRoutes(
             )
           })
         else EitherT.pure[IO, ApiError](None)
+
+      // Publish execution:complete event for live visualization
+      _ <- EitherT.liftF(
+        executionWs.fold(IO.unit)(ws => ws.publish(
+          executionId,
+          ExecutionEvent.ExecutionCompleted(
+            executionId = executionId,
+            dagName = compiled.pipeline.image.dagSpec.metadata.name,
+            succeeded = true,
+            durationMs = durationMs,
+            timestamp = System.currentTimeMillis()
+          )
+        ))
+      )
 
     } yield DashboardExecuteResponse(
       success = true,
@@ -706,20 +748,22 @@ object DashboardRoutes {
       constellation: Constellation,
       compiler: LangCompiler,
       storage: ExecutionStorage[IO],
-      config: DashboardConfig
+      config: DashboardConfig,
+      executionWs: Option[ExecutionWebSocket] = None
   ): DashboardRoutes =
-    new DashboardRoutes(constellation, compiler, storage, config)
+    new DashboardRoutes(constellation, compiler, storage, config, executionWs)
 
   /** Create DashboardRoutes with default in-memory storage */
   def withDefaultStorage(
       constellation: Constellation,
       compiler: LangCompiler,
-      config: DashboardConfig
+      config: DashboardConfig,
+      executionWs: Option[ExecutionWebSocket] = None
   ): IO[DashboardRoutes] = for {
     storage <- ExecutionStorage.inMemory(
       ExecutionStorage.Config(
         maxExecutions = config.maxStoredExecutions
       )
     )
-  } yield new DashboardRoutes(constellation, compiler, storage, config)
+  } yield new DashboardRoutes(constellation, compiler, storage, config, executionWs)
 }

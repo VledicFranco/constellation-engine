@@ -132,7 +132,7 @@ class ExecutionWebSocket {
   /** Get the ExecutionListener to register with Constellation */
   val listener: ExecutionListener = new ExecutionListener {
     def onExecutionStart(executionId: UUID, dagName: String): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ExecutionStarted(
           executionId = executionId.toString,
@@ -142,7 +142,7 @@ class ExecutionWebSocket {
       )
 
     def onModuleStart(executionId: UUID, moduleId: UUID, moduleName: String): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ModuleStarted(
           executionId = executionId.toString,
@@ -158,7 +158,7 @@ class ExecutionWebSocket {
         moduleName: String,
         durationMs: Long
     ): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ModuleCompleted(
           executionId = executionId.toString,
@@ -175,7 +175,7 @@ class ExecutionWebSocket {
         moduleName: String,
         error: Throwable
     ): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ModuleFailed(
           executionId = executionId.toString,
@@ -192,7 +192,7 @@ class ExecutionWebSocket {
         succeeded: Boolean,
         durationMs: Long
     ): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ExecutionCompleted(
           executionId = executionId.toString,
@@ -204,7 +204,7 @@ class ExecutionWebSocket {
       )
 
     override def onExecutionCancelled(executionId: UUID, dagName: String): IO[Unit] =
-      broadcast(
+      publish(
         executionId.toString,
         ExecutionEvent.ExecutionCancelled(
           executionId = executionId.toString,
@@ -215,7 +215,7 @@ class ExecutionWebSocket {
   }
 
   /** Broadcast an event to all subscribed clients */
-  private def broadcast(executionId: String, event: ExecutionEvent): IO[Unit] = {
+  def publish(executionId: String, event: ExecutionEvent): IO[Unit] = {
     val subscribers = subscriptions.values().asScala.toList.filter { sub =>
       sub.executionId.isEmpty || sub.executionId.contains(executionId)
     }
