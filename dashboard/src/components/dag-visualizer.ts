@@ -11,6 +11,7 @@ class DagVisualizer {
     private layoutDirection: string;
     private executionStates: Record<string, ExecutionState>;
     private tooltip: HTMLElement | null;
+    private currentStructuralHash: string | null;
 
     // Node color mapping
     private readonly nodeColors: Record<string, string> = {
@@ -46,6 +47,7 @@ class DagVisualizer {
         this.layoutDirection = 'TB'; // TB (top-bottom) or LR (left-right)
         this.executionStates = {};
         this.tooltip = null;
+        this.currentStructuralHash = null;
     }
 
     /**
@@ -286,19 +288,56 @@ class DagVisualizer {
     }
 
     /**
-     * Load and render a DAG visualization
+     * Compute a structural hash for semantic change detection.
+     * Compares node ids, kinds, labels, type signatures, and edge connections.
+     * Ignores execution state, positions, and other transient data.
+     */
+    private computeStructuralHash(dagVizIR: DagVizIR): string {
+        if (!dagVizIR || !dagVizIR.nodes) return '';
+
+        // Sort nodes by id for consistent hashing
+        const nodeSignatures = dagVizIR.nodes
+            .map(n => `${n.id}:${n.kind}:${n.label}:${n.typeSignature}`)
+            .sort()
+            .join('|');
+
+        // Sort edges by id for consistent hashing
+        const edgeSignatures = dagVizIR.edges
+            .map(e => `${e.source}->${e.target}:${e.kind}:${e.label || ''}`)
+            .sort()
+            .join('|');
+
+        return `N[${nodeSignatures}]E[${edgeSignatures}]`;
+    }
+
+    /**
+     * Load and render a DAG visualization.
+     * Uses structural hashing to avoid re-rendering when the DAG hasn't changed semantically.
      */
     render(dagVizIR: DagVizIR): void {
         if (!this.cy) {
             this.init();
         }
 
-        // Clear existing elements
-        this.cy!.elements().remove();
-
         if (!dagVizIR || !dagVizIR.nodes || dagVizIR.nodes.length === 0) {
+            this.cy!.elements().remove();
+            this.currentStructuralHash = null;
             return;
         }
+
+        // Check if the structure has changed
+        const newHash = this.computeStructuralHash(dagVizIR);
+        if (newHash === this.currentStructuralHash) {
+            // Structure unchanged - just update execution states without re-layout
+            this.updateExecutionStatesFromDag(dagVizIR);
+            return;
+        }
+
+        // Structure changed - full re-render
+        this.currentStructuralHash = newHash;
+
+        // Clear existing elements
+        this.cy!.elements().remove();
 
         // Convert DagVizIR to Cytoscape elements
         const elements = this.convertToElements(dagVizIR);
@@ -308,6 +347,28 @@ class DagVisualizer {
 
         // Run layout
         this.runLayout();
+    }
+
+    /**
+     * Update execution states from DagVizIR without re-rendering layout.
+     * Used when structure is unchanged but execution states may have updated.
+     */
+    private updateExecutionStatesFromDag(dagVizIR: DagVizIR): void {
+        this.cy!.batch(() => {
+            dagVizIR.nodes.forEach(node => {
+                const cyNode = this.cy!.getElementById(node.id);
+                if (cyNode.length > 0) {
+                    const status = node.executionState?.status || 'Pending';
+                    const borderColor = this.statusColors[status] || '#8b949e';
+
+                    cyNode.data('status', status);
+                    cyNode.data('borderColor', borderColor);
+                    cyNode.data('value', node.executionState?.value);
+                    cyNode.data('durationMs', node.executionState?.durationMs);
+                    cyNode.data('error', node.executionState?.error);
+                }
+            });
+        });
     }
 
     /**
@@ -522,6 +583,7 @@ class DagVisualizer {
             this.cy.elements().remove();
         }
         this.executionStates = {};
+        this.currentStructuralHash = null;
     }
 
     /**
