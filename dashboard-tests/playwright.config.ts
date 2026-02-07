@@ -24,6 +24,7 @@ export default defineConfig({
 
   use: {
     baseURL: BASE_URL,
+    headless: true, // Always run headless to avoid opening browser windows
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
     video: 'retain-on-failure',

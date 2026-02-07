@@ -192,6 +192,12 @@ export function activate(context: vscode.ExtensionContext) {
   const dagVisualizerCommand = vscode.commands.registerCommand(
     'constellation.showDagVisualization',
     async () => {
+      // Skip opening external browser during tests to avoid opening 100+ tabs
+      if (context.extensionMode === vscode.ExtensionMode.Test) {
+        console.log('[DAG] Skipping external browser open during test mode');
+        return;
+      }
+
       // Get server URL from configuration and construct dashboard URL
       const config = vscode.workspace.getConfiguration('constellation');
       const serverUrl = config.get<string>('server.url') || 'ws://localhost:8080/lsp';
