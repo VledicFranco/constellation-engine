@@ -655,76 +655,121 @@ object DagCompiler {
         cases: List[MatchCaseIR],
         resultType: SemanticType
     ): Either[DagCompilerError, Unit] = {
-      val moduleId     = UUID.randomUUID()
       val outputDataId = UUID.randomUUID()
 
       // Get the scrutinee data ID
       getNodeOutput(scrutinee, "scrutinee of match expression").flatMap { scrutineeDataId =>
-        // Get data IDs for all case bodies
-        val bodyDataIdsResult = cases.zipWithIndex.traverse { case (matchCase, idx) =>
-          getNodeOutput(matchCase.bodyId, s"body of match case $idx").map { dataId =>
-            (s"body$idx", dataId)
+        val scrutineeCType = dataNodes(scrutineeDataId).cType
+        val outputCType    = SemanticType.toCType(resultType)
+
+        // Build body evaluators - functions that extract bindings and compute body value
+        val bodyEvaluatorsResult = cases.zipWithIndex.traverse { case (matchCase, idx) =>
+          getNodeOutput(matchCase.bodyId, s"body of match case $idx").map { bodyDataId =>
+            val bodySpec = dataNodes(bodyDataId)
+            // Create evaluator that extracts bindings from scrutinee and computes body
+            createMatchBodyEvaluator(
+              matchCase.pattern,
+              matchCase.bindings,
+              bodyDataId,
+              bodySpec,
+              scrutineeCType
+            )
           }
         }
 
-        bodyDataIdsResult.map { bodyDataIds =>
-          val scrutineeCType = dataNodes(scrutineeDataId).cType
+        bodyEvaluatorsResult.map { bodyEvaluators =>
+          // Create pattern matcher functions
+          val patternMatchers = cases.map { c =>
+            createPatternMatcher(c.pattern)
+          }
 
-          // Build consumes map: scrutinee + all case bodies
-          val consumesMap = Map("scrutinee" -> scrutineeCType) ++
-            bodyDataIds.map { case (name, dataId) =>
-              name -> dataNodes(dataId).cType
-            }.toMap
-
-          val outputCType = SemanticType.toCType(resultType)
-
-          // Create synthetic match module
-          val spec = ModuleNodeSpec(
-            metadata = ComponentMetadata.empty(s"$dagName.match-${id.toString.take(8)}"),
-            consumes = consumesMap,
-            produces = Map("out" -> outputCType)
+          // Create inline transform that handles pattern matching
+          val matchTransform = InlineTransform.MatchTransform(
+            patternMatchers,
+            bodyEvaluators,
+            scrutineeCType
           )
-          moduleNodes = moduleNodes + (moduleId -> spec)
 
-          // Create synthetic module implementation
-          val syntheticModule = createMatchModule(spec, cases, outputCType)
-          syntheticModules = syntheticModules + (moduleId -> syntheticModule)
-
-          // Update nicknames for input data nodes
-          dataNodes = dataNodes.updatedWith(scrutineeDataId) {
-            case Some(spec) =>
-              Some(spec.copy(nicknames = spec.nicknames + (moduleId -> "scrutinee")))
-            case None => None
-          }
-          bodyDataIds.foreach { case (name, dataId) =>
-            dataNodes = dataNodes.updatedWith(dataId) {
-              case Some(spec) => Some(spec.copy(nicknames = spec.nicknames + (moduleId -> name)))
-              case None       => None
-            }
-          }
-
-          // Connect edges
-          inEdges = inEdges + ((scrutineeDataId, moduleId))
-          bodyDataIds.foreach { case (_, dataId) =>
-            inEdges = inEdges + ((dataId, moduleId))
-          }
-
-          // Create output data node
+          // Create output data node with inline transform
           dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
             name = s"match_${id.toString.take(8)}_output",
-            nicknames = Map(moduleId -> "out"),
-            cType = outputCType
+            nicknames = Map.empty,
+            cType = outputCType,
+            inlineTransform = Some(matchTransform),
+            transformInputs = Map("scrutinee" -> scrutineeDataId)
           ))
 
-          // Connect module output to data node
-          outEdges = outEdges + ((moduleId, outputDataId))
           nodeOutputs = nodeOutputs + (id -> outputDataId)
         }
       }
     }
 
+    /** Create an evaluator function for a match case body.
+      * This function extracts bindings from the scrutinee and evaluates the body expression.
+      */
+    private def createMatchBodyEvaluator(
+        pattern: PatternIR,
+        bindings: Map[String, SemanticType],
+        bodyDataId: UUID,
+        bodySpec: DataNodeSpec,
+        scrutineeCType: CType
+    ): Any => Any = { (scrutineeValue: Any) =>
+      // Unwrap union value if necessary
+      val recordValue = scrutineeValue match {
+        case (tag: String, inner) => inner
+        case other                => other
+      }
+
+      // Extract field bindings from the record
+      val bindingValues = recordValue match {
+        case m: Map[String, Any] @unchecked =>
+          bindings.keys.map(name => name -> m.getOrElse(name, null)).toMap
+        case _ =>
+          Map.empty[String, Any]
+      }
+
+      // If body has an inline transform, evaluate it with bindings as inputs
+      bodySpec.inlineTransform match {
+        case Some(transform) =>
+          // Merge bindings with any other transform inputs
+          // For string interpolation, the bindings are the expression values
+          transform.apply(bindingValues)
+        case None =>
+          // No inline transform - body is a literal or direct reference
+          // This case handles simple patterns like `_ -> 42`
+          bindingValues.values.headOption.getOrElse(null)
+      }
+    }
+
+    /** Create a pattern matcher function from a PatternIR.
+      * The returned function checks if a value matches the pattern at runtime.
+      * For union types, the value is already unwrapped before matching.
+      */
+    private def createPatternMatcher(pattern: PatternIR): Any => Boolean = { (value: Any) =>
+      pattern match {
+        case PatternIR.Record(fields, _) =>
+          value match {
+            case m: Map[String, ?] @unchecked => fields.forall(m.contains)
+            case _                            => false
+          }
+
+        case PatternIR.TypeTest(typeName, _) =>
+          typeName match {
+            case "String"  => value.isInstanceOf[String]
+            case "Int"     => value.isInstanceOf[Long] || value.isInstanceOf[Int]
+            case "Float"   => value.isInstanceOf[Double] || value.isInstanceOf[Float]
+            case "Boolean" => value.isInstanceOf[Boolean]
+            case _         => false // Unknown type
+          }
+
+        case PatternIR.Wildcard() =>
+          true // Wildcard matches anything
+      }
+    }
+
     /** Create a match module that evaluates patterns in order.
       * Returns the expression for the first matching pattern.
+      * @deprecated Use inline MatchTransform instead
       */
     private def createMatchModule(
         spec: ModuleNodeSpec,
@@ -777,26 +822,36 @@ object DagCompiler {
           }
       )
 
-    /** Check if a pattern matches a value at runtime */
-    private def patternMatches(pattern: PatternIR, value: Any): Boolean = pattern match {
-      case PatternIR.Record(fields, _) =>
-        value match {
-          case m: Map[String, ?] @unchecked =>
-            fields.forall(m.contains)
-          case _ => false
-        }
+    /** Check if a pattern matches a value at runtime.
+      * Handles union values which are represented as (tag, innerValue) tuples.
+      */
+    private def patternMatches(pattern: PatternIR, value: Any): Boolean = {
+      // Unwrap union values: (tag: String, innerValue: Any)
+      val unwrapped = value match {
+        case (tag: String, inner) => inner
+        case other                => other
+      }
 
-      case PatternIR.TypeTest(typeName, _) =>
-        typeName match {
-          case "String"  => value.isInstanceOf[String]
-          case "Int"     => value.isInstanceOf[Long] || value.isInstanceOf[Int]
-          case "Float"   => value.isInstanceOf[Double] || value.isInstanceOf[Float]
-          case "Boolean" => value.isInstanceOf[Boolean]
-          case _         => false // Unknown type
-        }
+      pattern match {
+        case PatternIR.Record(fields, _) =>
+          unwrapped match {
+            case m: Map[String, ?] @unchecked =>
+              fields.forall(m.contains)
+            case _ => false
+          }
 
-      case PatternIR.Wildcard() =>
-        true // Wildcard matches anything
+        case PatternIR.TypeTest(typeName, _) =>
+          typeName match {
+            case "String"  => unwrapped.isInstanceOf[String]
+            case "Int"     => unwrapped.isInstanceOf[Long] || unwrapped.isInstanceOf[Int]
+            case "Float"   => unwrapped.isInstanceOf[Double] || unwrapped.isInstanceOf[Float]
+            case "Boolean" => unwrapped.isInstanceOf[Boolean]
+            case _         => false // Unknown type
+          }
+
+        case PatternIR.Wildcard() =>
+          true // Wildcard matches anything
+      }
     }
 
     private def processHigherOrderNode(

@@ -201,16 +201,14 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
     result shouldBe "Charlie"
   }
 
-  it should "throw for non-existent field" in {
+  it should "return MatchBindingMissing for non-existent field" in {
     val transform = FieldAccessTransform(
       "missing",
       CType.CProduct(Map("name" -> CType.CString))
     )
 
-    val exception = intercept[IllegalStateException] {
-      transform(Map("source" -> Map("name" -> "Test")))
-    }
-    exception.getMessage should include("Field 'missing' not found")
+    val result = transform(Map("source" -> Map("name" -> "Test")))
+    result shouldBe MatchBindingMissing
   }
 
   it should "extract field from Candidates (list of records)" in {
@@ -228,13 +226,11 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
     result shouldBe List(100, 85, 92)
   }
 
-  it should "throw for non-record type" in {
+  it should "return MatchBindingMissing for non-record type" in {
     val transform = FieldAccessTransform("field", CType.CInt)
 
-    val exception = intercept[IllegalStateException] {
-      transform(Map("source" -> 42))
-    }
-    exception.getMessage should include("Cannot access field")
+    val result = transform(Map("source" -> 42))
+    result shouldBe MatchBindingMissing
   }
 
   // ========== ConditionalTransform Tests ==========

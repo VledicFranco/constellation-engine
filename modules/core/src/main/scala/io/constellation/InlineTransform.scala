@@ -125,8 +125,17 @@ object InlineTransform {
       }
   }
 
+  /** Sentinel value indicating a field access failed because the field doesn't exist
+    * in the current union variant. Used for lazy match expression evaluation.
+    */
+  case object MatchBindingMissing
+
   /** Field access transform - extracts a single field value from a record. Also handles accessing
     * fields from Candidates (list of records) by mapping over elements.
+    * Supports union types by unwrapping the (tag, value) tuple.
+    *
+    * For match expressions on union types, returns MatchBindingMissing if the field
+    * doesn't exist in the current variant (rather than throwing an error).
     *
     * @param field
     *   The field name to extract
@@ -145,13 +154,20 @@ object InlineTransform {
     private def accessField(value: Any, cType: CType): Any =
       (value, cType) match {
         case (map: Map[String, ?] @unchecked, CType.CProduct(_)) =>
-          map.getOrElse(field, throw new IllegalStateException(s"Field '$field' not found"))
+          map.getOrElse(field, MatchBindingMissing)
 
         case (list: List[?] @unchecked, CType.CList(elemType)) =>
           list.map(elem => accessField(elem, elemType))
 
+        // Handle union types: unwrap (tag, innerValue) and access field from inner value
+        case ((tag: String, inner), CType.CUnion(variants)) =>
+          variants.get(tag) match {
+            case Some(innerType) => accessField(inner, innerType)
+            case None            => MatchBindingMissing
+          }
+
         case _ =>
-          throw new IllegalStateException(s"Cannot access field '$field' on non-record type")
+          MatchBindingMissing
       }
   }
 
@@ -318,6 +334,42 @@ object InlineTransform {
   final case class ListLiteralTransform(numElements: Int) extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any =
       (0 until numElements).map(i => inputs(s"elem$i")).toList
+  }
+
+  /** Match transform - evaluates patterns in order and returns the matched case's body.
+    * Handles union types by unwrapping the (tag, value) tuple before matching.
+    *
+    * @param patternMatchers Functions that check if a value matches each pattern
+    * @param bodyEvaluators Functions that compute the body value given the scrutinee
+    * @param scrutineeCType The CType of the scrutinee (for union unwrapping)
+    */
+  final case class MatchTransform(
+      patternMatchers: List[Any => Boolean],
+      bodyEvaluators: List[Any => Any],
+      scrutineeCType: CType
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val scrutinee = inputs("scrutinee")
+
+      // Unwrap union value for matching
+      val (unwrapped, tag) = scrutinee match {
+        case (t: String, inner) => (inner, Some(t))
+        case other              => (other, None)
+      }
+
+      // Find first matching pattern
+      val matchingIdx = patternMatchers.indices.find { idx =>
+        patternMatchers(idx)(unwrapped)
+      }
+
+      matchingIdx match {
+        case Some(idx) =>
+          // Evaluate the matched body with the scrutinee
+          bodyEvaluators(idx)(scrutinee)
+        case None =>
+          throw new MatchError(s"No pattern matched value: $scrutinee")
+      }
+    }
   }
 
   /** Record literal transform - assembles named field values into a record (Map).
