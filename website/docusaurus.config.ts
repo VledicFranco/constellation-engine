@@ -83,11 +83,6 @@ const config: Config = {
           position: 'left',
         },
         {
-          to: '/blog',
-          label: 'Blog',
-          position: 'left',
-        },
-        {
           href: 'https://github.com/VledicFranco/constellation-engine',
           label: 'GitHub',
           position: 'right',
