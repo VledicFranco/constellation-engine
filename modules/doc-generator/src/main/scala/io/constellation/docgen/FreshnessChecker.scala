@@ -33,7 +33,7 @@ object FreshnessChecker:
   private val generatedPattern: Regex = """<!-- Generated: (.+) -->""".r
 
   def main(args: Array[String]): Unit =
-    val generatedDir = Paths.get("docs/generated")
+    val generatedDir = Paths.get("organon/generated")
     val report       = check(generatedDir)
 
     println("Documentation Freshness Report")

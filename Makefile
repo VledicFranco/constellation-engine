@@ -73,7 +73,7 @@ help:
 	@echo "  make docs-sync      - Sync docs from source into website/"
 	@echo ""
 	@echo "Generated Documentation (RFC-019):"
-	@echo "  make generate-docs  - Generate Scala type catalog to docs/generated/"
+	@echo "  make generate-docs  - Generate Scala type catalog to organon/generated/"
 	@echo "  make check-docs     - Check if generated docs are stale"
 	@echo "  make verify-ethos   - Verify ethos invariant references"
 	@echo ""
@@ -380,7 +380,7 @@ docs-sync:
 # Generated Documentation (RFC-019)
 # =============================================================================
 
-# Generate Scala type catalog to docs/generated/
+# Generate Scala type catalog to organon/generated/
 generate-docs:
 	@echo "Generating Scala documentation catalog..."
 	sbt "docGenerator/run"

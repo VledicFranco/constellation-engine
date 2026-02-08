@@ -30,7 +30,7 @@ object GenerateDocs:
   )
 
   /** Output directory for generated docs */
-  val outputDir: Path = Paths.get("docs/generated")
+  val outputDir: Path = Paths.get("organon/generated")
 
   /** Module target directories to scan for TASTy files */
   val moduleTargets: List[String] = List(
