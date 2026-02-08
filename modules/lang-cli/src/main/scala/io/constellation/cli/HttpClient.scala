@@ -63,6 +63,21 @@ object HttpClient:
       ConnectionError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
     }
 
+  /** Make a DELETE request. */
+  def delete[A: Decoder](
+      uri: Uri,
+      token: Option[String] = None
+  )(using client: Client[IO]): IO[ApiResponse[A]] =
+    val headers = token.map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
+      .getOrElse(Headers.empty)
+    val request = Request[IO](Method.DELETE, uri, headers = headers)
+
+    client.run(request).use { response =>
+      handleResponse[A](response)
+    }.handleError { e =>
+      ConnectionError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+    }
+
   /** Handle HTTP response. */
   private def handleResponse[A: Decoder](
       response: org.http4s.Response[IO]

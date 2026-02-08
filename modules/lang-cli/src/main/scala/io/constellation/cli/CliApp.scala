@@ -77,6 +77,7 @@ object CliApp:
     CompileCommand.command orElse
       RunCommand.command orElse
       VizCommand.command orElse
+      ServerCommand.command orElse
       ConfigCommand.command
 
   // Main command
@@ -158,6 +159,9 @@ object CliApp:
 
       case c: VizCommand =>
         VizCommand.execute(c, baseUri, config.server.token, format, quiet)
+
+      case c: ServerCommand.ServerSubcommand =>
+        ServerCommand.execute(c, baseUri, config.server.token, format, quiet)
 
       case _ =>
         IO.println(Output.error("Unknown command", format)).as(ExitCodes.UsageError)

@@ -195,6 +195,64 @@ digraph pipeline {
 }
 ```
 
+### server
+
+Server operations and monitoring.
+
+```bash
+constellation server <subcommand>
+```
+
+**Subcommands:**
+- `health`: Check server health status
+- `pipelines`: List loaded pipelines
+- `pipelines show <name>`: Show pipeline details
+- `executions list`: List suspended executions
+- `executions show <id>`: Show execution details
+- `executions delete <id>`: Delete a suspended execution
+- `metrics`: Show server metrics
+
+**Examples:**
+
+```bash
+# Check server health
+constellation server health
+# ✓ Server healthy
+
+# List all pipelines
+constellation server pipelines
+# 3 pipeline(s) loaded:
+#   my-pipeline (7a3b8c9d...) - 2 modules, outputs: [result]
+#   transform (abc12345...) - 3 modules, outputs: [output]
+
+# Show pipeline details
+constellation server pipelines show my-pipeline
+
+# List suspended executions
+constellation server executions list
+# ID                                    Pipeline       Missing  Created
+# 550e8400-e29b-41d4-a716-446655440000  7a3b8c9d...        2    2026-02-08T10:30:00
+
+# Show execution details
+constellation server executions show 550e8400-e29b-41d4-a716-446655440000
+
+# Delete a suspended execution
+constellation server executions delete 550e8400-e29b-41d4-a716-446655440000
+
+# Show server metrics
+constellation server metrics
+# Server Metrics
+#
+# Server:
+#   Uptime: 3d 14h 22m
+#   Requests: 12345
+#
+# Cache:
+#   Hits: 8901
+#   Misses: 1234
+#   Hit Rate: 87.8%
+```
+
 ### config
 
 Manage CLI configuration.
