@@ -264,7 +264,7 @@ class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
     // When tag is missing but the JSON matches a record variant's fields, auto-detect it
     val structure = Map(
       "{ name: String }" -> CType.CProduct(Map("name" -> CType.CString)),
-      "{ age: Int }" -> CType.CProduct(Map("age" -> CType.CInt))
+      "{ age: Int }"     -> CType.CProduct(Map("age" -> CType.CInt))
     )
     val json   = Json.obj("name" -> Json.fromString("Alice"))
     val result = JsonCValueConverter.jsonToCValue(json, CType.CUnion(structure))

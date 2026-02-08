@@ -246,9 +246,9 @@ object ConstellationServer {
 
     /** Set the execution WebSocket handler for live visualization events.
       *
-      * When provided, the WebSocket handler is shared between the server routes and
-      * dashboard routes, enabling real-time execution event streaming to clients.
-      * The listener should already be registered with the Constellation instance.
+      * When provided, the WebSocket handler is shared between the server routes and dashboard
+      * routes, enabling real-time execution event streaming to clients. The listener should already
+      * be registered with the Constellation instance.
       */
     def withExecutionWebSocket(executionWs: ExecutionWebSocket): ServerBuilder =
       new ServerBuilder(
@@ -289,7 +289,9 @@ object ConstellationServer {
       // Optionally create dashboard routes
       val dashboardRoutesIO: IO[Option[DashboardRoutes]] = config.dashboardConfig match {
         case Some(dashConfig) if dashConfig.enableDashboard =>
-          DashboardRoutes.withDefaultStorage(constellation, compiler, dashConfig, Some(executionWs)).map(Some(_))
+          DashboardRoutes
+            .withDefaultStorage(constellation, compiler, dashConfig, Some(executionWs))
+            .map(Some(_))
         case _ =>
           IO.pure(None)
       }
@@ -377,8 +379,9 @@ object ConstellationServer {
             // catch-all patterns `GET /api/v1/executions/:id` that would match "events" as an ID
             val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
-              case Some(dashboardRoutes) => executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes
-              case None                  => executionWs.routes(wsb) <+> coreRoutes
+              case Some(dashboardRoutes) =>
+                executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes
+              case None => executionWs.routes(wsb) <+> coreRoutes
             }
 
             // Apply middleware layers (inner to outer): Auth → Rate Limit → CORS

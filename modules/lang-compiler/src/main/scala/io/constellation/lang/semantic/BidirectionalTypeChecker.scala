@@ -444,7 +444,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           }
         }
         .andThen { typedFields =>
-          val actualFieldTypes = typedFields.map { case (name, te) => name -> te.semanticType }.toMap
+          val actualFieldTypes = typedFields.map { case (name, te) =>
+            name -> te.semanticType
+          }.toMap
           val actualRecordType = SRecord(actualFieldTypes)
           // Check that all required fields are present
           val missingFields = expectedFields.keys.toSet -- actualFieldTypes.keys.toSet
@@ -1105,7 +1107,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       span: Span,
       env: TypeEnvironment,
       context: TypeContext
-  ): TypeResult[TypedExpression] = {
+  ): TypeResult[TypedExpression] =
     // First, infer the type of the scrutinee
     inferExpr(scrutinee.value, scrutinee.span, env, context).andThen { typedScrutinee =>
       val scrutineeType = typedScrutinee.semanticType
@@ -1170,10 +1172,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           }
         }
     }
-  }
 
-  /** Check a pattern against possible union member types.
-    * Returns the typed pattern, bindings, matched types, and whether it's a wildcard.
+  /** Check a pattern against possible union member types. Returns the typed pattern, bindings,
+    * matched types, and whether it's a wildcard.
     */
   private def checkPattern(
       pattern: Pattern,
@@ -1218,7 +1219,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           case "Int"     => Some(SInt)
           case "Float"   => Some(SFloat)
           case "Boolean" => Some(SBoolean)
-          case other =>
+          case other     =>
             // Check if it's a type reference in the environment
             env.lookupType(other)
         }

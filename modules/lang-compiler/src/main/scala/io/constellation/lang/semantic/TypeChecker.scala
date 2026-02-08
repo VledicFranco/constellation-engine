@@ -190,8 +190,8 @@ object TypedExpression {
       span: Span
   ) extends TypedExpression
 
-  /** Match expression: pattern matching over union types.
-    * Provides structural discrimination between union variants with exhaustiveness checking.
+  /** Match expression: pattern matching over union types. Provides structural discrimination
+    * between union variants with exhaustiveness checking.
     */
   final case class Match(
       scrutinee: TypedExpression,
@@ -200,8 +200,8 @@ object TypedExpression {
       span: Span
   ) extends TypedExpression
 
-  /** Record literal: { name: "Alice", age: 30 }
-    * Contains typed field expressions and the resulting record type.
+  /** Record literal: { name: "Alice", age: 30 } Contains typed field expressions and the resulting
+    * record type.
     */
   final case class RecordLiteral(
       fields: List[(String, TypedExpression)],

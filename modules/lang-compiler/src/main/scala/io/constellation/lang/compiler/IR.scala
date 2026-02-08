@@ -254,8 +254,8 @@ object IRNode {
       debugSpan: Option[Span] = None
   ) extends IRNode
 
-  /** Match expression node for structural pattern matching.
-    * Evaluates patterns in order, returns first matching case's expression.
+  /** Match expression node for structural pattern matching. Evaluates patterns in order, returns
+    * first matching case's expression.
     */
   final case class MatchNode(
       id: UUID,

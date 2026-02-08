@@ -94,12 +94,14 @@ object ExecutionEvent {
   given Encoder[ExecutionCancelled] = deriveEncoder
 
   given Encoder[ExecutionEvent] = Encoder.instance {
-    case e: ExecutionStarted   => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
-    case e: ModuleStarted      => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
-    case e: ModuleCompleted    => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
-    case e: ModuleFailed       => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
-    case e: ExecutionCompleted => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
-    case e: ExecutionCancelled => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ExecutionStarted => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ModuleStarted    => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ModuleCompleted  => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ModuleFailed     => e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ExecutionCompleted =>
+      e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
+    case e: ExecutionCancelled =>
+      e.asJson.deepMerge(Json.obj("type" -> Json.fromString(e.eventType)))
   }
 }
 
@@ -116,9 +118,9 @@ case class Subscription(
   * connected WebSocket clients that are subscribed to the relevant execution.
   *
   * Usage:
-  *   1. Create an instance and register it as an ExecutionListener with Constellation
-  *   2. Add routes(wsb) to your http4s server
-  *   3. Clients connect to /api/v1/executions/events?executionId=xxx (or omit for all)
+  *   1. Create an instance and register it as an ExecutionListener with Constellation 2. Add
+  *      routes(wsb) to your http4s server 3. Clients connect to
+  *      /api/v1/executions/events?executionId=xxx (or omit for all)
   */
 class ExecutionWebSocket {
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ExecutionWebSocket])
@@ -229,12 +231,17 @@ class ExecutionWebSocket {
   }
 
   /** Subscribe a new client */
-  private def subscribe(clientId: String, executionId: Option[String]): IO[Queue[IO, ExecutionEvent]] =
+  private def subscribe(
+      clientId: String,
+      executionId: Option[String]
+  ): IO[Queue[IO, ExecutionEvent]] =
     for {
       queue <- Queue.bounded[IO, ExecutionEvent](maxQueueSize)
-      sub    = Subscription(clientId, executionId, queue)
-      _     <- IO(subscriptions.put(clientId, sub))
-      _     <- logger.debug(s"Client $clientId subscribed to execution: ${executionId.getOrElse("all")}")
+      sub = Subscription(clientId, executionId, queue)
+      _ <- IO(subscriptions.put(clientId, sub))
+      _ <- logger.debug(
+        s"Client $clientId subscribed to execution: ${executionId.getOrElse("all")}"
+      )
     } yield queue
 
   /** Unsubscribe a client */

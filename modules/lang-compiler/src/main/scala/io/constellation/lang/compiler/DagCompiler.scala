@@ -707,8 +707,8 @@ object DagCompiler {
       }
     }
 
-    /** Build a mapping from transform input names (expr0, expr1, etc.) to field names.
-      * This traces the body's transform inputs to find field accesses on the scrutinee.
+    /** Build a mapping from transform input names (expr0, expr1, etc.) to field names. This traces
+      * the body's transform inputs to find field accesses on the scrutinee.
       */
     private def buildExprToFieldMapping(
         bodySpec: DataNodeSpec,
@@ -729,10 +729,11 @@ object DagCompiler {
         }
       }
 
-    /** Create an evaluator function for a match case body.
-      * This function extracts bindings from the scrutinee and evaluates the body expression.
+    /** Create an evaluator function for a match case body. This function extracts bindings from the
+      * scrutinee and evaluates the body expression.
       *
-      * @param exprToFieldMapping Maps transform input names (expr0, etc.) to field names
+      * @param exprToFieldMapping
+      *   Maps transform input names (expr0, etc.) to field names
       */
     private def createMatchBodyEvaluator(
         pattern: PatternIR,
@@ -781,9 +782,9 @@ object DagCompiler {
       }
     }
 
-    /** Create a pattern matcher function from a PatternIR.
-      * The returned function checks if a value matches the pattern at runtime.
-      * For union types, the value is already unwrapped before matching.
+    /** Create a pattern matcher function from a PatternIR. The returned function checks if a value
+      * matches the pattern at runtime. For union types, the value is already unwrapped before
+      * matching.
       */
     private def createPatternMatcher(pattern: PatternIR): Any => Boolean = { (value: Any) =>
       pattern match {
@@ -807,9 +808,10 @@ object DagCompiler {
       }
     }
 
-    /** Create a match module that evaluates patterns in order.
-      * Returns the expression for the first matching pattern.
-      * @deprecated Use inline MatchTransform instead
+    /** Create a match module that evaluates patterns in order. Returns the expression for the first
+      * matching pattern.
+      * @deprecated
+      *   Use inline MatchTransform instead
       */
     private def createMatchModule(
         spec: ModuleNodeSpec,
@@ -837,16 +839,18 @@ object DagCompiler {
             Module.Runnable(
               id = moduleId,
               data = dataMap.toMap,
-              run = runtime => {
+              run = runtime =>
                 for {
                   scrutineeValue <- runtime.getTableData(scrutineeId)
                   // Find the first matching pattern
-                  matchingIdx = cases.zipWithIndex.find { case (matchCase, _) =>
-                    patternMatches(matchCase.pattern, scrutineeValue)
-                  }.map(_._2)
+                  matchingIdx = cases.zipWithIndex
+                    .find { case (matchCase, _) =>
+                      patternMatches(matchCase.pattern, scrutineeValue)
+                    }
+                    .map(_._2)
                   result <- matchingIdx match {
                     case Some(idx) => runtime.getTableData(bodyIds(idx))
-                    case None =>
+                    case None      =>
                       // No pattern matched - this shouldn't happen if exhaustiveness was checked
                       IO.raiseError(
                         new MatchError(s"No pattern matched value: $scrutineeValue")
@@ -857,13 +861,12 @@ object DagCompiler {
                   cValue = Runtime.anyToCValue(result, outputCType)
                   _ <- runtime.setStateData(outId, cValue)
                 } yield ()
-              }
             )
           }
       )
 
-    /** Check if a pattern matches a value at runtime.
-      * Handles union values which are represented as (tag, innerValue) tuples.
+    /** Check if a pattern matches a value at runtime. Handles union values which are represented as
+      * (tag, innerValue) tuples.
       */
     private def patternMatches(pattern: PatternIR, value: Any): Boolean = {
       // Unwrap union values: (tag: String, innerValue: Any)

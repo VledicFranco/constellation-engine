@@ -431,8 +431,8 @@ object Expression {
       body: Located[Expression]
   ) extends Expression
 
-  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 }
-    * Provides structural pattern matching over union types with exhaustiveness checking.
+  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 } Provides structural
+    * pattern matching over union types with exhaustiveness checking.
     */
   final case class Match(
       scrutinee: Located[Expression],
@@ -451,19 +451,19 @@ sealed trait Pattern
 
 object Pattern {
 
-  /** Record pattern: matches records with specified fields.
-    * Example: { value, status } matches any record with fields "value" and "status".
-    * The matched field values are bound to variables with the same names.
+  /** Record pattern: matches records with specified fields. Example: { value, status } matches any
+    * record with fields "value" and "status". The matched field values are bound to variables with
+    * the same names.
     */
   final case class Record(fields: List[String]) extends Pattern
 
-  /** Type test pattern: matches values of a specific primitive type.
-    * Example: is String matches string values in a String | Int union.
+  /** Type test pattern: matches values of a specific primitive type. Example: is String matches
+    * string values in a String | Int union.
     */
   final case class TypeTest(typeName: String) extends Pattern
 
-  /** Wildcard pattern: matches any value.
-    * Example: _ matches anything and is used to make patterns exhaustive.
+  /** Wildcard pattern: matches any value. Example: _ matches anything and is used to make patterns
+    * exhaustive.
     */
   final case class Wildcard() extends Pattern
 }

@@ -125,17 +125,17 @@ object InlineTransform {
       }
   }
 
-  /** Sentinel value indicating a field access failed because the field doesn't exist
-    * in the current union variant. Used for lazy match expression evaluation.
+  /** Sentinel value indicating a field access failed because the field doesn't exist in the current
+    * union variant. Used for lazy match expression evaluation.
     */
   case object MatchBindingMissing
 
   /** Field access transform - extracts a single field value from a record. Also handles accessing
-    * fields from Candidates (list of records) by mapping over elements.
-    * Supports union types by unwrapping the (tag, value) tuple.
+    * fields from Candidates (list of records) by mapping over elements. Supports union types by
+    * unwrapping the (tag, value) tuple.
     *
-    * For match expressions on union types, returns MatchBindingMissing if the field
-    * doesn't exist in the current variant (rather than throwing an error).
+    * For match expressions on union types, returns MatchBindingMissing if the field doesn't exist
+    * in the current variant (rather than throwing an error).
     *
     * @param field
     *   The field name to extract
@@ -336,12 +336,15 @@ object InlineTransform {
       (0 until numElements).map(i => inputs(s"elem$i")).toList
   }
 
-  /** Match transform - evaluates patterns in order and returns the matched case's body.
-    * Handles union types by unwrapping the (tag, value) tuple before matching.
+  /** Match transform - evaluates patterns in order and returns the matched case's body. Handles
+    * union types by unwrapping the (tag, value) tuple before matching.
     *
-    * @param patternMatchers Functions that check if a value matches each pattern
-    * @param bodyEvaluators Functions that compute the body value given the scrutinee
-    * @param scrutineeCType The CType of the scrutinee (for union unwrapping)
+    * @param patternMatchers
+    *   Functions that check if a value matches each pattern
+    * @param bodyEvaluators
+    *   Functions that compute the body value given the scrutinee
+    * @param scrutineeCType
+    *   The CType of the scrutinee (for union unwrapping)
     */
   final case class MatchTransform(
       patternMatchers: List[Any => Boolean],

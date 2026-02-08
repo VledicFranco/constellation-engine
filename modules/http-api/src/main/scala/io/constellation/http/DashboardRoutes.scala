@@ -476,11 +476,9 @@ class DashboardRoutes(
     if trimmed.startsWith("\"") && trimmed.endsWith("\"") then
       Json.fromString(trimmed.substring(1, trimmed.length - 1))
     // Handle record literals: { field: value, ... }
-    else if trimmed.startsWith("{") && trimmed.endsWith("}") then
-      parseRecordLiteral(trimmed)
+    else if trimmed.startsWith("{") && trimmed.endsWith("}") then parseRecordLiteral(trimmed)
     // Handle list literals: [ value, ... ]
-    else if trimmed.startsWith("[") && trimmed.endsWith("]") then
-      parseListLiteral(trimmed)
+    else if trimmed.startsWith("[") && trimmed.endsWith("]") then parseListLiteral(trimmed)
     // Handle numbers
     else if trimmed.matches("-?\\d+\\.\\d+") then Json.fromDoubleOrNull(trimmed.toDouble)
     else if trimmed.matches("-?\\d+") then
@@ -496,8 +494,8 @@ class DashboardRoutes(
     else Json.fromString(trimmed)
   }
 
-  /** Parse a constellation-lang record literal to JSON.
-    * Converts `{ name: "Alice", age: 30 }` to `{"name": "Alice", "age": 30}`
+  /** Parse a constellation-lang record literal to JSON. Converts `{ name: "Alice", age: 30 }` to
+    * `{"name": "Alice", "age": 30}`
     */
   private def parseRecordLiteral(raw: String): Json = {
     val inner = raw.trim.drop(1).dropRight(1).trim // Remove { }
@@ -508,32 +506,31 @@ class DashboardRoutes(
     val pairs = fields.flatMap { field =>
       val colonIdx = field.indexOf(':')
       if colonIdx > 0 then {
-        val name = field.substring(0, colonIdx).trim
+        val name  = field.substring(0, colonIdx).trim
         val value = field.substring(colonIdx + 1).trim
         Some(name -> parseExampleValue(value, "Any"))
       } else None
     }
-    Json.obj(pairs: _*)
+    Json.obj(pairs*)
   }
 
-  /** Parse a constellation-lang list literal to JSON.
-    * Converts `[1, 2, 3]` to `[1, 2, 3]`
+  /** Parse a constellation-lang list literal to JSON. Converts `[1, 2, 3]` to `[1, 2, 3]`
     */
   private def parseListLiteral(raw: String): Json = {
     val inner = raw.trim.drop(1).dropRight(1).trim // Remove [ ]
     if inner.isEmpty then return Json.arr()
 
     val elements = splitTopLevelCommas(inner)
-    Json.arr(elements.map(e => parseExampleValue(e.trim, "Any")): _*)
+    Json.arr(elements.map(e => parseExampleValue(e.trim, "Any"))*)
   }
 
   /** Split a string by commas, but only at the top level (not inside nested { } or [ ]) */
   private def splitTopLevelCommas(s: String): List[String] = {
-    val result = scala.collection.mutable.ListBuffer[String]()
+    val result  = scala.collection.mutable.ListBuffer[String]()
     val current = new StringBuilder
-    var depth = 0
+    var depth   = 0
 
-    for c <- s do {
+    for c <- s do
       c match {
         case '{' | '[' =>
           depth += 1
@@ -547,7 +544,6 @@ class DashboardRoutes(
         case _ =>
           current.append(c)
       }
-    }
     if current.nonEmpty then result += current.toString.trim
     result.toList
   }
@@ -608,14 +604,16 @@ class DashboardRoutes(
 
       // Publish execution:start event for live visualization
       _ <- EitherT.liftF(
-        executionWs.fold(IO.unit)(ws => ws.publish(
-          executionId,
-          ExecutionEvent.ExecutionStarted(
-            executionId = executionId,
-            dagName = compiled.pipeline.image.dagSpec.metadata.name,
-            timestamp = System.currentTimeMillis()
+        executionWs.fold(IO.unit)(ws =>
+          ws.publish(
+            executionId,
+            ExecutionEvent.ExecutionStarted(
+              executionId = executionId,
+              dagName = compiled.pipeline.image.dagSpec.metadata.name,
+              timestamp = System.currentTimeMillis()
+            )
           )
-        ))
+        )
       )
 
       // Convert inputs
@@ -629,28 +627,31 @@ class DashboardRoutes(
         .leftSemiflatTap { error =>
           // Record failure in execution storage so dashboard doesn't show perpetually running
           val failTime = System.currentTimeMillis()
-          val recordFailure = if shouldStore then
-            storage
-              .update(executionId) { exec =>
-                exec.copy(
-                  endTime = Some(failTime),
-                  status = ExecutionStatus.Failed
-                )
-              }
-              .void
-          else IO.unit
+          val recordFailure =
+            if shouldStore then
+              storage
+                .update(executionId) { exec =>
+                  exec.copy(
+                    endTime = Some(failTime),
+                    status = ExecutionStatus.Failed
+                  )
+                }
+                .void
+            else IO.unit
 
           // Publish execution:complete with failed status
-          val publishFailure = executionWs.fold(IO.unit)(ws => ws.publish(
-            executionId,
-            ExecutionEvent.ExecutionCompleted(
-              executionId = executionId,
-              dagName = compiled.pipeline.image.dagSpec.metadata.name,
-              succeeded = false,
-              durationMs = failTime - startTime,
-              timestamp = System.currentTimeMillis()
+          val publishFailure = executionWs.fold(IO.unit)(ws =>
+            ws.publish(
+              executionId,
+              ExecutionEvent.ExecutionCompleted(
+                executionId = executionId,
+                dagName = compiled.pipeline.image.dagSpec.metadata.name,
+                succeeded = false,
+                durationMs = failTime - startTime,
+                timestamp = System.currentTimeMillis()
+              )
             )
-          ))
+          )
 
           recordFailure *> publishFailure
         }
@@ -677,16 +678,18 @@ class DashboardRoutes(
 
       // Publish execution:complete event for live visualization
       _ <- EitherT.liftF(
-        executionWs.fold(IO.unit)(ws => ws.publish(
-          executionId,
-          ExecutionEvent.ExecutionCompleted(
-            executionId = executionId,
-            dagName = compiled.pipeline.image.dagSpec.metadata.name,
-            succeeded = true,
-            durationMs = durationMs,
-            timestamp = System.currentTimeMillis()
+        executionWs.fold(IO.unit)(ws =>
+          ws.publish(
+            executionId,
+            ExecutionEvent.ExecutionCompleted(
+              executionId = executionId,
+              dagName = compiled.pipeline.image.dagSpec.metadata.name,
+              succeeded = true,
+              durationMs = durationMs,
+              timestamp = System.currentTimeMillis()
+            )
           )
-        ))
+        )
       )
 
     } yield DashboardExecuteResponse(

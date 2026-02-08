@@ -212,7 +212,9 @@ object DagVizCompiler:
         VizNode(
           id = id.toString,
           kind = NodeKind.Literal,
-          label = s"{ ${fields.map(_._1).take(3).mkString(", ")}${if fields.length > 3 then ", ..." else ""} }",
+          label = s"{ ${fields.map(_._1).take(3).mkString(", ")}${
+              if fields.length > 3 then ", ..." else ""
+            } }",
           typeSignature = formatType(outputType)
         )
 

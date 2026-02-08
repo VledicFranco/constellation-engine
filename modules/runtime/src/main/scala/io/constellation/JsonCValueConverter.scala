@@ -232,14 +232,19 @@ object JsonCValueConverter {
 
   /** Try to auto-detect which union variant a JSON object represents by matching its fields.
     *
-    * For a union like `{ value: Int, status: String } | { error: String, code: Int }`,
-    * if the JSON is `{"value": 42, "status": "ok"}`, we match it to the first variant.
+    * For a union like `{ value: Int, status: String } | { error: String, code: Int }`, if the JSON
+    * is `{"value": 42, "status": "ok"}`, we match it to the first variant.
     *
-    * @param json The JSON value
-    * @param obj The JSON object
-    * @param structure The union type structure (tag -> variant type)
-    * @param path The current path for error messages
-    * @return Either an error or the converted CValue
+    * @param json
+    *   The JSON value
+    * @param obj
+    *   The JSON object
+    * @param structure
+    *   The union type structure (tag -> variant type)
+    * @param path
+    *   The current path for error messages
+    * @return
+    *   Either an error or the converted CValue
     */
   private def tryAutoDetectUnionVariant(
       json: Json,

@@ -574,21 +574,18 @@ object ConstellationParser extends MemoizationSupport {
   // Match Expression (Pattern Matching)
   // ============================================================================
 
-  /** Record pattern: { field1, field2 }
-    * Matches records that have the specified fields.
+  /** Record pattern: { field1, field2 } Matches records that have the specified fields.
     */
   private lazy val recordPattern: P[Pattern.Record] =
     (openBrace *> identifier.repSep(comma) <* closeBrace)
       .map(fields => Pattern.Record(fields.toList))
 
-  /** Wildcard pattern: _
-    * Matches any value.
+  /** Wildcard pattern: _ Matches any value.
     */
   private lazy val wildcardPattern: P[Pattern.Wildcard] =
     token(P.char('_') <* P.not(identifierCont)).as(Pattern.Wildcard())
 
-  /** Type test pattern: is String
-    * Matches values of the specified type.
+  /** Type test pattern: is String Matches values of the specified type.
     */
   private lazy val typeTestPattern: P[Pattern.TypeTest] =
     (isKw *> typeIdentifier).map(Pattern.TypeTest(_))
@@ -602,11 +599,13 @@ object ConstellationParser extends MemoizationSupport {
     (withSpan(pattern) ~ (arrow *> withSpan(P.defer(expression))))
       .map { case (pat, body) => MatchCase(pat, body) }
 
-  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 }
-    * Provides structural pattern matching over union types.
+  /** Match expression: match expr { pattern1 -> expr1, pattern2 -> expr2 } Provides structural
+    * pattern matching over union types.
     */
   private lazy val matchExpr: P[Expression.Match] =
-    (matchKw *> withSpan(P.defer(exprPrimary)) ~ (openBrace *> matchCase.repSep(comma) <* closeBrace))
+    (matchKw *> withSpan(P.defer(exprPrimary)) ~ (openBrace *> matchCase.repSep(
+      comma
+    ) <* closeBrace))
       .map { case (scrutinee, cases) => Expression.Match(scrutinee, cases.toList) }
 
   // Literals
@@ -696,12 +695,12 @@ object ConstellationParser extends MemoizationSupport {
   private val literal: P[Expression] =
     P.oneOf(
       List(
-        interpolatedString,  // starts with '"'
-        listLit,             // starts with '['
+        interpolatedString, // starts with '"'
+        listLit,            // starts with '['
         recordLit.backtrack, // starts with '{' - need backtrack to distinguish from other brace uses
-        boolLit.backtrack,   // 'true' or 'false' - need backtrack for keyword prefix
-        floatLit.backtrack,  // digits with '.' - try before intLit
-        intLit               // digits only
+        boolLit.backtrack,  // 'true' or 'false' - need backtrack for keyword prefix
+        floatLit.backtrack, // digits with '.' - try before intLit
+        intLit              // digits only
       )
     )
 

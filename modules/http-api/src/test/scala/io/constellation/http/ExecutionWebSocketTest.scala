@@ -162,7 +162,9 @@ class ExecutionWebSocketTest extends AnyFlatSpec with Matchers {
     val listener = ws.listener
 
     noException should be thrownBy {
-      listener.onModuleFailed(execId, moduleId, "TestModule", new RuntimeException("Test error")).unsafeRunSync()
+      listener
+        .onModuleFailed(execId, moduleId, "TestModule", new RuntimeException("Test error"))
+        .unsafeRunSync()
     }
   }
 

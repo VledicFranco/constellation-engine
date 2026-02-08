@@ -261,9 +261,10 @@ object IRGenerator {
           // Each bound variable is a field access on the scrutinee
           val (bindingCtx, _) = typedCase.bindings.foldLeft((currentCtx, List.empty[UUID])) {
             case ((ctx, ids), (fieldName, fieldType)) =>
-              val fieldId   = UUID.randomUUID()
-              val fieldNode = IRNode.FieldAccessNode(fieldId, scrutineeId, fieldName, fieldType, None)
-              val newCtx    = ctx.addNode(fieldNode).bind(fieldName, fieldId)
+              val fieldId = UUID.randomUUID()
+              val fieldNode =
+                IRNode.FieldAccessNode(fieldId, scrutineeId, fieldName, fieldType, None)
+              val newCtx = ctx.addNode(fieldNode).bind(fieldName, fieldId)
               (newCtx, ids :+ fieldId)
           }
 
