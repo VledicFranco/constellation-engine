@@ -1,6 +1,6 @@
 # RFC-021: Constellation CLI
 
-**Status:** Draft
+**Status:** In Progress
 **Priority:** P1 (Developer Experience)
 **Author:** Claude
 **Created:** 2026-02-08

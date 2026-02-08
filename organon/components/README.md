@@ -15,6 +15,7 @@ Technical documentation organized by codebase module. Use this for implementatio
 | [stdlib/](./stdlib/) | Standard library functions | `modules/lang-stdlib/` |
 | [lsp/](./lsp/) | Language server protocol implementation | `modules/lang-lsp/` |
 | [http-api/](./http-api/) | REST endpoints, WebSocket, dashboard | `modules/http-api/` |
+| [cli/](./cli/) | Command-line interface | `modules/lang-cli/` |
 
 ## When to Use Components vs Features
 

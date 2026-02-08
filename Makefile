@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly
 
 # Default target
 help:
@@ -394,6 +394,23 @@ check-docs:
 verify-ethos:
 	@echo "Verifying ethos invariants..."
 	sbt "docGenerator/runMain io.constellation.docgen.EthosVerifier"
+
+# =============================================================================
+# CLI
+# =============================================================================
+
+# Run CLI with arguments
+cli:
+	sbt "langCli/runMain io.constellation.cli.Main"
+
+# Test CLI module
+test-cli:
+	sbt "langCli/test"
+
+# Build CLI fat JAR
+cli-assembly:
+	sbt "langCli/assembly"
+	@echo "JAR created: modules/lang-cli/target/scala-3.3.1/constellation-cli.jar"
 
 # =============================================================================
 # Utilities

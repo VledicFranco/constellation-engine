@@ -19,6 +19,8 @@ This file contains actionable rules that Claude must follow when working on this
 | Watch dashboard TypeScript | `make dashboard-watch` |
 | Clean build | `make clean` |
 | Build fat JAR | `make assembly` |
+| Build CLI JAR | `make cli-assembly` |
+| Test CLI | `make test-cli` |
 | Build Docker image | `make docker-build` |
 | Run Docker container | `make docker-run` |
 
@@ -184,6 +186,9 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | Rate Limit Middleware | `modules/http-api/.../RateLimitMiddleware.scala` |
 | Health Check Routes | `modules/http-api/.../HealthCheckRoutes.scala` |
 | LSP Server | `modules/lang-lsp/.../ConstellationLanguageServer.scala` |
+| CLI Entry Point | `modules/lang-cli/.../Main.scala` |
+| CLI App | `modules/lang-cli/.../CliApp.scala` |
+| CLI Commands | `modules/lang-cli/.../commands/` |
 | Dashboard TS sources | `dashboard/src/` |
 | Dashboard types | `dashboard/src/types.d.ts` |
 | Dashboard E2E Tests | `dashboard-tests/` |

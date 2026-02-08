@@ -211,6 +211,35 @@ lazy val exampleApp = (project in file("modules/example-app"))
     }
   )
 
+// CLI - command-line interface for Constellation Engine (not published to Maven Central)
+lazy val langCli = (project in file("modules/lang-cli"))
+  .settings(
+    name := "constellation-lang-cli",
+    publish / skip := true,
+    coverageMinimumStmtTotal := 75,
+    coverageMinimumBranchTotal := 65,
+    libraryDependencies ++= Seq(
+      "com.monovore"      %% "decline-effect"       % "2.4.1",
+      "org.http4s"        %% "http4s-ember-client"  % "0.23.25",
+      "org.http4s"        %% "http4s-circe"         % "0.23.25",
+      "io.circe"          %% "circe-core"           % "0.14.6",
+      "io.circe"          %% "circe-generic"        % "0.14.6",
+      "io.circe"          %% "circe-parser"         % "0.14.6",
+      "com.lihaoyi"       %% "fansi"                % "0.4.0",
+      "org.scalatest"     %% "scalatest"            % "3.2.17" % Test,
+      "org.scalatestplus" %% "scalacheck-1-17"      % "3.2.17.0" % Test,
+    ) ++ loggingDeps,
+    assembly / mainClass := Some("io.constellation.cli.Main"),
+    assembly / assemblyJarName := "constellation-cli.jar",
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", "services", _*) => MergeStrategy.concat
+      case PathList("META-INF", _*)             => MergeStrategy.discard
+      case "reference.conf"                     => MergeStrategy.concat
+      case "logback.xml"                        => MergeStrategy.first
+      case _                                    => MergeStrategy.first
+    }
+  )
+
 // Doc Generator - extracts Scala type information to markdown (not published)
 lazy val docGenerator = (project in file("modules/doc-generator"))
   .dependsOn(core, runtime, langAst, langParser, langCompiler, langStdlib, langLsp, httpApi)
@@ -239,6 +268,7 @@ lazy val root = (project in file("."))
     httpApi,
     cacheMemcached,
     exampleApp,
+    langCli,
     docGenerator
   )
   .settings(

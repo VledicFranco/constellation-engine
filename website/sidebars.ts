@@ -175,6 +175,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Tooling',
       items: [
+        'tooling/cli',
         'tooling/dashboard',
         'tooling/lsp-integration',
         'tooling/troubleshooting',
