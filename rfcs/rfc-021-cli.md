@@ -364,21 +364,21 @@ GraalVM native-image for zero-JVM distribution. Deferred post-v1.0 due to:
 
 ## Phased Rollout
 
-### Phase 1: Core Commands (v1.0)
+### Phase 1: Core Commands (v1.0) ✓
 
-- [ ] `compile` command
-- [ ] `run` command
-- [ ] `viz` command
-- [ ] `config` commands
+- [x] `compile` command
+- [x] `run` command
+- [x] `viz` command
+- [x] `config` commands
 - [ ] Coursier distribution
-- [ ] Documentation
+- [x] Documentation
 
-### Phase 2: Server Operations (v1.1)
+### Phase 2: Server Operations (v1.1) ✓
 
-- [ ] `server health`
-- [ ] `server pipelines`
-- [ ] `server executions`
-- [ ] `server metrics`
+- [x] `server health`
+- [x] `server pipelines`
+- [x] `server executions`
+- [x] `server metrics`
 
 ### Phase 3: Deployment (v1.2)
 
@@ -392,22 +392,22 @@ GraalVM native-image for zero-JVM distribution. Deferred post-v1.0 due to:
 
 ## Acceptance Criteria
 
-### Phase 1
+### Phase 1 ✓
 
-- [ ] `constellation compile example.cst` reports errors or success
-- [ ] `constellation run example.cst --input text="hello"` prints output
-- [ ] `constellation viz example.cst` outputs valid DOT format
-- [ ] `constellation config set/get` persists configuration
-- [ ] `--json` flag works on all commands
+- [x] `constellation compile example.cst` reports errors or success
+- [x] `constellation run example.cst --input text="hello"` prints output
+- [x] `constellation viz example.cst` outputs valid DOT format
+- [x] `constellation config set/get` persists configuration
+- [x] `--json` flag works on all commands
 - [ ] `cs install constellation` works from Maven Central
-- [ ] Exit codes are correct for all error conditions
-- [ ] `--help` documents all commands and options
+- [x] Exit codes are correct for all error conditions
+- [x] `--help` documents all commands and options
 
-### Phase 2
+### Phase 2 ✓
 
-- [ ] `constellation server health` shows server status
-- [ ] `constellation server pipelines` lists loaded pipelines
-- [ ] `constellation server executions list` shows history
+- [x] `constellation server health` shows server status
+- [x] `constellation server pipelines` lists loaded pipelines
+- [x] `constellation server executions list` shows history
 
 ### Phase 3
 
