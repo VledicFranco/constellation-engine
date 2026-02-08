@@ -1,6 +1,6 @@
 # RFC-021: Constellation CLI
 
-**Status:** In Progress
+**Status:** Implemented
 **Priority:** P1 (Developer Experience)
 **Author:** Claude
 **Created:** 2026-02-08
@@ -380,12 +380,13 @@ GraalVM native-image for zero-JVM distribution. Deferred post-v1.0 due to:
 - [x] `server executions`
 - [x] `server metrics`
 
-### Phase 3: Deployment (v1.2)
+### Phase 3: Deployment (v1.2) ✓
 
-- [ ] `deploy push`
-- [ ] `deploy canary`
-- [ ] `deploy promote`
-- [ ] `deploy rollback`
+- [x] `deploy push`
+- [x] `deploy canary`
+- [x] `deploy promote`
+- [x] `deploy rollback`
+- [x] `deploy status`
 - [ ] Install script distribution
 
 ---
@@ -409,11 +410,12 @@ GraalVM native-image for zero-JVM distribution. Deferred post-v1.0 due to:
 - [x] `constellation server pipelines` lists loaded pipelines
 - [x] `constellation server executions list` shows history
 
-### Phase 3
+### Phase 3 ✓
 
-- [ ] `constellation deploy push` uploads pipeline
-- [ ] `constellation deploy canary --percent N` creates canary
-- [ ] `constellation deploy promote/rollback` work correctly
+- [x] `constellation deploy push` uploads pipeline
+- [x] `constellation deploy canary --percent N` creates canary
+- [x] `constellation deploy promote/rollback` work correctly
+- [x] `constellation deploy status` shows canary metrics
 - [ ] Install script works on Linux and macOS
 
 ---

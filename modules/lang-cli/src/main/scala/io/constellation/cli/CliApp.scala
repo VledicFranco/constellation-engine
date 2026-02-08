@@ -78,6 +78,7 @@ object CliApp:
       RunCommand.command orElse
       VizCommand.command orElse
       ServerCommand.command orElse
+      DeployCommand.command orElse
       ConfigCommand.command
 
   // Main command
@@ -162,6 +163,11 @@ object CliApp:
 
       case c: ServerCommand.ServerSubcommand =>
         ServerCommand.execute(c, baseUri, config.server.token, format, quiet)
+
+      case c @ (_: DeployCommand.DeployPush | _: DeployCommand.DeployCanary |
+                _: DeployCommand.DeployPromote | _: DeployCommand.DeployRollback |
+                _: DeployCommand.DeployStatus) =>
+        DeployCommand.execute(c, baseUri, config.server.token, format, quiet)
 
       case _ =>
         IO.println(Output.error("Unknown command", format)).as(ExitCodes.UsageError)

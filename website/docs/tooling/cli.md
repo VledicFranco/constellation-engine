@@ -284,6 +284,62 @@ constellation config set server.token sk-your-api-key
 
 **Config File Location:** `~/.constellation/config.json`
 
+### deploy
+
+Pipeline deployment and canary release operations.
+
+```bash
+constellation deploy <subcommand>
+```
+
+**Subcommands:**
+- `push <file.cst>`: Deploy a pipeline to the server
+- `canary <file.cst>`: Deploy a pipeline as a canary release
+- `promote <pipeline>`: Promote a canary deployment to stable
+- `rollback <pipeline>`: Rollback a pipeline to a previous version
+- `status <pipeline>`: Show canary deployment status
+
+**Examples:**
+
+```bash
+# Deploy a pipeline
+constellation deploy push pipeline.cst
+# ✓ Deployed my-pipeline v1
+#   Hash: abc123def456...
+
+# Deploy with custom name
+constellation deploy push pipeline.cst --name production-scorer
+
+# Start a canary deployment (10% traffic to new version)
+constellation deploy canary pipeline.cst --percent 10
+# ✓ Canary started for my-pipeline
+#   New version: v2 (def456...)
+#   Old version: v1 (abc123...)
+#   Traffic: 10% to new version
+
+# Check canary status
+constellation deploy status my-pipeline
+# Canary Deployment: my-pipeline
+#   Status: observing
+#   Traffic: 25% to new version (step 2)
+#   Metrics:
+#     Old version: 950 reqs, 0.2% errors, 45ms p99
+#     New version: 50 reqs, 2.0% errors, 42ms p99
+
+# Manually promote to next step
+constellation deploy promote my-pipeline
+# ✓ Canary my-pipeline promoted: 25% → 50%
+
+# Rollback to previous version
+constellation deploy rollback my-pipeline
+# ✓ Rolled back my-pipeline
+#   From: v2
+#   To: v1
+
+# Rollback to specific version
+constellation deploy rollback my-pipeline --version 1
+```
+
 ## Global Options
 
 | Flag | Short | Description |
@@ -412,6 +468,47 @@ constellation compile pipeline.cst --watch
 
 # In terminal 2: Run when ready
 constellation run pipeline.cst --input text="test"
+```
+
+### Canary Deployment
+
+```bash
+# Deploy canary with 5% traffic
+constellation deploy canary pipelines/v2.cst --percent 5
+
+# Wait and monitor
+sleep 300
+
+# Check metrics
+constellation deploy status my-pipeline
+
+# If healthy, promote to next step
+constellation deploy promote my-pipeline
+
+# If problems, rollback
+constellation deploy rollback my-pipeline
+```
+
+### Production Deployment Pipeline
+
+```bash
+#!/bin/bash
+set -e
+
+# Validate before deploying
+constellation compile pipeline.cst --json || exit 1
+
+# Deploy to staging
+constellation --server $STAGING_URL deploy push pipeline.cst
+
+# Run smoke tests
+constellation --server $STAGING_URL run pipeline.cst \
+  --input-file test-inputs.json --json | jq -e '.success'
+
+# Deploy to production as canary
+constellation --server $PROD_URL deploy canary pipeline.cst --percent 10
+
+echo "Canary deployed. Monitor metrics before promoting."
 ```
 
 ## Troubleshooting
