@@ -1,7 +1,6 @@
 # RFCs
 
-> **Path**: `docs/rfcs/`
-> **Parent**: [docs/](../README.md)
+> **Path**: `rfcs/`
 
 Request for Comments (RFC) documents for proposed features and infrastructure.
 
@@ -12,6 +11,7 @@ Request for Comments (RFC) documents for proposed features and infrastructure.
 | Draft | Initial proposal, open for discussion |
 | Accepted | Approved for implementation |
 | Implemented | Feature has been implemented |
+| Implemented (Beta) | Feature implemented, pending human QA |
 | Rejected | Proposal was rejected |
 
 ---
@@ -142,7 +142,7 @@ RFC-015 (terminology rename)
 |-----|---------|--------|-------------|
 | [RFC-018](./rfc-018-mcp-server.md) | MCP Server | Draft | Model Context Protocol server for LLM integration |
 | [RFC-019](./rfc-019-generated-documentation.md) | Generated Documentation | Implemented | Scala catalog generation, organon verification, freshness tracking |
-| [RFC-020](./rfc-020-dashboard-ide-features.md) | Dashboard IDE Features | In Progress | Live execution visualization, Monaco editor, module browser, profiling |
+| [RFC-020](./rfc-020-dashboard-ide-features.md) | Dashboard IDE Features | Implemented (Beta) | Live execution visualization, Monaco editor, module browser, profiling |
 
 ---
 

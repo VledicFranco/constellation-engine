@@ -1,11 +1,42 @@
 # RFC-020: Dashboard IDE Features
 
-**Status:** In Progress
+**Status:** Implemented (Beta)
 **Priority:** P1 (Strategic)
 **Author:** Human + Claude
 **Created:** 2026-02-07
 **Approved:** 2026-02-07
+**Implemented:** 2026-02-07
 **Depends On:** RFC-019 (Architecture recommendations)
+
+---
+
+## Implementation Status
+
+All features are implemented. Dashboard is in **beta** status pending human QA.
+
+| Feature | Component | Tests | Status |
+|---------|-----------|-------|--------|
+| Architecture (Vite + React + Zustand) | `dashboard/vite.config.ts`, `package.json` | ✅ | Complete |
+| Live Execution Visualization | `websocket.ts`, `execution.store.ts` | ✅ | Beta |
+| Module Browser | `ModuleBrowser.tsx` | ✅ | Beta |
+| Monaco Editor | `MonacoEditor.tsx` | - | Beta |
+| Performance Profiling | `ProfileView.tsx` | - | Beta |
+| Input Presets | `InputPresets.tsx` | ✅ | Beta |
+| Enhanced Error Panel | `ErrorPanel.tsx` | ✅ | Beta |
+| Value Inspector | `ValueInspector.tsx` | ✅ | Beta |
+
+**Key files:**
+- Store: `dashboard/src/store/{app,editor,modules,execution}.store.ts`
+- Components: `dashboard/src/components/*.tsx`
+- Services: `dashboard/src/services/{api,websocket}.ts`
+- Hooks: `dashboard/src/hooks/useExecutionVisualization.ts`
+
+**To run:**
+```bash
+cd dashboard && npm run dev   # Vite dev server with HMR
+cd dashboard && npm run test  # Vitest unit tests
+make test-dashboard-smoke     # E2E smoke tests
+```
 
 ---
 
@@ -21,18 +52,18 @@ The updated organon (2026-02-07) defines the dashboard as:
 
 > "A specialized IDE and observability tool for a Constellation server. Write, test, visualize, and monitor pipelines in one place."
 
-Current dashboard capabilities:
+Pre-RFC dashboard capabilities (now addressed):
 
-| Capability | Status | Gap |
-|------------|--------|-----|
-| **Write** | Partial | Syntax highlighting only, no autocomplete |
-| **Visualize** | Good | DAG renders, but static during execution |
-| **Test** | Good | Input forms, execution works |
-| **Debug** | Missing | No intermediate value inspection |
-| **Monitor** | Partial | History exists, no profiling |
-| **Manage** | Good | Pipelines panel, suspend/resume |
+| Capability | Before | After |
+|------------|--------|-------|
+| **Write** | Syntax highlighting only | Monaco editor with autocomplete |
+| **Visualize** | Static DAG | Live execution visualization |
+| **Test** | Input forms | Input presets with LocalStorage |
+| **Debug** | None | Value inspector, error panel |
+| **Monitor** | History only | Performance profiling waterfall |
+| **Manage** | Pipelines panel | Module browser for discovery |
 
-This RFC addresses the gaps to deliver the complete workflow.
+This RFC addressed all gaps.
 
 ---
 
