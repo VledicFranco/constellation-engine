@@ -34,20 +34,18 @@ export default function Home(): JSX.Element {
         {/* 4. Relevance: Who is this for? */}
         <HomepageUseCases />
 
-        {/* 5-7. Developer Experience: What's it like to use? */}
+        {/* 5-6. Core concepts (moved up for early understanding) */}
+        <HomepageStats />
+        <HomepageArchitecture />
+
+        {/* 7-9. Developer Experience: What's it like to use? */}
         <HomepageCLI />
         <HomepageDashboard />
         <HomepageLSP />
 
-        {/* 8-9. Production Ready: Can I trust it? */}
-        <HomepageStats />
+        {/* 10-11. Production Ready: Can I trust it? */}
         <HomepageDeployment />
-
-        {/* 10. Advanced capabilities */}
         <HomepageSuspended />
-
-        {/* 11. Technical depth */}
-        <HomepageArchitecture />
 
         {/* 12. Comparison for decision-makers */}
         <HomepageComparison />
