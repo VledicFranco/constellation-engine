@@ -136,6 +136,14 @@ RFC-015 (terminology rename)
 
 ---
 
+### Developer Experience
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-021](./rfc-021-cli.md) | Constellation CLI | Draft | Unified CLI for compile, run, viz, deploy, and server operations |
+
+---
+
 ### Future Features
 
 | RFC | Feature | Status | Description |
