@@ -1,11 +1,9 @@
 package io.constellation.cli
 
-import com.monovore.decline.*
-
-import io.circe.Json
-
 import io.constellation.cli.commands.*
 
+import com.monovore.decline.*
+import io.circe.Json
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 

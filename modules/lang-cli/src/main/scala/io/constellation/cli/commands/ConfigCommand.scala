@@ -3,9 +3,9 @@ package io.constellation.cli.commands
 import cats.effect.{ExitCode, IO}
 import cats.implicits.*
 
-import com.monovore.decline.*
-
 import io.constellation.cli.{CliApp, CliConfig, Output, OutputFormat}
+
+import com.monovore.decline.*
 
 /** Config subcommands. */
 sealed trait ConfigSubcommand extends CliCommand

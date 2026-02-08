@@ -5,11 +5,10 @@ import java.nio.file.{Files, Path}
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.circe.Json
-import io.circe.parser.parse
-
 import io.constellation.cli.commands.RunCommand
 
+import io.circe.Json
+import io.circe.parser.parse
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

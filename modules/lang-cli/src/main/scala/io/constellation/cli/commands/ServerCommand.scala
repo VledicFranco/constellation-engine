@@ -3,12 +3,10 @@ package io.constellation.cli.commands
 import cats.effect.{ExitCode, IO}
 import cats.implicits.*
 
-import com.monovore.decline.*
-
-import io.circe.{Decoder, Json}
-
 import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
+import com.monovore.decline.*
+import io.circe.{Decoder, Json}
 import org.http4s.Uri
 import org.http4s.client.Client
 

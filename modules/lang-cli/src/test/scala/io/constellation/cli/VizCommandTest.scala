@@ -2,11 +2,10 @@ package io.constellation.cli
 
 import java.nio.file.{Files, Path}
 
-import io.circe.Json
-import io.circe.parser.parse
-
 import io.constellation.cli.commands.{VizCommand, VizFormat}
 
+import io.circe.Json
+import io.circe.parser.parse
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

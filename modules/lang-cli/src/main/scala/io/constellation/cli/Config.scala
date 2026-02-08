@@ -1,16 +1,15 @@
 package io.constellation.cli
 
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 
 import cats.effect.IO
 import cats.implicits.*
 
-import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto.*
 import io.circe.parser.decode
 import io.circe.syntax.*
-
+import io.circe.{Decoder, Encoder}
 import org.http4s.Uri
 
 /** Output format for CLI results. */

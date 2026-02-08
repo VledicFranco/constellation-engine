@@ -5,14 +5,12 @@ import java.nio.file.{Files, Path, Paths}
 import cats.effect.{ExitCode, IO}
 import cats.implicits.*
 
-import com.monovore.decline.*
-import com.monovore.decline.effect.*
-
-import io.circe.Json
-import io.circe.syntax.*
-
 import io.constellation.cli.commands.*
 
+import com.monovore.decline.*
+import com.monovore.decline.effect.*
+import io.circe.Json
+import io.circe.syntax.*
 import org.http4s.Uri
 import org.http4s.client.Client
 

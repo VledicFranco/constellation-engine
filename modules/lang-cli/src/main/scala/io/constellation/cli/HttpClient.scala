@@ -1,18 +1,17 @@
 package io.constellation.cli
 
+import scala.concurrent.duration.*
+
 import cats.effect.{IO, Resource}
 import cats.implicits.*
 
 import io.circe.{Decoder, Json}
-
-import org.http4s.{Header, Headers, Method, Request, Status, Uri}
-import org.http4s.circe.*
 import org.http4s.circe.CirceEntityCodec.*
+import org.http4s.circe.*
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.{Header, Headers, Method, Request, Status, Uri}
 import org.typelevel.ci.CIString
-
-import scala.concurrent.duration.*
 
 /** HTTP client wrapper for Constellation API. */
 object HttpClient:

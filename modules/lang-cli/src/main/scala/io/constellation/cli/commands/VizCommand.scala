@@ -1,19 +1,17 @@
 package io.constellation.cli.commands
 
-import java.nio.file.{Files, Path}
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
 
 import cats.data.ValidatedNel
 import cats.effect.{ExitCode, IO}
 import cats.implicits.*
 
-import com.monovore.decline.*
-
-import io.circe.{Decoder, Json}
-import io.circe.generic.semiauto.*
-
 import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
+import com.monovore.decline.*
+import io.circe.generic.semiauto.*
+import io.circe.{Decoder, Json}
 import org.http4s.Uri
 import org.http4s.client.Client
 

@@ -2,7 +2,6 @@ package io.constellation.cli
 
 import io.circe.Json
 import io.circe.parser.parse
-
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
