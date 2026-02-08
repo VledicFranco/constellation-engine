@@ -1,6 +1,8 @@
 # Constellation Engine Philosophy
 
-> Part of the [Product Organon](./docs/README.md#organon-guiding-documents). See also: [ETHOS.md](./ETHOS.md)
+> Version 1.0 — Product-Level Organon
+>
+> Part of the [Organon System](./organon/README.md). See also: [ETHOS.md](./ETHOS.md)
 >
 > Why Constellation exists and the thinking behind its design.
 

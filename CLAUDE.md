@@ -56,7 +56,7 @@ Example:
 CONSTELLATION_SCHEDULER_ENABLED=true CONSTELLATION_SCHEDULER_MAX_CONCURRENCY=8 sbt "exampleApp/run"
 ```
 
-For more details, see `docs/dev/global-scheduler.md`.
+For more details, see `website/docs/operations/scheduler.md`.
 
 **HTTP Hardening Configuration (all opt-in, disabled by default):**
 
@@ -219,10 +219,11 @@ When adding a module to example-app:
 
 ## Documentation
 
-- Full architecture: See `docs/architecture.md`
+- Full architecture: See `website/docs/architecture/technical-architecture.md`
 - Contributing guide: See `CONTRIBUTING.md`
 - **Issue tracking: Use GitHub Issues**
-- Language documentation: See `docs/constellation-lang/`
+- Language documentation: See `website/docs/language/`
+- Organon (LLM constraints): See `organon/`
 
 ---
 
@@ -256,8 +257,8 @@ curl http://localhost:8080/metrics | jq .cache
 
 ### Performance Documentation
 
-- **Full guide:** `docs/dev/performance-benchmarks.md` (all benchmarks, targets, troubleshooting)
-- **Framework guide:** `docs/dev/benchmark-framework.md` (how to write new benchmarks)
+- **Full guide:** `dev/benchmarks/performance-benchmarks.md` (all benchmarks, targets, troubleshooting)
+- **Framework guide:** `dev/benchmarks/benchmark-framework.md` (how to write new benchmarks)
 - **E2E fixtures:** `vscode-extension/src/test/fixtures/PERF-README.md`
 - **CI workflow:** `.github/workflows/benchmark.yml`
 
@@ -268,7 +269,7 @@ When writing performance-sensitive code:
 1. Add baseline to `RegressionTests.scala` if critical
 2. Use `BenchmarkHarness.measureWithWarmup()` for measurements
 3. Use `TestFixtures` for consistent input (small/medium/large programs)
-4. Document expected results in `docs/dev/performance-benchmarks.md`
+4. Document expected results in `dev/benchmarks/performance-benchmarks.md`
 
 ---
 
@@ -333,7 +334,7 @@ cd dashboard-tests && npx playwright show-trace test-results/<trace-file>.zip
 
 ### Dashboard E2E Documentation
 
-- **RFC:** `docs/dev/rfcs/rfc-012-dashboard-e2e-tests.md`
+- **RFC:** `rfcs/rfc-012-dashboard-e2e-tests.md`
 - **Test directory:** `dashboard-tests/`
 - **Page objects:** `dashboard-tests/pages/` (living documentation of UI contract)
 - **CI workflow:** `.github/workflows/dashboard-tests.yml`
@@ -354,7 +355,7 @@ When modifying dashboard code:
 
 **Use screenshot-driven iteration when modifying dashboard visuals (CSS, HTML, JS, or Cytoscape config).** The protocol captures the dashboard in 16+ states via Playwright, lets the agent visually analyze results against a stated objective, and repeats -- up to 5 autonomous iterations before presenting screenshots for human review.
 
-**Full protocol:** `docs/dev/playwright-dev-loop.md`
+**Full protocol:** `dev/workflows/playwright-dev-loop.md`
 
 ### Automation Scripts (Windows)
 
@@ -682,6 +683,7 @@ modules.traverse(constellation.setModule)  // requires cats.implicits._
 ```
 
 **References:**
-- Full architecture details: `docs/architecture.md`
-- Language documentation: `docs/constellation-lang/`
+- Full architecture details: `website/docs/architecture/technical-architecture.md`
+- Language documentation: `website/docs/language/`
+- Organon: `organon/` (LLM constraints and design philosophy)
 - Issue tracking: GitHub Issues

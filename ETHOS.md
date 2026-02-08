@@ -1,6 +1,8 @@
 # Constellation Engine Ethos
 
-> Part of the [Product Organon](./docs/README.md#organon-guiding-documents). See also: [PHILOSOPHY.md](./PHILOSOPHY.md)
+> Version 1.0 — Product-Level Organon
+>
+> Part of the [Organon System](./organon/README.md). See also: [PHILOSOPHY.md](./PHILOSOPHY.md)
 >
 > Behavioral constraints for LLMs working on this codebase.
 
