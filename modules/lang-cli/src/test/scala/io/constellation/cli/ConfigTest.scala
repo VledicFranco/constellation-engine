@@ -21,7 +21,9 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
   override def afterEach(): Unit =
     // Clean up temp directory
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= CliConfig Tests =============
@@ -60,7 +62,7 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     result shouldBe Right(config)
 
   test("ServerConfig: decode with missing fields"):
-    val json = io.circe.Json.obj()
+    val json   = io.circe.Json.obj()
     val result = json.as[ServerConfig]
     result shouldBe a[Right[?, ?]]
     result.toOption.get.url shouldBe "http://localhost:8080"
@@ -76,7 +78,7 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     result shouldBe Right(config)
 
   test("CliConfig: decode empty JSON"):
-    val json = io.circe.Json.obj()
+    val json   = io.circe.Json.obj()
     val result = json.as[CliConfig]
     result shouldBe a[Right[?, ?]]
     result.toOption.get shouldBe CliConfig()
@@ -100,7 +102,7 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     result shouldBe Some("http://test.com")
 
   test("resolvePath: missing key"):
-    val json = io.circe.Json.obj()
+    val json   = io.circe.Json.obj()
     val result = resolvePath(json, List("missing"))
     result shouldBe None
 
@@ -114,12 +116,12 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
   // ============= Path Update Tests =============
 
   test("updatePath: simple key"):
-    val json = io.circe.Json.obj()
+    val json   = io.circe.Json.obj()
     val result = updatePath(json, List("key"), "value")
     result.hcursor.downField("key").as[String] shouldBe Right("value")
 
   test("updatePath: nested key"):
-    val json = io.circe.Json.obj()
+    val json   = io.circe.Json.obj()
     val result = updatePath(json, List("server", "url"), "http://new.com")
     result.hcursor.downField("server").downField("url").as[String] shouldBe Right("http://new.com")
 
@@ -142,6 +144,6 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     path match
       case Nil => io.circe.Json.fromString(value)
       case head :: tail =>
-        val obj = json.asObject.getOrElse(io.circe.JsonObject.empty)
+        val obj     = json.asObject.getOrElse(io.circe.JsonObject.empty)
         val current = obj(head).getOrElse(io.circe.Json.Null)
         io.circe.Json.fromJsonObject(obj.add(head, updatePath(current, tail, value)))

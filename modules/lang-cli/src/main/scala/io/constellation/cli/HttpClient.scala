@@ -19,10 +19,10 @@ object HttpClient:
 
   /** Response from an API call. */
   sealed trait ApiResponse[+A]
-  case class Success[A](value: A) extends ApiResponse[A]
+  case class Success[A](value: A)                   extends ApiResponse[A]
   case class ApiError(status: Int, message: String) extends ApiResponse[Nothing]
-  case class ConnectionError(message: String) extends ApiResponse[Nothing]
-  case class ParseError(message: String) extends ApiResponse[Nothing]
+  case class ConnectionError(message: String)       extends ApiResponse[Nothing]
+  case class ParseError(message: String)            extends ApiResponse[Nothing]
 
   /** Create an HTTP client resource. */
   def client: Resource[IO, Client[IO]] =
@@ -37,15 +37,21 @@ object HttpClient:
       uri: Uri,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token.map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
+    val headers = token
+      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
       .getOrElse(Headers.empty)
     val request = Request[IO](Method.GET, uri, headers = headers)
 
-    client.run(request).use { response =>
-      handleResponse[A](response)
-    }.handleError { e =>
-      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
-    }
+    client
+      .run(request)
+      .use { response =>
+        handleResponse[A](response)
+      }
+      .handleError { e =>
+        ConnectionError(
+          StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+        )
+      }
 
   /** Make a POST request with JSON body. */
   def post[A: Decoder](
@@ -53,30 +59,42 @@ object HttpClient:
       body: Json,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token.map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
+    val headers = token
+      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
       .getOrElse(Headers.empty)
     val request = Request[IO](Method.POST, uri, headers = headers).withEntity(body)
 
-    client.run(request).use { response =>
-      handleResponse[A](response)
-    }.handleError { e =>
-      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
-    }
+    client
+      .run(request)
+      .use { response =>
+        handleResponse[A](response)
+      }
+      .handleError { e =>
+        ConnectionError(
+          StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+        )
+      }
 
   /** Make a DELETE request. */
   def delete[A: Decoder](
       uri: Uri,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token.map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
+    val headers = token
+      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
       .getOrElse(Headers.empty)
     val request = Request[IO](Method.DELETE, uri, headers = headers)
 
-    client.run(request).use { response =>
-      handleResponse[A](response)
-    }.handleError { e =>
-      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
-    }
+    client
+      .run(request)
+      .use { response =>
+        handleResponse[A](response)
+      }
+      .handleError { e =>
+        ConnectionError(
+          StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+        )
+      }
 
   /** Handle HTTP response. */
   private def handleResponse[A: Decoder](
@@ -95,7 +113,9 @@ object HttpClient:
       case Status.BadRequest =>
         response.as[Json].attempt.map {
           case Right(json) =>
-            val message = json.hcursor.downField("message").as[String]
+            val message = json.hcursor
+              .downField("message")
+              .as[String]
               .orElse(json.hcursor.downField("error").as[String])
               .getOrElse(json.noSpaces)
             ApiError(400, message)

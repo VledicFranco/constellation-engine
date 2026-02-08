@@ -13,8 +13,8 @@ import org.scalatest.matchers.should.Matchers
 
 /** Integration tests for CLI operations.
   *
-  * Note: These tests verify CLI logic without requiring a running server.
-  * For full end-to-end tests, use the dashboard E2E test infrastructure.
+  * Note: These tests verify CLI logic without requiring a running server. For full end-to-end
+  * tests, use the dashboard E2E test infrastructure.
   */
 class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
@@ -25,7 +25,9 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   override def afterEach(): Unit =
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= Config Flow Tests =============
@@ -49,7 +51,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
       )
     )
 
-    val json = io.circe.syntax.EncoderOps(original).asJson
+    val json    = io.circe.syntax.EncoderOps(original).asJson
     val decoded = json.as[CliConfig]
 
     decoded shouldBe Right(original)
@@ -58,11 +60,13 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     // Config precedence: CLI flags > env vars > config file > defaults
     // This test verifies the load function applies overrides correctly
 
-    val config = CliConfig.load(
-      serverUrl = Some("http://cli-override:8080"),
-      token = None,
-      jsonOutput = true
-    ).unsafeRunSync()
+    val config = CliConfig
+      .load(
+        serverUrl = Some("http://cli-override:8080"),
+        token = None,
+        jsonOutput = true
+      )
+      .unsafeRunSync()
 
     config.server.url shouldBe "http://cli-override:8080"
     config.defaults.output shouldBe OutputFormat.Json
@@ -97,7 +101,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     Files.writeString(file, inputJson)
 
     val content = Files.readString(file)
-    val parsed = io.circe.parser.parse(content).flatMap(_.as[Map[String, Json]])
+    val parsed  = io.circe.parser.parse(content).flatMap(_.as[Map[String, Json]])
 
     parsed shouldBe a[Right[?, ?]]
     val inputs = parsed.toOption.get
@@ -109,7 +113,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("output: success message in both formats"):
     val humanOutput = Output.success("Operation completed", OutputFormat.Human)
-    val jsonOutput = Output.success("Operation completed", OutputFormat.Json)
+    val jsonOutput  = Output.success("Operation completed", OutputFormat.Json)
 
     humanOutput should include("✓")
     humanOutput should include("Operation completed")
@@ -120,7 +124,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("output: error message in both formats"):
     val humanOutput = Output.error("Something went wrong", OutputFormat.Human)
-    val jsonOutput = Output.error("Something went wrong", OutputFormat.Json)
+    val jsonOutput  = Output.error("Something went wrong", OutputFormat.Json)
 
     humanOutput should include("✗")
 
@@ -135,7 +139,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     )
 
     val humanOutput = Output.compilationErrors(errors, OutputFormat.Human)
-    val jsonOutput = Output.compilationErrors(errors, OutputFormat.Json)
+    val jsonOutput  = Output.compilationErrors(errors, OutputFormat.Json)
 
     humanOutput should include("2 error(s)")
     errors.foreach(e => humanOutput should include(e))
@@ -194,7 +198,9 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("input parsing: various value types"):
     // String
-    Output.outputs(Map("str" -> Json.fromString("hello")), OutputFormat.Human) should include("hello")
+    Output.outputs(Map("str" -> Json.fromString("hello")), OutputFormat.Human) should include(
+      "hello"
+    )
 
     // Number
     Output.outputs(Map("num" -> Json.fromInt(42)), OutputFormat.Human) should include("42")
@@ -220,7 +226,7 @@ class IntegrationTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     )
 
     val humanOutput = Output.suspended(execId, missing, OutputFormat.Human)
-    val jsonOutput = Output.suspended(execId, missing, OutputFormat.Json)
+    val jsonOutput  = Output.suspended(execId, missing, OutputFormat.Json)
 
     humanOutput should include("suspended")
     humanOutput should include("12345678")

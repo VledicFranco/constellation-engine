@@ -48,13 +48,23 @@ object ServerCommand:
   object PipelineSummary:
     given Decoder[PipelineSummary] = Decoder.instance { c =>
       for
-        structuralHash  <- c.downField("structuralHash").as[String]
-        syntacticHash   <- c.downField("syntacticHash").as[String]
-        aliases         <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
-        compiledAt      <- c.downField("compiledAt").as[String]
-        moduleCount     <- c.downField("moduleCount").as[Int]
-        declaredOutputs <- c.downField("declaredOutputs").as[Option[List[String]]].map(_.getOrElse(Nil))
-      yield PipelineSummary(structuralHash, syntacticHash, aliases, compiledAt, moduleCount, declaredOutputs)
+        structuralHash <- c.downField("structuralHash").as[String]
+        syntacticHash  <- c.downField("syntacticHash").as[String]
+        aliases        <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
+        compiledAt     <- c.downField("compiledAt").as[String]
+        moduleCount    <- c.downField("moduleCount").as[Int]
+        declaredOutputs <- c
+          .downField("declaredOutputs")
+          .as[Option[List[String]]]
+          .map(_.getOrElse(Nil))
+      yield PipelineSummary(
+        structuralHash,
+        syntacticHash,
+        aliases,
+        compiledAt,
+        moduleCount,
+        declaredOutputs
+      )
     }
 
   case class PipelineListResponse(
@@ -99,15 +109,27 @@ object ServerCommand:
   object PipelineDetailResponse:
     given Decoder[PipelineDetailResponse] = Decoder.instance { c =>
       for
-        structuralHash  <- c.downField("structuralHash").as[String]
-        syntacticHash   <- c.downField("syntacticHash").as[String]
-        aliases         <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
-        compiledAt      <- c.downField("compiledAt").as[String]
-        modules         <- c.downField("modules").as[List[ModuleInfo]]
-        declaredOutputs <- c.downField("declaredOutputs").as[Option[List[String]]].map(_.getOrElse(Nil))
-        inputSchema     <- c.downField("inputSchema").as[Map[String, String]]
-        outputSchema    <- c.downField("outputSchema").as[Map[String, String]]
-      yield PipelineDetailResponse(structuralHash, syntacticHash, aliases, compiledAt, modules, declaredOutputs, inputSchema, outputSchema)
+        structuralHash <- c.downField("structuralHash").as[String]
+        syntacticHash  <- c.downField("syntacticHash").as[String]
+        aliases        <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
+        compiledAt     <- c.downField("compiledAt").as[String]
+        modules        <- c.downField("modules").as[List[ModuleInfo]]
+        declaredOutputs <- c
+          .downField("declaredOutputs")
+          .as[Option[List[String]]]
+          .map(_.getOrElse(Nil))
+        inputSchema  <- c.downField("inputSchema").as[Map[String, String]]
+        outputSchema <- c.downField("outputSchema").as[Map[String, String]]
+      yield PipelineDetailResponse(
+        structuralHash,
+        syntacticHash,
+        aliases,
+        compiledAt,
+        modules,
+        declaredOutputs,
+        inputSchema,
+        outputSchema
+      )
     }
 
   // ============= Executions Command =============
@@ -118,8 +140,8 @@ object ServerCommand:
 
   sealed trait ExecutionsSubcommand
   case class ExecutionsList(limit: Option[Int] = None) extends ExecutionsSubcommand
-  case class ExecutionsShow(id: String) extends ExecutionsSubcommand
-  case class ExecutionsDelete(id: String) extends ExecutionsSubcommand
+  case class ExecutionsShow(id: String)                extends ExecutionsSubcommand
+  case class ExecutionsDelete(id: String)              extends ExecutionsSubcommand
 
   case class ExecutionSummary(
       executionId: String,
@@ -180,7 +202,9 @@ object ServerCommand:
     name = "list",
     help = "List suspended executions"
   ) {
-    Opts.option[Int]("limit", short = "n", help = "Maximum number of executions to show").orNone
+    Opts
+      .option[Int]("limit", short = "n", help = "Maximum number of executions to show")
+      .orNone
       .map(limit => ServerExecutions(ExecutionsList(limit)))
   }
 
@@ -311,8 +335,7 @@ object ServerCommand:
   private def formatPipelineList(pipelines: List[PipelineSummary], format: OutputFormat): String =
     format match
       case OutputFormat.Human =>
-        if pipelines.isEmpty then
-          s"${fansi.Color.Yellow("No pipelines loaded")}"
+        if pipelines.isEmpty then s"${fansi.Color.Yellow("No pipelines loaded")}"
         else
           val header = s"${fansi.Bold.On(s"${pipelines.size} pipeline(s) loaded:")}\n"
           val rows = pipelines.map { p =>
@@ -326,17 +349,19 @@ object ServerCommand:
 
       case OutputFormat.Json =>
         import io.circe.syntax.*
-        Json.obj(
-          "pipelines" -> Json.fromValues(pipelines.map { p =>
-            Json.obj(
-              "name"            -> Json.fromString(p.aliases.headOption.getOrElse("")),
-              "structuralHash"  -> Json.fromString(p.structuralHash),
-              "aliases"         -> Json.fromValues(p.aliases.map(Json.fromString)),
-              "moduleCount"     -> Json.fromInt(p.moduleCount),
-              "declaredOutputs" -> Json.fromValues(p.declaredOutputs.map(Json.fromString))
-            )
-          })
-        ).noSpaces
+        Json
+          .obj(
+            "pipelines" -> Json.fromValues(pipelines.map { p =>
+              Json.obj(
+                "name"            -> Json.fromString(p.aliases.headOption.getOrElse("")),
+                "structuralHash"  -> Json.fromString(p.structuralHash),
+                "aliases"         -> Json.fromValues(p.aliases.map(Json.fromString)),
+                "moduleCount"     -> Json.fromInt(p.moduleCount),
+                "declaredOutputs" -> Json.fromValues(p.declaredOutputs.map(Json.fromString))
+              )
+            })
+          )
+          .noSpaces
 
   // ============= Pipelines Show =============
 
@@ -399,21 +424,27 @@ object ServerCommand:
 
       case OutputFormat.Json =>
         import io.circe.syntax.*
-        Json.obj(
-          "structuralHash"  -> Json.fromString(detail.structuralHash),
-          "syntacticHash"   -> Json.fromString(detail.syntacticHash),
-          "aliases"         -> Json.fromValues(detail.aliases.map(Json.fromString)),
-          "compiledAt"      -> Json.fromString(detail.compiledAt),
-          "inputSchema"     -> Json.fromFields(detail.inputSchema.map((k, v) => k -> Json.fromString(v))),
-          "outputSchema"    -> Json.fromFields(detail.outputSchema.map((k, v) => k -> Json.fromString(v))),
-          "modules"         -> Json.fromValues(detail.modules.map { m =>
-            Json.obj(
-              "name"        -> Json.fromString(m.name),
-              "description" -> Json.fromString(m.description),
-              "version"     -> Json.fromString(m.version)
-            )
-          })
-        ).noSpaces
+        Json
+          .obj(
+            "structuralHash" -> Json.fromString(detail.structuralHash),
+            "syntacticHash"  -> Json.fromString(detail.syntacticHash),
+            "aliases"        -> Json.fromValues(detail.aliases.map(Json.fromString)),
+            "compiledAt"     -> Json.fromString(detail.compiledAt),
+            "inputSchema" -> Json.fromFields(
+              detail.inputSchema.map((k, v) => k -> Json.fromString(v))
+            ),
+            "outputSchema" -> Json.fromFields(
+              detail.outputSchema.map((k, v) => k -> Json.fromString(v))
+            ),
+            "modules" -> Json.fromValues(detail.modules.map { m =>
+              Json.obj(
+                "name"        -> Json.fromString(m.name),
+                "description" -> Json.fromString(m.description),
+                "version"     -> Json.fromString(m.version)
+              )
+            })
+          )
+          .noSpaces
 
   // ============= Executions List =============
 
@@ -428,7 +459,7 @@ object ServerCommand:
     HttpClient.get[ExecutionListResponse](uri, token).flatMap {
       case HttpClient.Success(resp) =>
         val executions = limit.fold(resp.executions)(n => resp.executions.take(n))
-        val output = formatExecutionList(executions, format)
+        val output     = formatExecutionList(executions, format)
         IO.println(output).as(CliApp.ExitCodes.Success)
 
       case HttpClient.ConnectionError(msg) =>
@@ -447,16 +478,20 @@ object ServerCommand:
           .as(CliApp.ExitCodes.RuntimeError)
     }
 
-  private def formatExecutionList(executions: List[ExecutionSummary], format: OutputFormat): String =
+  private def formatExecutionList(
+      executions: List[ExecutionSummary],
+      format: OutputFormat
+  ): String =
     format match
       case OutputFormat.Human =>
-        if executions.isEmpty then
-          s"${fansi.Color.Yellow("No suspended executions")}"
+        if executions.isEmpty then s"${fansi.Color.Yellow("No suspended executions")}"
         else
-          val header = s"${fansi.Bold.On("ID")}                                  ${fansi.Bold.On("Pipeline")}      ${fansi.Bold.On("Missing")}  ${fansi.Bold.On("Created")}\n"
+          val header =
+            s"${fansi.Bold.On("ID")}                                  ${fansi.Bold.On("Pipeline")}      ${fansi.Bold
+                .On("Missing")}  ${fansi.Bold.On("Created")}\n"
           val rows = executions.map { e =>
-            val id = e.executionId
-            val hash = StringUtils.hashPreview(e.structuralHash)
+            val id      = e.executionId
+            val hash    = StringUtils.hashPreview(e.structuralHash)
             val missing = e.missingInputs.size.toString
             val created = StringUtils.timestampPreview(e.createdAt)
             f"$id  $hash  $missing%7s  $created"
@@ -465,17 +500,21 @@ object ServerCommand:
 
       case OutputFormat.Json =>
         import io.circe.syntax.*
-        Json.obj(
-          "executions" -> Json.fromValues(executions.map { e =>
-            Json.obj(
-              "executionId"     -> Json.fromString(e.executionId),
-              "structuralHash"  -> Json.fromString(e.structuralHash),
-              "resumptionCount" -> Json.fromInt(e.resumptionCount),
-              "missingInputs"   -> Json.fromFields(e.missingInputs.map((k, v) => k -> Json.fromString(v))),
-              "createdAt"       -> Json.fromString(e.createdAt)
-            )
-          })
-        ).noSpaces
+        Json
+          .obj(
+            "executions" -> Json.fromValues(executions.map { e =>
+              Json.obj(
+                "executionId"     -> Json.fromString(e.executionId),
+                "structuralHash"  -> Json.fromString(e.structuralHash),
+                "resumptionCount" -> Json.fromInt(e.resumptionCount),
+                "missingInputs" -> Json.fromFields(
+                  e.missingInputs.map((k, v) => k -> Json.fromString(v))
+                ),
+                "createdAt" -> Json.fromString(e.createdAt)
+              )
+            })
+          )
+          .noSpaces
 
   // ============= Executions Show =============
 
@@ -530,13 +569,17 @@ object ServerCommand:
 
       case OutputFormat.Json =>
         import io.circe.syntax.*
-        Json.obj(
-          "executionId"     -> Json.fromString(exec.executionId),
-          "structuralHash"  -> Json.fromString(exec.structuralHash),
-          "resumptionCount" -> Json.fromInt(exec.resumptionCount),
-          "missingInputs"   -> Json.fromFields(exec.missingInputs.map((k, v) => k -> Json.fromString(v))),
-          "createdAt"       -> Json.fromString(exec.createdAt)
-        ).noSpaces
+        Json
+          .obj(
+            "executionId"     -> Json.fromString(exec.executionId),
+            "structuralHash"  -> Json.fromString(exec.structuralHash),
+            "resumptionCount" -> Json.fromInt(exec.resumptionCount),
+            "missingInputs" -> Json.fromFields(
+              exec.missingInputs.map((k, v) => k -> Json.fromString(v))
+            ),
+            "createdAt" -> Json.fromString(exec.createdAt)
+          )
+          .noSpaces
 
   // ============= Executions Delete =============
 
@@ -618,12 +661,13 @@ object ServerCommand:
         metrics.hcursor.downField("server").focus.foreach { server =>
           sb.append(s"${fansi.Bold.On("Server:")}\n")
           server.hcursor.downField("uptime_seconds").as[Long].foreach { uptime =>
-            val days = uptime / 86400
+            val days  = uptime / 86400
             val hours = (uptime % 86400) / 3600
-            val mins = (uptime % 3600) / 60
-            val uptimeStr = if days > 0 then s"${days}d ${hours}h ${mins}m"
-                            else if hours > 0 then s"${hours}h ${mins}m"
-                            else s"${mins}m"
+            val mins  = (uptime % 3600) / 60
+            val uptimeStr =
+              if days > 0 then s"${days}d ${hours}h ${mins}m"
+              else if hours > 0 then s"${hours}h ${mins}m"
+              else s"${mins}m"
             sb.append(s"  Uptime: $uptimeStr\n")
           }
           server.hcursor.downField("requests_total").as[Long].foreach { reqs =>
@@ -647,11 +691,22 @@ object ServerCommand:
         metrics.hcursor.downField("scheduler").focus.foreach { sched =>
           if !sched.isNull then
             sched.hcursor.downField("enabled").as[Boolean].foreach { enabled =>
-              sb.append(s"\n${fansi.Bold.On("Scheduler:")} ${if enabled then "enabled" else "disabled"}\n")
+              sb.append(
+                s"\n${fansi.Bold.On("Scheduler:")} ${if enabled then "enabled" else "disabled"}\n"
+              )
               if enabled then
-                sched.hcursor.downField("activeCount").as[Int].foreach(v => sb.append(s"  Active: $v\n"))
-                sched.hcursor.downField("queuedCount").as[Int].foreach(v => sb.append(s"  Queued: $v\n"))
-                sched.hcursor.downField("totalCompleted").as[Long].foreach(v => sb.append(s"  Completed: $v\n"))
+                sched.hcursor
+                  .downField("activeCount")
+                  .as[Int]
+                  .foreach(v => sb.append(s"  Active: $v\n"))
+                sched.hcursor
+                  .downField("queuedCount")
+                  .as[Int]
+                  .foreach(v => sb.append(s"  Queued: $v\n"))
+                sched.hcursor
+                  .downField("totalCompleted")
+                  .as[Long]
+                  .foreach(v => sb.append(s"  Completed: $v\n"))
             }
         }
 

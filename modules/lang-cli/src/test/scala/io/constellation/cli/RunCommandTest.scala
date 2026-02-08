@@ -23,27 +23,29 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   override def afterEach(): Unit =
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= Command Construction Tests =============
 
   test("RunCommand: stores file path"):
     val file = tempDir.resolve("pipeline.cst")
-    val cmd = RunCommand(file)
+    val cmd  = RunCommand(file)
     cmd.file shouldBe file
     cmd.inputs shouldBe empty
     cmd.inputFile shouldBe None
 
   test("RunCommand: stores inputs"):
     val file = tempDir.resolve("pipeline.cst")
-    val cmd = RunCommand(file, inputs = List(("a", "1"), ("b", "2")))
+    val cmd  = RunCommand(file, inputs = List(("a", "1"), ("b", "2")))
     cmd.inputs should have size 2
 
   test("RunCommand: stores input file"):
-    val file = tempDir.resolve("pipeline.cst")
+    val file      = tempDir.resolve("pipeline.cst")
     val inputFile = tempDir.resolve("inputs.json")
-    val cmd = RunCommand(file, inputFile = Some(inputFile))
+    val cmd       = RunCommand(file, inputFile = Some(inputFile))
     cmd.inputFile shouldBe Some(inputFile)
 
   // ============= Input Parsing Tests =============
@@ -88,7 +90,7 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     Files.writeString(inputFile, """{"text": "hello", "count": 5}""")
 
     val content = Files.readString(inputFile)
-    val parsed = parse(content).flatMap(_.as[Map[String, Json]])
+    val parsed  = parse(content).flatMap(_.as[Map[String, Json]])
     parsed shouldBe a[Right[?, ?]]
     parsed.toOption.get should have size 2
     parsed.toOption.get("text") shouldBe Json.fromString("hello")
@@ -99,7 +101,7 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     Files.writeString(inputFile, """{"data": {"nested": true}}""")
 
     val content = Files.readString(inputFile)
-    val parsed = parse(content).flatMap(_.as[Map[String, Json]])
+    val parsed  = parse(content).flatMap(_.as[Map[String, Json]])
     parsed shouldBe a[Right[?, ?]]
     val dataJson = parsed.toOption.get.get("data")
     dataJson.map(_.hcursor.downField("nested").as[Boolean].toOption).flatten shouldBe Some(true)
@@ -126,9 +128,9 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("RunResponse: decode suspended response"):
     val json = Json.obj(
-      "success"       -> Json.True,
-      "status"        -> Json.fromString("suspended"),
-      "executionId"   -> Json.fromString("exec-456"),
+      "success"     -> Json.True,
+      "status"      -> Json.fromString("suspended"),
+      "executionId" -> Json.fromString("exec-456"),
       "missingInputs" -> Json.obj(
         "input1" -> Json.fromString("CString"),
         "input2" -> Json.fromString("CInt")
@@ -145,7 +147,7 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("RunResponse: decode compilation error response"):
     val json = Json.obj(
-      "success"           -> Json.False,
+      "success" -> Json.False,
       "compilationErrors" -> Json.arr(
         Json.fromString("Syntax error"),
         Json.fromString("Type error")
@@ -175,9 +177,9 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     val inputFile = tempDir.resolve("inputs.json")
     Files.writeString(inputFile, """{"text": "from-file", "count": 10}""")
 
-    val cliInputs = List(("text", "from-cli"))
+    val cliInputs   = List(("text", "from-cli"))
     val fileContent = Files.readString(inputFile)
-    val fileInputs = parse(fileContent).flatMap(_.as[Map[String, Json]]).getOrElse(Map.empty)
+    val fileInputs  = parse(fileContent).flatMap(_.as[Map[String, Json]]).getOrElse(Map.empty)
 
     val cliMap = cliInputs.map { case (k, v) => k -> parseValue(v) }.toMap
     val merged = fileInputs ++ cliMap

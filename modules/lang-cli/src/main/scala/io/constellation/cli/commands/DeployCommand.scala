@@ -97,7 +97,15 @@ object DeployCommand:
         currentStep   <- c.downField("currentStep").as[Int]
         status        <- c.downField("status").as[String]
         startedAt     <- c.downField("startedAt").as[String]
-      yield CanaryStateResponse(pipelineName, oldVersion, newVersion, currentWeight, currentStep, status, startedAt)
+      yield CanaryStateResponse(
+        pipelineName,
+        oldVersion,
+        newVersion,
+        currentWeight,
+        currentStep,
+        status,
+        startedAt
+      )
     }
 
   case class CanaryVersionInfo(
@@ -155,23 +163,29 @@ object DeployCommand:
 
   private val fileArg = Opts.argument[Path](metavar = "file.cst")
 
-  private val nameOpt = Opts.option[String](
-    "name",
-    short = "n",
-    help = "Pipeline name (default: filename without extension)"
-  ).orNone
+  private val nameOpt = Opts
+    .option[String](
+      "name",
+      short = "n",
+      help = "Pipeline name (default: filename without extension)"
+    )
+    .orNone
 
-  private val percentOpt = Opts.option[Int](
-    "percent",
-    short = "p",
-    help = "Initial canary traffic percentage (default: 10)"
-  ).withDefault(10)
+  private val percentOpt = Opts
+    .option[Int](
+      "percent",
+      short = "p",
+      help = "Initial canary traffic percentage (default: 10)"
+    )
+    .withDefault(10)
 
-  private val versionOpt = Opts.option[Int](
-    "version",
-    short = "v",
-    help = "Specific version to rollback to"
-  ).orNone
+  private val versionOpt = Opts
+    .option[Int](
+      "version",
+      short = "v",
+      help = "Specific version to rollback to"
+    )
+    .orNone
 
   private val pipelineArg = Opts.argument[String](metavar = "pipeline")
 
@@ -295,7 +309,9 @@ object DeployCommand:
       case OutputFormat.Human =>
         if resp.changed then
           val sb = new StringBuilder
-          sb.append(s"${fansi.Color.Green("✓")} Deployed ${fansi.Bold.On(resp.name)} v${resp.version}\n")
+          sb.append(
+            s"${fansi.Color.Green("✓")} Deployed ${fansi.Bold.On(resp.name)} v${resp.version}\n"
+          )
           sb.append(s"  Hash: ${StringUtils.hashPreview(resp.newHash)}\n")
           resp.previousHash.foreach { prev =>
             sb.append(s"  Previous: ${StringUtils.hashPreview(prev)}\n")
@@ -305,14 +321,16 @@ object DeployCommand:
           s"${fansi.Color.Yellow("○")} No changes to ${fansi.Bold.On(resp.name)} (already at v${resp.version})"
 
       case OutputFormat.Json =>
-        Json.obj(
-          "success"      -> Json.fromBoolean(resp.success),
-          "name"         -> Json.fromString(resp.name),
-          "version"      -> Json.fromInt(resp.version),
-          "changed"      -> Json.fromBoolean(resp.changed),
-          "hash"         -> Json.fromString(resp.newHash),
-          "previousHash" -> resp.previousHash.fold(Json.Null)(Json.fromString)
-        ).noSpaces
+        Json
+          .obj(
+            "success"      -> Json.fromBoolean(resp.success),
+            "name"         -> Json.fromString(resp.name),
+            "version"      -> Json.fromInt(resp.version),
+            "changed"      -> Json.fromBoolean(resp.changed),
+            "hash"         -> Json.fromString(resp.newHash),
+            "previousHash" -> resp.previousHash.fold(Json.Null)(Json.fromString)
+          )
+          .noSpaces
 
   // ============= Canary =============
 
@@ -359,8 +377,9 @@ object DeployCommand:
               .as(CliApp.ExitCodes.AuthError)
 
           case HttpClient.ApiError(409, _) =>
-            IO.println(Output.error("A canary deployment is already active for this pipeline", format))
-              .as(CliApp.ExitCodes.Conflict)
+            IO.println(
+              Output.error("A canary deployment is already active for this pipeline", format)
+            ).as(CliApp.ExitCodes.Conflict)
 
           case HttpClient.ApiError(_, msg) =>
             IO.println(Output.error(msg, format)).as(CliApp.ExitCodes.RuntimeError)
@@ -378,8 +397,12 @@ object DeployCommand:
           case Some(canary) =>
             val sb = new StringBuilder
             sb.append(s"${fansi.Color.Green("✓")} Canary started for ${fansi.Bold.On(resp.name)}\n")
-            sb.append(s"  New version: v${canary.newVersion.version} (${StringUtils.hashPreview(canary.newVersion.structuralHash)})\n")
-            sb.append(s"  Old version: v${canary.oldVersion.version} (${StringUtils.hashPreview(canary.oldVersion.structuralHash)})\n")
+            sb.append(
+              s"  New version: v${canary.newVersion.version} (${StringUtils.hashPreview(canary.newVersion.structuralHash)})\n"
+            )
+            sb.append(
+              s"  Old version: v${canary.oldVersion.version} (${StringUtils.hashPreview(canary.oldVersion.structuralHash)})\n"
+            )
             sb.append(s"  Traffic: ${percent}% to new version\n")
             sb.append(s"  Status: ${canary.status}")
             sb.toString
@@ -387,25 +410,26 @@ object DeployCommand:
           case None =>
             if resp.changed then
               s"${fansi.Color.Yellow("!")} Deployed ${fansi.Bold.On(resp.name)} v${resp.version} (no previous version for canary)"
-            else
-              s"${fansi.Color.Yellow("○")} No changes to ${fansi.Bold.On(resp.name)}"
+            else s"${fansi.Color.Yellow("○")} No changes to ${fansi.Bold.On(resp.name)}"
 
       case OutputFormat.Json =>
         val canaryJson = resp.canary.fold(Json.Null) { c =>
           Json.obj(
-            "status"      -> Json.fromString(c.status),
-            "oldVersion"  -> Json.fromInt(c.oldVersion.version),
-            "newVersion"  -> Json.fromInt(c.newVersion.version),
-            "weight"      -> Json.fromDoubleOrNull(c.currentWeight)
+            "status"     -> Json.fromString(c.status),
+            "oldVersion" -> Json.fromInt(c.oldVersion.version),
+            "newVersion" -> Json.fromInt(c.newVersion.version),
+            "weight"     -> Json.fromDoubleOrNull(c.currentWeight)
           )
         }
-        Json.obj(
-          "success" -> Json.fromBoolean(resp.success),
-          "name"    -> Json.fromString(resp.name),
-          "version" -> Json.fromInt(resp.version),
-          "changed" -> Json.fromBoolean(resp.changed),
-          "canary"  -> canaryJson
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.fromBoolean(resp.success),
+            "name"    -> Json.fromString(resp.name),
+            "version" -> Json.fromInt(resp.version),
+            "changed" -> Json.fromBoolean(resp.changed),
+            "canary"  -> canaryJson
+          )
+          .noSpaces
 
   // ============= Promote =============
 
@@ -453,13 +477,15 @@ object DeployCommand:
           s"${fansi.Color.Green("✓")} Canary ${fansi.Bold.On(resp.pipelineName)} promoted: $prevPct% → $newPct%"
 
       case OutputFormat.Json =>
-        Json.obj(
-          "success"        -> Json.fromBoolean(resp.success),
-          "pipelineName"   -> Json.fromString(resp.pipelineName),
-          "previousWeight" -> Json.fromDoubleOrNull(resp.previousWeight),
-          "newWeight"      -> Json.fromDoubleOrNull(resp.newWeight),
-          "status"         -> Json.fromString(resp.status)
-        ).noSpaces
+        Json
+          .obj(
+            "success"        -> Json.fromBoolean(resp.success),
+            "pipelineName"   -> Json.fromString(resp.pipelineName),
+            "previousWeight" -> Json.fromDoubleOrNull(resp.previousWeight),
+            "newWeight"      -> Json.fromDoubleOrNull(resp.newWeight),
+            "status"         -> Json.fromString(resp.status)
+          )
+          .noSpaces
 
   // ============= Rollback =============
 
@@ -510,13 +536,15 @@ object DeployCommand:
         sb.toString
 
       case OutputFormat.Json =>
-        Json.obj(
-          "success"         -> Json.fromBoolean(resp.success),
-          "name"            -> Json.fromString(resp.name),
-          "previousVersion" -> Json.fromInt(resp.previousVersion),
-          "activeVersion"   -> Json.fromInt(resp.activeVersion),
-          "structuralHash"  -> Json.fromString(resp.structuralHash)
-        ).noSpaces
+        Json
+          .obj(
+            "success"         -> Json.fromBoolean(resp.success),
+            "name"            -> Json.fromString(resp.name),
+            "previousVersion" -> Json.fromInt(resp.previousVersion),
+            "activeVersion"   -> Json.fromInt(resp.activeVersion),
+            "structuralHash"  -> Json.fromString(resp.structuralHash)
+          )
+          .noSpaces
 
   // ============= Status =============
 
@@ -607,20 +635,33 @@ object DeployCommand:
         status        <- c.downField("status").as[String]
         startedAt     <- c.downField("startedAt").as[String]
         metrics       <- c.downField("metrics").as[Option[CanaryMetrics]]
-      yield CanaryStatusResponse(pipelineName, oldVersion, newVersion, currentWeight, currentStep, status, startedAt, metrics)
+      yield CanaryStatusResponse(
+        pipelineName,
+        oldVersion,
+        newVersion,
+        currentWeight,
+        currentStep,
+        status,
+        startedAt,
+        metrics
+      )
     }
 
   private def formatStatusResult(resp: CanaryStatusResponse, format: OutputFormat): String =
     format match
       case OutputFormat.Human =>
-        val sb = new StringBuilder
+        val sb        = new StringBuilder
         val weightPct = (resp.currentWeight * 100).toInt
         sb.append(s"${fansi.Bold.On("Canary Deployment:")} ${resp.pipelineName}\n\n")
         sb.append(s"  ${fansi.Bold.On("Status:")} ${resp.status}\n")
-        sb.append(s"  ${fansi.Bold.On("Traffic:")} ${weightPct}% to new version (step ${resp.currentStep})\n")
+        sb.append(
+          s"  ${fansi.Bold.On("Traffic:")} ${weightPct}% to new version (step ${resp.currentStep})\n"
+        )
         sb.append(s"  ${fansi.Bold.On("Started:")} ${resp.startedAt}\n\n")
-        sb.append(s"  ${fansi.Bold.On("Old version:")} v${resp.oldVersion.version} (${StringUtils.hashPreview(resp.oldVersion.structuralHash)})\n")
-        sb.append(s"  ${fansi.Bold.On("New version:")} v${resp.newVersion.version} (${StringUtils.hashPreview(resp.newVersion.structuralHash)})\n")
+        sb.append(s"  ${fansi.Bold.On("Old version:")} v${resp.oldVersion.version} (${StringUtils
+            .hashPreview(resp.oldVersion.structuralHash)})\n")
+        sb.append(s"  ${fansi.Bold.On("New version:")} v${resp.newVersion.version} (${StringUtils
+            .hashPreview(resp.newVersion.structuralHash)})\n")
 
         resp.metrics.foreach { m =>
           sb.append(s"\n${fansi.Bold.On("Metrics:")}\n")
@@ -628,50 +669,47 @@ object DeployCommand:
           if m.oldVersion.requests > 0 then
             val errorRate = m.oldVersion.failures.toDouble / m.oldVersion.requests * 100
             sb.append(f"$errorRate%.1f%% errors, ${m.oldVersion.p99LatencyMs}%.0fms p99\n")
-          else
-            sb.append("no traffic\n")
+          else sb.append("no traffic\n")
 
           sb.append(s"  New version: ${m.newVersion.requests} reqs, ")
           if m.newVersion.requests > 0 then
             val errorRate = m.newVersion.failures.toDouble / m.newVersion.requests * 100
             sb.append(f"$errorRate%.1f%% errors, ${m.newVersion.p99LatencyMs}%.0fms p99\n")
-          else
-            sb.append("no traffic\n")
+          else sb.append("no traffic\n")
         }
 
         sb.toString.trim
 
       case OutputFormat.Json =>
         import io.circe.generic.auto.*
-        Json.obj(
-          "pipelineName"  -> Json.fromString(resp.pipelineName),
-          "status"        -> Json.fromString(resp.status),
-          "currentWeight" -> Json.fromDoubleOrNull(resp.currentWeight),
-          "currentStep"   -> Json.fromInt(resp.currentStep),
-          "startedAt"     -> Json.fromString(resp.startedAt),
-          "oldVersion"    -> Json.obj(
-            "version" -> Json.fromInt(resp.oldVersion.version),
-            "hash"    -> Json.fromString(resp.oldVersion.structuralHash)
-          ),
-          "newVersion"    -> Json.obj(
-            "version" -> Json.fromInt(resp.newVersion.version),
-            "hash"    -> Json.fromString(resp.newVersion.structuralHash)
+        Json
+          .obj(
+            "pipelineName"  -> Json.fromString(resp.pipelineName),
+            "status"        -> Json.fromString(resp.status),
+            "currentWeight" -> Json.fromDoubleOrNull(resp.currentWeight),
+            "currentStep"   -> Json.fromInt(resp.currentStep),
+            "startedAt"     -> Json.fromString(resp.startedAt),
+            "oldVersion" -> Json.obj(
+              "version" -> Json.fromInt(resp.oldVersion.version),
+              "hash"    -> Json.fromString(resp.oldVersion.structuralHash)
+            ),
+            "newVersion" -> Json.obj(
+              "version" -> Json.fromInt(resp.newVersion.version),
+              "hash"    -> Json.fromString(resp.newVersion.structuralHash)
+            )
           )
-        ).noSpaces
+          .noSpaces
 
   // ============= Helpers =============
 
-  /**
-   * Read source code from file with path validation.
-   *
-   * Resolves symlinks and validates the path to prevent path traversal.
-   */
+  /** Read source code from file with path validation.
+    *
+    * Resolves symlinks and validates the path to prevent path traversal.
+    */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
-      if !Files.exists(path) then
-        Left(s"File not found: $path")
-      else if Files.isDirectory(path) then
-        Left(s"Path is a directory: $path")
+      if !Files.exists(path) then Left(s"File not found: $path")
+      else if Files.isDirectory(path) then Left(s"Path is a directory: $path")
       else
         // Resolve symlinks to canonical path
         val realPath = path.toRealPath()

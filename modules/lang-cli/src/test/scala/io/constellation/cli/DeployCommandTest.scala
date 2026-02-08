@@ -49,7 +49,7 @@ class DeployCommandTest extends AnyFunSuite with Matchers:
     result shouldBe a[Right[?, ?]]
     val cmd = result.toOption.get.asInstanceOf[DeployCommand.DeployCanary]
     cmd.file.toString shouldBe "pipeline.cst"
-    cmd.percent shouldBe 10  // default
+    cmd.percent shouldBe 10 // default
 
   test("deploy canary: parse with percent option"):
     val result = parseDeploy("deploy", "canary", "pipeline.cst", "--percent", "25")
@@ -135,13 +135,13 @@ class DeployCommandTest extends AnyFunSuite with Matchers:
       "name"         -> Json.fromString("my-pipeline"),
       "changed"      -> Json.fromBoolean(true),
       "version"      -> Json.fromInt(3),
-      "canary"       -> Json.obj(
-        "pipelineName"  -> Json.fromString("my-pipeline"),
-        "oldVersion"    -> Json.obj(
+      "canary" -> Json.obj(
+        "pipelineName" -> Json.fromString("my-pipeline"),
+        "oldVersion" -> Json.obj(
           "version"        -> Json.fromInt(2),
           "structuralHash" -> Json.fromString("abc123")
         ),
-        "newVersion"    -> Json.obj(
+        "newVersion" -> Json.obj(
           "version"        -> Json.fromInt(3),
           "structuralHash" -> Json.fromString("def456")
         ),
@@ -189,12 +189,12 @@ class DeployCommandTest extends AnyFunSuite with Matchers:
 
   test("CanaryStatusResponse: decode with metrics"):
     val json = Json.obj(
-      "pipelineName"  -> Json.fromString("my-pipeline"),
-      "oldVersion"    -> Json.obj(
+      "pipelineName" -> Json.fromString("my-pipeline"),
+      "oldVersion" -> Json.obj(
         "version"        -> Json.fromInt(2),
         "structuralHash" -> Json.fromString("abc123")
       ),
-      "newVersion"    -> Json.obj(
+      "newVersion" -> Json.obj(
         "version"        -> Json.fromInt(3),
         "structuralHash" -> Json.fromString("def456")
       ),
@@ -202,7 +202,7 @@ class DeployCommandTest extends AnyFunSuite with Matchers:
       "currentStep"   -> Json.fromInt(2),
       "status"        -> Json.fromString("observing"),
       "startedAt"     -> Json.fromString("2026-02-08T00:00:00Z"),
-      "metrics"       -> Json.obj(
+      "metrics" -> Json.obj(
         "oldVersion" -> Json.obj(
           "requests"     -> Json.fromLong(950),
           "successes"    -> Json.fromLong(948),

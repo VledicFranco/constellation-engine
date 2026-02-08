@@ -80,11 +80,13 @@ object VizCommand:
 
   private val fileArg = Opts.argument[Path](metavar = "file")
 
-  private val formatOpt = Opts.option[VizFormat](
-    "format",
-    short = "F",
-    help = "Output format: dot, json, mermaid"
-  ).withDefault(VizFormat.Dot)
+  private val formatOpt = Opts
+    .option[VizFormat](
+      "format",
+      short = "F",
+      help = "Output format: dot, json, mermaid"
+    )
+    .withDefault(VizFormat.Dot)
 
   val command: Opts[CliCommand] = Opts.subcommand(
     name = "viz",
@@ -108,20 +110,24 @@ object VizCommand:
         case Left(err) =>
           IO.println(Output.error(err, outputFormat)).as(CliApp.ExitCodes.UsageError)
         case Right(source) =>
-          compileAndVisualize(source, cmd.file.getFileName.toString, cmd.format, baseUri, token, outputFormat)
+          compileAndVisualize(
+            source,
+            cmd.file.getFileName.toString,
+            cmd.format,
+            baseUri,
+            token,
+            outputFormat
+          )
     yield exitCode
 
-  /**
-   * Read source code from file with path validation.
-   *
-   * Resolves symlinks and validates the path to prevent path traversal.
-   */
+  /** Read source code from file with path validation.
+    *
+    * Resolves symlinks and validates the path to prevent path traversal.
+    */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
-      if !Files.exists(path) then
-        Left(s"File not found: $path")
-      else if Files.isDirectory(path) then
-        Left(s"Path is a directory: $path")
+      if !Files.exists(path) then Left(s"File not found: $path")
+      else if Files.isDirectory(path) then Left(s"Path is a directory: $path")
       else
         // Resolve symlinks to canonical path
         val realPath = path.toRealPath()
@@ -243,12 +249,12 @@ object VizCommand:
 
     // Build edges
     val inputToModule = for
-      (m, idx) <- detail.modules.zipWithIndex
+      (m, idx)  <- detail.modules.zipWithIndex
       inputName <- m.inputs.keys
     yield (s"input_$inputName", s"module_$idx")
 
     val moduleToOutput = for
-      (m, idx) <- detail.modules.zipWithIndex
+      (m, idx)   <- detail.modules.zipWithIndex
       outputName <- m.outputs.keys
       if detail.declaredOutputs.contains(outputName)
     yield (s"module_$idx", s"output_$outputName")
@@ -261,18 +267,20 @@ object VizCommand:
       case VizFormat.Mermaid =>
         Output.dagMermaid(allNodes, allEdges)
       case VizFormat.Json =>
-        Json.obj(
-          "nodes" -> Json.fromValues(allNodes.map { case (id, label, deps) =>
-            Json.obj(
-              "id"           -> Json.fromString(id),
-              "label"        -> Json.fromString(label),
-              "dependencies" -> Json.fromValues(deps.map(Json.fromString))
-            )
-          }),
-          "edges" -> Json.fromValues(allEdges.map { case (from, to) =>
-            Json.obj(
-              "from" -> Json.fromString(from),
-              "to"   -> Json.fromString(to)
-            )
-          })
-        ).spaces2
+        Json
+          .obj(
+            "nodes" -> Json.fromValues(allNodes.map { case (id, label, deps) =>
+              Json.obj(
+                "id"           -> Json.fromString(id),
+                "label"        -> Json.fromString(label),
+                "dependencies" -> Json.fromValues(deps.map(Json.fromString))
+              )
+            }),
+            "edges" -> Json.fromValues(allEdges.map { case (from, to) =>
+              Json.obj(
+                "from" -> Json.fromString(from),
+                "to"   -> Json.fromString(to)
+              )
+            })
+          )
+          .spaces2

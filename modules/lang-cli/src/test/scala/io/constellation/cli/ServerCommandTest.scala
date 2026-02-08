@@ -55,28 +55,28 @@ class ServerCommandTest extends AnyFunSuite with Matchers:
   test("server executions list: parse with limit"):
     val result = parseServer("server", "executions", "list", "--limit", "10")
     result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
+    val cmd  = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
     val list = cmd.subcommand.asInstanceOf[ServerCommand.ExecutionsList]
     list.limit shouldBe Some(10)
 
   test("server executions list: parse with short limit flag"):
     val result = parseServer("server", "executions", "list", "-n", "5")
     result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
+    val cmd  = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
     val list = cmd.subcommand.asInstanceOf[ServerCommand.ExecutionsList]
     list.limit shouldBe Some(5)
 
   test("server executions show: parse"):
     val result = parseServer("server", "executions", "show", "exec-123")
     result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
+    val cmd  = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
     val show = cmd.subcommand.asInstanceOf[ServerCommand.ExecutionsShow]
     show.id shouldBe "exec-123"
 
   test("server executions delete: parse"):
     val result = parseServer("server", "executions", "delete", "exec-456")
     result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
+    val cmd    = result.toOption.get.asInstanceOf[ServerCommand.ServerExecutions]
     val delete = cmd.subcommand.asInstanceOf[ServerCommand.ExecutionsDelete]
     delete.id shouldBe "exec-456"
 
@@ -90,7 +90,7 @@ class ServerCommandTest extends AnyFunSuite with Matchers:
   // ============= Response Parsing Tests =============
 
   test("HealthResponse: decode"):
-    val json = Json.obj("status" -> Json.fromString("ok"))
+    val json   = Json.obj("status" -> Json.fromString("ok"))
     val result = json.as[ServerCommand.HealthResponse]
     result shouldBe a[Right[?, ?]]
     result.toOption.get.status shouldBe "ok"
@@ -174,11 +174,11 @@ class ServerCommandTest extends AnyFunSuite with Matchers:
 
   test("PipelineDetailResponse: decode"):
     val json = Json.obj(
-      "structuralHash"  -> Json.fromString("abc123"),
-      "syntacticHash"   -> Json.fromString("def456"),
-      "aliases"         -> Json.arr(Json.fromString("test")),
-      "compiledAt"      -> Json.fromString("2026-02-08T00:00:00Z"),
-      "modules"         -> Json.arr(
+      "structuralHash" -> Json.fromString("abc123"),
+      "syntacticHash"  -> Json.fromString("def456"),
+      "aliases"        -> Json.arr(Json.fromString("test")),
+      "compiledAt"     -> Json.fromString("2026-02-08T00:00:00Z"),
+      "modules" -> Json.arr(
         Json.obj(
           "name"        -> Json.fromString("Transform"),
           "description" -> Json.fromString("Transforms data"),

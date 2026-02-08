@@ -17,11 +17,11 @@ object Output:
     val Reset   = fansi.Attr.Reset
 
     def success(s: String): fansi.Str = Success(s)
-    def error(s: String): fansi.Str = Error(s)
+    def error(s: String): fansi.Str   = Error(s)
     def warning(s: String): fansi.Str = Warning(s)
-    def info(s: String): fansi.Str = Info(s)
-    def accent(s: String): fansi.Str = Accent(s)
-    def bold(s: String): fansi.Str = Bold(s)
+    def info(s: String): fansi.Str    = Info(s)
+    def accent(s: String): fansi.Str  = Accent(s)
+    def bold(s: String): fansi.Str    = Bold(s)
 
   // Aliases for backward compatibility
   private val Red    = Colors.Error
@@ -38,10 +38,12 @@ object Output:
       case OutputFormat.Human =>
         s"${Green(Bold("✓"))} ${message}"
       case OutputFormat.Json =>
-        Json.obj(
-          "success" -> Json.True,
-          "message" -> Json.fromString(message)
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.True,
+            "message" -> Json.fromString(message)
+          )
+          .noSpaces
 
   /** Format an error message. */
   def error(message: String, format: OutputFormat): String =
@@ -49,10 +51,12 @@ object Output:
       case OutputFormat.Human =>
         s"${Red(Bold("✗"))} ${Red(message)}"
       case OutputFormat.Json =>
-        Json.obj(
-          "success" -> Json.False,
-          "error"   -> Json.fromString(message)
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.False,
+            "error"   -> Json.fromString(message)
+          )
+          .noSpaces
 
   /** Format a warning message. */
   def warning(message: String, format: OutputFormat): String =
@@ -60,9 +64,11 @@ object Output:
       case OutputFormat.Human =>
         s"${Yellow(Bold("⚠"))} ${Yellow(message)}"
       case OutputFormat.Json =>
-        Json.obj(
-          "warning" -> Json.fromString(message)
-        ).noSpaces
+        Json
+          .obj(
+            "warning" -> Json.fromString(message)
+          )
+          .noSpaces
 
   /** Format an info message. */
   def info(message: String, format: OutputFormat): String =
@@ -70,40 +76,47 @@ object Output:
       case OutputFormat.Human =>
         s"${Blue("ℹ")} ${message}"
       case OutputFormat.Json =>
-        Json.obj(
-          "info" -> Json.fromString(message)
-        ).noSpaces
+        Json
+          .obj(
+            "info" -> Json.fromString(message)
+          )
+          .noSpaces
 
   /** Format compilation errors. */
   def compilationErrors(errors: List[String], format: OutputFormat): String =
     format match
       case OutputFormat.Human =>
         val header = s"${Red(Bold("✗"))} Compilation failed with ${errors.size} error(s):\n"
-        val body = errors.map(e => s"  ${Red("•")} $e").mkString("\n")
+        val body   = errors.map(e => s"  ${Red("•")} $e").mkString("\n")
         header + body
       case OutputFormat.Json =>
-        Json.obj(
-          "success" -> Json.False,
-          "errors"  -> errors.asJson
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.False,
+            "errors"  -> errors.asJson
+          )
+          .noSpaces
 
   /** Format execution outputs. */
   def outputs(results: Map[String, Json], format: OutputFormat): String =
     format match
       case OutputFormat.Human =>
-        if results.isEmpty then
-          s"${Yellow("No outputs produced")}"
+        if results.isEmpty then s"${Yellow("No outputs produced")}"
         else
           val header = s"${Green(Bold("✓"))} Execution completed:\n"
-          val body = results.map { case (name, value) =>
-            s"  ${Cyan(name)}: ${formatJsonValue(value)}"
-          }.mkString("\n")
+          val body = results
+            .map { case (name, value) =>
+              s"  ${Cyan(name)}: ${formatJsonValue(value)}"
+            }
+            .mkString("\n")
           header + body
       case OutputFormat.Json =>
-        Json.obj(
-          "success" -> Json.True,
-          "outputs" -> Json.fromFields(results)
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.True,
+            "outputs" -> Json.fromFields(results)
+          )
+          .noSpaces
 
   /** Format a suspended execution. */
   def suspended(
@@ -113,20 +126,26 @@ object Output:
   ): String =
     format match
       case OutputFormat.Human =>
-        val header = s"${Yellow(Bold("⏸"))} Execution suspended (ID: ${StringUtils.idPreview(executionId)})\n"
-        val body = if missingInputs.nonEmpty then
-          s"  Missing inputs:\n" + missingInputs.map { case (name, typ) =>
-            s"    ${Cyan(name)}: ${Yellow(typ)}"
-          }.mkString("\n")
-        else ""
+        val header =
+          s"${Yellow(Bold("⏸"))} Execution suspended (ID: ${StringUtils.idPreview(executionId)})\n"
+        val body =
+          if missingInputs.nonEmpty then
+            s"  Missing inputs:\n" + missingInputs
+              .map { case (name, typ) =>
+                s"    ${Cyan(name)}: ${Yellow(typ)}"
+              }
+              .mkString("\n")
+          else ""
         header + body
       case OutputFormat.Json =>
-        Json.obj(
-          "success"       -> Json.True,
-          "status"        -> Json.fromString("suspended"),
-          "executionId"   -> Json.fromString(executionId),
-          "missingInputs" -> missingInputs.asJson
-        ).noSpaces
+        Json
+          .obj(
+            "success"       -> Json.True,
+            "status"        -> Json.fromString("suspended"),
+            "executionId"   -> Json.fromString(executionId),
+            "missingInputs" -> missingInputs.asJson
+          )
+          .noSpaces
 
   /** Format pipeline modules for viz output. */
   def dagDot(
@@ -192,12 +211,14 @@ object Output:
         ).flatten
         lines.mkString("\n")
       case OutputFormat.Json =>
-        Json.obj(
-          "status"        -> Json.fromString(status),
-          "version"       -> version.map(Json.fromString).getOrElse(Json.Null),
-          "uptime"        -> uptime.map(Json.fromString).getOrElse(Json.Null),
-          "pipelineCount" -> pipelineCount.map(Json.fromInt).getOrElse(Json.Null)
-        ).noSpaces
+        Json
+          .obj(
+            "status"        -> Json.fromString(status),
+            "version"       -> version.map(Json.fromString).getOrElse(Json.Null),
+            "uptime"        -> uptime.map(Json.fromString).getOrElse(Json.Null),
+            "pipelineCount" -> pipelineCount.map(Json.fromInt).getOrElse(Json.Null)
+          )
+          .noSpaces
 
   /** Format config show output. */
   def configShow(config: CliConfig, format: OutputFormat): String =
@@ -223,10 +244,12 @@ object Output:
           case Some(v) => s"$key = ${Cyan(v)}"
           case None    => s"${Yellow(s"Config key '$key' not found")}"
       case OutputFormat.Json =>
-        Json.obj(
-          "key"   -> Json.fromString(key),
-          "value" -> value.map(Json.fromString).getOrElse(Json.Null)
-        ).noSpaces
+        Json
+          .obj(
+            "key"   -> Json.fromString(key),
+            "value" -> value.map(Json.fromString).getOrElse(Json.Null)
+          )
+          .noSpaces
 
   /** Format a connection error. */
   def connectionError(url: String, error: String, format: OutputFormat): String =
@@ -236,12 +259,14 @@ object Output:
           s"  ${Red(error)}\n" +
           s"  ${Yellow("Hint:")} Make sure the Constellation server is running"
       case OutputFormat.Json =>
-        Json.obj(
-          "success" -> Json.False,
-          "error"   -> Json.fromString("connection_error"),
-          "message" -> Json.fromString(error),
-          "url"     -> Json.fromString(url)
-        ).noSpaces
+        Json
+          .obj(
+            "success" -> Json.False,
+            "error"   -> Json.fromString("connection_error"),
+            "message" -> Json.fromString(error),
+            "url"     -> Json.fromString(url)
+          )
+          .noSpaces
 
   /** Format a JSON value for human display. */
   private def formatJsonValue(json: Json): String =

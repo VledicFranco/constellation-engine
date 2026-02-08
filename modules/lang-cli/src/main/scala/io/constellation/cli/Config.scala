@@ -55,7 +55,7 @@ object DefaultsConfig:
   }
   given Decoder[DefaultsConfig] = Decoder.instance { c =>
     for
-      output    <- c.downField("output").as[Option[OutputFormat]].map(_.getOrElse(OutputFormat.Human))
+      output <- c.downField("output").as[Option[OutputFormat]].map(_.getOrElse(OutputFormat.Human))
       vizFormat <- c.downField("viz_format").as[Option[String]].map(_.getOrElse("dot"))
     yield DefaultsConfig(output, vizFormat)
   }
@@ -77,8 +77,11 @@ object CliConfig:
   given Encoder[CliConfig] = deriveEncoder
   given Decoder[CliConfig] = Decoder.instance { c =>
     for
-      server   <- c.downField("server").as[Option[ServerConfig]].map(_.getOrElse(ServerConfig()))
-      defaults <- c.downField("defaults").as[Option[DefaultsConfig]].map(_.getOrElse(DefaultsConfig()))
+      server <- c.downField("server").as[Option[ServerConfig]].map(_.getOrElse(ServerConfig()))
+      defaults <- c
+        .downField("defaults")
+        .as[Option[DefaultsConfig]]
+        .map(_.getOrElse(DefaultsConfig()))
     yield CliConfig(server, defaults)
   }
 
@@ -135,34 +138,37 @@ object CliConfig:
       else CliConfig()
     }.handleError(_ => CliConfig())
 
-  /**
-   * Save configuration to file atomically.
-   *
-   * Writes to a temporary file first, then atomically renames to the
-   * target path. This prevents corruption if the process is interrupted.
-   */
+  /** Save configuration to file atomically.
+    *
+    * Writes to a temporary file first, then atomically renames to the target path. This prevents
+    * corruption if the process is interrupted.
+    */
   def save(config: CliConfig): IO[Unit] =
     IO.blocking {
       val dir = configDir
       if !Files.exists(dir) then Files.createDirectories(dir)
 
       val targetPath = configPath
-      val tempPath = dir.resolve(s"config.json.${System.nanoTime}.tmp")
+      val tempPath   = dir.resolve(s"config.json.${System.nanoTime}.tmp")
 
       try
         // Write to temp file
         Files.writeString(tempPath, config.asJson.spaces2, StandardCharsets.UTF_8)
 
         // Atomic rename (best-effort on Windows)
-        Files.move(tempPath, targetPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        Files.move(
+          tempPath,
+          targetPath,
+          StandardCopyOption.ATOMIC_MOVE,
+          StandardCopyOption.REPLACE_EXISTING
+        )
       catch
         case e: java.nio.file.AtomicMoveNotSupportedException =>
           // Fallback for filesystems that don't support atomic move
           Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING)
       finally
         // Clean up temp file if it still exists
-        if Files.exists(tempPath) then
-          Files.deleteIfExists(tempPath)
+        if Files.exists(tempPath) then Files.deleteIfExists(tempPath)
     }
 
   /** Get a specific config value by dot-separated path. */
@@ -172,19 +178,23 @@ object CliConfig:
       resolvePath(json, path.split("\\.").toList)
     }
 
-  /**
-   * Set a specific config value by dot-separated path.
-   *
-   * @param path  Dot-separated path (e.g., "server.url")
-   * @param value The value to set
-   * @throws IllegalArgumentException if path exceeds maximum depth
-   */
+  /** Set a specific config value by dot-separated path.
+    *
+    * @param path
+    *   Dot-separated path (e.g., "server.url")
+    * @param value
+    *   The value to set
+    * @throws IllegalArgumentException
+    *   if path exceeds maximum depth
+    */
   def setValue(path: String, value: String): IO[Unit] =
     val segments = path.split("\\.").toList
     if segments.length > MaxPathDepth then
-      IO.raiseError(new IllegalArgumentException(
-        s"Config path too deep (max $MaxPathDepth levels): $path"
-      ))
+      IO.raiseError(
+        new IllegalArgumentException(
+          s"Config path too deep (max $MaxPathDepth levels): $path"
+        )
+      )
     else
       for
         config <- loadFromFile
@@ -199,7 +209,7 @@ object CliConfig:
   /** Resolve a value from JSON by path. */
   private def resolvePath(json: io.circe.Json, path: List[String]): Option[String] =
     path match
-      case Nil         => json.asString.orElse(json.asNumber.map(_.toString)).orElse(Some(json.noSpaces))
+      case Nil => json.asString.orElse(json.asNumber.map(_.toString)).orElse(Some(json.noSpaces))
       case head :: tail =>
         json.asObject.flatMap(_.apply(head)).flatMap(resolvePath(_, tail))
 
@@ -208,6 +218,6 @@ object CliConfig:
     path match
       case Nil => io.circe.Json.fromString(value)
       case head :: tail =>
-        val obj = json.asObject.getOrElse(io.circe.JsonObject.empty)
+        val obj     = json.asObject.getOrElse(io.circe.JsonObject.empty)
         val current = obj(head).getOrElse(io.circe.Json.Null)
         io.circe.Json.fromJsonObject(obj.add(head, updatePath(current, tail, value)))

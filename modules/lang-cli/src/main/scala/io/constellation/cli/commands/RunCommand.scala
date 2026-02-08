@@ -47,32 +47,50 @@ object RunCommand:
   object RunResponse:
     given Decoder[RunResponse] = Decoder.instance { c =>
       for
-        success           <- c.downField("success").as[Boolean]
-        outputs           <- c.downField("outputs").as[Option[Map[String, Json]]].map(_.getOrElse(Map.empty))
-        structuralHash    <- c.downField("structuralHash").as[Option[String]]
-        compilationErrors <- c.downField("compilationErrors").as[Option[List[String]]].map(_.getOrElse(Nil))
-        error             <- c.downField("error").as[Option[String]]
-        status            <- c.downField("status").as[Option[String]]
-        executionId       <- c.downField("executionId").as[Option[String]]
-        missingInputs     <- c.downField("missingInputs").as[Option[Map[String, String]]]
-        pendingOutputs    <- c.downField("pendingOutputs").as[Option[List[String]]]
-        resumptionCount   <- c.downField("resumptionCount").as[Option[Int]]
-      yield RunResponse(success, outputs, structuralHash, compilationErrors, error, status, executionId, missingInputs, pendingOutputs, resumptionCount)
+        success <- c.downField("success").as[Boolean]
+        outputs <- c.downField("outputs").as[Option[Map[String, Json]]].map(_.getOrElse(Map.empty))
+        structuralHash <- c.downField("structuralHash").as[Option[String]]
+        compilationErrors <- c
+          .downField("compilationErrors")
+          .as[Option[List[String]]]
+          .map(_.getOrElse(Nil))
+        error           <- c.downField("error").as[Option[String]]
+        status          <- c.downField("status").as[Option[String]]
+        executionId     <- c.downField("executionId").as[Option[String]]
+        missingInputs   <- c.downField("missingInputs").as[Option[Map[String, String]]]
+        pendingOutputs  <- c.downField("pendingOutputs").as[Option[List[String]]]
+        resumptionCount <- c.downField("resumptionCount").as[Option[Int]]
+      yield RunResponse(
+        success,
+        outputs,
+        structuralHash,
+        compilationErrors,
+        error,
+        status,
+        executionId,
+        missingInputs,
+        pendingOutputs,
+        resumptionCount
+      )
     }
 
   private val fileArg = Opts.argument[Path](metavar = "file")
 
-  private val inputOpt = Opts.options[(String, String)](
-    "input",
-    short = "i",
-    help = "Input value in key=value format"
-  )(using inputMetavar).orEmpty
+  private val inputOpt = Opts
+    .options[(String, String)](
+      "input",
+      short = "i",
+      help = "Input value in key=value format"
+    )(using inputMetavar)
+    .orEmpty
 
-  private val inputFileOpt = Opts.option[Path](
-    "input-file",
-    short = "f",
-    help = "JSON file containing input values"
-  ).orNone
+  private val inputFileOpt = Opts
+    .option[Path](
+      "input-file",
+      short = "f",
+      help = "JSON file containing input values"
+    )
+    .orNone
 
   /** Custom metavar for key=value pairs. */
   private given inputMetavar: Argument[(String, String)] with
@@ -114,17 +132,14 @@ object RunCommand:
           }
     yield exitCode
 
-  /**
-   * Read source code from file with path validation.
-   *
-   * Resolves symlinks and validates the path to prevent path traversal.
-   */
+  /** Read source code from file with path validation.
+    *
+    * Resolves symlinks and validates the path to prevent path traversal.
+    */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
-      if !Files.exists(path) then
-        Left(s"File not found: $path")
-      else if Files.isDirectory(path) then
-        Left(s"Path is a directory: $path")
+      if !Files.exists(path) then Left(s"File not found: $path")
+      else if Files.isDirectory(path) then Left(s"Path is a directory: $path")
       else
         // Resolve symlinks to canonical path
         val realPath = path.toRealPath()
@@ -140,11 +155,10 @@ object RunCommand:
         IO.pure(Left(s"Unexpected error: ${StringUtils.sanitizeError(e.getMessage)}"))
     }
 
-  /**
-   * Parse inputs from CLI args and/or input file.
-   *
-   * Validates file size before reading to prevent OOM on large files.
-   */
+  /** Parse inputs from CLI args and/or input file.
+    *
+    * Validates file size before reading to prevent OOM on large files.
+    */
   private def parseInputs(
       cliInputs: List[(String, String)],
       inputFile: Option[Path]
@@ -157,15 +171,14 @@ object RunCommand:
       case None => IO.pure(Right(cliMap))
       case Some(path) =>
         IO.blocking {
-          if !Files.exists(path) then
-            Left(s"Input file not found: $path")
+          if !Files.exists(path) then Left(s"Input file not found: $path")
           else if Files.size(path) > RunConstants.MaxInputFileSize then
             val maxMB = RunConstants.MaxInputFileSize / (1024 * 1024)
             Left(s"Input file too large (max ${maxMB}MB): $path")
           else
             // Resolve symlinks for path traversal mitigation
             val realPath = path.toRealPath()
-            val content = new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8)
+            val content  = new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8)
             parse(content) match
               case Right(json) =>
                 json.as[Map[String, Json]] match
@@ -194,7 +207,7 @@ object RunCommand:
         case "true"  => Json.True
         case "false" => Json.False
         case "null"  => Json.Null
-        case _ =>
+        case _       =>
           // Try as number
           s.toDoubleOption match
             case Some(d) if s.contains(".") => Json.fromDoubleOrNull(d)
@@ -229,7 +242,7 @@ object RunCommand:
             .as(CliApp.ExitCodes.RuntimeError)
         // Handle suspended execution
         else if resp.status.contains("suspended") then
-          val execId       = resp.executionId.getOrElse("unknown")
+          val execId        = resp.executionId.getOrElse("unknown")
           val missingInputs = resp.missingInputs.getOrElse(Map.empty)
           IO.println(Output.suspended(execId, missingInputs, format))
             .as(CliApp.ExitCodes.Success)

@@ -22,13 +22,15 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
 
   override def afterEach(): Unit =
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= File Reading Tests =============
 
   test("readSourceFile: reads valid file"):
-    val file = tempDir.resolve("test.cst")
+    val file    = tempDir.resolve("test.cst")
     val content = "in x: Int\nout x"
     Files.writeString(file, content)
 
@@ -50,7 +52,7 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
 
   test("CompileCommand: stores file path"):
     val file = tempDir.resolve("pipeline.cst")
-    val cmd = CompileCommand(file)
+    val cmd  = CompileCommand(file)
     cmd.file shouldBe file
 
   // ============= Response Parsing Tests =============
@@ -73,7 +75,7 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
   test("CompileResponse: decode failure response"):
     val json = Json.obj(
       "success" -> Json.False,
-      "errors"  -> Json.arr(
+      "errors" -> Json.arr(
         Json.fromString("Syntax error at line 1"),
         Json.fromString("Type mismatch at line 2")
       )
@@ -85,7 +87,7 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
     resp.errors should have size 2
 
   test("CompileResponse: decode minimal response"):
-    val json = Json.obj("success" -> Json.True)
+    val json   = Json.obj("success" -> Json.True)
     val result = json.as[CompileCommand.CompileResponse]
     result shouldBe a[Right[?, ?]]
     val resp = result.toOption.get

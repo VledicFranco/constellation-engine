@@ -2,16 +2,14 @@ package io.constellation.cli.models
 
 import io.circe.Decoder
 
-/**
- * Shared API response models for the CLI.
- *
- * These models are used across multiple commands to avoid duplication.
- */
+/** Shared API response models for the CLI.
+  *
+  * These models are used across multiple commands to avoid duplication.
+  */
 object ApiModels:
 
-  /**
-   * Module information returned by pipeline endpoints.
-   */
+  /** Module information returned by pipeline endpoints.
+    */
   case class ModuleInfo(
       name: String,
       description: String,
@@ -31,9 +29,8 @@ object ApiModels:
       yield ModuleInfo(name, description, version, inputs, outputs)
     }
 
-  /**
-   * Pipeline detail response with full module information.
-   */
+  /** Pipeline detail response with full module information.
+    */
   case class PipelineDetailResponse(
       structuralHash: String,
       syntacticHash: String,
@@ -48,20 +45,31 @@ object ApiModels:
   object PipelineDetailResponse:
     given Decoder[PipelineDetailResponse] = Decoder.instance { c =>
       for
-        structuralHash  <- c.downField("structuralHash").as[String]
-        syntacticHash   <- c.downField("syntacticHash").as[Option[String]].map(_.getOrElse(""))
-        aliases         <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
-        compiledAt      <- c.downField("compiledAt").as[Option[String]].map(_.getOrElse(""))
-        modules         <- c.downField("modules").as[List[ModuleInfo]]
-        declaredOutputs <- c.downField("declaredOutputs").as[Option[List[String]]].map(_.getOrElse(Nil))
-        inputSchema     <- c.downField("inputSchema").as[Map[String, String]]
-        outputSchema    <- c.downField("outputSchema").as[Map[String, String]]
-      yield PipelineDetailResponse(structuralHash, syntacticHash, aliases, compiledAt, modules, declaredOutputs, inputSchema, outputSchema)
+        structuralHash <- c.downField("structuralHash").as[String]
+        syntacticHash  <- c.downField("syntacticHash").as[Option[String]].map(_.getOrElse(""))
+        aliases        <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
+        compiledAt     <- c.downField("compiledAt").as[Option[String]].map(_.getOrElse(""))
+        modules        <- c.downField("modules").as[List[ModuleInfo]]
+        declaredOutputs <- c
+          .downField("declaredOutputs")
+          .as[Option[List[String]]]
+          .map(_.getOrElse(Nil))
+        inputSchema  <- c.downField("inputSchema").as[Map[String, String]]
+        outputSchema <- c.downField("outputSchema").as[Map[String, String]]
+      yield PipelineDetailResponse(
+        structuralHash,
+        syntacticHash,
+        aliases,
+        compiledAt,
+        modules,
+        declaredOutputs,
+        inputSchema,
+        outputSchema
+      )
     }
 
-  /**
-   * Pipeline summary for list operations.
-   */
+  /** Pipeline summary for list operations.
+    */
   case class PipelineSummary(
       structuralHash: String,
       syntacticHash: String,
@@ -74,18 +82,27 @@ object ApiModels:
   object PipelineSummary:
     given Decoder[PipelineSummary] = Decoder.instance { c =>
       for
-        structuralHash  <- c.downField("structuralHash").as[String]
-        syntacticHash   <- c.downField("syntacticHash").as[String]
-        aliases         <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
-        compiledAt      <- c.downField("compiledAt").as[String]
-        moduleCount     <- c.downField("moduleCount").as[Int]
-        declaredOutputs <- c.downField("declaredOutputs").as[Option[List[String]]].map(_.getOrElse(Nil))
-      yield PipelineSummary(structuralHash, syntacticHash, aliases, compiledAt, moduleCount, declaredOutputs)
+        structuralHash <- c.downField("structuralHash").as[String]
+        syntacticHash  <- c.downField("syntacticHash").as[String]
+        aliases        <- c.downField("aliases").as[Option[List[String]]].map(_.getOrElse(Nil))
+        compiledAt     <- c.downField("compiledAt").as[String]
+        moduleCount    <- c.downField("moduleCount").as[Int]
+        declaredOutputs <- c
+          .downField("declaredOutputs")
+          .as[Option[List[String]]]
+          .map(_.getOrElse(Nil))
+      yield PipelineSummary(
+        structuralHash,
+        syntacticHash,
+        aliases,
+        compiledAt,
+        moduleCount,
+        declaredOutputs
+      )
     }
 
-  /**
-   * Execution summary for listing suspended executions.
-   */
+  /** Execution summary for listing suspended executions.
+    */
   case class ExecutionSummary(
       executionId: String,
       structuralHash: String,

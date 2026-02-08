@@ -17,7 +17,7 @@ class OutputTest extends AnyFunSuite with Matchers:
 
   test("success: JSON format is valid JSON"):
     val result = Output.success("Done", OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(true)
     json.toOption.get.hcursor.downField("message").as[String] shouldBe Right("Done")
@@ -31,7 +31,7 @@ class OutputTest extends AnyFunSuite with Matchers:
 
   test("error: JSON format is valid JSON"):
     val result = Output.error("Failed", OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(false)
     json.toOption.get.hcursor.downField("error").as[String] shouldBe Right("Failed")
@@ -45,7 +45,7 @@ class OutputTest extends AnyFunSuite with Matchers:
 
   test("warning: JSON format is valid JSON"):
     val result = Output.warning("Warning text", OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("warning").as[String] shouldBe Right("Warning text")
 
@@ -61,7 +61,7 @@ class OutputTest extends AnyFunSuite with Matchers:
   test("compilationErrors: JSON format is valid JSON array"):
     val errors = List("Type mismatch", "Undefined variable")
     val result = Output.compilationErrors(errors, OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(false)
     json.toOption.get.hcursor.downField("errors").as[List[String]] shouldBe Right(errors)
@@ -88,24 +88,27 @@ class OutputTest extends AnyFunSuite with Matchers:
       "number"   -> Json.fromInt(123)
     )
     val result = Output.outputs(results, OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(true)
-    json.toOption.get.hcursor.downField("outputs").downField("greeting").as[String] shouldBe Right("hello")
+    json.toOption.get.hcursor.downField("outputs").downField("greeting").as[String] shouldBe Right(
+      "hello"
+    )
     json.toOption.get.hcursor.downField("outputs").downField("number").as[Int] shouldBe Right(123)
 
   // ============= Suspended Tests =============
 
   test("suspended: human format shows execution ID"):
-    val result = Output.suspended("12345678-abcd-efgh-ijkl", Map("input1" -> "String"), OutputFormat.Human)
+    val result =
+      Output.suspended("12345678-abcd-efgh-ijkl", Map("input1" -> "String"), OutputFormat.Human)
     result should include("⏸")
     result should include("12345678")
     result should include("input1")
 
   test("suspended: JSON format is valid JSON"):
     val missing = Map("text" -> "CString", "count" -> "CInt")
-    val result = Output.suspended("exec-id-123", missing, OutputFormat.Json)
-    val json = parse(result)
+    val result  = Output.suspended("exec-id-123", missing, OutputFormat.Json)
+    val json    = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("status").as[String] shouldBe Right("suspended")
     json.toOption.get.hcursor.downField("executionId").as[String] shouldBe Right("exec-id-123")
@@ -118,7 +121,7 @@ class OutputTest extends AnyFunSuite with Matchers:
       ("n2", "Process", List("n1")),
       ("n3", "Output", List("n2"))
     )
-    val edges = List(("n1", "n2"), ("n2", "n3"))
+    val edges  = List(("n1", "n2"), ("n2", "n3"))
     val result = Output.dagDot(nodes, edges)
 
     result should startWith("digraph pipeline {")
@@ -133,7 +136,7 @@ class OutputTest extends AnyFunSuite with Matchers:
       ("n1", "Input", Nil),
       ("n2", "Output", List("n1"))
     )
-    val edges = List(("n1", "n2"))
+    val edges  = List(("n1", "n2"))
     val result = Output.dagMermaid(nodes, edges)
 
     result should startWith("graph LR")
@@ -153,7 +156,7 @@ class OutputTest extends AnyFunSuite with Matchers:
 
   test("health: JSON format is valid JSON"):
     val result = Output.health("ok", Some("0.5.0"), None, Some(5), OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("status").as[String] shouldBe Right("ok")
     json.toOption.get.hcursor.downField("version").as[String] shouldBe Right("0.5.0")
@@ -175,14 +178,17 @@ class OutputTest extends AnyFunSuite with Matchers:
   test("configShow: JSON format is valid JSON"):
     val config = CliConfig()
     val result = Output.configShow(config, OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
-    json.toOption.get.hcursor.downField("server").downField("url").as[String] shouldBe Right("http://localhost:8080")
+    json.toOption.get.hcursor.downField("server").downField("url").as[String] shouldBe Right(
+      "http://localhost:8080"
+    )
 
   // ============= Connection Error Tests =============
 
   test("connectionError: human format shows URL and hint"):
-    val result = Output.connectionError("http://localhost:8080", "Connection refused", OutputFormat.Human)
+    val result =
+      Output.connectionError("http://localhost:8080", "Connection refused", OutputFormat.Human)
     result should include("✗")
     result should include("http://localhost:8080")
     result should include("Connection refused")
@@ -190,7 +196,7 @@ class OutputTest extends AnyFunSuite with Matchers:
 
   test("connectionError: JSON format is valid JSON"):
     val result = Output.connectionError("http://test.com", "Timeout", OutputFormat.Json)
-    val json = parse(result)
+    val json   = parse(result)
     json shouldBe a[Right[?, ?]]
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(false)
     json.toOption.get.hcursor.downField("error").as[String] shouldBe Right("connection_error")

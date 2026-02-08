@@ -9,11 +9,10 @@ import org.scalatest.BeforeAndAfterEach
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
-/**
- * Edge case tests for CLI robustness.
- *
- * Tests boundary conditions, unusual inputs, and error handling.
- */
+/** Edge case tests for CLI robustness.
+  *
+  * Tests boundary conditions, unusual inputs, and error handling.
+  */
 class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   private var tempDir: Path = _
@@ -23,7 +22,9 @@ class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   override def afterEach(): Unit =
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= StringUtils Tests =============
@@ -75,29 +76,29 @@ class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
   test("StringUtils.sanitizeError: redacts Bearer tokens"):
     val msg = "Failed: Bearer sk-abc123xyz"
     StringUtils.sanitizeError(msg) should include("Bearer [REDACTED]")
-    StringUtils.sanitizeError(msg) should not include ("sk-abc123xyz")
+    StringUtils.sanitizeError(msg) should not include "sk-abc123xyz"
 
   test("StringUtils.sanitizeError: redacts API keys"):
     val msg = "API key: sk-1234567890"
     StringUtils.sanitizeError(msg) should include("[REDACTED]")
-    StringUtils.sanitizeError(msg) should not include ("sk-1234567890")
+    StringUtils.sanitizeError(msg) should not include "sk-1234567890"
 
   test("StringUtils.sanitizeError: redacts Authorization headers"):
     val msg = "Authorization: secret-token-value"
     StringUtils.sanitizeError(msg) should include("Authorization: [REDACTED]")
-    StringUtils.sanitizeError(msg) should not include ("secret-token-value")
+    StringUtils.sanitizeError(msg) should not include "secret-token-value"
 
   test("StringUtils.sanitizeError: redacts password patterns"):
     val msg = "password=mysecret123"
     StringUtils.sanitizeError(msg) should include("[REDACTED]")
-    StringUtils.sanitizeError(msg) should not include ("mysecret123")
+    StringUtils.sanitizeError(msg) should not include "mysecret123"
 
   test("StringUtils.sanitizeError: preserves non-sensitive content"):
     val msg = "Connection refused to localhost:8080"
     StringUtils.sanitizeError(msg) shouldBe msg
 
   test("StringUtils.sanitizeError: handles multiple sensitive patterns"):
-    val msg = "Bearer abc123 and Authorization: xyz789"
+    val msg       = "Bearer abc123 and Authorization: xyz789"
     val sanitized = StringUtils.sanitizeError(msg)
     sanitized should include("Bearer [REDACTED]")
     sanitized should include("Authorization: [REDACTED]")
@@ -105,15 +106,13 @@ class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
   // ============= Config Path Depth Tests =============
 
   test("CliConfig: shallow path is accepted"):
-    val result = CliConfig.setValue("server.url", "http://test.com")
-      .attempt.unsafeRunSync()
+    val result = CliConfig.setValue("server.url", "http://test.com").attempt.unsafeRunSync()
     // This should not throw (may fail for other reasons in test env)
     result.isLeft || result.isRight shouldBe true
 
   test("CliConfig: deeply nested path is rejected"):
-    val deepPath = "a.b.c.d.e.f.g"  // More than MaxPathDepth (5)
-    val result = CliConfig.setValue(deepPath, "value")
-      .attempt.unsafeRunSync()
+    val deepPath = "a.b.c.d.e.f.g" // More than MaxPathDepth (5)
+    val result   = CliConfig.setValue(deepPath, "value").attempt.unsafeRunSync()
     result.isLeft shouldBe true
     result.swap.toOption.get.getMessage should include("too deep")
 
@@ -134,11 +133,11 @@ class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
   // ============= Unicode Tests =============
 
   test("StringUtils.truncate: unicode characters"):
-    val msg = "こんにちは世界"  // Hello World in Japanese
+    val msg = "こんにちは世界" // Hello World in Japanese
     StringUtils.truncate(msg, 5) should have length 5
 
   test("StringUtils.sanitizeError: unicode message"):
-    val msg = "エラー: Bearer abc123"
+    val msg       = "エラー: Bearer abc123"
     val sanitized = StringUtils.sanitizeError(msg)
     sanitized should include("エラー")
     sanitized should include("Bearer [REDACTED]")
@@ -181,7 +180,7 @@ class EdgeCaseTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     CliApp.cliVersion should not be empty
 
   test("CliApp.cliVersion: is either semver or dev"):
-    val version = CliApp.cliVersion
+    val version  = CliApp.cliVersion
     val isSemver = version.matches("""\d+\.\d+\.\d+.*""")
-    val isDev = version == "dev"
+    val isDev    = version == "dev"
     (isSemver || isDev) shouldBe true

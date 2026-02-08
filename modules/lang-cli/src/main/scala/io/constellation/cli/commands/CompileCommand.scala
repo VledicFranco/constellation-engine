@@ -70,17 +70,14 @@ object CompileCommand:
           compileSource(source, cmd.file.getFileName.toString, baseUri, token, format, quiet)
     yield exitCode
 
-  /**
-   * Read source code from file with path validation.
-   *
-   * Resolves symlinks and validates the path to prevent path traversal.
-   */
+  /** Read source code from file with path validation.
+    *
+    * Resolves symlinks and validates the path to prevent path traversal.
+    */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
-      if !Files.exists(path) then
-        Left(s"File not found: $path")
-      else if Files.isDirectory(path) then
-        Left(s"Path is a directory: $path")
+      if !Files.exists(path) then Left(s"File not found: $path")
+      else if Files.isDirectory(path) then Left(s"Path is a directory: $path")
       else
         // Resolve symlinks to canonical path
         val realPath = path.toRealPath()
@@ -114,11 +111,13 @@ object CompileCommand:
     HttpClient.post[CompileResponse](uri, body, token).flatMap {
       case HttpClient.Success(resp) =>
         if resp.success then
-          val hashInfo = resp.structuralHash.map(h => s" (hash: ${StringUtils.hashPreview(h)})").getOrElse("")
+          val hashInfo =
+            resp.structuralHash.map(h => s" (hash: ${StringUtils.hashPreview(h)})").getOrElse("")
           val msg = s"Compilation successful$hashInfo"
           IO.println(Output.success(msg, format)).as(CliApp.ExitCodes.Success)
         else
-          IO.println(Output.compilationErrors(resp.errors, format)).as(CliApp.ExitCodes.CompileError)
+          IO.println(Output.compilationErrors(resp.errors, format))
+            .as(CliApp.ExitCodes.CompileError)
 
       case HttpClient.ApiError(401, _) =>
         IO.println(Output.error("Authentication required", format)).as(CliApp.ExitCodes.AuthError)

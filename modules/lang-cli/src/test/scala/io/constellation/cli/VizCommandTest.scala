@@ -20,20 +20,22 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   override def afterEach(): Unit =
     if tempDir != null && Files.exists(tempDir) then
-      Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder())
+      Files
+        .walk(tempDir)
+        .sorted(java.util.Comparator.reverseOrder())
         .forEach(Files.deleteIfExists)
 
   // ============= Command Construction Tests =============
 
   test("VizCommand: stores file path"):
     val file = tempDir.resolve("pipeline.cst")
-    val cmd = VizCommand(file)
+    val cmd  = VizCommand(file)
     cmd.file shouldBe file
     cmd.format shouldBe VizFormat.Dot
 
   test("VizCommand: stores format"):
     val file = tempDir.resolve("pipeline.cst")
-    val cmd = VizCommand(file, format = VizFormat.Json)
+    val cmd  = VizCommand(file, format = VizFormat.Json)
     cmd.format shouldBe VizFormat.Json
 
   // ============= VizFormat Tests =============
@@ -49,7 +51,7 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     result should include("rankdir=LR")
 
   test("dagDot: single node"):
-    val nodes = List(("n1", "Node1", Nil))
+    val nodes  = List(("n1", "Node1", Nil))
     val result = Output.dagDot(nodes, Nil)
     result should include("\"n1\"")
     result should include("Node1")
@@ -59,7 +61,7 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
       ("n1", "Source", Nil),
       ("n2", "Sink", Nil)
     )
-    val edges = List(("n1", "n2"))
+    val edges  = List(("n1", "n2"))
     val result = Output.dagDot(nodes, edges)
     result should include("\"n1\" -> \"n2\"")
 
@@ -69,7 +71,7 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
       ("b", "B", Nil),
       ("c", "C", Nil)
     )
-    val edges = List(("a", "b"), ("a", "c"), ("b", "c"))
+    val edges  = List(("a", "b"), ("a", "c"), ("b", "c"))
     val result = Output.dagDot(nodes, edges)
     result should include("\"a\" -> \"b\"")
     result should include("\"a\" -> \"c\"")
@@ -82,7 +84,7 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     result should startWith("graph LR")
 
   test("dagMermaid: single node"):
-    val nodes = List(("n1", "Node1", Nil))
+    val nodes  = List(("n1", "Node1", Nil))
     val result = Output.dagMermaid(nodes, Nil)
     result should include("n1[Node1]")
 
@@ -91,7 +93,7 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
       ("n1", "Source", Nil),
       ("n2", "Sink", Nil)
     )
-    val edges = List(("n1", "n2"))
+    val edges  = List(("n1", "n2"))
     val result = Output.dagMermaid(nodes, edges)
     result should include("n1 --> n2")
 
@@ -108,8 +110,8 @@ class VizCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
 
   test("PipelineDetailResponse: decode"):
     val json = Json.obj(
-      "structuralHash"  -> Json.fromString("hash456"),
-      "modules"         -> Json.arr(
+      "structuralHash" -> Json.fromString("hash456"),
+      "modules" -> Json.arr(
         Json.obj(
           "name"        -> Json.fromString("Uppercase"),
           "description" -> Json.fromString("Converts to uppercase"),

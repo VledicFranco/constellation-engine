@@ -40,35 +40,45 @@ object CliApp:
     val UsageError      = ExitCode(10)
 
   // Global options
-  private val serverOpt = Opts.option[String](
-    "server",
-    short = "s",
-    help = "Constellation server URL"
-  ).orNone
+  private val serverOpt = Opts
+    .option[String](
+      "server",
+      short = "s",
+      help = "Constellation server URL"
+    )
+    .orNone
 
-  private val tokenOpt = Opts.option[String](
-    "token",
-    short = "t",
-    help = "API authentication token"
-  ).orNone
+  private val tokenOpt = Opts
+    .option[String](
+      "token",
+      short = "t",
+      help = "API authentication token"
+    )
+    .orNone
 
-  private val jsonFlag = Opts.flag(
-    "json",
-    short = "j",
-    help = "Output as JSON"
-  ).orFalse
+  private val jsonFlag = Opts
+    .flag(
+      "json",
+      short = "j",
+      help = "Output as JSON"
+    )
+    .orFalse
 
-  private val quietFlag = Opts.flag(
-    "quiet",
-    short = "q",
-    help = "Suppress non-essential output"
-  ).orFalse
+  private val quietFlag = Opts
+    .flag(
+      "quiet",
+      short = "q",
+      help = "Suppress non-essential output"
+    )
+    .orFalse
 
-  private val verboseFlag = Opts.flag(
-    "verbose",
-    short = "v",
-    help = "Verbose output for debugging"
-  ).orFalse
+  private val verboseFlag = Opts
+    .flag(
+      "verbose",
+      short = "v",
+      help = "Verbose output for debugging"
+    )
+    .orFalse
 
   // Global options tuple
   case class GlobalOpts(
@@ -107,9 +117,10 @@ object CliApp:
         if args.contains("--version") || args.contains("-V") then
           IO.println(s"constellation $cliVersion").as(ExitCodes.Success)
         else
-          IO.println(help.toString).as(
-            if help.errors.isEmpty then ExitCodes.Success else ExitCodes.UsageError
-          )
+          IO.println(help.toString)
+            .as(
+              if help.errors.isEmpty then ExitCodes.Success else ExitCodes.UsageError
+            )
       case Right((global, cmd)) =>
         executeCommand(global, cmd)
 
@@ -118,7 +129,7 @@ object CliApp:
     for
       // Load config with CLI overrides
       config <- CliConfig.load(global.server, global.token, global.json)
-      format  = config.effectiveOutput(global.json)
+      format = config.effectiveOutput(global.json)
 
       // Execute the command
       result <- cmd match
@@ -135,12 +146,15 @@ object CliApp:
           }
 
         case c: ConfigCommand.ConfigSet =>
-          CliConfig.setValue(c.key, c.value).flatMap { _ =>
-            val msg = s"Set ${c.key} = ${c.value}"
-            IO.println(Output.success(msg, format)).as(ExitCodes.Success)
-          }.handleErrorWith { e =>
-            IO.println(Output.error(e.getMessage, format)).as(ExitCodes.UsageError)
-          }
+          CliConfig
+            .setValue(c.key, c.value)
+            .flatMap { _ =>
+              val msg = s"Set ${c.key} = ${c.value}"
+              IO.println(Output.success(msg, format)).as(ExitCodes.Success)
+            }
+            .handleErrorWith { e =>
+              IO.println(Output.error(e.getMessage, format)).as(ExitCodes.UsageError)
+            }
 
         case _ =>
           // Commands that need HTTP client
@@ -175,8 +189,8 @@ object CliApp:
         ServerCommand.execute(c, baseUri, config.server.token, format, quiet)
 
       case c @ (_: DeployCommand.DeployPush | _: DeployCommand.DeployCanary |
-                _: DeployCommand.DeployPromote | _: DeployCommand.DeployRollback |
-                _: DeployCommand.DeployStatus) =>
+          _: DeployCommand.DeployPromote | _: DeployCommand.DeployRollback |
+          _: DeployCommand.DeployStatus) =>
         DeployCommand.execute(c, baseUri, config.server.token, format, quiet)
 
       case _ =>
