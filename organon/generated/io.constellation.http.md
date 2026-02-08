@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/http-api/src/main/scala/io/constellation -->
-<!-- Hash: e871a52adb1e -->
-<!-- Generated: 2026-02-07T05:17:14.820483900Z -->
+<!-- Hash: eeb2d61b6a41 -->
+<!-- Generated: 2026-02-08T06:51:01.600741200Z -->
 
 # io.constellation.http
 
@@ -13,13 +13,13 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `values` | `(): Array` | /** No alias created; pipelines are only accessible by structural hash. */ |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `fromOrdinal` | `(ordinal: Int): AliasStrategy` | /** No alias created; pipelines are only accessible by structural hash. */ |
 | `fromString` | `(s: String): Option[AliasStrategy]` | /** Parse an alias strategy from a string (case-insensitive, supports hyphenated and camelCase). |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `ordinal` | `(x$0: MirroredMonoType): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
@@ -104,20 +104,19 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: AuthConfig): AuthConfig` |  |
 | `apply` | `(hashedKeys: List[HashedApiKey], publicPaths: Set[String]): AuthConfig` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `fromEnv` | `(): AuthConfig` | /** Create configuration from environment variables. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `validateApiKey` | `(key: String): Either[String, String]` | /** Validate an API key meets security requirements. |
+| `fromEnv` | `(): AuthConfig` | /** Create configuration from environment variables. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: AuthConfig): AuthConfig` |  |
-| `parseRole` | `(s: String): Option[ApiRole]` | /** Parse role from string (case-insensitive). */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `validateApiKey` | `(key: String): Either[String, String]` | /** Validate an API key meets security requirements. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -126,6 +125,7 @@
 | `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `parseRole` | `(s: String): Option[ApiRole]` | /** Parse role from string (case-insensitive). */ |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### AuthMiddleware$
@@ -141,7 +141,6 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `apply` | `(config: AuthConfig, routes: HttpRoutes[IO]): HttpRoutes[IO]` | /** Wrap routes with authentication. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -150,6 +149,7 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `apply` | `(config: AuthConfig, routes: HttpRoutes[IO]): HttpRoutes[IO]` | /** Wrap routes with authentication. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -168,6 +168,7 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: CanaryConfig): CanaryConfig` |  |
 | `apply` | `(initialWeight: Double, promotionSteps: List[Double], observationWindow: FiniteDuration, errorThreshold: Double, latencyThresholdMs: Option[Long], minRequests: Int, autoPromote: Boolean): CanaryConfig` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -177,7 +178,6 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: CanaryConfig): CanaryConfig` |  |
 | `toString` | `(): String` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -197,6 +197,7 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: CanaryMetrics): CanaryMetrics` |  |
 | `apply` | `(oldVersion: VersionMetrics, newVersion: VersionMetrics): CanaryMetrics` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -206,7 +207,6 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: CanaryMetrics): CanaryMetrics` |  |
 | `toString` | `(): String` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -224,7 +224,6 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `init` | `(): IO` | /** Create a new in-memory canary router backed by `Ref`. */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -233,6 +232,7 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `init` | `(): IO` | /** Create a new in-memory canary router backed by `Ref`. */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -283,8 +283,6 @@
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `values` | `(): Array` |  |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `fromOrdinal` | `(ordinal: Int): CanaryStatus` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `ordinal` | `(x$0: MirroredMonoType): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -292,6 +290,8 @@
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `valueOf` | `($name: String): CanaryStatus` |  |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `fromOrdinal` | `(ordinal: Int): CanaryStatus` |  |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
@@ -315,13 +315,13 @@
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
@@ -369,7 +369,7 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
@@ -377,17 +377,17 @@
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `builder` | `(constellation: Constellation, compiler: LangCompiler): ServerBuilder` | /** Create a new server builder |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `schedulerResource` | `(): Resource` | /** Create a scheduler resource based on environment configuration. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+| `builder` | `(constellation: Constellation, compiler: LangCompiler): ServerBuilder` | /** Create a new server builder |
 
 ### CorsConfig$
 
@@ -395,19 +395,19 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: CorsConfig): CorsConfig` |  |
 | `apply` | `(allowedOrigins: Set[String], allowedMethods: Set[String], allowedHeaders: Set[String], allowCredentials: Boolean, maxAge: Long): CorsConfig` |  |
-| `validateOrigin` | `(origin: String): Either[String, String]` | /** Validate a CORS origin URL. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `fromEnv` | `(): CorsConfig` | /** Create configuration from environment variables. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `validateOrigin` | `(origin: String): Either[String, String]` | /** Validate a CORS origin URL. |
+| `fromEnv` | `(): CorsConfig` | /** Create configuration from environment variables. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: CorsConfig): CorsConfig` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -455,29 +455,29 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: DashboardConfig): DashboardConfig` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `fromEnv` | `(): DashboardConfig` | /** Create configuration from environment variables. */ |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: DashboardConfig): DashboardConfig` |  |
+| `fromEnv` | `(): DashboardConfig` | /** Create configuration from environment variables. */ |
 | `apply` | `(cstDirectory: Option[Path], defaultSampleRate: Double, maxStoredExecutions: Int, enableDashboard: Boolean): DashboardConfig` |  |
 | `defaultBuilder` | `(): Builder` | /** Create a builder starting from default configuration. */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `builder` | `(): Builder` | /** Create a builder starting from environment configuration. */ |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+| `builder` | `(): Builder` | /** Create a builder starting from environment configuration. */ |
 
 ### DashboardModels$
 
@@ -487,12 +487,9 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -501,9 +498,12 @@
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 
 ### DashboardRoutes$
 
@@ -511,22 +511,49 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `apply` | `(constellation: Constellation, compiler: LangCompiler, storage: ExecutionStorage[IO], config: DashboardConfig): DashboardRoutes` | /** Create DashboardRoutes instance */ |
+| `withDefaultStorage` | `(constellation: Constellation, compiler: LangCompiler, config: DashboardConfig, executionWs: Option[ExecutionWebSocket]): IO[DashboardRoutes]` | /** Create DashboardRoutes with default in-memory storage */ |
+| `withDefaultStorage$default$4` | `(): Option` | /** Create DashboardRoutes with default in-memory storage */ |
+| `apply` | `(constellation: Constellation, compiler: LangCompiler, storage: ExecutionStorage[IO], config: DashboardConfig, executionWs: Option[ExecutionWebSocket]): DashboardRoutes` | /** Create DashboardRoutes instance */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `withDefaultStorage` | `(constellation: Constellation, compiler: LangCompiler, config: DashboardConfig): IO[DashboardRoutes]` | /** Create DashboardRoutes with default in-memory storage */ |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
+| `apply$default$5` | `(): Option` | /** Create DashboardRoutes instance */ |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### ExecutionEvent$
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `ordinal` | `(x$0: MirroredMonoType): Int` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -544,24 +571,24 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `convertInputsLenient` | `(inputs: Map[String, Json], dagSpec: DagSpec): IO[Map[String, CValue]]` | /** Convert JSON inputs to CValue inputs leniently — skip missing inputs instead of failing. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `convertInputs` | `(inputs: Map[String, Json], dagSpec: DagSpec): IO[Map[String, CValue]]` | /** Convert JSON inputs to CValue inputs using the DAG's input schema. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `buildMissingInputsMap` | `(providedInputNames: Set[String], dagSpec: DagSpec): Map[String, String]` | /** Build a map of missing input names to their expected type strings. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `extractOutputs` | `(state: State): IO[Map[String, Json]]` | /** Extract outputs from Runtime.State and convert to JSON. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `convertInputsLenient` | `(inputs: Map[String, Json], dagSpec: DagSpec): IO[Map[String, CValue]]` | /** Convert JSON inputs to CValue inputs leniently — skip missing inputs instead of failing. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `buildMissingInputsMap` | `(providedInputNames: Set[String], dagSpec: DagSpec): Map[String, String]` | /** Build a map of missing input names to their expected type strings. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -575,7 +602,6 @@
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `fromOrdinal` | `(ordinal: Int): ExecutionSource` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `ordinal` | `(x$0: MirroredMonoType): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -584,6 +610,7 @@
 | `values` | `(): Array` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `valueOf` | `($name: String): ExecutionSource` |  |
+| `fromOrdinal` | `(ordinal: Int): ExecutionSource` |  |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
@@ -600,16 +627,16 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `values` | `(): Array` |  |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `fromOrdinal` | `(ordinal: Int): ExecutionStatus` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `ordinal` | `(x$0: MirroredMonoType): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `values` | `(): Array` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `valueOf` | `($name: String): ExecutionStatus` |  |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -628,25 +655,25 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `inMemory` | `(config: Config): IO[ExecutionStorage[IO]]` | /** Create a new in-memory execution storage with custom configuration. */ |
+| `inMemory` | `(): IO` | /** Create a new in-memory execution storage with default configuration. */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `shouldSample` | `(source: ExecutionSource, scriptRate: Option[Double], configRate: Double): Boolean` | /** Check if an execution should be sampled based on rate. */ |
 | `createExecution$default$5` | `(): Double` | /** Helper to create a new execution record. */ |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `createExecution` | `(dagName: String, scriptPath: Option[String], inputs: Map[String, Json], source: ExecutionSource, sampleRate: Double): StoredExecution` | /** Helper to create a new execution record. */ |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `inMemory` | `(config: Config): IO[ExecutionStorage[IO]]` | /** Create a new in-memory execution storage with custom configuration. */ |
-| `inMemory` | `(): IO` | /** Create a new in-memory execution storage with default configuration. */ |
-| `createExecution` | `(dagName: String, scriptPath: Option[String], inputs: Map[String, Json], source: ExecutionSource, sampleRate: Double): StoredExecution` | /** Helper to create a new execution record. */ |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -661,20 +688,45 @@
 | `apply` | `(executionId: String, dagName: String, scriptPath: Option[String], startTime: Long, endTime: Option[Long], status: ExecutionStatus, source: ExecutionSource, nodeCount: Int, outputPreview: Option[String]): ExecutionSummary` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `fromStored` | `(exec: StoredExecution): ExecutionSummary` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `fromStored` | `(exec: StoredExecution): ExecutionSummary` |  |
 | `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### ExecutionWebSocket$
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `apply` | `(): ExecutionWebSocket` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -685,17 +737,17 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `init` | `(directory: Path, delegate: PipelineStore): IO[FileSystemPipelineStore]` | /** Create a filesystem-backed pipeline store wrapping an existing in-memory store. |
+| `apply` | `(storeDirectory: Path, delegate: PipelineStore, syntacticIndexRef: Ref[IO, Map[String, String]]): FileSystemPipelineStore` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `apply` | `(storeDirectory: Path, delegate: PipelineStore, syntacticIndexRef: Ref[IO, Map[String, String]]): FileSystemPipelineStore` |  |
+| `init` | `(directory: Path, delegate: PipelineStore): IO[FileSystemPipelineStore]` | /** Create a filesystem-backed pipeline store wrapping an existing in-memory store. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -714,7 +766,6 @@
 | `unapply` | `(x$1: HashedApiKey): HashedApiKey` |  |
 | `apply` | `(plaintextKey: String, role: ApiRole): HashedApiKey` | /** Create a hashed API key from plaintext. */ |
 | `apply` | `(hash: Array[Byte], role: ApiRole): HashedApiKey` |  |
-| `hashKey` | `(key: String): Array[Byte]` | /** Hash a key using SHA-256. */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -733,6 +784,7 @@
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+| `hashKey` | `(key: String): Array[Byte]` | /** Hash a key using SHA-256. */ |
 
 ### HealthCheckConfig$
 
@@ -740,6 +792,7 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: HealthCheckConfig): HealthCheckConfig` |  |
 | `apply` | `(enableDetailEndpoint: Boolean, detailRequiresAuth: Boolean, customReadinessChecks: List[ReadinessCheck]): HealthCheckConfig` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -749,7 +802,6 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: HealthCheckConfig): HealthCheckConfig` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -775,24 +827,24 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `routes` | `(config: HealthCheckConfig, lifecycle: Option[ConstellationLifecycle], compiler: Option[LangCompiler], scheduler: Option[GlobalScheduler]): HttpRoutes[IO]` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `routes$default$4` | `(): Option` |  |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `routes$default$3` | `(): Option` |  |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `routes$default$2` | `(): Option` |  |
+| `routes$default$4` | `(): Option` |  |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `routes$default$2` | `(): Option` |  |
-| `routes` | `(config: HealthCheckConfig, lifecycle: Option[ConstellationLifecycle], compiler: Option[LangCompiler], scheduler: Option[GlobalScheduler]): HttpRoutes[IO]` |  |
+| `routes$default$3` | `(): Option` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -841,10 +893,10 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `load` | `(config: PipelineLoaderConfig, constellation: Constellation, compiler: LangCompiler): IO[LoadResult]` | /** Load all `.cst` files from the configured directory. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `load` | `(config: PipelineLoaderConfig, constellation: Constellation, compiler: LangCompiler): IO[LoadResult]` | /** Load all `.cst` files from the configured directory. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -860,17 +912,17 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: PipelineLoaderConfig): PipelineLoaderConfig` |  |
 | `apply` | `(directory: Path, recursive: Boolean, failOnError: Boolean, aliasStrategy: AliasStrategy): PipelineLoaderConfig` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `fromEnv` | `(): Option` | /** Build a config from environment variables, if `CONSTELLATION_PIPELINE_DIR` is set. */ |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `fromEnv` | `(): Option` | /** Build a config from environment variables, if `CONSTELLATION_PIPELINE_DIR` is set. */ |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: PipelineLoaderConfig): PipelineLoaderConfig` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -917,22 +969,22 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `init` | `(): IO` | /** Create a new in-memory version store backed by `Ref` with no version limit. */ |
+| `initWithLimit` | `(maxVersionsPerPipeline: Option[Int]): IO[PipelineVersionStore]` | /** Create a new in-memory version store backed by `Ref`. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `init` | `(): IO` | /** Create a new in-memory version store backed by `Ref` with no version limit. */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `initWithLimit` | `(maxVersionsPerPipeline: Option[Int]): IO[PipelineVersionStore]` | /** Create a new in-memory version store backed by `Ref`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -974,17 +1026,17 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: RateLimitConfig): RateLimitConfig` |  |
 | `apply` | `(requestsPerMinute: Int, burst: Int, keyRequestsPerMinute: Int, keyBurst: Int, exemptPaths: Set[String]): RateLimitConfig` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `fromEnv` | `(): RateLimitConfig` | /** Create configuration from environment variables. */ |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `fromEnv` | `(): RateLimitConfig` | /** Create configuration from environment variables. */ |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: RateLimitConfig): RateLimitConfig` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
@@ -1015,10 +1067,8 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `withBuckets` | `(config: RateLimitConfig, buckets: Ref[IO, Map[String, TokenBucketRateLimiter]], routes: HttpRoutes[IO]): HttpRoutes[IO]` | /** Wrap routes using a pre-created bucket Ref. |
 | `apply` | `(config: RateLimitConfig, routes: HttpRoutes[IO]): IO[HttpRoutes[IO]]` | /** Wrap routes with per-IP rate limiting. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
@@ -1026,12 +1076,14 @@
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
+| `withBuckets` | `(config: RateLimitConfig, buckets: Ref[IO, Map[String, TokenBucketRateLimiter]], routes: HttpRoutes[IO]): HttpRoutes[IO]` | /** Wrap routes using a pre-created bucket Ref. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `extractClientIp` | `(req: Request[IO]): String` | /** Extract client IP from remote address. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `extractClientIp` | `(req: Request[IO]): String` | /** Extract client IP from remote address. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -1104,13 +1156,13 @@
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
@@ -1129,13 +1181,42 @@
 | `apply` | `(nodeId: String, status: ExecutionStatus, value: Option[Json], durationMs: Option[Long], error: Option[String]): StoredNodeResult` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### Subscription$
+
+/** Subscription info for a connected client */
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `unapply` | `(x$1: Subscription): Subscription` |  |
+| `apply` | `(clientId: String, executionId: Option[String], queue: Queue[IO, ExecutionEvent]): Subscription` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `toString` | `(): String` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -1152,22 +1233,22 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `unapply` | `(x$1: VersionMetrics): VersionMetrics` |  |
 | `apply` | `(requests: Long, successes: Long, failures: Long, latencies: Vector[Double], latencySum: Double): VersionMetrics` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `unapply` | `(x$1: VersionMetrics): VersionMetrics` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
@@ -1209,38 +1290,38 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `verifyKey` | `(plaintextKey: String): Option[ApiRole]` | /** Verify a plaintext key and return its role if valid. */ |
-| `productArity` | `(): Int` |  |
+| `productPrefix` | `(): String` |  |
 | `_1` | `(): List` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): List` |  |
 | `copy` | `(hashedKeys: List[HashedApiKey], publicPaths: Set[String]): AuthConfig` |  |
-| `isEnabled` | `(): Boolean` | /** Authentication is only active when at least one key is configured. */ |
-| `copy$default$2` | `(): Set` |  |
-| `productPrefix` | `(): String` |  |
 | `validate` | `(): Either` | /** Validate the configuration. */ |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `canEqual` | `(that: Any): Boolean` |  |
+| `isEnabled` | `(): Boolean` | /** Authentication is only active when at least one key is configured. */ |
+| `productArity` | `(): Int` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `verifyKey` | `(plaintextKey: String): Option[ApiRole]` | /** Verify a plaintext key and return its role if valid. */ |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Set` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): List` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Set` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class CanaryConfig
 
@@ -1264,45 +1345,45 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `copy$default$3` | `(): FiniteDuration` |  |
+| `copy$default$4` | `(): Double` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$7` | `(): Boolean` |  |
-| `copy$default$1` | `(): Double` |  |
+| `copy$default$5` | `(): Option` |  |
 | `copy` | `(initialWeight: Double, promotionSteps: List[Double], observationWindow: FiniteDuration, errorThreshold: Double, latencyThresholdMs: Option[Long], minRequests: Int, autoPromote: Boolean): CanaryConfig` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): FiniteDuration` |  |
-| `copy$default$2` | `(): List` |  |
-| `copy$default$3` | `(): FiniteDuration` |  |
-| `copy$default$6` | `(): Int` |  |
+| `productPrefix` | `(): String` |  |
+| `copy$default$7` | `(): Boolean` |  |
 | `_5` | `(): Option` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `_7` | `(): Boolean` |  |
 | `productArity` | `(): Int` |  |
+| `copy$default$6` | `(): Int` |  |
 | `_6` | `(): Int` |  |
-| `copy$default$4` | `(): Double` |  |
 | `_1` | `(): Double` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Option` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): List` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Double` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Double` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): List` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class CanaryMetrics
 
@@ -1321,6 +1402,7 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `productPrefix` | `(): String` |  |
 | `productArity` | `(): Int` |  |
 | `_1` | `(): VersionMetrics` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
@@ -1329,27 +1411,26 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `copy$default$2` | `(): VersionMetrics` |  |
-| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$1` | `(): VersionMetrics` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): VersionMetrics` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): VersionMetrics` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): VersionMetrics` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class CanaryState
 
@@ -1376,51 +1457,51 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `_1` | `(): String` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$10` | `(): CanaryMetrics` |  |
-| `copy$default$9` | `(): Instant` |  |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `_8` | `(): Instant` |  |
-| `productPrefix` | `(): String` |  |
-| `_3` | `(): PipelineVersion` |  |
-| `copy$default$2` | `(): PipelineVersion` |  |
 | `_9` | `(): Instant` |  |
 | `copy$default$3` | `(): PipelineVersion` |  |
-| `copy$default$6` | `(): Int` |  |
+| `copy$default$4` | `(): CanaryConfig` |  |
+| `_1` | `(): String` |  |
+| `copy$default$5` | `(): Double` |  |
+| `copy` | `(pipelineName: String, oldVersion: PipelineVersion, newVersion: PipelineVersion, config: CanaryConfig, currentWeight: Double, currentStep: Int, status: CanaryStatus, startedAt: Instant, stepStartedAt: Instant, metrics: CanaryMetrics): CanaryState` |  |
+| `copy$default$8` | `(): Instant` |  |
+| `_8` | `(): Instant` |  |
+| `_3` | `(): PipelineVersion` |  |
+| `productPrefix` | `(): String` |  |
+| `copy$default$7` | `(): CanaryStatus` |  |
 | `_5` | `(): Double` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `_7` | `(): CanaryStatus` |  |
 | `productArity` | `(): Int` |  |
+| `copy$default$6` | `(): Int` |  |
 | `_6` | `(): Int` |  |
-| `copy$default$4` | `(): CanaryConfig` |  |
 | `toString` | `(): String` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `productElementName` | `(n: Int): String` |  |
-| `copy$default$8` | `(): Instant` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `copy$default$7` | `(): CanaryStatus` |  |
+| `copy$default$10` | `(): CanaryMetrics` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Double` |  |
-| `copy$default$1` | `(): String` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): PipelineVersion` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): CanaryConfig` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
-| `copy` | `(pipelineName: String, oldVersion: PipelineVersion, newVersion: PipelineVersion, config: CanaryConfig, currentWeight: Double, currentStep: Int, status: CanaryStatus, startedAt: Instant, stepStartedAt: Instant, metrics: CanaryMetrics): CanaryState` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$9` | `(): Instant` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): String` |  |
 | `_10` | `(): CanaryMetrics` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): PipelineVersion` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### class ConstellationRoutes
 
@@ -1430,20 +1511,20 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -1488,44 +1569,44 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `copy$default$3` | `(): Set` |  |
-| `productArity` | `(): Int` |  |
 | `copy$default$4` | `(): Boolean` |  |
 | `_1` | `(): Set` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `copy` | `(allowedOrigins: Set[String], allowedMethods: Set[String], allowedHeaders: Set[String], allowCredentials: Boolean, maxAge: Long): CorsConfig` |  |
-| `isEnabled` | `(): Boolean` | /** CORS is only active when at least one origin is configured. */ |
+| `validate` | `(): Either` | /** Validate the configuration. */ |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): Set` |  |
-| `copy$default$2` | `(): Set` |  |
-| `validate` | `(): Either` | /** Validate the configuration. */ |
+| `productPrefix` | `(): String` |  |
+| `copy$default$3` | `(): Set` |  |
 | `_5` | `(): Long` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
+| `isEnabled` | `(): Boolean` | /** CORS is only active when at least one origin is configured. */ |
+| `productArity` | `(): Int` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `isWildcard` | `(): Boolean` | /** Whether the wildcard `"*"` origin is configured. */ |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `isWildcard` | `(): Boolean` | /** Whether the wildcard `"*"` origin is configured. */ |
 | `copy$default$5` | `(): Long` |  |
-| `copy$default$1` | `(): Set` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Set` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Boolean` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Set` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Set` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class DashboardConfig
 
@@ -1563,8 +1644,9 @@
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `copy$default$3` | `(): Int` |  |
-| `productArity` | `(): Int` |  |
 | `copy$default$4` | `(): Boolean` |  |
+| `productArity` | `(): Int` |  |
+| `getCstDirectory` | `(): Path` | /** Get the CST directory or default to current working directory. */ |
 | `_1` | `(): Option` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -1572,31 +1654,30 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `getCstDirectory` | `(): Path` | /** Get the CST directory or default to current working directory. */ |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): Int` |  |
-| `copy$default$2` | `(): Double` |  |
-| `validate` | `(): Either` | /** Validate configuration values. */ |
+| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$1` | `(): Option` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Double` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Boolean` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `validate` | `(): Either` | /** Validate configuration values. */ |
+| `copy$default$1` | `(): Option` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Double` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### class DashboardRoutes
 
@@ -1612,14 +1693,14 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
@@ -1655,48 +1736,86 @@
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `_9` | `(): Option` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$9` | `(): Option` |  |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
-| `_3` | `(): Option` |  |
-| `copy$default$2` | `(): String` |  |
 | `copy$default$3` | `(): Option` |  |
-| `copy$default$6` | `(): ExecutionStatus` |  |
+| `copy$default$4` | `(): Long` |  |
+| `_1` | `(): String` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `copy$default$5` | `(): Option` |  |
+| `copy` | `(executionId: String, dagName: String, scriptPath: Option[String], startTime: Long, endTime: Option[Long], status: ExecutionStatus, source: ExecutionSource, nodeCount: Int, outputPreview: Option[String]): ExecutionSummary` |  |
+| `copy$default$8` | `(): Int` |  |
+| `_8` | `(): Int` |  |
+| `_3` | `(): Option` |  |
+| `productPrefix` | `(): String` |  |
+| `copy$default$7` | `(): ExecutionSource` |  |
 | `_5` | `(): Option` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `_7` | `(): ExecutionSource` |  |
 | `productArity` | `(): Int` |  |
+| `copy$default$6` | `(): ExecutionStatus` |  |
 | `_6` | `(): ExecutionStatus` |  |
-| `copy$default$4` | `(): Long` |  |
-| `_1` | `(): String` |  |
 | `toString` | `(): String` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `productElementName` | `(n: Int): String` |  |
-| `copy$default$8` | `(): Int` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `copy$default$7` | `(): ExecutionSource` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Option` |  |
-| `copy$default$1` | `(): String` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): String` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Long` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
-| `copy` | `(executionId: String, dagName: String, scriptPath: Option[String], startTime: Long, endTime: Option[Long], status: ExecutionStatus, source: ExecutionSource, nodeCount: Int, outputPreview: Option[String]): ExecutionSummary` |  |
 | `hashCode` | `(): Int` |  |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$9` | `(): Option` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): String` |  |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `copy$default$2` | `(): String` |  |
+| `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### class ExecutionWebSocket
+
+/** WebSocket handler for streaming execution events to dashboard clients.
+  *
+  * Implements ExecutionListener to receive events from the runtime and broadcasts them to all
+  * connected WebSocket clients that are subscribed to the relevant execution.
+  *
+  * Usage:
+  *   1. Create an instance and register it as an ExecutionListener with Constellation 2. Add
+  *      routes(wsb) to your http4s server 3. Clients connect to
+  *      /api/v1/executions/events?executionId=xxx (or omit for all)
+  */
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `routes` | `(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO]` | /** HTTP routes for WebSocket connections */ |
+| `publish` | `(executionId: String, event: ExecutionEvent): IO[Unit]` | /** Broadcast an event to all subscribed clients */ |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `subscriptionCount` | `(): IO` | /** Get count of active subscriptions (for testing/monitoring) */ |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
-| `productIterator` | `(): Iterator` |  |
-| `_8` | `(): Int` |  |
 
 ### class FileSystemPipelineStore
 
@@ -1722,30 +1841,30 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `store` | `(image: PipelineImage): IO[String]` |  |
-| `listAliases` | `(): IO` |  |
+| `indexSyntactic` | `(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit]` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `resolve` | `(name: String): IO[Option[String]]` |  |
-| `get` | `(structuralHash: String): IO[Option[PipelineImage]]` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `listImages` | `(): IO` |  |
-| `remove` | `(structuralHash: String): IO[Boolean]` |  |
-| `indexSyntactic` | `(syntacticHash: String, registryHash: String, structuralHash: String): IO[Unit]` |  |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `listAliases` | `(): IO` |  |
 | `lookupSyntactic` | `(syntacticHash: String, registryHash: String): IO[Option[String]]` |  |
+| `store` | `(image: PipelineImage): IO[String]` |  |
+| `resolve` | `(name: String): IO[Option[String]]` |  |
+| `alias` | `(name: String, structuralHash: String): IO[Unit]` |  |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `listImages` | `(): IO` |  |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `get` | `(structuralHash: String): IO[Option[PipelineImage]]` |  |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `getByName` | `(name: String): IO[Option[PipelineImage]]` |  |
-| `alias` | `(name: String, structuralHash: String): IO[Unit]` |  |
+| `remove` | `(structuralHash: String): IO[Boolean]` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -1773,36 +1892,36 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `productArity` | `(): Int` |  |
+| `productPrefix` | `(): String` |  |
 | `_1` | `(): Array` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): Array` |  |
 | `copy` | `(hash: Array[Byte], role: ApiRole): HashedApiKey` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `copy$default$2` | `(): ApiRole` |  |
-| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
+| `productArity` | `(): Int` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `verify` | `(plaintextKey: String): Boolean` | /** Verify a plaintext key against this hashed key using constant-time comparison. */ |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): ApiRole` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `verify` | `(plaintextKey: String): Boolean` | /** Verify a plaintext key against this hashed key using constant-time comparison. */ |
+| `copy$default$1` | `(): Array` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): ApiRole` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class HealthCheckConfig
 
@@ -1834,19 +1953,17 @@
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `copy$default$3` | `(): List` |  |
+| `productArity` | `(): Int` |  |
+| `_1` | `(): Boolean` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): Boolean` |  |
 | `copy` | `(enableDetailEndpoint: Boolean, detailRequiresAuth: Boolean, customReadinessChecks: List[ReadinessCheck]): HealthCheckConfig` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): List` |  |
-| `copy$default$2` | `(): Boolean` |  |
+| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
-| `productArity` | `(): Int` |  |
-| `_1` | `(): Boolean` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -1854,16 +1971,18 @@
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Boolean` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Boolean` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Boolean` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### class LspWebSocketHandler
 
@@ -1881,21 +2000,21 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `routes` | `(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO]` |  |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `routes` | `(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO]` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
@@ -1929,19 +2048,16 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `copy$default$3` | `(): Boolean` |  |
 | `copy$default$4` | `(): AliasStrategy` |  |
 | `_1` | `(): Path` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): Path` |  |
-| `copy` | `(directory: Path, recursive: Boolean, failOnError: Boolean, aliasStrategy: AliasStrategy): PipelineLoaderConfig` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): Boolean` |  |
-| `copy$default$2` | `(): Boolean` |  |
-| `copy$default$3` | `(): Boolean` |  |
+| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `productArity` | `(): Int` |  |
 | `toString` | `(): String` |  |
@@ -1951,17 +2067,20 @@
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Boolean` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): AliasStrategy` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
+| `copy` | `(directory: Path, recursive: Boolean, failOnError: Boolean, aliasStrategy: AliasStrategy): PipelineLoaderConfig` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Path` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Boolean` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class PipelineVersion
 
@@ -1983,38 +2102,38 @@
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `copy$default$3` | `(): Instant` |  |
+| `copy$default$4` | `(): Option` |  |
 | `productArity` | `(): Int` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `_1` | `(): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): Int` |  |
+| `copy` | `(version: Int, structuralHash: String, createdAt: Instant, source: Option[String]): PipelineVersion` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): Instant` |  |
-| `copy$default$2` | `(): String` |  |
+| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
-| `copy$default$4` | `(): Option` |  |
-| `_1` | `(): Int` |  |
 | `toString` | `(): String` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): String` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Option` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
-| `copy` | `(version: Int, structuralHash: String, createdAt: Instant, source: Option[String]): PipelineVersion` |  |
-| `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `hashCode` | `(): Int` |  |
+| `copy$default$1` | `(): Int` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): String` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class RateLimitConfig
 
@@ -2050,21 +2169,20 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `copy$default$3` | `(): Int` |  |
 | `productArity` | `(): Int` |  |
-| `copy$default$4` | `(): Int` |  |
 | `_1` | `(): Int` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): Int` |  |
+| `copy$default$5` | `(): Set` |  |
 | `copy` | `(requestsPerMinute: Int, burst: Int, keyRequestsPerMinute: Int, keyBurst: Int, exemptPaths: Set[String]): RateLimitConfig` |  |
+| `validate` | `(): Either` | /** Validate the configuration. */ |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
 | `_3` | `(): Int` |  |
-| `copy$default$2` | `(): Int` |  |
-| `copy$default$3` | `(): Int` |  |
-| `validate` | `(): Either` | /** Validate the configuration. */ |
+| `productPrefix` | `(): String` |  |
+| `copy$default$4` | `(): Int` |  |
 | `_5` | `(): Set` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `toString` | `(): String` |  |
@@ -2072,20 +2190,21 @@
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Set` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Int` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Int` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Int` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Int` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class ReadinessCheck
 
@@ -2104,17 +2223,14 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `productPrefix` | `(): String` |  |
 | `productArity` | `(): Int` |  |
 | `_1` | `(): String` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): String` |  |
-| `copy` | `(name: String, check: IO[Boolean]): ReadinessCheck` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `copy$default$2` | `(): IO` |  |
-| `productPrefix` | `(): String` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
@@ -2123,16 +2239,19 @@
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): IO` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
+| `copy` | `(name: String, check: IO[Boolean]): ReadinessCheck` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): String` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): IO` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class StorageStats
 
@@ -2156,45 +2275,45 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `copy$default$3` | `(): Int` |  |
+| `copy$default$4` | `(): Int` |  |
 | `_1` | `(): Int` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `copy$default$7` | `(): Int` |  |
-| `copy$default$1` | `(): Int` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `copy$default$5` | `(): Option` |  |
 | `copy` | `(totalExecutions: Int, runningExecutions: Int, completedExecutions: Int, failedExecutions: Int, oldestExecutionTime: Option[Long], newestExecutionTime: Option[Long], maxCapacity: Int): StorageStats` |  |
-| `productPrefix` | `(): String` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `_3` | `(): Int` |  |
-| `copy$default$2` | `(): Int` |  |
-| `copy$default$3` | `(): Int` |  |
-| `copy$default$6` | `(): Option` |  |
+| `productPrefix` | `(): String` |  |
+| `copy$default$7` | `(): Int` |  |
 | `_5` | `(): Option` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `_7` | `(): Int` |  |
 | `productArity` | `(): Int` |  |
+| `copy$default$6` | `(): Option` |  |
 | `_6` | `(): Option` |  |
-| `copy$default$4` | `(): Int` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Option` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Int` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Int` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): Int` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Int` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class StoredExecution
 
@@ -2223,56 +2342,56 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `_9` | `(): Map` |  |
-| `_11` | `(): Double` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$10` | `(): Option` |  |
-| `copy$default$9` | `(): Map` |  |
-| `productPrefix` | `(): String` |  |
+| `_1` | `(): String` |  |
+| `copy$default$5` | `(): Option` |  |
+| `copy` | `(executionId: String, dagName: String, scriptPath: Option[String], startTime: Long, endTime: Option[Long], inputs: Map[String, Json], outputs: Option[Map[String, Json]], status: ExecutionStatus, nodeResults: Map[String, StoredNodeResult], dagVizIR: Option[DagVizIR], sampleRate: Double, source: ExecutionSource): StoredExecution` |  |
+| `_8` | `(): ExecutionStatus` |  |
 | `_3` | `(): Option` |  |
-| `copy$default$2` | `(): String` |  |
+| `productPrefix` | `(): String` |  |
+| `_9` | `(): Map` |  |
 | `copy$default$3` | `(): Option` |  |
-| `copy$default$6` | `(): Map` |  |
+| `_11` | `(): Double` |  |
+| `copy$default$12` | `(): ExecutionSource` |  |
+| `copy$default$4` | `(): Long` |  |
+| `durationMs` | `(): Option` | /** Total execution time in milliseconds, if completed */ |
+| `copy$default$7` | `(): Option` |  |
 | `_5` | `(): Option` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
 | `_7` | `(): Option` |  |
 | `productArity` | `(): Int` |  |
+| `copy$default$6` | `(): Map` |  |
 | `_6` | `(): Map` |  |
-| `copy$default$4` | `(): Long` |  |
-| `_1` | `(): String` |  |
 | `toString` | `(): String` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `productElementName` | `(n: Int): String` |  |
-| `copy$default$8` | `(): ExecutionStatus` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `_12` | `(): ExecutionSource` |  |
-| `copy$default$7` | `(): Option` |  |
-| `copy$default$12` | `(): ExecutionSource` |  |
+| `copy$default$10` | `(): Option` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Option` |  |
-| `copy$default$1` | `(): String` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `productElementNames` | `(): Iterator` |  |
+| `copy$default$11` | `(): Double` |  |
 | `_2` | `(): String` |  |
-| `durationMs` | `(): Option` | /** Total execution time in milliseconds, if completed */ |
 | `_4` | `(): Long` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
-| `copy` | `(executionId: String, dagName: String, scriptPath: Option[String], startTime: Long, endTime: Option[Long], inputs: Map[String, Json], outputs: Option[Map[String, Json]], status: ExecutionStatus, nodeResults: Map[String, StoredNodeResult], dagVizIR: Option[DagVizIR], sampleRate: Double, source: ExecutionSource): StoredExecution` |  |
-| `copy$default$11` | `(): Double` |  |
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$8` | `(): ExecutionStatus` |  |
+| `copy$default$9` | `(): Map` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): String` |  |
 | `_10` | `(): Option` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): String` |  |
 | `productIterator` | `(): Iterator` |  |
-| `_8` | `(): ExecutionStatus` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class StoredNodeResult
 
@@ -2299,24 +2418,20 @@
 | `_1` | `(): String` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `copy$default$1` | `(): String` |  |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
+| `copy$default$5` | `(): Option` |  |
 | `_3` | `(): Option` |  |
-| `copy$default$2` | `(): ExecutionStatus` |  |
+| `productPrefix` | `(): String` |  |
+| `copy$default$4` | `(): Option` |  |
 | `_5` | `(): Option` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
-| `copy$default$4` | `(): Option` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Option` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): ExecutionStatus` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Option` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
@@ -2324,11 +2439,65 @@
 | `hashCode` | `(): Int` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `copy$default$1` | `(): String` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): ExecutionStatus` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### case class Subscription
+
+/** Subscription info for a connected client */
+
+**Extends:** Product, Serializable
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `clientId` | `String` |  |
+| `executionId` | `Option[String]` |  |
+| `queue` | `Queue[IO, ExecutionEvent]` |  |
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `copy$default$3` | `(): Queue` |  |
+| `productArity` | `(): Int` |  |
+| `_1` | `(): String` |  |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `copy` | `(clientId: String, executionId: Option[String], queue: Queue[IO, ExecutionEvent]): Subscription` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `_3` | `(): Queue` |  |
+| `productPrefix` | `(): String` |  |
+| `canEqual` | `(that: Any): Boolean` |  |
+| `toString` | `(): String` |  |
+| `productElementName` | `(n: Int): String` |  |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `_2` | `(): Option` |  |
+| `productElementNames` | `(): Iterator` |  |
+| `productElement` | `(n: Int): Any` |  |
+| `equals` | `(x$0: Any): Boolean` |  |
+| `hashCode` | `(): Int` |  |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): String` |  |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `copy$default$2` | `(): Option` |  |
+| `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### case class VersionMetrics
 
@@ -2355,45 +2524,45 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `avgLatencyMs` | `(): Double` |  |
-| `p99LatencyMs` | `(): Double` |  |
 | `copy$default$3` | `(): Long` |  |
-| `productArity` | `(): Int` |  |
+| `copy$default$4` | `(): Vector` |  |
 | `_1` | `(): Long` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `copy$default$1` | `(): Long` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `copy$default$5` | `(): Double` |  |
 | `record` | `(success: Boolean, latencyMs: Double): VersionMetrics` |  |
 | `copy` | `(requests: Long, successes: Long, failures: Long, latencies: Vector[Double], latencySum: Double): VersionMetrics` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `productPrefix` | `(): String` |  |
+| `errorRate` | `(): Double` |  |
 | `_3` | `(): Long` |  |
-| `copy$default$2` | `(): Long` |  |
+| `productPrefix` | `(): String` |  |
 | `_5` | `(): Double` |  |
 | `canEqual` | `(that: Any): Boolean` |  |
-| `copy$default$4` | `(): Vector` |  |
+| `productArity` | `(): Int` |  |
 | `toString` | `(): String` |  |
 | `productElementName` | `(n: Int): String` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `errorRate` | `(): Double` |  |
+| `avgLatencyMs` | `(): Double` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `copy$default$5` | `(): Double` |  |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `_2` | `(): Long` |  |
+| `productElementNames` | `(): Iterator` |  |
 | `_4` | `(): Vector` |  |
 | `productElement` | `(n: Int): Any` |  |
 | `equals` | `(x$0: Any): Boolean` |  |
 | `hashCode` | `(): Int` |  |
+| `p99LatencyMs` | `(): Double` |  |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `copy$default$1` | `(): Long` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `productElementNames` | `(): Iterator` |  |
+| `copy$default$2` | `(): Long` |  |
 | `productIterator` | `(): Iterator` |  |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ## Traits
 
@@ -2411,29 +2580,60 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `rollback` | `(name: String): IO[Option[CanaryState]]` | /** Manually rollback (abort the canary, revert to old version). */ |
+| `abort` | `(name: String): IO[Option[CanaryState]]` | /** Abort the canary deployment (same as rollback). */ |
+| `startCanary` | `(name: String, oldVersion: PipelineVersion, newVersion: PipelineVersion, config: CanaryConfig): IO[Either[String, CanaryState]]` | /** Start a canary deployment. Returns Left(error) if one is already active for this pipeline. */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `selectVersion` | `(name: String): IO[Option[String]]` | /** Select which structural hash to use for execution. Returns None if no canary is active. */ |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `recordResult` | `(name: String, structuralHash: String, success: Boolean, latencyMs: Double): IO[Option[CanaryState]]` | /** Record an execution result and evaluate promotion/rollback criteria. */ |
+| `getState` | `(name: String): IO[Option[CanaryState]]` | /** Get the current canary state for a pipeline. */ |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `promote` | `(name: String): IO[Option[CanaryState]]` | /** Manually promote to the next step. */ |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### trait ExecutionEvent
+
+/** Execution event types sent over WebSocket */
+
+**Extends:** Object
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `getState` | `(name: String): IO[Option[CanaryState]]` | /** Get the current canary state for a pipeline. */ |
-| `selectVersion` | `(name: String): IO[Option[String]]` | /** Select which structural hash to use for execution. Returns None if no canary is active. */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `startCanary` | `(name: String, oldVersion: PipelineVersion, newVersion: PipelineVersion, config: CanaryConfig): IO[Either[String, CanaryState]]` | /** Start a canary deployment. Returns Left(error) if one is already active for this pipeline. */ |
+| `executionId` | `(): String` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `timestamp` | `(): Long` |  |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `abort` | `(name: String): IO[Option[CanaryState]]` | /** Abort the canary deployment (same as rollback). */ |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `recordResult` | `(name: String, structuralHash: String, success: Boolean, latencyMs: Double): IO[Option[CanaryState]]` | /** Record an execution result and evaluate promotion/rollback criteria. */ |
+| `eventType` | `(): String` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `rollback` | `(name: String): IO[Option[CanaryState]]` | /** Manually rollback (abort the canary, revert to old version). */ |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ### trait ExecutionStorage[F]
@@ -2450,31 +2650,31 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `listByScript` | `(scriptPath: String, limit: Int): F[List[ExecutionSummary]]` | /** List executions for a specific script. |
-| `store` | `(execution: StoredExecution): F[String]` | /** Store an execution record. |
+| `delete` | `(executionId: String): F[Boolean]` | /** Delete an execution. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `get` | `(executionId: String): F[Option[StoredExecution]]` | /** Get an execution by ID. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `update` | `(executionId: String, f: Function1[StoredExecution, StoredExecution]): F[Option[StoredExecution]]` | /** Update an execution (for recording completion). |
 | `stats` | `(): F` | /** Get storage statistics. */ |
+| `store` | `(execution: StoredExecution): F[String]` | /** Store an execution record. |
+| `listByScript` | `(scriptPath: String, limit: Int): F[List[ExecutionSummary]]` | /** List executions for a specific script. |
+| `clear` | `(): F` | /** Clear all executions (useful for testing). */ |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `list` | `(limit: Int, offset: Int): F[List[ExecutionSummary]]` | /** List executions with pagination. |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `list` | `(limit: Int, offset: Int): F[List[ExecutionSummary]]` | /** List executions with pagination. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `update` | `(executionId: String, f: Function1[StoredExecution, StoredExecution]): F[Option[StoredExecution]]` | /** Update an execution (for recording completion). |
-| `delete` | `(executionId: String): F[Boolean]` | /** Delete an execution. |
-| `clear` | `(): F` | /** Clear all executions (useful for testing). */ |
 
 ### trait PipelineVersionStore
 
@@ -2490,21 +2690,20 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
+| `recordVersion` | `(name: String, structuralHash: String, source: Option[String]): IO[PipelineVersion]` | /** Record a new version for a named pipeline. |
 | `setActiveVersion` | `(name: String, version: Int): IO[Boolean]` | /** Set the active version for a named pipeline. |
-| `listVersions` | `(name: String): IO[List[PipelineVersion]]` | /** List all versions for a named pipeline, newest first. */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `getVersion` | `(name: String, version: Int): IO[Option[PipelineVersion]]` | /** Get a specific version entry. */ |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `previousVersion` | `(name: String): IO[Option[PipelineVersion]]` | /** Get the version just before the currently active one (for quick rollback). */ |
-| `recordVersion` | `(name: String, structuralHash: String, source: Option[String]): IO[PipelineVersion]` | /** Record a new version for a named pipeline. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getVersion` | `(name: String, version: Int): IO[Option[PipelineVersion]]` | /** Get a specific version entry. */ |
 | `activeVersion` | `(name: String): IO[Option[Int]]` | /** Get the active version number for a named pipeline. */ |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculate a hash code value for the object. |
@@ -2512,6 +2711,7 @@
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `listVersions` | `(name: String): IO[List[PipelineVersion]]` | /** List all versions for a named pipeline, newest first. */ |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ## Enums
