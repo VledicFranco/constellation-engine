@@ -6,6 +6,10 @@ description: "Web dashboard, DAG visualization, and execution history"
 
 # Web Dashboard Guide
 
+:::caution Beta Feature
+The interactive pipeline dashboard is currently in **beta**. Features are functional but undergoing active development and QA. Some behaviors may change before the stable release.
+:::
+
 The web dashboard is a browser-based UI for browsing scripts, executing pipelines, and visualizing DAGs. It is served by `ConstellationServer` when enabled.
 
 ## Quick Start
