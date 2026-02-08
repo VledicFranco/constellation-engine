@@ -2,7 +2,7 @@
   "name": "constellation-lang",
   "displayName": "Constellation Language Support",
   "description": "Language support for Constellation orchestration DSL with LSP integration",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "constellation",
   "engines": {
     "vscode": "^1.75.0"
