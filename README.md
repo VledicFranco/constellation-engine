@@ -81,7 +81,12 @@ enriched = order + customer + shipping
 out enriched[id, name, tier, items, total]
 ```
 
-**Execute via HTTP**:
+**Execute via CLI**:
+```bash
+constellation run order-enrichment.cst --input order='{"id":"ORD-123","customerId":"C-456"}'
+```
+
+**Or via HTTP**:
 ```bash
 curl -X POST http://localhost:8080/run \
   -H "Content-Type: application/json" \
@@ -90,6 +95,61 @@ curl -X POST http://localhost:8080/run \
     "inputs": { "order": { "id": "ORD-123", "customerId": "C-456", ... } }
   }'
 ```
+
+---
+
+## CLI
+
+The Constellation CLI brings compile, run, and deploy operations to your terminal. Designed for scripting, CI/CD, and fast iteration.
+
+### Install
+
+```bash
+# Via Coursier (recommended)
+cs install io.constellation:constellation-cli_3:0.6.0
+
+# Or download fat JAR from GitHub Releases
+curl -sSL https://github.com/VledicFranco/constellation-engine/releases/download/v0.6.0/constellation-cli.jar -o constellation-cli.jar
+```
+
+### Usage
+
+```bash
+# Configure server connection (once)
+constellation config set server.url http://localhost:8080
+
+# Compile and type-check
+constellation compile pipeline.cst
+
+# Execute with inputs
+constellation run pipeline.cst --input text="Hello, World!"
+
+# Generate DAG visualization
+constellation viz pipeline.cst | dot -Tpng > dag.png
+
+# Server operations
+constellation server health
+constellation server metrics
+
+# Deploy with canary releases
+constellation deploy push pipeline.cst
+constellation deploy canary pipeline.cst --percent 10
+constellation deploy promote my-pipeline
+```
+
+### CI/CD Integration
+
+```yaml
+# GitHub Actions example
+- name: Validate pipelines
+  run: |
+    cs install io.constellation:constellation-cli_3:0.6.0
+    for f in pipelines/*.cst; do
+      constellation compile "$f" --json || exit 1
+    done
+```
+
+All commands support `--json` for machine-readable output and deterministic exit codes for automation.
 
 ---
 
@@ -355,7 +415,7 @@ Per-node overhead converges to **~0.15 ms** at scale — your services are the b
 Constellation Engine is published to Maven Central. Add the modules you need to your `build.sbt`:
 
 ```scala
-val constellationVersion = "0.3.1"
+val constellationVersion = "0.6.0"
 
 libraryDependencies ++= Seq(
   "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,
@@ -383,6 +443,7 @@ libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % co
 | Lang Stdlib | `constellation-lang-stdlib` | Built-in functions |
 | Lang LSP | `constellation-lang-lsp` | Language Server Protocol |
 | HTTP API | `constellation-http-api` | REST API + WebSocket LSP |
+| CLI | `constellation-lang-cli` | Command-line interface |
 
 ### Quick Start (Example App)
 
