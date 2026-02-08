@@ -40,17 +40,7 @@ This file contains actionable rules that Claude must follow when working on this
 - Detail diagnostics: `GET /health/detail` (opt-in, auth-gated)
 
 **Port Configuration:**
-The server port is configurable via the `CONSTELLATION_PORT` environment variable.
-For multi-agent setups, each agent uses a unique port based on their agent number:
-
-| Agent | Port | Environment Variable |
-|-------|------|---------------------|
-| Main repo | 8080 | (default) |
-| Agent 1 | 8081 | `CONSTELLATION_PORT=8081` |
-| Agent 2 | 8082 | `CONSTELLATION_PORT=8082` |
-| Agent N | 8080+N | `CONSTELLATION_PORT=808N` |
-
-The `scripts/dev.ps1` script auto-detects the agent number from the directory name.
+The server port is configurable via the `CONSTELLATION_PORT` environment variable (default: 8080).
 
 **Scheduler Configuration:**
 The global priority scheduler can be configured via environment variables:
@@ -231,7 +221,7 @@ When adding a module to example-app:
 
 - Full architecture: See `docs/architecture.md`
 - Contributing guide: See `CONTRIBUTING.md`
-- **Issue tracking: Use GitHub Issues** (agents track work via issues)
+- **Issue tracking: Use GitHub Issues**
 - Language documentation: See `docs/constellation-lang/`
 
 ---
@@ -322,16 +312,6 @@ make test-dashboard-smoke
 make test-dashboard
 ```
 
-### Multi-Agent Testing
-
-Each agent can run dashboard tests against their own server instance:
-
-```bash
-# Agent 2 example (port 8082)
-cd dashboard-tests
-CONSTELLATION_PORT=8082 npx playwright test
-```
-
 ### Debugging Failures
 
 ```bash
@@ -386,7 +366,7 @@ When modifying dashboard code:
 | `.\scripts\restart-server.ps1` | Restart server only (no screenshots) |
 | `.\scripts\restart-server.ps1 -Compile` | Compile + restart server only |
 
-All scripts accept `-Port` (default `8080`) for multi-agent setups.
+All scripts accept `-Port` (default `8080`).
 
 ### Manual Command
 
@@ -428,7 +408,7 @@ cd dashboard-tests && npx playwright test screenshot-audit --reporter=list
 ### What the Release Script Does
 
 1. **Prerequisites check**: Verifies `gh` CLI is installed and authenticated
-2. **Working directory check**: Ensures no uncommitted changes (excludes `agents/`)
+2. **Working directory check**: Ensures no uncommitted changes
 3. **Branch check**: Must be on `master` branch
 4. **Remote sync**: Verifies local is up-to-date with `origin/master`
 5. **Version bump**: Updates version in:
@@ -479,416 +459,6 @@ The release script converts this to:
 ### Added
 ...
 ```
-
----
-
-## Multi-Agent Workflow (CRITICAL)
-
-This repository uses multiple Claude agents working in parallel. **Follow these rules strictly to avoid conflicts.**
-
-### Worktree Requirement
-
-**NEVER work directly in the main repository clone.** Always work in a git worktree.
-
-**Before starting any work, verify you are in a worktree:**
-```bash
-git rev-parse --git-dir
-```
-- If output is `.git` → You are in the main repo. **STOP. Do not proceed.**
-- If output contains `worktrees/` → You are in a worktree. Safe to proceed.
-
-**If no worktree exists, create one:**
-```bash
-# From main repo directory
-git worktree add ../constellation-agent-<N> -b agent-<N>/work master
-```
-
-### Branch Naming Convention
-
-**ALWAYS use this format:**
-```
-agent-<N>/issue-<NUMBER>-<short-description>
-```
-
-Examples:
-- `agent-1/issue-42-add-validation-module`
-- `agent-2/issue-15-fix-parser-error`
-- `agent-3/issue-78-update-docs`
-
-**Rules:**
-- `<N>` = Your agent number (ask user if unknown)
-- `<NUMBER>` = GitHub issue number you're working on
-- `<short-description>` = Lowercase, hyphen-separated, max 5 words
-- **NEVER work without an assigned issue number**
-
-### Git Workflow (Required Steps)
-
-**Before starting work:**
-```bash
-# 1. Verify worktree (see above)
-
-# 2. Sync with latest master (CRITICAL for multi-agent coordination)
-git fetch origin
-git checkout master
-git pull origin master
-
-# 3. Create feature branch from updated master
-git checkout -b agent-<N>/issue-<NUMBER>-<description>
-```
-
-**While working:**
-- Make small, focused commits
-- Run `make test` before each commit
-- Commit frequently (at least after each logical change)
-
-**Before merging to master:**
-```bash
-# 1. Run full test suite
-make test
-
-# 2. Sync with latest master (CRITICAL - other agents may have merged)
-git fetch origin
-git rebase origin/master
-
-# 3. If rebase had conflicts, re-run tests
-make test
-
-# 4. Pull master again and merge (ensures no race condition with other agents)
-git checkout master
-git pull origin master
-git merge agent-<N>/issue-<NUMBER>-<description>
-git push origin master
-
-# 5. Clean up feature branch
-git branch -d agent-<N>/issue-<NUMBER>-<description>
-```
-
-### Commit Message Format
-
-**Use Conventional Commits:**
-```
-<type>(scope): <description>
-
-[optional body]
-
-Closes #<issue-number>
-```
-
-**Types:**
-- `feat` - New feature
-- `fix` - Bug fix
-- `refactor` - Code change that neither fixes a bug nor adds a feature
-- `test` - Adding or updating tests
-- `docs` - Documentation only
-- `chore` - Build process, dependencies, etc.
-
-**Example:**
-```
-feat(parser): add support for optional parameters
-
-Implements optional parameter syntax using `?` suffix.
-Updates grammar and adds validation in semantic analysis.
-
-Closes #42
-```
-
-### Pre-Merge Checklist (MANDATORY)
-
-**DO NOT merge to master until ALL of these pass:**
-
-1. [ ] Verified working in a worktree (`git rev-parse --git-dir` should contain `worktrees/`)
-2. [ ] Branch follows naming convention: `agent-<N>/issue-<NUMBER>-<desc>`
-3. [ ] Compilation succeeds (`make compile`)
-4. [ ] ALL tests pass (`make test`)
-5. [ ] Rebased on latest `origin/master`
-6. [ ] No merge conflicts (resolve any conflicts, then re-run tests)
-7. [ ] Commits follow conventional format
-8. [ ] Final commit message references the issue number with `Closes #<N>`
-
-### Coordination Rules
-
-**Issue Assignment:**
-- **Check your queue first:** Read `agents/agent-<N>/QUEUE.md` for your assigned issues
-- Work on issues in priority order from your queue
-- Use GitHub MCP to verify issue is still open: `mcp__github__issue_read`
-- If your queue is empty, ask the user for new assignments
-- One agent = one issue at a time (complete current before starting next)
-
-**Conflict Prevention:**
-- Prefer smaller, focused changes over large multi-file refactors
-- If you encounter merge conflicts when rebasing:
-  1. Resolve the conflicts carefully
-  2. Re-run ALL tests after resolution
-  3. Only proceed to merge if tests pass
-- Coordinate with user if conflicts are complex or involve another agent's recent work
-
-**Communication:**
-- Add comments on GitHub issues to indicate you're starting work
-- Update issue with progress if work takes multiple sessions
-- If blocked, comment on the issue explaining the blocker
-
-### Forbidden Actions
-
-**NEVER do these:**
-
-| Action | Why |
-|--------|-----|
-| Merge to `master` with failing tests | Breaks the build for all agents |
-| Work without an issue number | Cannot track work, causes coordination chaos |
-| Force push to `master` (`git push -f`) | Destroys history, breaks other agents' rebases |
-| Work in main repo directory | Conflicts with other agents |
-| Modify files outside issue scope | Causes unexpected conflicts |
-| Rebase/merge other agents' branches | Only the owning agent manages their branch |
-| Merge without running tests after rebase | Conflicts may have broken the code |
-
-### Recovery Procedures
-
-**If you accidentally worked in main repo:**
-```bash
-# 1. Stash your changes
-git stash
-
-# 2. Create a worktree
-git worktree add ../constellation-agent-<N> -b agent-<N>/recovery master
-
-# 3. Switch to worktree and apply changes
-cd ../constellation-agent-<N>
-git stash pop
-```
-
-**If your branch has conflicts with master:**
-```bash
-# 1. Fetch latest
-git fetch origin
-
-# 2. Rebase (resolve conflicts as they appear)
-git rebase origin/master
-
-# 3. If conflicts are complex, ask user for guidance
-# 4. After resolving, run tests
-make test
-
-# 5. Force push ONLY your own branch (never master)
-git push --force-with-lease
-```
-
-**If tests fail after rebase:**
-- Do NOT create a PR
-- Fix the failures first
-- If failures are in code you didn't write, check if another PR was merged
-- Ask user for help if the failure is unrelated to your changes
-
-### Session Resume Protocol
-
-When resuming work on an existing branch (e.g., after a session crash or continuation):
-
-```bash
-# 1. Check if your branch exists locally and remotely
-git branch -a | grep agent-<N>
-
-# 2. Checkout your existing branch
-git checkout agent-<N>/issue-<NUMBER>-<description>
-
-# 3. Check last commits to understand where you left off
-git log -5 --oneline
-
-# 4. Check for uncommitted changes
-git status
-
-# 5. Review what was done since branching from master
-git diff origin/master...HEAD --stat
-
-# 6. Fetch latest and check if rebase is needed
-git fetch origin
-git log HEAD..origin/master --oneline  # If output, rebase needed
-
-# 7. If rebase needed:
-git rebase origin/master
-make test
-```
-
-**Session handoff notes:**
-- Check the GitHub issue for any comments you left about progress
-- Review your QUEUE.md for status notes
-- Verify build with `make compile`
-
-### Handling Merge Conflicts
-
-When you encounter merge conflicts during rebase:
-
-```bash
-# 1. Git will pause during rebase showing conflicted files
-git status  # See which files have conflicts
-
-# 2. Open each conflicted file and resolve manually
-# Look for <<<<<<< HEAD, =======, and >>>>>>> markers
-
-# 3. After resolving each file, stage it
-git add <resolved-file>
-
-# 4. Continue the rebase
-git rebase --continue
-
-# 5. CRITICAL: Re-run ALL tests after resolving conflicts
-make test
-
-# 6. Only merge to master if tests pass
-```
-
-If conflicts are complex or involve code you don't understand, ask the user for guidance.
-
-### Agent Identification
-
-When starting a session, identify yourself by including in your first message:
-```
-Working as Agent <N> in worktree: <directory-name>
-Branch: <current-branch>
-Assigned Issue: #<number> - <title>
-```
-
-This helps the user track which agent is doing what.
-
-### Running Test Servers (Multi-Agent)
-
-Each agent can run their own server instance for testing without port conflicts.
-
-**Automatic port detection:**
-```powershell
-# In your worktree (e.g., constellation-agent-2), simply run:
-.\scripts\dev.ps1 -ServerOnly
-
-# The script auto-detects agent number from directory name:
-# constellation-agent-1 → port 8081
-# constellation-agent-2 → port 8082
-# etc.
-```
-
-**Manual port override:**
-```powershell
-# Explicit port
-.\scripts\dev.ps1 -ServerOnly -Port 8085
-
-# Or via environment variable
-$env:CONSTELLATION_PORT = 8085
-.\scripts\dev.ps1 -ServerOnly
-```
-
-**Accessing your agent's server:**
-```bash
-# Replace {port} with your agent's port
-curl http://localhost:{port}/health
-curl http://localhost:{port}/modules
-```
-
-**VSCode Extension:**
-When testing the VSCode extension, update the LSP port in `vscode-extension/.vscode/settings.json` or configure it per-agent.
-
----
-
-## Agent Startup Checklist (CRITICAL)
-
-**Every agent MUST complete these steps before writing any code.**
-
-### Step 0: Start From Main Repository (IMPORTANT)
-
-**Agents MUST be launched from the main `constellation-engine` directory**, not from a worktree.
-
-**Why:** The `agents/` directory containing queue files is only updated in the main repository. Worktrees have their own working state and do not receive updates to queue files. Starting from the main repo ensures you read the latest queue assignments.
-
-```bash
-# You should be in the main repo directory:
-# C:/Users/.../constellation-engine (or equivalent)
-# NOT in constellation-agent-<N>
-```
-
-### Step 1: Read Your Work Queue (From Main Repo)
-
-**Read your assigned issues from your queue file while still in the main repo:**
-
-```bash
-cat agents/agent-<N>/QUEUE.md
-```
-
-**Your queue contains:**
-- Prioritized list of assigned issues
-- Current status of each issue
-- Dependencies and notes
-- Pick the highest priority issue that is not "In Progress" by another session
-
-### Step 2: Change to Your Worktree
-
-**After reading your queue, change to your worktree directory:**
-
-```bash
-# Change to your worktree
-cd ../constellation-agent-<N>
-
-# Verify you're now in the worktree
-git rev-parse --git-dir
-# Should contain "worktrees/" - confirms you're in the worktree
-
-# Check current branch
-git branch --show-current
-
-# Fetch latest from remote
-git fetch origin
-```
-
-### Step 3: Verify Issue Status on GitHub
-
-**BEFORE starting work, verify the issue is still open:**
-
-```
-Use: mcp__github__issue_read with method="get"
-- owner: VledicFranco
-- repo: constellation-engine
-- issue_number: <your-issue>
-```
-
-**Check for:**
-- `state: "OPEN"` - If closed, pick a different issue
-- `assignees` - If assigned to someone else, pick a different issue
-- Read the issue body for full requirements
-
-### Step 4: Check Recent Commits on Master
-
-```bash
-# See what was recently merged to master
-git fetch origin
-git log origin/master --oneline -10
-```
-
-**Look for:**
-- Recent commits that might affect your issue
-- Commits that touch the same files you'll be modifying
-
-### Step 5: Claim the Issue
-
-1. **Comment on GitHub issue** to claim it:
-   ```
-   Use: mcp__github__add_issue_comment
-   Body: "Starting work on this issue. Branch: agent-<N>/issue-<NUMBER>-<desc>"
-   ```
-
-### Step 6: Create Feature Branch
-
-```bash
-# Ensure on latest master
-git checkout master
-git pull origin master
-
-# Create feature branch
-git checkout -b agent-<N>/issue-<NUMBER>-<short-description>
-```
-
-### Step 7: Verify Build Works
-
-```bash
-make compile
-make test
-```
-
-**Only proceed if both succeed.**
 
 ---
 
@@ -964,7 +534,7 @@ After self-review, ensure your final commit message is thorough:
 
 Closes #<issue-number>
 
-Co-Authored-By: Claude <agent-N>
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### Fix Issues Before Merging
@@ -1002,9 +572,6 @@ Use: mcp__github__issue_write with method="create"
 
     ## Acceptance Criteria
     - [ ] <Specific criteria>
-
-    ---
-    Created by Agent <N>
 - labels: ["<appropriate-label>"]
 ```
 
@@ -1033,56 +600,7 @@ Closes #15
 
 ---
 
-## Complete Agent Workflow Summary
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    AGENT STARTUP                             │
-├─────────────────────────────────────────────────────────────┤
-│ 0. Start from main repo (constellation-engine directory)    │
-│ 1. Read your queue (agents/agent-<N>/QUEUE.md)              │
-│ 2. Change to worktree (cd ../constellation-agent-<N>)       │
-│ 3. Verify issue is OPEN on GitHub (mcp__github__issue_read) │
-│ 4. Check recent commits on master                            │
-│ 5. Claim issue (comment on GitHub issue)                    │
-│ 6. git pull origin master ← SYNC before branch!             │
-│ 7. Create feature branch from master                         │
-│ 8. Verify build works (make compile && make test)           │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    DEVELOPMENT                               │
-├─────────────────────────────────────────────────────────────┤
-│ • Make small, focused commits                                │
-│ • Run tests frequently                                       │
-│ • Stay within issue scope                                    │
-│ • Comment on issue if blocked                                │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    PRE-MERGE CHECKLIST                       │
-├─────────────────────────────────────────────────────────────┤
-│ 1. make compile succeeds                                     │
-│ 2. make test passes                                          │
-│ 3. git fetch origin && git rebase origin/master             │
-│ 4. Resolve any merge conflicts                               │
-│ 5. Re-run tests after rebase                                 │
-│ 6. Self-review all changes (see checklist above)            │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    MERGE TO MASTER                           │
-├─────────────────────────────────────────────────────────────┤
-│ 1. git checkout master                                       │
-│ 2. git pull origin master  ← SYNC before merge!             │
-│ 3. git merge agent-<N>/issue-<NUMBER>-<desc>                │
-│ 4. git push origin master                                    │
-│ 5. Ensure final commit has "Closes #<N>"                    │
-│ 6. Delete feature branch locally                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Quick Start Context
+## Quick Start Context
 
 **What is Constellation Engine?**
 
@@ -1126,8 +644,6 @@ make test-core       # Core type system
 make test-compiler   # Parser + compiler
 make test-lsp        # Language server
 ```
-
-**Verify Setup Before Coding:** See [Agent Startup Checklist](#agent-startup-checklist-critical) above.
 
 **Constellation-Lang Syntax (for context):**
 
