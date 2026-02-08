@@ -1,6 +1,6 @@
 # RFC-020: Dashboard IDE Features
 
-**Status:** Approved
+**Status:** In Progress
 **Priority:** P1 (Strategic)
 **Author:** Human + Claude
 **Created:** 2026-02-07
