@@ -23,6 +23,8 @@
 | `Output` | Formatted results for terminal display |
 | `OutputFormat` | Human-readable or JSON output mode |
 | `ExitCodes` | Machine-readable status indicators |
+| `StringUtils` | Safe string operations and error sanitization |
+| `ApiModels` | Shared response types for API calls |
 
 For complete type signatures, see the generated catalog.
 
@@ -83,6 +85,42 @@ Missing files, permission errors, and invalid content produce clear error messag
 |--------|-----------|
 | Implementation | `modules/lang-cli/src/main/scala/io/constellation/cli/commands/CompileCommand.scala#readSourceFile` |
 | Test | `modules/lang-cli/src/test/scala/io/constellation/cli/CompileCommandTest.scala#readSourceFile` |
+
+### 7. Error messages are sanitized
+
+Connection errors and exception messages are sanitized to redact sensitive information (Bearer tokens, API keys, passwords) before display.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/lang-cli/src/main/scala/io/constellation/cli/StringUtils.scala#sanitizeError` |
+| Test | `modules/lang-cli/src/test/scala/io/constellation/cli/EdgeCaseTest.scala#sanitizeError` |
+
+### 8. Config writes are atomic
+
+Configuration file writes use temp file + atomic rename to prevent corruption on concurrent access or process interruption.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/lang-cli/src/main/scala/io/constellation/cli/Config.scala#save` |
+| Test | `modules/lang-cli/src/test/scala/io/constellation/cli/EdgeCaseTest.scala#shallow path is accepted` |
+
+### 9. Path traversal is mitigated
+
+File operations resolve symlinks via `toRealPath()` and validate paths before reading to prevent directory traversal attacks.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/lang-cli/src/main/scala/io/constellation/cli/commands/CompileCommand.scala#readSourceFile` |
+| Test | `modules/lang-cli/src/test/scala/io/constellation/cli/EdgeCaseTest.scala` |
+
+### 10. Input file size is bounded
+
+Input files (`--input-file`) are limited to 10MB to prevent memory exhaustion from maliciously large files.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/lang-cli/src/main/scala/io/constellation/cli/commands/RunCommand.scala#parseInputs` |
+| Test | `modules/lang-cli/src/test/scala/io/constellation/cli/EdgeCaseTest.scala` |
 
 ---
 

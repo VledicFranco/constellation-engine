@@ -69,7 +69,6 @@ constellation CLI (HTTP/WebSocket client)
 constellation
 │
 ├── compile <file.cst>               # Compile and type-check
-│   ├── --watch                      # Watch mode: recompile on changes
 │   └── --json                       # Output errors as JSON
 │
 ├── run <file.cst>                   # Execute pipeline
@@ -132,6 +131,7 @@ constellation
 | 3 | `CONNECTION_ERROR` | Cannot connect to server |
 | 4 | `AUTH_ERROR` | Authentication failed (invalid or missing token) |
 | 5 | `NOT_FOUND` | Resource not found (pipeline, execution, etc.) |
+| 6 | `CONFLICT` | Resource conflict (e.g., canary already active) |
 | 10 | `USAGE_ERROR` | Invalid command-line arguments |
 
 ---
@@ -433,4 +433,3 @@ GraalVM native-image for zero-JVM distribution. Deferred post-v1.0 due to:
 
 1. **Short alias**: Should we provide `cst` as a shorter alias for `constellation`?
 2. **Shell completions**: Should Phase 1 include bash/zsh/fish completions?
-3. **Watch mode**: Should `compile --watch` use filesystem watching or poll the server?

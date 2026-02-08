@@ -18,9 +18,13 @@ The CLI is an HTTP client for Constellation Engine operations. It communicates w
 | `Config.scala` | Configuration loading with precedence |
 | `HttpClient.scala` | HTTP client wrapper for API calls |
 | `Output.scala` | Human/JSON output formatting |
+| `StringUtils.scala` | Safe string truncation and error sanitization |
+| `models/ApiModels.scala` | Shared API response types |
 | `commands/CompileCommand.scala` | Type-check pipeline files |
 | `commands/RunCommand.scala` | Execute pipelines with inputs |
 | `commands/VizCommand.scala` | Generate DAG visualizations |
+| `commands/ServerCommand.scala` | Server operations (health, pipelines, executions) |
+| `commands/DeployCommand.scala` | Deployment operations (push, canary, rollback) |
 | `commands/ConfigCommand.scala` | Manage CLI configuration |
 
 ## Architecture
@@ -47,6 +51,18 @@ CLI (HTTP Client)
 | `compile <file>` | Type-check pipeline | `POST /compile` |
 | `run <file>` | Execute pipeline | `POST /run` |
 | `viz <file>` | Generate DAG visualization | `POST /compile` + `GET /pipelines/<hash>` |
+| `server health` | Check server health | `GET /health` |
+| `server pipelines` | List loaded pipelines | `GET /pipelines` |
+| `server pipelines show <name>` | Show pipeline details | `GET /pipelines/<name>` |
+| `server executions list` | List suspended executions | `GET /executions` |
+| `server executions show <id>` | Show execution details | `GET /executions/<id>` |
+| `server executions delete <id>` | Delete execution | `DELETE /executions/<id>` |
+| `server metrics` | Show server metrics | `GET /metrics` |
+| `deploy push <file>` | Deploy pipeline | `POST /pipelines/<name>/reload` |
+| `deploy canary <file>` | Deploy as canary | `POST /pipelines/<name>/reload` (with canary config) |
+| `deploy promote <pipeline>` | Promote canary | `POST /pipelines/<name>/canary/promote` |
+| `deploy rollback <pipeline>` | Rollback version | `POST /pipelines/<name>/rollback` |
+| `deploy status <pipeline>` | Show canary status | `GET /pipelines/<name>/canary` |
 | `config show` | Display configuration | (local) |
 | `config get <key>` | Get config value | (local) |
 | `config set <key> <value>` | Set config value | (local) |
@@ -71,6 +87,7 @@ CLI (HTTP Client)
 | 3 | Connection error |
 | 4 | Authentication error |
 | 5 | Resource not found |
+| 6 | Resource conflict |
 | 10 | Usage error |
 
 ## Configuration

@@ -3,7 +3,7 @@
 > **Path**: `organon/features/tooling/`
 > **Parent**: [features/](../README.md)
 
-Dashboard, LSP integration, and VSCode extension.
+CLI, Dashboard, LSP integration, and VSCode extension.
 
 ## Ethos Summary
 
@@ -18,11 +18,16 @@ Dashboard, LSP integration, and VSCode extension.
 |------|-------------|
 | PHILOSOPHY.md | Why invest in tooling |
 | ETHOS.md | Constraints for LLMs working on tooling |
+| cli.md | Command-line interface |
 | dashboard.md | Web-based pipeline visualization |
 | lsp.md | Language Server Protocol implementation |
 | vscode.md | VSCode extension features |
 
 ## Quick Reference
+
+### CLI
+- Command: `constellation <command>`
+- Features: compile, run, viz, server ops, deploy, config
 
 ### Dashboard
 - URL: `http://localhost:8080/`
@@ -40,6 +45,7 @@ Dashboard, LSP integration, and VSCode extension.
 
 | Component | Role | Key Files |
 |-----------|------|-----------|
+| `lang-cli` | CLI HTTP client | `CliApp.scala`, `commands/*.scala` |
 | `http-api` | Dashboard routes, LSP WebSocket | `DashboardRoutes.scala`, `LspWebSocketHandler.scala` |
 | `lang-lsp` | LSP implementation | `ConstellationLanguageServer.scala`, `DocumentManager.scala` |
 | `vscode-extension` | VSCode integration | `extension.ts`, `ScriptRunnerPanel.ts` |
