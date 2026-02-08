@@ -6,9 +6,6 @@ description: "Command-line interface for Constellation Engine"
 
 # CLI Tool
 
-:::caution Beta Feature
-The CLI tool is in beta. Commands and output formats may change in future releases.
-:::
 
 The Constellation CLI provides command-line access to compile, execute, and visualize pipelines. It communicates with a running Constellation server via HTTP.
 
@@ -18,7 +15,7 @@ The Constellation CLI provides command-line access to compile, execute, and visu
 
 ```bash
 # Install from Maven Central
-cs install io.constellation:constellation-cli_3:0.5.0
+cs install io.constellation:constellation-cli_3:0.6.0
 
 # Verify installation
 constellation --version
@@ -28,7 +25,7 @@ constellation --version
 
 ```bash
 # Download the fat JAR
-curl -sSL https://github.com/VledicFranco/constellation-engine/releases/download/v0.5.0/constellation-cli.jar -o constellation-cli.jar
+curl -sSL https://github.com/VledicFranco/constellation-engine/releases/download/v0.6.0/constellation-cli.jar -o constellation-cli.jar
 
 # Create launcher script
 echo '#!/bin/bash
@@ -439,7 +436,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CLI
-        run: cs install io.constellation:constellation-cli_3:0.5.0
+        run: cs install io.constellation:constellation-cli_3:0.6.0
       - name: Validate pipelines
         run: |
           for f in pipelines/*.cst; do
