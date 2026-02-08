@@ -1,6 +1,7 @@
 package io.constellation.cli
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.charset.StandardCharsets
 
 import cats.effect.IO
 import cats.implicits.*
@@ -81,6 +82,9 @@ object CliConfig:
     yield CliConfig(server, defaults)
   }
 
+  /** Maximum allowed nesting depth for config paths. */
+  private val MaxPathDepth = 5
+
   /** Default configuration directory. */
   def configDir: Path =
     Paths.get(System.getProperty("user.home"), ".constellation")
@@ -131,12 +135,34 @@ object CliConfig:
       else CliConfig()
     }.handleError(_ => CliConfig())
 
-  /** Save configuration to file. */
+  /**
+   * Save configuration to file atomically.
+   *
+   * Writes to a temporary file first, then atomically renames to the
+   * target path. This prevents corruption if the process is interrupted.
+   */
   def save(config: CliConfig): IO[Unit] =
     IO.blocking {
       val dir = configDir
       if !Files.exists(dir) then Files.createDirectories(dir)
-      Files.writeString(configPath, config.asJson.spaces2)
+
+      val targetPath = configPath
+      val tempPath = dir.resolve(s"config.json.${System.nanoTime}.tmp")
+
+      try
+        // Write to temp file
+        Files.writeString(tempPath, config.asJson.spaces2, StandardCharsets.UTF_8)
+
+        // Atomic rename (best-effort on Windows)
+        Files.move(tempPath, targetPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+      catch
+        case e: java.nio.file.AtomicMoveNotSupportedException =>
+          // Fallback for filesystems that don't support atomic move
+          Files.move(tempPath, targetPath, StandardCopyOption.REPLACE_EXISTING)
+      finally
+        // Clean up temp file if it still exists
+        if Files.exists(tempPath) then
+          Files.deleteIfExists(tempPath)
     }
 
   /** Get a specific config value by dot-separated path. */
@@ -146,17 +172,29 @@ object CliConfig:
       resolvePath(json, path.split("\\.").toList)
     }
 
-  /** Set a specific config value by dot-separated path. */
+  /**
+   * Set a specific config value by dot-separated path.
+   *
+   * @param path  Dot-separated path (e.g., "server.url")
+   * @param value The value to set
+   * @throws IllegalArgumentException if path exceeds maximum depth
+   */
   def setValue(path: String, value: String): IO[Unit] =
-    for
-      config <- loadFromFile
-      json    = config.asJson
-      updated = updatePath(json, path.split("\\.").toList, value)
-      newConfig <- IO.fromEither(
-        updated.as[CliConfig].leftMap(e => new RuntimeException(s"Invalid config: ${e.message}"))
-      )
-      _ <- save(newConfig)
-    yield ()
+    val segments = path.split("\\.").toList
+    if segments.length > MaxPathDepth then
+      IO.raiseError(new IllegalArgumentException(
+        s"Config path too deep (max $MaxPathDepth levels): $path"
+      ))
+    else
+      for
+        config <- loadFromFile
+        json    = config.asJson
+        updated = updatePath(json, segments, value)
+        newConfig <- IO.fromEither(
+          updated.as[CliConfig].leftMap(e => new RuntimeException(s"Invalid config: ${e.message}"))
+        )
+        _ <- save(newConfig)
+      yield ()
 
   /** Resolve a value from JSON by path. */
   private def resolvePath(json: io.circe.Json, path: List[String]): Option[String] =

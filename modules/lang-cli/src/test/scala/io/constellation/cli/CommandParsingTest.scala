@@ -39,18 +39,6 @@ class CommandParsingTest extends AnyFunSuite with Matchers:
     result.toOption.get shouldBe a[CompileCommand]
     result.toOption.get.asInstanceOf[CompileCommand].file.toString shouldBe "test.cst"
 
-  test("compile: parse with watch flag"):
-    val result = parseCompile("compile", "--watch", "test.cst")
-    result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[CompileCommand]
-    cmd.watch shouldBe true
-
-  test("compile: parse with short watch flag"):
-    val result = parseCompile("compile", "-w", "test.cst")
-    result shouldBe a[Right[?, ?]]
-    val cmd = result.toOption.get.asInstanceOf[CompileCommand]
-    cmd.watch shouldBe true
-
   test("compile: fail without file argument"):
     val result = parseCompile("compile")
     result shouldBe a[Left[?, ?]]

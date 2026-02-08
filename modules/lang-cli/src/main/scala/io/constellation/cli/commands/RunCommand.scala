@@ -1,6 +1,7 @@
 package io.constellation.cli.commands
 
 import java.nio.file.{Files, Path}
+import java.nio.charset.StandardCharsets
 
 import cats.data.ValidatedNel
 import cats.effect.{ExitCode, IO}
@@ -12,12 +13,15 @@ import io.circe.{Decoder, Json}
 import io.circe.generic.semiauto.*
 import io.circe.parser.parse
 
-import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat}
+import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
 import org.http4s.Uri
 import org.http4s.client.Client
 
 /** Run command: execute a pipeline with inputs. */
+object RunConstants:
+  /** Maximum allowed input file size (10MB). */
+  val MaxInputFileSize: Long = 10 * 1024 * 1024
 case class RunCommand(
     file: Path,
     inputs: List[(String, String)] = Nil,
@@ -110,20 +114,37 @@ object RunCommand:
           }
     yield exitCode
 
-  /** Read source code from file. */
+  /**
+   * Read source code from file with path validation.
+   *
+   * Resolves symlinks and validates the path to prevent path traversal.
+   */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
       if !Files.exists(path) then
         Left(s"File not found: $path")
-      else if !Files.isRegularFile(path) then
-        Left(s"Not a regular file: $path")
+      else if Files.isDirectory(path) then
+        Left(s"Path is a directory: $path")
       else
-        Right(Files.readString(path))
-    }.handleError { e =>
-      Left(s"Failed to read file: ${e.getMessage}")
+        // Resolve symlinks to canonical path
+        val realPath = path.toRealPath()
+        Right(new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8))
+    }.handleErrorWith {
+      case _: java.nio.file.AccessDeniedException =>
+        IO.pure(Left(s"Permission denied: $path"))
+      case _: java.nio.file.NoSuchFileException =>
+        IO.pure(Left(s"File not found: $path"))
+      case e: java.io.IOException =>
+        IO.pure(Left(s"Failed to read file: ${StringUtils.sanitizeError(e.getMessage)}"))
+      case e =>
+        IO.pure(Left(s"Unexpected error: ${StringUtils.sanitizeError(e.getMessage)}"))
     }
 
-  /** Parse inputs from CLI args and/or input file. */
+  /**
+   * Parse inputs from CLI args and/or input file.
+   *
+   * Validates file size before reading to prevent OOM on large files.
+   */
   private def parseInputs(
       cliInputs: List[(String, String)],
       inputFile: Option[Path]
@@ -138,8 +159,13 @@ object RunCommand:
         IO.blocking {
           if !Files.exists(path) then
             Left(s"Input file not found: $path")
+          else if Files.size(path) > RunConstants.MaxInputFileSize then
+            val maxMB = RunConstants.MaxInputFileSize / (1024 * 1024)
+            Left(s"Input file too large (max ${maxMB}MB): $path")
           else
-            val content = Files.readString(path)
+            // Resolve symlinks for path traversal mitigation
+            val realPath = path.toRealPath()
+            val content = new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8)
             parse(content) match
               case Right(json) =>
                 json.as[Map[String, Json]] match
@@ -150,8 +176,13 @@ object RunCommand:
                     Left(s"Invalid JSON in input file: ${err.message}")
               case Left(err) =>
                 Left(s"Invalid JSON in input file: ${err.message}")
-        }.handleError { e =>
-          Left(s"Failed to read input file: ${e.getMessage}")
+        }.handleErrorWith {
+          case _: java.nio.file.AccessDeniedException =>
+            IO.pure(Left(s"Permission denied: $path"))
+          case _: java.nio.file.NoSuchFileException =>
+            IO.pure(Left(s"Input file not found: $path"))
+          case e =>
+            IO.pure(Left(s"Failed to read input file: ${StringUtils.sanitizeError(e.getMessage)}"))
         }
 
   /** Parse a string value to JSON, inferring type. */

@@ -7,7 +7,7 @@ import com.monovore.decline.*
 
 import io.circe.{Decoder, Json}
 
-import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat}
+import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
 import org.http4s.Uri
 import org.http4s.client.Client
@@ -316,8 +316,8 @@ object ServerCommand:
         else
           val header = s"${fansi.Bold.On(s"${pipelines.size} pipeline(s) loaded:")}\n"
           val rows = pipelines.map { p =>
-            val name = p.aliases.headOption.getOrElse(p.structuralHash.take(12) + "...")
-            val hash = p.structuralHash.take(12)
+            val name = p.aliases.headOption.getOrElse(StringUtils.hashPreview(p.structuralHash))
+            val hash = StringUtils.truncate(p.structuralHash, StringUtils.Display.HashPreviewLength)
             val modules = s"${p.moduleCount} modules"
             val outputs = p.declaredOutputs.mkString(", ")
             s"  ${fansi.Color.Cyan(name)} (${hash}) - $modules, outputs: [$outputs]"
@@ -456,9 +456,9 @@ object ServerCommand:
           val header = s"${fansi.Bold.On("ID")}                                  ${fansi.Bold.On("Pipeline")}      ${fansi.Bold.On("Missing")}  ${fansi.Bold.On("Created")}\n"
           val rows = executions.map { e =>
             val id = e.executionId
-            val hash = e.structuralHash.take(12) + "..."
+            val hash = StringUtils.hashPreview(e.structuralHash)
             val missing = e.missingInputs.size.toString
-            val created = e.createdAt.take(19) // ISO date without timezone
+            val created = StringUtils.timestampPreview(e.createdAt)
             f"$id  $hash  $missing%7s  $created"
           }
           header + rows.mkString("\n")

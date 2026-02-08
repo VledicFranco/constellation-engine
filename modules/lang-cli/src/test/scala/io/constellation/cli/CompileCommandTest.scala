@@ -52,12 +52,6 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
     val file = tempDir.resolve("pipeline.cst")
     val cmd = CompileCommand(file)
     cmd.file shouldBe file
-    cmd.watch shouldBe false
-
-  test("CompileCommand: stores watch flag"):
-    val file = tempDir.resolve("pipeline.cst")
-    val cmd = CompileCommand(file, watch = true)
-    cmd.watch shouldBe true
 
   // ============= Response Parsing Tests =============
 
@@ -108,4 +102,5 @@ class CompileCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEa
     CliApp.ExitCodes.ConnectionError.code shouldBe 3
     CliApp.ExitCodes.AuthError.code shouldBe 4
     CliApp.ExitCodes.NotFound.code shouldBe 5
+    CliApp.ExitCodes.Conflict.code shouldBe 6
     CliApp.ExitCodes.UsageError.code shouldBe 10

@@ -68,11 +68,8 @@ constellation viz my-pipeline.cst | dot -Tpng > dag.png
 Type-check a pipeline file without executing it.
 
 ```bash
-constellation compile <file.cst> [options]
+constellation compile <file.cst>
 ```
-
-**Options:**
-- `--watch`, `-w`: Watch mode — recompile on file changes
 
 **Examples:**
 
@@ -282,7 +279,9 @@ constellation config set server.url http://prod.example.com:9090
 constellation config set server.token sk-your-api-key
 ```
 
-**Config File Location:** `~/.constellation/config.json`
+**Config File Location:**
+- Unix/macOS: `~/.constellation/config.json`
+- Windows: `%USERPROFILE%\.constellation\config.json`
 
 ### deploy
 
@@ -408,6 +407,7 @@ Configuration values are applied in this order (highest priority first):
 | 3 | `CONNECTION_ERROR` | Cannot connect to server |
 | 4 | `AUTH_ERROR` | Authentication failed |
 | 5 | `NOT_FOUND` | Resource not found |
+| 6 | `CONFLICT` | Resource conflict (e.g., canary already active) |
 | 10 | `USAGE_ERROR` | Invalid command-line arguments |
 
 **Example CI Usage:**
@@ -458,16 +458,6 @@ echo "$result" | jq -r '.outputs.result'
 if constellation run test.cst --json | jq -e '.success'; then
   echo "Test passed"
 fi
-```
-
-### Watch Mode Development
-
-```bash
-# In terminal 1: Watch and recompile
-constellation compile pipeline.cst --watch
-
-# In terminal 2: Run when ready
-constellation run pipeline.cst --input text="test"
 ```
 
 ### Canary Deployment

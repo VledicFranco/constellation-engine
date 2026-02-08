@@ -229,6 +229,12 @@ lazy val langCli = (project in file("modules/lang-cli"))
       "org.scalatest"     %% "scalatest"            % "3.2.17" % Test,
       "org.scalatestplus" %% "scalacheck-1-17"      % "3.2.17.0" % Test,
     ) ++ loggingDeps,
+    // Generate version resource file from build.sbt version
+    Compile / resourceGenerators += Def.task {
+      val file = (Compile / resourceManaged).value / "cli-version.txt"
+      IO.write(file, version.value)
+      Seq(file)
+    }.taskValue,
     assembly / mainClass := Some("io.constellation.cli.Main"),
     assembly / assemblyJarName := "constellation-cli.jar",
     assembly / assemblyMergeStrategy := {

@@ -44,7 +44,7 @@ object HttpClient:
     client.run(request).use { response =>
       handleResponse[A](response)
     }.handleError { e =>
-      ConnectionError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
     }
 
   /** Make a POST request with JSON body. */
@@ -60,7 +60,7 @@ object HttpClient:
     client.run(request).use { response =>
       handleResponse[A](response)
     }.handleError { e =>
-      ConnectionError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
     }
 
   /** Make a DELETE request. */
@@ -75,7 +75,7 @@ object HttpClient:
     client.run(request).use { response =>
       handleResponse[A](response)
     }.handleError { e =>
-      ConnectionError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName))
+      ConnectionError(StringUtils.sanitizeError(Option(e.getMessage).getOrElse(e.getClass.getSimpleName)))
     }
 
   /** Handle HTTP response. */

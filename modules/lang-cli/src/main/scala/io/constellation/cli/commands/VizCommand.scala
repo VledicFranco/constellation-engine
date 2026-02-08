@@ -1,6 +1,7 @@
 package io.constellation.cli.commands
 
 import java.nio.file.{Files, Path}
+import java.nio.charset.StandardCharsets
 
 import cats.data.ValidatedNel
 import cats.effect.{ExitCode, IO}
@@ -11,7 +12,7 @@ import com.monovore.decline.*
 import io.circe.{Decoder, Json}
 import io.circe.generic.semiauto.*
 
-import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat}
+import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
 import org.http4s.Uri
 import org.http4s.client.Client
@@ -110,17 +111,30 @@ object VizCommand:
           compileAndVisualize(source, cmd.file.getFileName.toString, cmd.format, baseUri, token, outputFormat)
     yield exitCode
 
-  /** Read source code from file. */
+  /**
+   * Read source code from file with path validation.
+   *
+   * Resolves symlinks and validates the path to prevent path traversal.
+   */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
     IO.blocking {
       if !Files.exists(path) then
         Left(s"File not found: $path")
-      else if !Files.isRegularFile(path) then
-        Left(s"Not a regular file: $path")
+      else if Files.isDirectory(path) then
+        Left(s"Path is a directory: $path")
       else
-        Right(Files.readString(path))
-    }.handleError { e =>
-      Left(s"Failed to read file: ${e.getMessage}")
+        // Resolve symlinks to canonical path
+        val realPath = path.toRealPath()
+        Right(new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8))
+    }.handleErrorWith {
+      case _: java.nio.file.AccessDeniedException =>
+        IO.pure(Left(s"Permission denied: $path"))
+      case _: java.nio.file.NoSuchFileException =>
+        IO.pure(Left(s"File not found: $path"))
+      case e: java.io.IOException =>
+        IO.pure(Left(s"Failed to read file: ${StringUtils.sanitizeError(e.getMessage)}"))
+      case e =>
+        IO.pure(Left(s"Unexpected error: ${StringUtils.sanitizeError(e.getMessage)}"))
     }
 
   /** Compile and then fetch pipeline detail for visualization. */

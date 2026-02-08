@@ -19,6 +19,15 @@ import org.http4s.client.Client
 /** Main CLI application logic. */
 object CliApp:
 
+  /** CLI version loaded from build-generated resource file. */
+  val cliVersion: String =
+    Option(getClass.getResourceAsStream("/cli-version.txt"))
+      .map { is =>
+        try scala.io.Source.fromInputStream(is).mkString.trim
+        finally is.close()
+      }
+      .getOrElse("dev")
+
   /** Exit codes following RFC-021 specification. */
   object ExitCodes:
     val Success         = ExitCode(0)
@@ -27,6 +36,7 @@ object CliApp:
     val ConnectionError = ExitCode(3)
     val AuthError       = ExitCode(4)
     val NotFound        = ExitCode(5)
+    val Conflict        = ExitCode(6)
     val UsageError      = ExitCode(10)
 
   // Global options
@@ -95,7 +105,7 @@ object CliApp:
       case Left(help) =>
         // Check if it's --version
         if args.contains("--version") || args.contains("-V") then
-          IO.println("constellation 0.5.0").as(ExitCodes.Success)
+          IO.println(s"constellation $cliVersion").as(ExitCodes.Success)
         else
           IO.println(help.toString).as(
             if help.errors.isEmpty then ExitCodes.Success else ExitCodes.UsageError

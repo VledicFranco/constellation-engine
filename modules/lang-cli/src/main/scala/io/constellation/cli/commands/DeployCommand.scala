@@ -1,6 +1,7 @@
 package io.constellation.cli.commands
 
 import java.nio.file.{Files, Path, Paths}
+import java.nio.charset.StandardCharsets
 
 import cats.effect.{ExitCode, IO}
 import cats.implicits.*
@@ -10,7 +11,7 @@ import com.monovore.decline.*
 import io.circe.{Decoder, Json}
 import io.circe.syntax.*
 
-import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat}
+import io.constellation.cli.{CliApp, HttpClient, Output, OutputFormat, StringUtils}
 
 import org.http4s.Uri
 import org.http4s.client.Client
@@ -295,9 +296,9 @@ object DeployCommand:
         if resp.changed then
           val sb = new StringBuilder
           sb.append(s"${fansi.Color.Green("✓")} Deployed ${fansi.Bold.On(resp.name)} v${resp.version}\n")
-          sb.append(s"  Hash: ${resp.newHash.take(12)}...\n")
+          sb.append(s"  Hash: ${StringUtils.hashPreview(resp.newHash)}\n")
           resp.previousHash.foreach { prev =>
-            sb.append(s"  Previous: ${prev.take(12)}...\n")
+            sb.append(s"  Previous: ${StringUtils.hashPreview(prev)}\n")
           }
           sb.toString.trim
         else
@@ -359,7 +360,7 @@ object DeployCommand:
 
           case HttpClient.ApiError(409, _) =>
             IO.println(Output.error("A canary deployment is already active for this pipeline", format))
-              .as(CliApp.ExitCodes.RuntimeError)
+              .as(CliApp.ExitCodes.Conflict)
 
           case HttpClient.ApiError(_, msg) =>
             IO.println(Output.error(msg, format)).as(CliApp.ExitCodes.RuntimeError)
@@ -377,8 +378,8 @@ object DeployCommand:
           case Some(canary) =>
             val sb = new StringBuilder
             sb.append(s"${fansi.Color.Green("✓")} Canary started for ${fansi.Bold.On(resp.name)}\n")
-            sb.append(s"  New version: v${canary.newVersion.version} (${canary.newVersion.structuralHash.take(12)}...)\n")
-            sb.append(s"  Old version: v${canary.oldVersion.version} (${canary.oldVersion.structuralHash.take(12)}...)\n")
+            sb.append(s"  New version: v${canary.newVersion.version} (${StringUtils.hashPreview(canary.newVersion.structuralHash)})\n")
+            sb.append(s"  Old version: v${canary.oldVersion.version} (${StringUtils.hashPreview(canary.oldVersion.structuralHash)})\n")
             sb.append(s"  Traffic: ${percent}% to new version\n")
             sb.append(s"  Status: ${canary.status}")
             sb.toString
@@ -505,7 +506,7 @@ object DeployCommand:
         sb.append(s"${fansi.Color.Green("✓")} Rolled back ${fansi.Bold.On(resp.name)}\n")
         sb.append(s"  From: v${resp.previousVersion}\n")
         sb.append(s"  To: v${resp.activeVersion}\n")
-        sb.append(s"  Hash: ${resp.structuralHash.take(12)}...")
+        sb.append(s"  Hash: ${StringUtils.hashPreview(resp.structuralHash)}")
         sb.toString
 
       case OutputFormat.Json =>
@@ -618,8 +619,8 @@ object DeployCommand:
         sb.append(s"  ${fansi.Bold.On("Status:")} ${resp.status}\n")
         sb.append(s"  ${fansi.Bold.On("Traffic:")} ${weightPct}% to new version (step ${resp.currentStep})\n")
         sb.append(s"  ${fansi.Bold.On("Started:")} ${resp.startedAt}\n\n")
-        sb.append(s"  ${fansi.Bold.On("Old version:")} v${resp.oldVersion.version} (${resp.oldVersion.structuralHash.take(12)}...)\n")
-        sb.append(s"  ${fansi.Bold.On("New version:")} v${resp.newVersion.version} (${resp.newVersion.structuralHash.take(12)}...)\n")
+        sb.append(s"  ${fansi.Bold.On("Old version:")} v${resp.oldVersion.version} (${StringUtils.hashPreview(resp.oldVersion.structuralHash)})\n")
+        sb.append(s"  ${fansi.Bold.On("New version:")} v${resp.newVersion.version} (${StringUtils.hashPreview(resp.newVersion.structuralHash)})\n")
 
         resp.metrics.foreach { m =>
           sb.append(s"\n${fansi.Bold.On("Metrics:")}\n")
@@ -660,16 +661,30 @@ object DeployCommand:
 
   // ============= Helpers =============
 
+  /**
+   * Read source code from file with path validation.
+   *
+   * Resolves symlinks and validates the path to prevent path traversal.
+   */
   private def readSourceFile(path: Path): IO[Either[String, String]] =
-    IO {
+    IO.blocking {
       if !Files.exists(path) then
         Left(s"File not found: $path")
       else if Files.isDirectory(path) then
-        Left(s"Path is a directory, not a file: $path")
+        Left(s"Path is a directory: $path")
       else
-        Right(new String(Files.readAllBytes(path), "UTF-8"))
-    }.handleError { e =>
-      Left(s"Failed to read file: ${e.getMessage}")
+        // Resolve symlinks to canonical path
+        val realPath = path.toRealPath()
+        Right(new String(Files.readAllBytes(realPath), StandardCharsets.UTF_8))
+    }.handleErrorWith {
+      case _: java.nio.file.AccessDeniedException =>
+        IO.pure(Left(s"Permission denied: $path"))
+      case _: java.nio.file.NoSuchFileException =>
+        IO.pure(Left(s"File not found: $path"))
+      case e: java.io.IOException =>
+        IO.pure(Left(s"Failed to read file: ${StringUtils.sanitizeError(e.getMessage)}"))
+      case e =>
+        IO.pure(Left(s"Unexpected error: ${StringUtils.sanitizeError(e.getMessage)}"))
     }
 
   private def deriveName(path: Path): String =

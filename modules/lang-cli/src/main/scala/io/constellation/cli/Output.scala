@@ -6,14 +6,31 @@ import io.circe.syntax.*
 /** Output formatting utilities for CLI. */
 object Output:
 
-  // ANSI color codes via fansi
-  private val Red    = fansi.Color.Red
-  private val Green  = fansi.Color.Green
-  private val Yellow = fansi.Color.Yellow
-  private val Blue   = fansi.Color.Blue
-  private val Cyan   = fansi.Color.Cyan
-  private val Bold   = fansi.Bold.On
-  private val Reset  = fansi.Attr.Reset
+  /** Centralized color definitions for consistent styling. */
+  object Colors:
+    val Success = fansi.Color.Green
+    val Error   = fansi.Color.Red
+    val Warning = fansi.Color.Yellow
+    val Info    = fansi.Color.Blue
+    val Accent  = fansi.Color.Cyan
+    val Bold    = fansi.Bold.On
+    val Reset   = fansi.Attr.Reset
+
+    def success(s: String): fansi.Str = Success(s)
+    def error(s: String): fansi.Str = Error(s)
+    def warning(s: String): fansi.Str = Warning(s)
+    def info(s: String): fansi.Str = Info(s)
+    def accent(s: String): fansi.Str = Accent(s)
+    def bold(s: String): fansi.Str = Bold(s)
+
+  // Aliases for backward compatibility
+  private val Red    = Colors.Error
+  private val Green  = Colors.Success
+  private val Yellow = Colors.Warning
+  private val Blue   = Colors.Info
+  private val Cyan   = Colors.Accent
+  private val Bold   = Colors.Bold
+  private val Reset  = Colors.Reset
 
   /** Format a success message. */
   def success(message: String, format: OutputFormat): String =
@@ -96,7 +113,7 @@ object Output:
   ): String =
     format match
       case OutputFormat.Human =>
-        val header = s"${Yellow(Bold("⏸"))} Execution suspended (ID: ${executionId.take(8)}...)\n"
+        val header = s"${Yellow(Bold("⏸"))} Execution suspended (ID: ${StringUtils.idPreview(executionId)})\n"
         val body = if missingInputs.nonEmpty then
           s"  Missing inputs:\n" + missingInputs.map { case (name, typ) =>
             s"    ${Cyan(name)}: ${Yellow(typ)}"
