@@ -5,6 +5,31 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Constellation CLI v1** (RFC-021): Complete command-line interface for pipeline operations
+  - `compile <file>`: Type-check pipeline files with JSON output support
+  - `run <file>`: Execute pipelines with `--input key=value` and `--input-file` options
+  - `viz <file>`: Generate DAG visualizations in DOT, JSON, or Mermaid format
+  - `server health/pipelines/executions/metrics`: Server operations and monitoring
+  - `deploy push/canary/promote/rollback/status`: Pipeline deployment and canary releases
+  - `config show/get/set`: CLI configuration management
+  - Configuration precedence: CLI flags > env vars > config file > defaults
+  - Exit codes following RFC-021 specification (0-6, 10)
+- **CLI Security Features**: Error message sanitization, atomic config writes, path traversal mitigation, input file size limits (10MB)
+- **StringUtils**: Safe string truncation and error sanitization utilities
+- **Dynamic CLI Version**: Version loaded from build-generated resource file
+- **Exit Code 6 (CONFLICT)**: For resource conflicts like active canary deployments
+
+### Fixed
+- **CLI QA Issues**: Removed unimplemented `--watch` flag, improved error handling consistency
+
+### Documentation
+- **CLI User Guide**: Complete documentation at `website/docs/tooling/cli.md`
+- **Organon CLI Docs**: Component README, ETHOS with security invariants, feature documentation
+- **RFC-021 Updates**: Removed deprecated watch mode, added CONFLICT exit code
+
 ## [0.5.0] - 2026-02-06
 
 ### Added
