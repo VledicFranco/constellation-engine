@@ -139,6 +139,51 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     result.left.toOption.get.getMessage should include("Expected CValue.CString")
   }
 
+  it should "fail on Long extractor type mismatch" in {
+    val result = summon[CValueExtractor[Long]].extract(CValue.CString("x")).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CInt")
+  }
+
+  it should "fail on Double extractor type mismatch" in {
+    val result =
+      summon[CValueExtractor[Double]].extract(CValue.CString("x")).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CFloat")
+  }
+
+  it should "fail on Boolean extractor type mismatch" in {
+    val result =
+      summon[CValueExtractor[Boolean]].extract(CValue.CString("x")).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CBoolean")
+  }
+
+  it should "fail on Vector extractor type mismatch" in {
+    val result =
+      summon[CValueExtractor[Vector[Long]]].extract(CValue.CString("x")).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CList")
+  }
+
+  it should "fail on Map extractor type mismatch" in {
+    val result = summon[CValueExtractor[Map[String, Long]]]
+      .extract(CValue.CString("x"))
+      .attempt
+      .unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CMap")
+  }
+
+  it should "fail on Option extractor type mismatch" in {
+    val result = summon[CValueExtractor[Option[String]]]
+      .extract(CValue.CString("x"))
+      .attempt
+      .unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.toOption.get.getMessage should include("Expected CValue.CSome or CValue.CNone")
+  }
+
   "CValue" should "report correct ctype" in {
     CValue.CString("test").ctype shouldBe CType.CString
     CValue.CInt(1L).ctype shouldBe CType.CInt

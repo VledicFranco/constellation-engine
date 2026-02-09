@@ -557,4 +557,158 @@ class PriorityStatsTest extends AnyFlatSpec with Matchers {
 
     stats.pendingCount shouldBe 2
   }
+
+  it should "return 0 avg duration when no completions" in {
+    val stats = PriorityStats.empty
+    stats.avgDurationMs shouldBe 0
+  }
+}
+
+// ============================================================================
+// ConcurrencyStats Tests
+// ============================================================================
+
+class ConcurrencyStatsTest extends AnyFlatSpec with Matchers {
+
+  "ConcurrencyStats" should "compute utilization" in {
+    val stats = ConcurrencyStats(
+      maxConcurrent = 10,
+      currentActive = 5,
+      peakActive = 8,
+      totalExecutions = 100,
+      currentWaiting = 2,
+      availablePermits = 5
+    )
+    stats.utilization shouldBe 0.5
+    stats.peakUtilization shouldBe 0.8
+  }
+
+  it should "produce readable toString" in {
+    val stats = ConcurrencyStats(
+      maxConcurrent = 4,
+      currentActive = 2,
+      peakActive = 3,
+      totalExecutions = 10,
+      currentWaiting = 0,
+      availablePermits = 2
+    )
+    val str = stats.toString
+    str should include("active=2/4")
+    str should include("peak=3")
+    str should include("total=10")
+    str should include("waiting=0")
+  }
+}
+
+// ============================================================================
+// ConcurrencyLimiter Additional Tests
+// ============================================================================
+
+class ConcurrencyLimiterAdditionalTest extends AnyFlatSpec with Matchers {
+
+  "ConcurrencyLimiter" should "track stats correctly" in {
+    val result = (for {
+      limiter <- ConcurrencyLimiter(3)
+      _       <- limiter.withPermit(IO.pure(1))
+      _       <- limiter.withPermit(IO.pure(2))
+      stats   <- limiter.stats
+    } yield stats).unsafeRunSync()
+
+    result.totalExecutions shouldBe 2
+    result.currentActive shouldBe 0
+    result.maxConcurrent shouldBe 3
+  }
+
+  it should "track peak active" in {
+    val result = (for {
+      limiter <- ConcurrencyLimiter(10)
+      _       <- List.fill(5)(limiter.withPermit(IO.sleep(50.millis))).parSequence
+      stats   <- limiter.stats
+    } yield stats).unsafeRunSync()
+
+    result.peakActive should be >= 2L
+    result.totalExecutions shouldBe 5
+  }
+
+  it should "support tryAcquire" in {
+    val result = (for {
+      limiter  <- ConcurrencyLimiter(1)
+      _        <- limiter.acquire
+      acquired <- limiter.tryAcquire
+      _        <- limiter.release
+      acquired2 <- limiter.tryAcquire
+      _         <- limiter.release
+    } yield (acquired, acquired2)).unsafeRunSync()
+
+    result shouldBe (false, true)
+  }
+
+  it should "report active and available" in {
+    val result = (for {
+      limiter   <- ConcurrencyLimiter(3)
+      _         <- limiter.acquire
+      active    <- limiter.active
+      available <- limiter.available
+      _         <- limiter.release
+    } yield (active, available)).unsafeRunSync()
+
+    result shouldBe (1L, 2L)
+  }
+
+  it should "reset stats" in {
+    val result = (for {
+      limiter <- ConcurrencyLimiter(5)
+      _       <- limiter.withPermit(IO.pure(1))
+      _       <- limiter.withPermit(IO.pure(2))
+      before  <- limiter.stats
+      _       <- limiter.resetStats
+      after   <- limiter.stats
+    } yield (before.totalExecutions, after.totalExecutions)).unsafeRunSync()
+
+    result shouldBe (2L, 0L)
+  }
+
+  it should "create mutex" in {
+    val result = (for {
+      limiter   <- ConcurrencyLimiter.mutex
+      available <- limiter.available
+    } yield available).unsafeRunSync()
+
+    result shouldBe 1L
+  }
+}
+
+// ============================================================================
+// RateLimit toString and RateLimiterStats toString Tests
+// ============================================================================
+
+class RateLimitToStringTest extends AnyFlatSpec with Matchers {
+
+  "RateLimit.toString" should "include count and period" in {
+    val rate = RateLimit(100, 1.second)
+    val str = rate.toString
+    str should include("100")
+  }
+
+  "RateLimiterStats.fillRatio" should "compute correctly" in {
+    val rate = RateLimit(100, 1.second)
+    val stats = RateLimiterStats(
+      availableTokens = 50.0,
+      maxTokens = 100.0,
+      rate = rate
+    )
+    stats.fillRatio shouldBe 0.5
+  }
+
+  "RateLimiterStats.toString" should "produce readable output" in {
+    val rate = RateLimit(100, 1.second)
+    val stats = RateLimiterStats(
+      availableTokens = 50.0,
+      maxTokens = 100.0,
+      rate = rate
+    )
+    val str = stats.toString
+    str should include("50.0")
+    str should include("100")
+  }
 }

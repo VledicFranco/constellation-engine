@@ -200,3 +200,78 @@ class OutputTest extends AnyFunSuite with Matchers:
     json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(false)
     json.toOption.get.hcursor.downField("error").as[String] shouldBe Right("connection_error")
     json.toOption.get.hcursor.downField("url").as[String] shouldBe Right("http://test.com")
+
+  // ============= Info Message Tests =============
+
+  test("info: human format includes info symbol"):
+    val result = Output.info("Build started", OutputFormat.Human)
+    result should include("ℹ")
+    result should include("Build started")
+
+  test("info: JSON format is valid JSON"):
+    val result = Output.info("Processing", OutputFormat.Json)
+    val json   = parse(result)
+    json shouldBe a[Right[?, ?]]
+    json.toOption.get.hcursor.downField("info").as[String] shouldBe Right("Processing")
+
+  // ============= Config Value Tests =============
+
+  test("configValue: human format shows key = value"):
+    val result = Output.configValue("server.url", Some("http://localhost:8080"), OutputFormat.Human)
+    result should include("server.url")
+    result should include("http://localhost:8080")
+
+  test("configValue: human format shows warning for missing key"):
+    val result = Output.configValue("server.unknown", None, OutputFormat.Human)
+    result should include("not found")
+
+  test("configValue: JSON format for existing value"):
+    val result = Output.configValue("server.url", Some("http://test.com"), OutputFormat.Json)
+    val json   = parse(result)
+    json shouldBe a[Right[?, ?]]
+    json.toOption.get.hcursor.downField("key").as[String] shouldBe Right("server.url")
+    json.toOption.get.hcursor.downField("value").as[String] shouldBe Right("http://test.com")
+
+  test("configValue: JSON format for missing value"):
+    val result = Output.configValue("missing.key", None, OutputFormat.Json)
+    val json   = parse(result)
+    json shouldBe a[Right[?, ?]]
+
+  // ============= Health Unhealthy Tests =============
+
+  test("health: human format for unhealthy server"):
+    val result = Output.health("error", None, None, None, OutputFormat.Human)
+    result should include("✗")
+    result should include("error")
+
+  test("health: human format with minimal info"):
+    val result = Output.health("ok", None, None, None, OutputFormat.Human)
+    result should include("✓")
+
+  // ============= Suspended Edge Cases =============
+
+  test("suspended: human format with empty missing inputs"):
+    val result = Output.suspended("exec-123", Map.empty, OutputFormat.Human)
+    result should include("⏸")
+
+  test("suspended: JSON format with empty missing inputs"):
+    val result = Output.suspended("exec-456", Map.empty, OutputFormat.Json)
+    val json   = parse(result)
+    json shouldBe a[Right[?, ?]]
+    json.toOption.get.hcursor.downField("status").as[String] shouldBe Right("suspended")
+
+  // ============= Outputs Edge Cases =============
+
+  test("outputs: JSON format with empty results"):
+    val result = Output.outputs(Map.empty, OutputFormat.Json)
+    val json   = parse(result)
+    json shouldBe a[Right[?, ?]]
+    json.toOption.get.hcursor.downField("success").as[Boolean] shouldBe Right(true)
+
+  // ============= Compilation Errors Edge Cases =============
+
+  test("compilationErrors: human format single error"):
+    val errors = List("Single error")
+    val result = Output.compilationErrors(errors, OutputFormat.Human)
+    result should include("1 error(s)")
+    result should include("Single error")
