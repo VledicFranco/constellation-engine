@@ -2,8 +2,8 @@ package io.constellation.execution
 
 import scala.concurrent.duration.*
 
-import cats.effect.{Deferred, IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
 
 import org.scalatest.flatspec.AnyFlatSpec

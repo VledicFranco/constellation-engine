@@ -34,7 +34,7 @@ This file contains actionable rules that Claude must follow when working on this
 
 ## Git Hooks
 
-**Install Git hooks for automatic code formatting:**
+**Install Git hooks for automatic code quality checks:**
 
 ```bash
 # Unix/macOS
@@ -46,15 +46,16 @@ This file contains actionable rules that Claude must follow when working on this
 
 **What it does:**
 - Automatically runs `scalafmt` on staged Scala files before commit
-- Re-stages formatted files
-- Prevents CI/CD failures due to formatting issues
+- Automatically runs `scalafix` to fix linting issues
+- Re-stages formatted/fixed files
+- Prevents CI/CD failures due to formatting and linting issues
 
 **Bypass hook (not recommended):**
 ```bash
 git commit --no-verify
 ```
 
-**IMPORTANT:** Run the install script once after cloning the repository. The pre-commit hook ensures all Scala code is properly formatted before committing, preventing CI/CD failures.
+**IMPORTANT:** Run the install script once after cloning the repository. The pre-commit hook ensures all Scala code passes `scalafmt` and `scalafix` checks before committing, preventing CI/CD failures.
 
 ## Server Endpoints
 

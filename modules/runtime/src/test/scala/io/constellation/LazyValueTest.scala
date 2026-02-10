@@ -1,7 +1,6 @@
 package io.constellation
 
 import io.circe.Json
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -1,10 +1,10 @@
 package io.constellation.http
 
+import io.constellation.http.DashboardModels.*
+
 import io.circe.Json
 import io.circe.parser.decode
 import io.circe.syntax.*
-import io.constellation.http.DashboardModels.*
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

@@ -4,10 +4,10 @@ import java.util.UUID
 
 import scala.concurrent.duration.*
 
+import io.constellation.execution.{ModuleTimeoutException, RetryExhaustedException}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import io.constellation.execution.{ModuleTimeoutException, RetryExhaustedException}
 
 class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
 

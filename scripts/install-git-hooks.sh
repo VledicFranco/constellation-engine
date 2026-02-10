@@ -9,23 +9,28 @@ HOOKS_DIR="$REPO_ROOT/.git/hooks"
 
 echo "Installing Git hooks..."
 
-# Pre-commit hook for scalafmt
+# Pre-commit hook for scalafmt and scalafix
 cat > "$HOOKS_DIR/pre-commit" << 'EOF'
 #!/usr/bin/env bash
 set -e
 
-echo "Running scalafmt on staged Scala files..."
+echo "Running code quality checks on staged Scala files..."
 
 # Get list of staged Scala files
 STAGED_SCALA_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.scala$' || true)
 
 if [ -z "$STAGED_SCALA_FILES" ]; then
-  echo "No Scala files staged, skipping scalafmt"
+  echo "No Scala files staged, skipping checks"
   exit 0
 fi
 
-echo "Formatting staged Scala files..."
+echo "1/2 Running scalafmt..."
 sbt scalafmtAll > /dev/null 2>&1
+echo "✓ scalafmt completed"
+
+echo "2/2 Running scalafix..."
+sbt scalafixAll > /dev/null 2>&1
+echo "✓ scalafix completed"
 
 # Re-stage formatted files
 for file in $STAGED_SCALA_FILES; do
@@ -34,7 +39,7 @@ for file in $STAGED_SCALA_FILES; do
   fi
 done
 
-echo "✓ Scala files formatted successfully"
+echo "✓ All code quality checks passed!"
 exit 0
 EOF
 
@@ -42,5 +47,5 @@ chmod +x "$HOOKS_DIR/pre-commit"
 
 echo "✓ Pre-commit hook installed successfully!"
 echo ""
-echo "The hook will automatically format Scala files before each commit."
+echo "The hook will automatically run scalafmt and scalafix before each commit."
 echo "To bypass the hook (not recommended), use: git commit --no-verify"

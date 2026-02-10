@@ -1,9 +1,9 @@
 package io.constellation.cli
 
-import io.circe.Json
-import io.circe.parser.decode
 import io.constellation.cli.models.ApiModels.*
 
+import io.circe.Json
+import io.circe.parser.decode
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 

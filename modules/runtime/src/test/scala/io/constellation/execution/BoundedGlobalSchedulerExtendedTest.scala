@@ -5,8 +5,8 @@ import java.util.concurrent.atomic.{AtomicInteger, AtomicLong}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.*
 
-import cats.effect.{Deferred, IO}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{Deferred, IO}
 import cats.implicits.*
 
 import io.constellation.RetrySupport
