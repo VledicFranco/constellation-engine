@@ -111,11 +111,11 @@ modules/
 
 ## Proposed Solution
 
-### 1. Hot vs Cold TypeScript Modules
+### 1. Static vs Dynamic TypeScript Modules
 
-Following the hot/cold pipeline pattern, TypeScript modules come in two flavors:
+TypeScript modules come in two flavors, matching different deployment patterns:
 
-#### **Hot Modules** (Pre-compiled, Startup)
+#### **Static Modules** (Pre-compiled, Startup)
 
 ```scala
 // At application startup
@@ -123,7 +123,7 @@ import io.constellation.tsruntime.TSModuleLoader
 
 val tsLoader = TSModuleLoader.init(
   modulesDir = Path.of("modules/typescript/"),
-  mode = TSModuleLoader.Hot
+  mode = TSModuleLoader.Static
 )
 
 for {
@@ -138,7 +138,7 @@ for {
 - ~1ms execution overhead (same as Scala modules)
 - Used for production modules
 
-#### **Cold Modules** (On-Demand, Dynamic)
+#### **Dynamic Modules** (On-Demand, Runtime)
 
 ```scala
 // Via HTTP API or programmatically
@@ -149,7 +149,7 @@ val source = """
 """
 
 for {
-  module <- tsLoader.loadColdModule("Doubler", source)
+  module <- tsLoader.loadDynamicModule("Doubler", source)
   _ <- constellation.setModule(module)
 } yield ()
 ```
@@ -281,7 +281,7 @@ object TypeMarshaller {
 
 ### 4. HTTP API Integration (Optional)
 
-#### **Upload Cold Module**
+#### **Upload Dynamic Module**
 
 ```bash
 POST /modules/typescript
@@ -290,7 +290,7 @@ Content-Type: application/json
 {
   "name": "CustomProcessor",
   "source": "export function execute(input) { return { result: input.value * 2 }; }",
-  "hot": false
+  "static": false
 }
 ```
 
@@ -299,13 +299,13 @@ Response:
 {
   "status": "registered",
   "name": "CustomProcessor",
-  "type": "cold",
+  "type": "dynamic",
   "firstCallLatency": "~50ms",
   "warmedUpLatency": "~2ms"
 }
 ```
 
-#### **Reload Cold Module**
+#### **Reload Dynamic Module**
 
 ```bash
 PUT /modules/typescript/CustomProcessor
@@ -337,7 +337,7 @@ Response:
   "modules": [
     {
       "name": "TextProcessor",
-      "type": "hot",
+      "type": "static",
       "version": "1.0.0",
       "loaded": "2026-02-10T08:00:00Z",
       "calls": 1523,
@@ -345,7 +345,7 @@ Response:
     },
     {
       "name": "CustomProcessor",
-      "type": "cold",
+      "type": "dynamic",
       "uploaded": "2026-02-10T09:30:00Z",
       "calls": 42,
       "avgLatency": "2.5ms"
@@ -383,8 +383,8 @@ Response:
      context: Context,
      constellation: Constellation
    ) {
-     def loadHotModule(path: Path): IO[Module.Uninitialized]
-     def loadColdModule(name: String, source: String): IO[Module.Uninitialized]
+     def loadStaticModule(path: Path): IO[Module.Uninitialized]
+     def loadDynamicModule(name: String, source: String): IO[Module.Uninitialized]
    }
    ```
 
@@ -406,7 +406,7 @@ Response:
      """
 
      for {
-       module <- loader.loadColdModule("Doubler", source)
+       module <- loader.loadDynamicModule("Doubler", source)
        _ <- constellation.setModule(module)
        result <- constellation.run(...)
      } yield {
@@ -420,13 +420,13 @@ Response:
 - ✅ Can execute module and get result
 - ✅ Type marshalling works for primitives and records
 
-### Phase 2: Hot vs Cold (Week 2)
+### Phase 2: Static vs Dynamic (Week 2)
 
-**Goal:** Implement hot/cold distinction with performance benchmarks
+**Goal:** Implement static/dynamic distinction with performance benchmarks
 
-1. **Hot module loader**
+1. **Static module loader**
    ```scala
-   def loadHotModules(dir: Path): IO[List[Module.Uninitialized]] = {
+   def loadStaticModules(dir: Path): IO[List[Module.Uninitialized]] = {
      for {
        files <- listTSFiles(dir)
        modules <- files.parTraverse { file =>
@@ -434,7 +434,7 @@ Response:
            source <- IO(Files.readString(file))
            // AOT compile for performance
            compiled <- compileAOT(source)
-           module <- createHotModule(file, compiled)
+           module <- createStaticModule(file, compiled)
          } yield module
        }
      } yield modules
@@ -443,10 +443,10 @@ Response:
 
 2. **Cold module loader with hot-reload**
    ```scala
-   def reloadColdModule(name: String, source: String): IO[Unit] = {
+   def reloadDynamicModule(name: String, source: String): IO[Unit] = {
      for {
        _ <- removeModule(name)
-       module <- loadColdModule(name, source)
+       module <- loadDynamicModule(name, source)
        _ <- constellation.setModule(module)
      } yield ()
    }
@@ -454,23 +454,23 @@ Response:
 
 3. **Benchmarks**
    ```scala
-   benchmark("hot module execution") {
+   benchmark("static module execution") {
      // Target: <1ms per call
    }
 
-   benchmark("cold module first call") {
+   benchmark("dynamic module first call") {
      // Target: <50ms
    }
 
-   benchmark("cold module warmed up") {
+   benchmark("dynamic module warmed up") {
      // Target: <5ms
    }
    ```
 
 **Success Criteria:**
-- ✅ Hot modules execute in <1ms
-- ✅ Cold modules warm up within 5 calls
-- ✅ Can reload cold modules without restart
+- ✅ Static modules execute in <1ms
+- ✅ Dynamic modules warm up within 5 calls
+- ✅ Can reload dynamic modules without restart
 
 ### Phase 3: HTTP API Integration (Week 3)
 
@@ -479,10 +479,10 @@ Response:
 1. **Add routes to `ConstellationRoutes`**
    ```scala
    case req @ POST -> Root / "modules" / "typescript" =>
-     // Upload cold module
+     // Upload dynamic module
 
    case req @ PUT -> Root / "modules" / "typescript" / name =>
-     // Reload cold module
+     // Reload dynamic module
 
    case GET -> Root / "modules" / "typescript" =>
      // List TypeScript modules
@@ -528,7 +528,7 @@ Response:
 
 2. **Update documentation**
    - Add guide: "Writing TypeScript Modules"
-   - Add guide: "Hot vs Cold Modules"
+   - Add guide: "Static vs Dynamic Modules"
    - Update HTTP API docs
 
 3. **Create sample application**
@@ -621,7 +621,7 @@ object Features {
 // Graceful degradation
 if (Features.hasTypeScriptSupport) {
   logger.info("TypeScript module support enabled")
-  tsLoader.loadHotModules(Path.of("modules/ts/"))
+  tsLoader.loadStaticModules(Path.of("modules/ts/"))
 } else {
   logger.info("TypeScript module support not available (ts-runtime not in classpath)")
 }
@@ -637,7 +637,7 @@ if (Features.hasTypeScriptSupport) {
 |--------|-----|-----|
 | **Distribution Size** | Users without TS pay no cost | TS distribution is 100MB larger |
 | **Type Safety** | Enables rapid prototyping | No compile-time type checking |
-| **Performance** | Hot modules = native speed | Cold modules have ~2-5ms overhead |
+| **Performance** | Static modules = native speed | Dynamic modules have ~2-5ms overhead |
 | **Ecosystem** | Access to npm ecosystem | Need to vet security of TS modules |
 | **Complexity** | Plugin system for users | More moving parts to maintain |
 
@@ -712,15 +712,15 @@ val context = Context.newBuilder("js")
   .build()
 ```
 
-### Code Review for Hot Modules
+### Code Review for Static Modules
 
-Hot modules (loaded at startup) should be:
+Static modules (loaded at startup) should be:
 - ✅ Stored in version control
 - ✅ Code-reviewed like Scala modules
 - ✅ Scanned for security issues
 - ✅ Not user-uploaded
 
-Cold modules (dynamic) should be:
+Dynamic modules (dynamic) should be:
 - ⚠️ Treated as untrusted code
 - ⚠️ Sandboxed with resource limits
 - ⚠️ Rate-limited per user/IP
@@ -751,16 +751,16 @@ case req @ POST -> Root / "modules" / "typescript" =>
 - ✅ Load TypeScript module from string
 - ✅ Execute TypeScript module and return result
 - ✅ Type marshalling for primitives, records, lists
-- ✅ Hot vs cold module distinction
-- ✅ HTTP API to upload cold modules
+- ✅ Static vs dynamic module distinction
+- ✅ HTTP API to upload dynamic modules
 - ✅ Basic sandboxing (no filesystem access)
 - ✅ Documentation with examples
 - ✅ Optional dependency (doesn't bloat standard distribution)
 
 ### Should Have (Enhanced POC)
 
-- ✅ Hot-reload cold modules without restart
-- ✅ Performance benchmarks (hot: <1ms, cold: <5ms warmed up)
+- ✅ Hot-reload dynamic modules without restart
+- ✅ Performance benchmarks (static: <1ms, dynamic: <5ms warmed up)
 - ✅ Memory/CPU resource limits
 - ✅ Module metadata tracking (calls, latency)
 - ✅ List TypeScript modules endpoint
@@ -793,7 +793,7 @@ case req @ POST -> Root / "modules" / "typescript" =>
 | Week | Focus | Deliverables |
 |------|-------|--------------|
 | **Week 1** | Core Infrastructure | TSModuleLoader, type marshalling, basic tests |
-| **Week 2** | Hot/Cold Implementation | Performance optimization, benchmarks |
+| **Week 2** | Static/Dynamic Implementation | Performance optimization, benchmarks |
 | **Week 3** | HTTP API Integration | Upload/reload endpoints, sandboxing |
 | **Week 4** | Documentation & Polish | Examples, docs, sample app |
 
@@ -838,9 +838,9 @@ If POC is successful, production readiness requires:
    - Pre-compilation: Faster, but extra build step
    - **Recommendation:** Require pre-compilation for POC (users run `tsc` first)
 
-5. **What's the upgrade path from cold → hot modules?**
-   - When should a cold module "graduate" to hot?
-   - **Recommendation:** Manual promotion - user copies to hot modules directory
+5. **What's the upgrade path from dynamic → static modules?**
+   - When should a dynamic module "graduate" to static?
+   - **Recommendation:** Manual promotion - user copies to static modules directory
 
 ---
 
@@ -848,7 +848,7 @@ If POC is successful, production readiness requires:
 
 1. **Review this RFC** - Get feedback from stakeholders
 2. **Prototype Week 1** - Build core TSModuleLoader to validate feasibility
-3. **Performance benchmarks** - Verify hot modules achieve <1ms target
+3. **Performance benchmarks** - Verify static modules achieve <1ms target
 4. **Security review** - Validate GraalVM sandboxing is sufficient
 5. **Go/No-Go decision** - After Week 1, decide if POC is viable
 
@@ -859,7 +859,7 @@ If POC is successful, production readiness requires:
 - [GraalVM Polyglot API](https://www.graalvm.org/latest/reference-manual/embed-languages/)
 - [GraalVM JavaScript Runtime](https://www.graalvm.org/javascript/)
 - [Constellation Module System](../website/docs/llm/patterns/module-development.md)
-- [Hot vs Cold Pipelines](../website/docs/llm/foundations/execution-modes.md)
+- [Pipeline Execution Modes](../website/docs/llm/foundations/execution-modes.md)
 
 ---
 
@@ -998,8 +998,8 @@ export async function execute(input: {
 
 TypeScript module support enables Constellation to tap into the massive JavaScript/TypeScript ecosystem while maintaining its core strengths of type safety and performance. By making it **optional and pluggable**, we avoid forcing GraalVM overhead on users who don't need it.
 
-The hot/cold module pattern provides the best of both worlds:
-- **Hot modules** for production (native performance)
-- **Cold modules** for development and plugins (flexibility)
+The static/dynamic module pattern provides the best of both worlds:
+- **Static modules** for production (native performance)
+- **Dynamic modules** for development and plugins (flexibility)
 
 This POC will validate the technical feasibility and user demand before committing to production-grade implementation.
