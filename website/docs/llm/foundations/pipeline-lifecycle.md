@@ -1603,5 +1603,3 @@ Now that you understand the pipeline lifecycle:
 
 1. **[Module Development](../patterns/module-development.md)** - Create reusable modules
 2. **[Error Handling](../patterns/error-handling.md)** - Gracefully handle failures
-3. **[Performance Tuning](../patterns/performance-tuning.md)** - Optimize execution
-4. **[Testing Strategies](../patterns/testing-strategies.md)** - Ensure correctness

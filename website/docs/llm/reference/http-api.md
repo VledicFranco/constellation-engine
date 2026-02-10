@@ -1965,7 +1965,7 @@ Language Server Protocol endpoint for IDE integration. Provides real-time diagno
 
 **Protocol:** JSON-RPC 2.0 over WebSocket
 
-See [LSP WebSocket Documentation](./lsp-websocket.md) for full protocol details.
+See [LSP WebSocket Documentation](../../api-reference/lsp-websocket.md) for full protocol details.
 
 **Example (JavaScript):**
 

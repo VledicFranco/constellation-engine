@@ -508,6 +508,5 @@ sbt "langLsp/testOnly *CompletionSpec"
 ## See Also
 
 - [Architecture Overview](../architecture/technical-architecture.md)
-- [Development Workflow](../getting-started/development-setup.md)
 - [CLAUDE.md](../../CLAUDE.md) - Full development rules
 - [Contributing Guide](../../CONTRIBUTING.md)

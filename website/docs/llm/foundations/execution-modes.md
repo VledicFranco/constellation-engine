@@ -1297,8 +1297,5 @@ jmap -dump:format=b,file=heap.bin <pid>
 
 ## Next Steps
 
-- [Performance Tuning Guide](../operations/performance-tuning.md) — Scheduler, circuit breakers, timeouts
-- [Embedding Guide](../getting-started/embedding-guide.md) — Complete embedded API reference
-- [HTTP API Reference](../api-reference/http-api.md) — Full endpoint documentation
-- [Caching Deep Dive](../architecture/caching.md) — How compilation caching works
-- [Scheduler Architecture](../operations/scheduler.md) — Priority-based task scheduling
+- [Embedding Guide](../../getting-started/embedding-guide.md) — Complete embedded API reference
+- [HTTP API Reference](../../api-reference/http-api-overview.md) — Full endpoint documentation

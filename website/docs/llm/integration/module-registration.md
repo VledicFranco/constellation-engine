@@ -1440,6 +1440,6 @@ modules.traverse(constellation.setModule)
 ## See Also
 
 - **[ModuleBuilder Reference](../patterns/module-development.md)** - Building modules
-- **[Type System Reference](../type-syntax.md)** - Type signatures
-- **[HTTP API Reference](../http-api.md)** - Exposing modules via API
-- **[Error Codes](../error-codes.md)** - Registration error codes
+- **[Type System Reference](../reference/type-syntax.md)** - Type signatures
+- **[HTTP API Reference](../reference/http-api.md)** - Exposing modules via API
+- **[Error Codes](../reference/error-codes.md)** - Registration error codes

@@ -1665,4 +1665,3 @@ out result
 - [Error Reference](../../api-reference/error-reference.md) — Complete error catalog
 - [Type System](../../language/types.md) — Understanding constellation-lang types
 - [Module Options](../../language/module-options.md) — Error handling with options (retry, fallback, etc.)
-- [Testing Strategies](./testing.md) — Testing error scenarios

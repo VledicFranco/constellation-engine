@@ -1549,7 +1549,6 @@ Error Occurred
 - [Error Handling Patterns](../patterns/error-handling.md) — Comprehensive error handling guide
 - [Type System](../../language/types.md) — Understanding constellation-lang types
 - [Module Options](../../language/module-options.md) — Error handling with retry, fallback, etc.
-- [Testing Strategies](../patterns/testing.md) — Testing error scenarios
 
 ---
 

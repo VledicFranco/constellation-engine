@@ -1705,8 +1705,8 @@ Use this checklist for every external module call:
 - **[cache option](../../language/options/cache.md)** - Detailed cache documentation
 - **[fallback option](../../language/options/fallback.md)** - Detailed fallback documentation
 - **[Retry and Fallback Cookbook](../../cookbook/retry-and-fallback.md)** - Working examples
-- **[Caching Cookbook](../../../cookbook/caching.md)** - Caching examples
-- **[Resilient Pipeline Cookbook](../../../cookbook/resilient-pipeline.md)** - Full pipeline example
+- **[Caching Cookbook](../../cookbook/caching.md)** - Caching examples
+- **[Resilient Pipeline Cookbook](../../cookbook/resilient-pipeline.md)** - Full pipeline example
 
 ---
 
