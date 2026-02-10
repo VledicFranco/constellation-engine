@@ -714,4 +714,230 @@ class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
     val result = JsonCValueConverter.rawValueToJson(value, CType.COptional(CType.CInt))
     result shouldBe Json.Null
   }
+
+  // ============================================================
+  // jsonToRawValue - Primitive Error Paths
+  // ============================================================
+
+  "jsonToRawValue error paths" should "fail when expecting String but got number" in {
+    val json   = Json.fromInt(42)
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CString)
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected String")) shouldBe true
+    result.left.exists(_.contains("number")) shouldBe true
+  }
+
+  it should "fail when expecting Int but got string" in {
+    val json   = Json.fromString("not a number")
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CInt)
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Int")) shouldBe true
+    result.left.exists(_.contains("string")) shouldBe true
+  }
+
+  it should "fail when expecting Float but got string" in {
+    val json   = Json.fromString("3.14")
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CFloat)
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Float")) shouldBe true
+    result.left.exists(_.contains("string")) shouldBe true
+  }
+
+  it should "fail when expecting Boolean but got number" in {
+    val json   = Json.fromInt(1)
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CBoolean)
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Boolean")) shouldBe true
+    result.left.exists(_.contains("number")) shouldBe true
+  }
+
+  // ============================================================
+  // jsonToRawValue - List Non-Array Error Paths
+  // ============================================================
+
+  it should "fail when non-array for Int list" in {
+    val json   = Json.fromString("not an array")
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CList(CType.CInt))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array")) shouldBe true
+  }
+
+  it should "fail when non-array for Float list" in {
+    val json   = Json.fromInt(42)
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CList(CType.CFloat))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array")) shouldBe true
+  }
+
+  it should "fail when non-array for String list" in {
+    val json   = Json.fromBoolean(true)
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CList(CType.CString))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array")) shouldBe true
+  }
+
+  it should "fail when non-array for Boolean list" in {
+    val json   = Json.obj("key" -> Json.fromBoolean(true))
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CList(CType.CBoolean))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array")) shouldBe true
+  }
+
+  it should "fail when non-array for generic list" in {
+    val nestedType = CType.CList(CType.CList(CType.CInt))
+    val json       = Json.fromString("not an array")
+    val result     = JsonCValueConverter.jsonToRawValue(json, nestedType)
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array")) shouldBe true
+  }
+
+  // ============================================================
+  // jsonToRawValue - Map Error Paths
+  // ============================================================
+
+  it should "fail with non-object non-array for CMap" in {
+    val json   = Json.fromString("not a map")
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CMap(CType.CString, CType.CInt))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array or Object")) shouldBe true
+  }
+
+  it should "fail when CMap pair format has invalid pair (not 2 elements)" in {
+    val json = Json.arr(
+      Json.arr(Json.fromInt(1), Json.fromString("one")),
+      Json.arr(Json.fromInt(2)) // Only one element - invalid pair
+    )
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CMap(CType.CInt, CType.CString))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected [key, value] pair")) shouldBe true
+  }
+
+  it should "fail when value type mismatch in string-key CMap" in {
+    val json   = Json.obj("a" -> Json.fromString("not an int"))
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CMap(CType.CString, CType.CInt))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Int")) shouldBe true
+  }
+
+  // ============================================================
+  // jsonToRawValue - Product Error Paths
+  // ============================================================
+
+  it should "fail when Product field is missing in RawValue path" in {
+    val structure = Map("name" -> CType.CString, "age" -> CType.CInt)
+    val json      = Json.obj("name" -> Json.fromString("Alice")) // Missing age
+    val result    = JsonCValueConverter.jsonToRawValue(json, CType.CProduct(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("missing required field 'age'")) shouldBe true
+  }
+
+  it should "fail when non-object for Product in RawValue path" in {
+    val structure = Map("name" -> CType.CString)
+    val json      = Json.arr(Json.fromString("Alice"))
+    val result    = JsonCValueConverter.jsonToRawValue(json, CType.CProduct(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Object")) shouldBe true
+  }
+
+  // ============================================================
+  // jsonToRawValue - Union Error Paths
+  // ============================================================
+
+  it should "fail when invalid tag in RawValue Union path" in {
+    val structure = Map("str" -> CType.CString, "num" -> CType.CInt)
+    val json = Json.obj("tag" -> Json.fromString("unknown"), "value" -> Json.fromString("hello"))
+    val result = JsonCValueConverter.jsonToRawValue(json, CType.CUnion(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("invalid union tag 'unknown'")) shouldBe true
+  }
+
+  it should "fail when non-string tag in RawValue Union path" in {
+    val structure = Map("str" -> CType.CString)
+    val json      = Json.obj("tag" -> Json.fromInt(42), "value" -> Json.fromString("hello"))
+    val result    = JsonCValueConverter.jsonToRawValue(json, CType.CUnion(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("union tag must be a string")) shouldBe true
+  }
+
+  it should "fail when missing tag/value fields in RawValue Union path" in {
+    val structure = Map("str" -> CType.CString)
+    val json      = Json.obj("other" -> Json.fromString("no tag or value"))
+    val result    = JsonCValueConverter.jsonToRawValue(json, CType.CUnion(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("union must have 'tag' and 'value' fields")) shouldBe true
+  }
+
+  it should "fail when non-object for Union in RawValue path" in {
+    val structure = Map("str" -> CType.CString)
+    val json      = Json.fromString("not an object")
+    val result    = JsonCValueConverter.jsonToRawValue(json, CType.CUnion(structure))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Object with 'tag' and 'value'")) shouldBe true
+  }
+
+  // ============================================================
+  // convertAdaptive Tests
+  // ============================================================
+
+  "convertAdaptive" should "convert a simple CInt value" in {
+    val json   = Json.fromInt(99)
+    val result = JsonCValueConverter.convertAdaptive(json, CType.CInt)
+    result shouldBe Right(CValue.CInt(99))
+  }
+
+  it should "convert with explicit size hint" in {
+    val json   = Json.fromString("hello")
+    val result = JsonCValueConverter.convertAdaptive(json, CType.CString, 5)
+    result shouldBe Right(CValue.CString("hello"))
+  }
+
+  // ============================================================
+  // cValueToJson Edge Cases
+  // ============================================================
+
+  "cValueToJson edge cases" should "fall back to string representation for CFloat with NaN" in {
+    val value  = CValue.CFloat(Double.NaN)
+    val result = JsonCValueConverter.cValueToJson(value)
+    // Json.fromDouble(NaN) returns None, so it falls back to Json.fromString("NaN")
+    result shouldBe Json.fromString("NaN")
+  }
+
+  it should "fall back to string representation for CFloat with Infinity" in {
+    val value  = CValue.CFloat(Double.PositiveInfinity)
+    val result = JsonCValueConverter.cValueToJson(value)
+    result shouldBe Json.fromString("Infinity")
+  }
+
+  it should "fall back to string representation for CFloat with negative Infinity" in {
+    val value  = CValue.CFloat(Double.NegativeInfinity)
+    val result = JsonCValueConverter.cValueToJson(value)
+    result shouldBe Json.fromString("-Infinity")
+  }
+
+  // ============================================================
+  // jsonToCValue - Additional Error Paths
+  // ============================================================
+
+  "jsonToCValue additional errors" should "fail with non-object non-array for CMap with non-string keys" in {
+    // CMap with non-string keys goes to the `case _` branch after `json.asObject`,
+    // then tries json.asArray. Passing a non-object non-array triggers the final error.
+    val json   = Json.fromInt(42)
+    val result = JsonCValueConverter.jsonToCValue(json, CType.CMap(CType.CInt, CType.CString))
+    result.isLeft shouldBe true
+    result.left.exists(_.contains("expected Array or Object")) shouldBe true
+  }
+
+  it should "prefer most specific variant when multiple union variants match" in {
+    // Two record variants where one is a subset of the other
+    val structure = Map(
+      "small" -> CType.CProduct(Map("name" -> CType.CString)),
+      "large" -> CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
+    )
+    // JSON matches both variants, but "large" is more specific (2 fields vs 1)
+    val json   = Json.obj("name" -> Json.fromString("Alice"), "age" -> Json.fromInt(30))
+    val result = JsonCValueConverter.jsonToCValue(json, CType.CUnion(structure))
+    result.isRight shouldBe true
+    val union = result.toOption.get.asInstanceOf[CValue.CUnion]
+    union.tag shouldBe "large"
+  }
 }

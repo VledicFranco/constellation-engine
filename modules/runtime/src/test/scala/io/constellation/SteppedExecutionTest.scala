@@ -601,4 +601,164 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
     preview.length shouldBe 20
     preview should endWith("...")
   }
+
+  // ===== executeNextBatch with failing module =====
+
+  "executeNextBatch" should "mark module as Failed when execution throws" in {
+    val moduleId    = UUID.randomUUID()
+    val inputDataId = UUID.randomUUID()
+    val outputDataId = UUID.randomUUID()
+
+    case class FailInput(text: String)
+    case class FailOutput(result: String)
+
+    val failingModule = ModuleBuilder
+      .metadata("Failing", "Fails always", 1, 0)
+      .implementationPure[FailInput, FailOutput](_ => throw new RuntimeException("boom"))
+      .build
+
+    val dag = DagSpec(
+      metadata = ComponentMetadata.empty("FailDag"),
+      modules = Map(
+        moduleId -> ModuleNodeSpec(
+          metadata = ComponentMetadata("Failing", "Test", List.empty, 1, 0),
+          consumes = Map("text" -> CType.CString),
+          produces = Map("result" -> CType.CString)
+        )
+      ),
+      data = Map(
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
+        outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
+      ),
+      inEdges = Set((inputDataId, moduleId)),
+      outEdges = Set((moduleId, outputDataId))
+    )
+
+    val modules = Map(moduleId -> failingModule)
+    val inputs  = Map("input" -> CValue.CString("test"))
+
+    val session = SteppedExecution
+      .createSession("session", dag, Map.empty, modules, inputs)
+      .unsafeRunSync()
+
+    val initialized          = SteppedExecution.initializeRuntime(session).unsafeRunSync()
+    val (afterBatch, _)      = SteppedExecution.executeNextBatch(initialized).unsafeRunSync()
+
+    val moduleState = afterBatch.nodeStates(moduleId)
+    moduleState shouldBe a[SteppedExecution.NodeState.Failed]
+  }
+
+  it should "return true immediately when all batches already executed" in {
+    val dag = DagSpec.empty("EmptyDag")
+
+    val session = SteppedExecution
+      .createSession("session", dag, Map.empty, Map.empty, Map.empty)
+      .unsafeRunSync()
+
+    // Set currentBatchIndex beyond batches length
+    val completedSession = session.copy(currentBatchIndex = session.batches.length)
+
+    val (result, isComplete) = SteppedExecution.executeNextBatch(completedSession).unsafeRunSync()
+    isComplete shouldBe true
+    result.currentBatchIndex shouldBe completedSession.currentBatchIndex
+  }
+
+  // ===== validateRunIO error paths =====
+
+  "initializeRuntime" should "fail with unexpected input name" in {
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
+    val outputDataId = UUID.randomUUID()
+
+    val dag = DagSpec(
+      metadata = ComponentMetadata.empty("ValidateDag"),
+      modules = Map(
+        moduleId -> ModuleNodeSpec(
+          metadata = ComponentMetadata("Uppercase", "Test", List.empty, 1, 0),
+          consumes = Map("text" -> CType.CString),
+          produces = Map("result" -> CType.CString)
+        )
+      ),
+      data = Map(
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
+        outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
+      ),
+      inEdges = Set((inputDataId, moduleId)),
+      outEdges = Set((moduleId, outputDataId))
+    )
+
+    val modules = Map(moduleId -> createUppercaseModule())
+    // Use an unexpected input name
+    val inputs = Map("wrongname" -> CValue.CString("hello"))
+
+    val session = SteppedExecution
+      .createSession("session", dag, Map.empty, modules, inputs)
+      .unsafeRunSync()
+
+    val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.get.getMessage should include("unexpected")
+  }
+
+  it should "fail with wrong input type" in {
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
+    val outputDataId = UUID.randomUUID()
+
+    val dag = DagSpec(
+      metadata = ComponentMetadata.empty("TypeDag"),
+      modules = Map(
+        moduleId -> ModuleNodeSpec(
+          metadata = ComponentMetadata("Uppercase", "Test", List.empty, 1, 0),
+          consumes = Map("text" -> CType.CString),
+          produces = Map("result" -> CType.CString)
+        )
+      ),
+      data = Map(
+        inputDataId -> DataNodeSpec(
+          "input",
+          Map(inputDataId -> "input", moduleId -> "text"),
+          CType.CString
+        ),
+        outputDataId -> DataNodeSpec("output", Map(moduleId -> "result"), CType.CString)
+      ),
+      inEdges = Set((inputDataId, moduleId)),
+      outEdges = Set((moduleId, outputDataId))
+    )
+
+    val modules = Map(moduleId -> createUppercaseModule())
+    // Use wrong type (Int instead of String)
+    val inputs = Map("input" -> CValue.CInt(42))
+
+    val session = SteppedExecution
+      .createSession("session", dag, Map.empty, modules, inputs)
+      .unsafeRunSync()
+
+    val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.left.get.getMessage should include("different type")
+  }
+
+  // ===== executeToCompletion for already-complete session =====
+
+  "executeToCompletion" should "return immediately for already-complete session" in {
+    val dag = DagSpec.empty("EmptyDag")
+
+    val session = SteppedExecution
+      .createSession("session", dag, Map.empty, Map.empty, Map.empty)
+      .unsafeRunSync()
+
+    val completedSession = session.copy(currentBatchIndex = session.batches.length)
+    val result           = SteppedExecution.executeToCompletion(completedSession).unsafeRunSync()
+
+    result.currentBatchIndex shouldBe completedSession.currentBatchIndex
+  }
 }

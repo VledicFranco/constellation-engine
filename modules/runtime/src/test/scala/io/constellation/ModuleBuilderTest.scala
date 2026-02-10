@@ -159,4 +159,78 @@ class ModuleBuilderTest extends AnyFlatSpec with Matchers {
       "count" -> CType.CInt
     )
   }
+
+  // ===== Post-implementation builder methods (ModuleBuilder[I, O]) =====
+
+  "ModuleBuilder[I, O]" should "support name after implementation" in {
+    val module = ModuleBuilder
+      .metadata("Original", "Description", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .name("Renamed")
+      .build
+
+    module.spec.metadata.name shouldBe "Renamed"
+  }
+
+  it should "support description after implementation" in {
+    val module = ModuleBuilder
+      .metadata("Test", "Original", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .description("Updated description")
+      .build
+
+    module.spec.metadata.description shouldBe "Updated description"
+  }
+
+  it should "support tags after implementation" in {
+    val module = ModuleBuilder
+      .metadata("Test", "Desc", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .tags("a", "b")
+      .build
+
+    module.spec.metadata.tags shouldBe List("a", "b")
+  }
+
+  // ===== Functional transformations =====
+
+  case class DoubleOutput(value: Double)
+  case class StringInput(text: String)
+
+  it should "support map to transform output type" in {
+    val builder = ModuleBuilder
+      .metadata("MapTest", "Test map", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x + in.y))
+      .map[DoubleOutput](out => DoubleOutput(out.result.toDouble))
+
+    val module = builder.build
+    module.spec.metadata.name shouldBe "MapTest"
+    module.spec.produces shouldBe Map("value" -> CType.CFloat)
+  }
+
+  it should "support contraMap to transform input type" in {
+    val builder = ModuleBuilder
+      .metadata("ContraMapTest", "Test contraMap", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x + in.y))
+      .contraMap[StringInput](s => TestInput(s.text.length.toLong, 0L))
+
+    val module = builder.build
+    module.spec.metadata.name shouldBe "ContraMapTest"
+    module.spec.consumes shouldBe Map("text" -> CType.CString)
+  }
+
+  it should "support biMap to transform both input and output" in {
+    val builder = ModuleBuilder
+      .metadata("BiMapTest", "Test biMap", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x * in.y))
+      .biMap[StringInput, DoubleOutput](
+        s => TestInput(s.text.length.toLong, 2L),
+        out => DoubleOutput(out.result.toDouble)
+      )
+
+    val module = builder.build
+    module.spec.metadata.name shouldBe "BiMapTest"
+    module.spec.consumes shouldBe Map("text" -> CType.CString)
+    module.spec.produces shouldBe Map("value" -> CType.CFloat)
+  }
 }

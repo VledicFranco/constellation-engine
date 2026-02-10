@@ -409,4 +409,293 @@ class RawValueTest extends AnyFlatSpec with Matchers {
       cType
     ) shouldBe floatOriginal
   }
+
+  // ============= RawValue Type Tests =============
+
+  // --- RString ---
+  "RString" should "have correct toDebugString" in {
+    RawValue.RString("hello").toDebugString shouldBe "RString(hello)"
+  }
+
+  it should "store and expose value" in {
+    RawValue.RString("test").value shouldBe "test"
+  }
+
+  it should "support equality" in {
+    RawValue.RString("a") shouldBe RawValue.RString("a")
+    RawValue.RString("a") should not be RawValue.RString("b")
+  }
+
+  // --- RBool ---
+  "RBool" should "have correct toDebugString" in {
+    RawValue.RBool(true).toDebugString shouldBe "RBool(true)"
+    RawValue.RBool(false).toDebugString shouldBe "RBool(false)"
+  }
+
+  it should "store and expose value" in {
+    RawValue.RBool(true).value shouldBe true
+    RawValue.RBool(false).value shouldBe false
+  }
+
+  // --- RFloat ---
+  "RFloat" should "have correct toDebugString" in {
+    RawValue.RFloat(3.14).toDebugString shouldBe "RFloat(3.14)"
+  }
+
+  it should "store and expose value" in {
+    RawValue.RFloat(2.71).value shouldBe 2.71
+  }
+
+  // --- RIntList ---
+  "RIntList" should "have correct toDebugString" in {
+    RawValue.RIntList(Array(1L, 2L, 3L)).toDebugString shouldBe "RIntList(3 elements)"
+  }
+
+  it should "report correct length" in {
+    RawValue.RIntList(Array(1L, 2L, 3L)).length shouldBe 3
+    RawValue.RIntList(Array.empty[Long]).length shouldBe 0
+  }
+
+  it should "support indexed access" in {
+    val list = RawValue.RIntList(Array(10L, 20L, 30L))
+    list(0) shouldBe 10L
+    list(1) shouldBe 20L
+    list(2) shouldBe 30L
+  }
+
+  it should "support equality for same content arrays" in {
+    val a = RawValue.RIntList(Array(1L, 2L, 3L))
+    val b = RawValue.RIntList(Array(1L, 2L, 3L))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content arrays" in {
+    val a = RawValue.RIntList(Array(1L, 2L, 3L))
+    val b = RawValue.RIntList(Array(1L, 2L, 4L))
+    a should not be b
+  }
+
+  it should "not equal non-RIntList" in {
+    val a = RawValue.RIntList(Array(1L))
+    a.equals("not an RIntList") shouldBe false
+  }
+
+  // --- RFloatList ---
+  "RFloatList" should "have correct toDebugString" in {
+    RawValue.RFloatList(Array(1.1, 2.2)).toDebugString shouldBe "RFloatList(2 elements)"
+  }
+
+  it should "report correct length" in {
+    RawValue.RFloatList(Array(1.0, 2.0, 3.0)).length shouldBe 3
+    RawValue.RFloatList(Array.empty[Double]).length shouldBe 0
+  }
+
+  it should "support indexed access" in {
+    val list = RawValue.RFloatList(Array(1.1, 2.2, 3.3))
+    list(0) shouldBe 1.1
+    list(1) shouldBe 2.2
+    list(2) shouldBe 3.3
+  }
+
+  it should "support equality for same content arrays" in {
+    val a = RawValue.RFloatList(Array(1.0, 2.0))
+    val b = RawValue.RFloatList(Array(1.0, 2.0))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content arrays" in {
+    val a = RawValue.RFloatList(Array(1.0, 2.0))
+    val b = RawValue.RFloatList(Array(1.0, 3.0))
+    a should not be b
+  }
+
+  it should "not equal non-RFloatList" in {
+    RawValue.RFloatList(Array(1.0)).equals(42) shouldBe false
+  }
+
+  // --- RStringList ---
+  "RStringList" should "have correct toDebugString" in {
+    RawValue.RStringList(Array("a", "b")).toDebugString shouldBe "RStringList(2 elements)"
+  }
+
+  it should "report correct length" in {
+    RawValue.RStringList(Array("x", "y", "z")).length shouldBe 3
+    RawValue.RStringList(Array.empty[String]).length shouldBe 0
+  }
+
+  it should "support indexed access" in {
+    val list = RawValue.RStringList(Array("hello", "world"))
+    list(0) shouldBe "hello"
+    list(1) shouldBe "world"
+  }
+
+  it should "support equality for same content arrays" in {
+    val a = RawValue.RStringList(Array("a", "b"))
+    val b = RawValue.RStringList(Array("a", "b"))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content arrays" in {
+    val a = RawValue.RStringList(Array("a", "b"))
+    val b = RawValue.RStringList(Array("a", "c"))
+    a should not be b
+  }
+
+  it should "not equal non-RStringList" in {
+    RawValue.RStringList(Array("a")).equals(List("a")) shouldBe false
+  }
+
+  // --- RBoolList ---
+  "RBoolList" should "have correct toDebugString" in {
+    RawValue.RBoolList(Array(true, false)).toDebugString shouldBe "RBoolList(2 elements)"
+  }
+
+  it should "report correct length" in {
+    RawValue.RBoolList(Array(true, false, true)).length shouldBe 3
+    RawValue.RBoolList(Array.empty[Boolean]).length shouldBe 0
+  }
+
+  it should "support indexed access" in {
+    val list = RawValue.RBoolList(Array(true, false, true))
+    list(0) shouldBe true
+    list(1) shouldBe false
+    list(2) shouldBe true
+  }
+
+  it should "support equality for same content arrays" in {
+    val a = RawValue.RBoolList(Array(true, false))
+    val b = RawValue.RBoolList(Array(true, false))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content arrays" in {
+    val a = RawValue.RBoolList(Array(true, false))
+    val b = RawValue.RBoolList(Array(true, true))
+    a should not be b
+  }
+
+  it should "not equal non-RBoolList" in {
+    RawValue.RBoolList(Array(true)).equals("true") shouldBe false
+  }
+
+  // --- RList ---
+  "RList" should "have correct toDebugString" in {
+    RawValue.RList(Array(RawValue.RInt(1), RawValue.RInt(2))).toDebugString shouldBe "RList(2 elements)"
+  }
+
+  it should "report correct length" in {
+    RawValue.RList(Array(RawValue.RInt(1), RawValue.RString("a"))).length shouldBe 2
+    RawValue.RList(Array.empty[RawValue]).length shouldBe 0
+  }
+
+  it should "support indexed access" in {
+    val list = RawValue.RList(Array(RawValue.RInt(10), RawValue.RString("hello")))
+    list(0) shouldBe RawValue.RInt(10)
+    list(1) shouldBe RawValue.RString("hello")
+  }
+
+  it should "support equality for same content" in {
+    val a = RawValue.RList(Array(RawValue.RInt(1), RawValue.RInt(2)))
+    val b = RawValue.RList(Array(RawValue.RInt(1), RawValue.RInt(2)))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content" in {
+    val a = RawValue.RList(Array(RawValue.RInt(1)))
+    val b = RawValue.RList(Array(RawValue.RInt(2)))
+    a should not be b
+  }
+
+  it should "not equal non-RList" in {
+    RawValue.RList(Array(RawValue.RInt(1))).equals("not a list") shouldBe false
+  }
+
+  // --- RMap ---
+  "RMap" should "have correct toDebugString" in {
+    val map = RawValue.RMap(Array((RawValue.RString("k"), RawValue.RInt(1))))
+    map.toDebugString shouldBe "RMap(1 entries)"
+  }
+
+  it should "find existing key via get" in {
+    val map = RawValue.RMap(Array(
+      (RawValue.RString("a"), RawValue.RInt(1)),
+      (RawValue.RString("b"), RawValue.RInt(2))
+    ))
+    map.get(RawValue.RString("a")) shouldBe Some(RawValue.RInt(1))
+    map.get(RawValue.RString("b")) shouldBe Some(RawValue.RInt(2))
+  }
+
+  it should "return None for missing key" in {
+    val map = RawValue.RMap(Array((RawValue.RString("a"), RawValue.RInt(1))))
+    map.get(RawValue.RString("missing")) shouldBe None
+  }
+
+  it should "return None for empty map" in {
+    val map = RawValue.RMap(Array.empty[(RawValue, RawValue)])
+    map.get(RawValue.RString("any")) shouldBe None
+  }
+
+  it should "support equality" in {
+    val a = RawValue.RMap(Array((RawValue.RString("k"), RawValue.RInt(1))))
+    val b = RawValue.RMap(Array((RawValue.RString("k"), RawValue.RInt(1))))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content" in {
+    val a = RawValue.RMap(Array((RawValue.RString("k"), RawValue.RInt(1))))
+    val b = RawValue.RMap(Array((RawValue.RString("k"), RawValue.RInt(2))))
+    a should not be b
+  }
+
+  it should "not equal non-RMap" in {
+    RawValue.RMap(Array.empty[(RawValue, RawValue)]).equals(Map.empty) shouldBe false
+  }
+
+  // --- RProduct ---
+  "RProduct" should "have correct toDebugString" in {
+    RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RString("a"))).toDebugString shouldBe "RProduct(2 fields)"
+  }
+
+  it should "support indexed access" in {
+    val product = RawValue.RProduct(Array(RawValue.RInt(42), RawValue.RString("hello")))
+    product(0) shouldBe RawValue.RInt(42)
+    product(1) shouldBe RawValue.RString("hello")
+  }
+
+  it should "support equality" in {
+    val a = RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RString("x")))
+    val b = RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RString("x")))
+    a shouldBe b
+    a.hashCode() shouldBe b.hashCode()
+  }
+
+  it should "not equal different content" in {
+    val a = RawValue.RProduct(Array(RawValue.RInt(1)))
+    val b = RawValue.RProduct(Array(RawValue.RInt(2)))
+    a should not be b
+  }
+
+  it should "not equal non-RProduct" in {
+    RawValue.RProduct(Array(RawValue.RInt(1))).equals("not a product") shouldBe false
+  }
+
+  // --- RUnion ---
+  "RUnion" should "have correct toDebugString" in {
+    RawValue.RUnion("Int", RawValue.RInt(42)).toDebugString shouldBe "RUnion(Int, RInt(42))"
+  }
+
+  // --- RSome / RNone ---
+  "RSome" should "have correct toDebugString" in {
+    RawValue.RSome(RawValue.RInt(42)).toDebugString shouldBe "RSome(RInt(42))"
+  }
+
+  "RNone" should "have correct toDebugString" in {
+    RawValue.RNone.toDebugString shouldBe "RNone"
+  }
 }

@@ -400,6 +400,86 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
     exception.toString should include("30000ms")
   }
 
+  "RetryExhaustedException.toString" should "include detailed message" in {
+    val errors = List(new RuntimeException("err1"))
+    val exception = RetryExhaustedException("Failed after 1", 1, errors)
+    exception.toString should include("Attempt 1")
+    exception.toString should include("err1")
+  }
+
+  // -------------------------------------------------------------------------
+  // ExecutionOptions Factory Methods Tests
+  // -------------------------------------------------------------------------
+
+  "ExecutionOptions.default" should "have all None options" in {
+    val opts = ExecutionOptions.default[Int]
+    opts.retry shouldBe None
+    opts.timeout shouldBe None
+    opts.delay shouldBe None
+    opts.backoff shouldBe None
+    opts.maxDelay shouldBe None
+    opts.fallback shouldBe None
+    opts.onRetry shouldBe None
+    opts.onFallback shouldBe None
+  }
+
+  "ExecutionOptions.withRetry" should "set retry count" in {
+    val opts = ExecutionOptions.withRetry[Int](3)
+    opts.retry shouldBe Some(3)
+    opts.timeout shouldBe None
+    opts.fallback shouldBe None
+  }
+
+  "ExecutionOptions.withTimeout" should "set timeout duration" in {
+    val opts = ExecutionOptions.withTimeout[Int](5.seconds)
+    opts.timeout shouldBe Some(5.seconds)
+    opts.retry shouldBe None
+  }
+
+  "ExecutionOptions.withFallback" should "set fallback value" in {
+    val opts = ExecutionOptions.withFallback[Int](IO.pure(42))
+    opts.fallback shouldBe defined
+    opts.retry shouldBe None
+    opts.timeout shouldBe None
+  }
+
+  "execute with ExecutionOptions.withRetry" should "work with factory method" in {
+    val counter = new AtomicInteger(0)
+    val result = ModuleExecutor
+      .execute(
+        IO {
+          if counter.incrementAndGet() < 2 then throw new RuntimeException("fail")
+          else "ok"
+        },
+        ExecutionOptions.withRetry[String](3)
+      )
+      .unsafeRunSync()
+
+    result shouldBe "ok"
+  }
+
+  "execute with ExecutionOptions.withTimeout" should "work with factory method" in {
+    val result = ModuleExecutor
+      .execute(
+        IO.pure(42),
+        ExecutionOptions.withTimeout[Int](1.second)
+      )
+      .unsafeRunSync()
+
+    result shouldBe 42
+  }
+
+  "execute with ExecutionOptions.withFallback" should "work with factory method" in {
+    val result = ModuleExecutor
+      .execute(
+        IO.raiseError[Int](new RuntimeException("fail")),
+        ExecutionOptions.withFallback[Int](IO.pure(0))
+      )
+      .unsafeRunSync()
+
+    result shouldBe 0
+  }
+
   // -------------------------------------------------------------------------
   // Backoff Strategy Tests
   // -------------------------------------------------------------------------

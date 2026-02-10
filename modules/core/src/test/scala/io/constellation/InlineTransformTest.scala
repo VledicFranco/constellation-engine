@@ -654,4 +654,144 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
 
     result shouldBe List(Map("value" -> 1), Map("value" -> 2))
   }
+
+  // ========== MatchTransform Tests ==========
+
+  "MatchTransform" should "match first matching pattern" in {
+    val matchers = List(
+      (v: Any) => v == "a",
+      (v: Any) => v == "b",
+      (v: Any) => true // wildcard
+    )
+    val bodies = List(
+      (v: Any) => "matched-a",
+      (v: Any) => "matched-b",
+      (v: Any) => "matched-wildcard"
+    )
+    val transform = MatchTransform(matchers, bodies, CType.CString)
+
+    transform(Map("scrutinee" -> "a")) shouldBe "matched-a"
+    transform(Map("scrutinee" -> "b")) shouldBe "matched-b"
+    transform(Map("scrutinee" -> "c")) shouldBe "matched-wildcard"
+  }
+
+  it should "throw MatchError when no pattern matches" in {
+    val matchers = List((v: Any) => v == "x")
+    val bodies   = List((v: Any) => "matched")
+    val transform = MatchTransform(matchers, bodies, CType.CString)
+
+    a[MatchError] should be thrownBy {
+      transform(Map("scrutinee" -> "y"))
+    }
+  }
+
+  it should "unwrap union values for matching" in {
+    val matchers = List(
+      (v: Any) => true // matches the inner value
+    )
+    val bodies = List(
+      (v: Any) => s"matched: $v"
+    )
+    val variants = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val transform = MatchTransform(matchers, bodies, CType.CUnion(variants))
+
+    // Union value is represented as (tag, innerValue) tuple
+    val result = transform(Map("scrutinee" -> ("Int", 42)))
+    result shouldBe "matched: (Int,42)"
+  }
+
+  it should "handle non-union scrutinee without unwrapping" in {
+    val matchers = List((v: Any) => v.asInstanceOf[Int] > 10)
+    val bodies   = List((v: Any) => s"big: $v")
+    val transform = MatchTransform(matchers, bodies, CType.CInt)
+
+    transform(Map("scrutinee" -> 42)) shouldBe "big: 42"
+  }
+
+  // ========== RecordBuildTransform Tests ==========
+
+  "RecordBuildTransform" should "build a record from named inputs" in {
+    val transform = RecordBuildTransform(List("name", "age"))
+
+    val result = transform(Map("name" -> "Alice", "age" -> 30))
+
+    result shouldBe Map("name" -> "Alice", "age" -> 30)
+  }
+
+  it should "build a single-field record" in {
+    val transform = RecordBuildTransform(List("value"))
+
+    val result = transform(Map("value" -> 42))
+
+    result shouldBe Map("value" -> 42)
+  }
+
+  it should "build an empty record" in {
+    val transform = RecordBuildTransform(List.empty)
+
+    val result = transform(Map.empty)
+
+    result shouldBe Map.empty
+  }
+
+  it should "handle complex field values" in {
+    val transform = RecordBuildTransform(List("items", "meta"))
+
+    val result = transform(Map(
+      "items" -> List(1, 2, 3),
+      "meta"  -> Map("source" -> "test")
+    ))
+
+    result shouldBe Map(
+      "items" -> List(1, 2, 3),
+      "meta"  -> Map("source" -> "test")
+    )
+  }
+
+  // ========== ListLiteralTransform Tests ==========
+
+  "ListLiteralTransform" should "assemble elements into a list" in {
+    val transform = ListLiteralTransform(3)
+
+    val result = transform(Map("elem0" -> 1, "elem1" -> 2, "elem2" -> 3))
+
+    result shouldBe List(1, 2, 3)
+  }
+
+  it should "build single-element list" in {
+    val transform = ListLiteralTransform(1)
+
+    val result = transform(Map("elem0" -> "only"))
+
+    result shouldBe List("only")
+  }
+
+  it should "build empty list" in {
+    val transform = ListLiteralTransform(0)
+
+    val result = transform(Map.empty)
+
+    result shouldBe List.empty
+  }
+
+  // ========== FieldAccessTransform with Union Tests ==========
+
+  "FieldAccessTransform with union" should "access field from union inner record" in {
+    val recordType = CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
+    val unionType  = CType.CUnion(Map("Person" -> recordType, "Error" -> CType.CString))
+    val transform  = FieldAccessTransform("name", unionType)
+
+    val result = transform(Map("source" -> ("Person", Map("name" -> "Alice", "age" -> 30))))
+
+    result shouldBe "Alice"
+  }
+
+  it should "return MatchBindingMissing for unknown union tag" in {
+    val unionType = CType.CUnion(Map("A" -> CType.CInt))
+    val transform = FieldAccessTransform("field", unionType)
+
+    val result = transform(Map("source" -> ("Unknown", 42)))
+
+    result shouldBe MatchBindingMissing
+  }
 }

@@ -594,4 +594,106 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
       }
       .unsafeRunSync()
   }
+
+  // -------------------------------------------------------------------------
+  // boundedUnsafe Tests
+  // -------------------------------------------------------------------------
+
+  "GlobalScheduler.boundedUnsafe" should "create scheduler without Resource" in {
+    val scheduler = GlobalScheduler.boundedUnsafe(maxConcurrency = 2).unsafeRunSync()
+    val result = scheduler.submit(50, IO.pure(42)).unsafeRunSync()
+    result shouldBe 42
+  }
+
+  it should "track stats like bounded" in {
+    val scheduler = GlobalScheduler.boundedUnsafe(maxConcurrency = 2).unsafeRunSync()
+    scheduler.submit(80, IO.pure(1)).unsafeRunSync()
+    scheduler.submit(10, IO.pure(2)).unsafeRunSync()
+
+    val stats = scheduler.stats.unsafeRunSync()
+    stats.totalSubmitted shouldBe 2
+    stats.totalCompleted shouldBe 2
+    stats.highPriorityCompleted shouldBe 1
+    stats.lowPriorityCompleted shouldBe 1
+  }
+
+  // -------------------------------------------------------------------------
+  // Queue Full Tests
+  // -------------------------------------------------------------------------
+
+  "Bounded scheduler with maxQueueSize" should "reject tasks when queue is full" in {
+    GlobalScheduler
+      .bounded(maxConcurrency = 1, maxQueueSize = 2)
+      .use { scheduler =>
+        for {
+          // Fill the single execution slot
+          blocker <- scheduler.submit(50, IO.sleep(500.millis) *> IO.pure("blocker")).start
+          _ <- IO.sleep(50.millis) // Let blocker acquire slot
+
+          // Fill queue to capacity (2 slots)
+          queued1 <- scheduler.submit(50, IO.pure("q1")).start
+          queued2 <- scheduler.submit(50, IO.pure("q2")).start
+          _ <- IO.sleep(50.millis) // Let them enter queue
+
+          // Third queued task should fail with QueueFullException
+          result <- scheduler.submit(50, IO.pure("q3")).attempt
+
+          _ = result.isLeft shouldBe true
+          _ = result.left.get shouldBe a[QueueFullException]
+          _ = result.left.get.asInstanceOf[QueueFullException].maxSize shouldBe 2
+
+          // Clean up
+          _ <- blocker.joinWithNever
+          _ <- queued1.joinWithNever
+          _ <- queued2.joinWithNever
+        } yield ()
+      }
+      .unsafeRunSync()
+  }
+
+  // -------------------------------------------------------------------------
+  // SchedulerState additional tests
+  // -------------------------------------------------------------------------
+
+  "SchedulerState.dequeue" should "return None when queue is empty" in {
+    val state = SchedulerState.empty
+    val (entry, newState) = state.dequeue
+    entry shouldBe None
+    newState shouldBe state
+  }
+
+  "SchedulerState.recordStarvationPromotion" should "increment starvation count" in {
+    var state = SchedulerState.empty
+    state.starvationPromotions shouldBe 0
+
+    state = state.recordStarvationPromotion
+    state.starvationPromotions shouldBe 1
+
+    state = state.recordStarvationPromotion
+    state.starvationPromotions shouldBe 2
+  }
+
+  "SchedulerState.toStats" should "produce correct SchedulerStats" in {
+    val entry = QueueEntry(
+      id = 1, priority = 50, submittedAt = 0.seconds,
+      gate = null, effectivePriority = 50
+    )
+    var state = SchedulerState.empty
+    state = state.enqueue(entry)
+    state = state.copy(activeCount = 3, starvationPromotions = 5)
+
+    val stats = state.toStats
+    stats.queuedCount shouldBe 1
+    stats.activeCount shouldBe 3
+    stats.totalSubmitted shouldBe 1
+    stats.starvationPromotions shouldBe 5
+  }
+
+  // -------------------------------------------------------------------------
+  // DefaultPriority constant
+  // -------------------------------------------------------------------------
+
+  "GlobalScheduler.DefaultPriority" should "be 50" in {
+    GlobalScheduler.DefaultPriority shouldBe 50
+  }
 }
