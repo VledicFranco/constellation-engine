@@ -58,8 +58,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(1L, 2L, 3L, 4L, 5L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "sumlist-test", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "sumlist-test", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 15L
   }
@@ -74,8 +75,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "sumlist-empty", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "sumlist-empty", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 0L
   }
@@ -92,6 +94,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[Long](source, "sumlist-single", inputs, "result") {
       case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 42L
   }
@@ -108,6 +111,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[Long](source, "sumlist-negative", inputs, "result") {
       case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 2L
   }
@@ -124,8 +128,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(2L, 4L, 6L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Double](source, "avg-test", inputs, "result") { case CValue.CFloat(v) =>
-      v
+    val result = runModule[Double](source, "avg-test", inputs, "result") {
+      case CValue.CFloat(v) => v
+      case other            => throw new AssertionError(s"Expected CFloat but got $other")
     }
     result shouldBe 4.0
   }
@@ -140,8 +145,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Double](source, "avg-empty", inputs, "result") { case CValue.CFloat(v) =>
-      v
+    val result = runModule[Double](source, "avg-empty", inputs, "result") {
+      case CValue.CFloat(v) => v
+      case other            => throw new AssertionError(s"Expected CFloat but got $other")
     }
     result shouldBe 0.0
   }
@@ -158,6 +164,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[Double](source, "avg-single", inputs, "result") {
       case CValue.CFloat(v) => v
+      case other            => throw new AssertionError(s"Expected CFloat but got $other")
     }
     result shouldBe 100.0
   }
@@ -174,6 +181,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[Double](source, "avg-decimal", inputs, "result") {
       case CValue.CFloat(v) => v
+      case other            => throw new AssertionError(s"Expected CFloat but got $other")
     }
     result shouldBe 1.5
   }
@@ -190,8 +198,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(3L, 7L, 2L, 9L, 1L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-test", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "max-test", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 9L
   }
@@ -206,8 +215,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-empty", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "max-empty", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 0L
   }
@@ -222,8 +232,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(-5L, -2L, -8L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "max-negative", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "max-negative", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe -2L
   }
@@ -240,8 +251,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(3L, 7L, 2L, 9L, 1L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-test", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "min-test", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 1L
   }
@@ -256,8 +268,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector.empty, CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-empty", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "min-empty", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe 0L
   }
@@ -272,8 +285,9 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
       "numbers" -> CValue.CList(Vector(-5L, -2L, -8L).map(CValue.CInt.apply), CType.CInt)
     )
 
-    val result = runModule[Long](source, "min-negative", inputs, "result") { case CValue.CInt(v) =>
-      v
+    val result = runModule[Long](source, "min-negative", inputs, "result") {
+      case CValue.CInt(v) => v
+      case other          => throw new AssertionError(s"Expected CInt but got $other")
     }
     result shouldBe -8L
   }
@@ -293,7 +307,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "filter-test", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(5L, 8L)
   }
@@ -311,7 +326,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "filter-none", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector.empty
   }
@@ -329,7 +345,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "filter-empty", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector.empty
   }
@@ -349,7 +366,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "multiply-test", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(3L, 6L, 9L)
   }
@@ -367,7 +385,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "multiply-zero", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(0L, 0L)
   }
@@ -385,7 +404,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "multiply-neg", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(-4L, -8L)
   }
@@ -403,7 +423,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "multiply-empty", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector.empty
   }
@@ -423,7 +444,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "range-test", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(1L, 2L, 3L, 4L, 5L)
   }
@@ -441,7 +463,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "range-single", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(5L)
   }
@@ -459,7 +482,8 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[Long]](source, "range-neg", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v }
+      case CValue.CList(values, _) => values.map { case CValue.CInt(v) => v; case other => throw new AssertionError(s"Expected CInt but got $other") }
+      case other                   => throw new AssertionError(s"Expected CList but got $other")
     }
     result shouldBe Vector(-2L, -1L, 0L, 1L, 2L)
   }
@@ -478,6 +502,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[String](source, "format-test", inputs, "result") {
       case CValue.CString(v) => v
+      case other             => throw new AssertionError(s"Expected CString but got $other")
     }
     // Formatted with locale-specific separator (could be comma or period)
     result should (include("1") and include("000") and include("000"))
@@ -495,6 +520,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[String](source, "format-small", inputs, "result") {
       case CValue.CString(v) => v
+      case other             => throw new AssertionError(s"Expected CString but got $other")
     }
     result shouldBe "42"
   }
@@ -511,6 +537,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[String](source, "format-zero", inputs, "result") {
       case CValue.CString(v) => v
+      case other             => throw new AssertionError(s"Expected CString but got $other")
     }
     result shouldBe "0"
   }
@@ -527,6 +554,7 @@ class DataModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[String](source, "format-neg", inputs, "result") {
       case CValue.CString(v) => v
+      case other             => throw new AssertionError(s"Expected CString but got $other")
     }
     result should startWith("-")
   }

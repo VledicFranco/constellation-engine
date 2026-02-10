@@ -67,7 +67,7 @@ class RegressionTests extends AnyFlatSpec with Matchers with RetrySupport {
           s"Operation: ${result.name}\n" +
           s"Measured:  ${result.avgMs}ms (±${result.stdDevMs}ms)\n" +
           s"Baseline:  ${maxAllowed}ms\n" +
-          s"Exceeded by: ${((result.avgMs - maxAllowed) / maxAllowed * 100).formatted("%.1f")}%\n"
+          s"Exceeded by: ${"%.1f".format((result.avgMs - maxAllowed) / maxAllowed * 100)}%\n"
       ) {
         result.avgMs should be <= maxAllowed
       }

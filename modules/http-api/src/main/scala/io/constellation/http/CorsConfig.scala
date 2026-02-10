@@ -60,7 +60,7 @@ object CorsConfig {
       Right(origin) // Wildcard is valid
     } else {
       try {
-        val url    = new java.net.URL(origin)
+        val url    = java.net.URI(origin).toURL
         val scheme = url.getProtocol.toLowerCase
 
         // Require HTTPS unless localhost
