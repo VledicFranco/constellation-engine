@@ -94,10 +94,10 @@ class NamespaceConsumesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "only include edges targeting the specified module" in {
-    val module1  = UUID.randomUUID()
-    val module2  = UUID.randomUUID()
-    val data1    = UUID.randomUUID()
-    val data2    = UUID.randomUUID()
+    val module1 = UUID.randomUUID()
+    val module2 = UUID.randomUUID()
+    val data1   = UUID.randomUUID()
+    val data2   = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("test"),
@@ -206,10 +206,10 @@ class NamespaceProducesTest extends AnyFlatSpec with Matchers {
   }
 
   it should "only include edges from the specified module" in {
-    val module1  = UUID.randomUUID()
-    val module2  = UUID.randomUUID()
-    val data1    = UUID.randomUUID()
-    val data2    = UUID.randomUUID()
+    val module1 = UUID.randomUUID()
+    val module2 = UUID.randomUUID()
+    val data1   = UUID.randomUUID()
+    val data2   = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("test"),
@@ -336,7 +336,7 @@ class LazyProductValueExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "materialize all fields and produce a CProduct value" in {
     val obj = Map(
-      "name" -> Json.fromString("test"),
+      "name"  -> Json.fromString("test"),
       "count" -> Json.fromInt(5)
     )
     val types = Map("name" -> CType.CString, "count" -> CType.CInt)

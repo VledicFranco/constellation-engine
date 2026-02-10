@@ -49,7 +49,12 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   /** Creates a DataNodeSpec for a user input that is also consumed by a module. The nickname map
     * includes both the sentinel (for validation) and the module's entry.
     */
-  private def userInputForModule(name: String, moduleId: UUID, paramName: String, cType: CType): DataNodeSpec =
+  private def userInputForModule(
+      name: String,
+      moduleId: UUID,
+      paramName: String,
+      cType: CType
+  ): DataNodeSpec =
     DataNodeSpec(name, Map(SentinelId -> name, moduleId -> paramName), cType)
 
   // ===== Helper: build a single-module DAG with one inline transform data node =====
@@ -78,8 +83,8 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
       )
     ),
     data = Map(
-      inputId -> DataNodeSpec(inputName, Map(moduleId -> inputName), inputType),
-      moduleOutputId -> DataNodeSpec(outputName, Map(moduleId -> outputName), outputType),
+      inputId         -> DataNodeSpec(inputName, Map(moduleId -> inputName), inputType),
+      moduleOutputId  -> DataNodeSpec(outputName, Map(moduleId -> outputName), outputType),
       transformDataId -> transformSpec
     ),
     inEdges = Set((inputId, moduleId)),
@@ -171,9 +176,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
+        inputId        -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
         moduleOutputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString),
-        boolInputId -> userInput("flag", CType.CBoolean),
+        boolInputId    -> userInput("flag", CType.CBoolean),
         notResultId -> DataNodeSpec(
           "not_flag",
           Map.empty,
@@ -201,10 +206,10 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   // =====================================================================
 
   "Runtime.run with ConditionalTransform" should "select then-branch when condition is true" in {
-    val condInputId   = UUID.randomUUID()
-    val thenInputId   = UUID.randomUUID()
-    val elseInputId   = UUID.randomUUID()
-    val condResultId  = UUID.randomUUID()
+    val condInputId  = UUID.randomUUID()
+    val thenInputId  = UUID.randomUUID()
+    val elseInputId  = UUID.randomUUID()
+    val condResultId = UUID.randomUUID()
 
     val dag = transformOnlyDag(
       inputSpecs = Map(
@@ -319,9 +324,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   // =====================================================================
 
   "Runtime.run with AndTransform" should "return true when both inputs are true" in {
-    val leftId    = UUID.randomUUID()
-    val rightId   = UUID.randomUUID()
-    val resultId  = UUID.randomUUID()
+    val leftId   = UUID.randomUUID()
+    val rightId  = UUID.randomUUID()
+    val resultId = UUID.randomUUID()
 
     val dag = transformOnlyDag(
       inputSpecs = Map(
@@ -616,9 +621,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   // =====================================================================
 
   "Runtime.run with RecordBuildTransform" should "build a record from input fields" in {
-    val nameInputId  = UUID.randomUUID()
-    val ageInputId   = UUID.randomUUID()
-    val recordId     = UUID.randomUUID()
+    val nameInputId = UUID.randomUUID()
+    val ageInputId  = UUID.randomUUID()
+    val recordId    = UUID.randomUUID()
 
     val fieldTypes = Map("name" -> CType.CString, "age" -> CType.CInt)
 
@@ -800,22 +805,23 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     val matchId     = UUID.randomUUID()
 
     // Union type: Circle(radius: Float) | Square(side: Float)
-    val unionType = CType.CUnion(Map(
-      "Circle" -> CType.CProduct(Map("radius" -> CType.CFloat)),
-      "Square" -> CType.CProduct(Map("side" -> CType.CFloat))
-    ))
+    val unionType = CType.CUnion(
+      Map(
+        "Circle" -> CType.CProduct(Map("radius" -> CType.CFloat)),
+        "Square" -> CType.CProduct(Map("side" -> CType.CFloat))
+      )
+    )
 
     val patternMatchers = List[Any => Boolean](
       // The scrutinee is unwrapped by MatchTransform: inner value is the product map
       _ => true // Match anything (first pattern matches Circle variant)
     )
-    val bodyEvaluators = List[Any => Any](
+    val bodyEvaluators = List[Any => Any] {
       // Body evaluator receives the original (tag, inner) tuple
-      scrutinee => {
+      scrutinee =>
         val (tag, _) = scrutinee.asInstanceOf[(String, Any)]
         s"matched_$tag"
-      }
-    )
+    }
 
     val dag = transformOnlyDag(
       inputSpecs = Map(
@@ -837,8 +843,10 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     val initData = Map(
       "shape" -> CValue.CUnion(
         CValue.CProduct(Map("radius" -> CValue.CFloat(5.0)), Map("radius" -> CType.CFloat)),
-        Map("Circle" -> CType.CProduct(Map("radius" -> CType.CFloat)),
-            "Square"  -> CType.CProduct(Map("side" -> CType.CFloat))),
+        Map(
+          "Circle" -> CType.CProduct(Map("radius" -> CType.CFloat)),
+          "Square" -> CType.CProduct(Map("side" -> CType.CFloat))
+        ),
         "Circle"
       )
     )
@@ -967,8 +975,8 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     val rightId  = UUID.randomUUID()
     val mergedId = UUID.randomUUID()
 
-    val leftType  = CType.CProduct(Map("name" -> CType.CString))
-    val rightType = CType.CProduct(Map("age" -> CType.CInt))
+    val leftType   = CType.CProduct(Map("name" -> CType.CString))
+    val rightType  = CType.CProduct(Map("age" -> CType.CInt))
     val mergedType = CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
 
     val dag = transformOnlyDag(
@@ -988,7 +996,8 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     )
 
     val initData = Map(
-      "left"  -> CValue.CProduct(Map("name" -> CValue.CString("Alice")), Map("name" -> CType.CString)),
+      "left" -> CValue
+        .CProduct(Map("name" -> CValue.CString("Alice")), Map("name" -> CType.CString)),
       "right" -> CValue.CProduct(Map("age" -> CValue.CInt(30L)), Map("age" -> CType.CInt))
     )
 
@@ -1004,10 +1013,11 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   // =====================================================================
 
   "Runtime.run with ProjectTransform" should "project fields from a record" in {
-    val sourceId  = UUID.randomUUID()
-    val resultId  = UUID.randomUUID()
+    val sourceId = UUID.randomUUID()
+    val resultId = UUID.randomUUID()
 
-    val sourceType = CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt, "email" -> CType.CString))
+    val sourceType =
+      CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt, "email" -> CType.CString))
     val resultType = CType.CProduct(Map("name" -> CType.CString, "email" -> CType.CString))
 
     val dag = transformOnlyDag(
@@ -1019,7 +1029,8 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
           "projected",
           Map.empty,
           resultType,
-          inlineTransform = Some(InlineTransform.ProjectTransform(List("name", "email"), sourceType)),
+          inlineTransform =
+            Some(InlineTransform.ProjectTransform(List("name", "email"), sourceType)),
           transformInputs = Map("source" -> sourceId)
         )
       )
@@ -1072,7 +1083,7 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     val initData = Map(
       "record" -> CValue.CProduct(
         Map("name" -> CValue.CString("Charlie"), "age" -> CValue.CInt(40L)),
-        Map("name" -> CType.CString, "age" -> CType.CInt)
+        Map("name" -> CType.CString, "age"             -> CType.CInt)
       )
     )
 
@@ -1104,7 +1115,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
           Map.empty,
           CType.CString,
           inlineTransform = Some(
-            InlineTransform.StringInterpolationTransform(List("Hello, ", "! You are ", " years old."))
+            InlineTransform.StringInterpolationTransform(
+              List("Hello, ", "! You are ", " years old.")
+            )
           ),
           transformInputs = Map("expr0" -> nameId, "expr1" -> ageId)
         )
@@ -1291,7 +1304,10 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     )
 
     val initData = Map(
-      "numbers" -> CValue.CList(Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)), CType.CInt)
+      "numbers" -> CValue.CList(
+        Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
+        CType.CInt
+      )
     )
 
     val state = Runtime.run(dag, initData, Map.empty).unsafeRunSync()
@@ -1458,10 +1474,10 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "chain And -> Not (composite boolean logic)" in {
-    val leftId    = UUID.randomUUID()
-    val rightId   = UUID.randomUUID()
-    val andId     = UUID.randomUUID()
-    val notAndId  = UUID.randomUUID()
+    val leftId   = UUID.randomUUID()
+    val rightId  = UUID.randomUUID()
+    val andId    = UUID.randomUUID()
+    val notAndId = UUID.randomUUID()
 
     // left AND right -> notResult = NOT(left AND right) = NAND
     val dag = transformOnlyDag(
@@ -1518,7 +1534,7 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId        -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         moduleOutputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt),
         fieldResultId -> DataNodeSpec(
           "constant",
@@ -1563,9 +1579,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        dummyInId -> DataNodeSpec("text", Map(dummyModId -> "text"), CType.CString),
+        dummyInId  -> DataNodeSpec("text", Map(dummyModId -> "text"), CType.CString),
         dummyOutId -> DataNodeSpec("result", Map(dummyModId -> "result"), CType.CString),
-        inputId -> userInput("flag", CType.CBoolean),
+        inputId    -> userInput("flag", CType.CBoolean),
         notResultId -> DataNodeSpec(
           "not_flag",
           Map.empty,
@@ -1581,14 +1597,16 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
     val modules  = Map(dummyModId -> uppercaseModule)
     val initData = Map("text" -> CValue.CString("test"), "flag" -> CValue.CBoolean(true))
 
-    val state = Runtime.runWithBackends(
-      dag,
-      initData,
-      modules,
-      Map.empty,
-      GlobalScheduler.unbounded,
-      ConstellationBackends.defaults
-    ).unsafeRunSync()
+    val state = Runtime
+      .runWithBackends(
+        dag,
+        initData,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        ConstellationBackends.defaults
+      )
+      .unsafeRunSync()
 
     state.data(notResultId).value shouldBe CValue.CBoolean(false)
     state.data(dummyOutId).value shouldBe CValue.CString("TEST")
@@ -1614,10 +1632,10 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        modInId -> DataNodeSpec("text", Map(modId -> "text"), CType.CString),
+        modInId  -> DataNodeSpec("text", Map(modId -> "text"), CType.CString),
         modOutId -> DataNodeSpec("result", Map(modId -> "result"), CType.CString),
-        nameId -> userInput("name", CType.CString),
-        ageId -> userInput("age", CType.CInt),
+        nameId   -> userInput("name", CType.CString),
+        ageId    -> userInput("age", CType.CInt),
         recordId -> DataNodeSpec(
           "record",
           Map.empty,
@@ -1630,21 +1648,23 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
       outEdges = Set((modId, modOutId))
     )
 
-    val modules  = Map(modId -> uppercaseModule)
+    val modules = Map(modId -> uppercaseModule)
     val initData = Map(
       "text" -> CValue.CString("hi"),
       "name" -> CValue.CString("Eve"),
       "age"  -> CValue.CInt(25L)
     )
 
-    val state = Runtime.runWithBackends(
-      dag,
-      initData,
-      modules,
-      Map.empty,
-      GlobalScheduler.unbounded,
-      ConstellationBackends.defaults
-    ).unsafeRunSync()
+    val state = Runtime
+      .runWithBackends(
+        dag,
+        initData,
+        modules,
+        Map.empty,
+        GlobalScheduler.unbounded,
+        ConstellationBackends.defaults
+      )
+      .unsafeRunSync()
 
     val product = state.data(recordId).value.asInstanceOf[CValue.CProduct]
     product.value("name") shouldBe CValue.CString("Eve")
@@ -1672,9 +1692,9 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        modInId -> DataNodeSpec("text", Map(modId -> "text"), CType.CString),
+        modInId  -> DataNodeSpec("text", Map(modId -> "text"), CType.CString),
         modOutId -> DataNodeSpec("result", Map(modId -> "result"), CType.CString),
-        inputId -> userInput("flag", CType.CBoolean),
+        inputId  -> userInput("flag", CType.CBoolean),
         notResultId -> DataNodeSpec(
           "not_flag",
           Map.empty,
@@ -1718,11 +1738,11 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        modInId -> DataNodeSpec("x", Map(modId -> "x"), CType.CInt),
+        modInId  -> DataNodeSpec("x", Map(modId -> "x"), CType.CInt),
         modOutId -> DataNodeSpec("result", Map(modId -> "result"), CType.CInt),
-        condId -> userInput("cond", CType.CBoolean),
-        thenId -> userInput("thenVal", CType.CString),
-        elseId -> userInput("elseVal", CType.CString),
+        condId   -> userInput("cond", CType.CBoolean),
+        thenId   -> userInput("thenVal", CType.CString),
+        elseId   -> userInput("elseVal", CType.CString),
         resultId -> DataNodeSpec(
           "condResult",
           Map.empty,
@@ -1735,7 +1755,7 @@ class RuntimeInlineTransformTest extends AnyFlatSpec with Matchers {
       outEdges = Set((modId, modOutId))
     )
 
-    val modules  = Map(modId -> doubleModule)
+    val modules = Map(modId -> doubleModule)
     val initData = Map(
       "x"       -> CValue.CInt(5L),
       "cond"    -> CValue.CBoolean(false),

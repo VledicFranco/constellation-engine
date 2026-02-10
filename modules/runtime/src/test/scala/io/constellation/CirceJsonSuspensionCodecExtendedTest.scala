@@ -29,16 +29,16 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Complex round-trip tests =====
 
   "CirceJsonSuspensionCodecExtended" should "round-trip a complex SuspendedExecution with nested CValues, module options, and multiple inputs" in {
-    val modId1 = UUID.randomUUID()
-    val modId2 = UUID.randomUUID()
+    val modId1  = UUID.randomUUID()
+    val modId2  = UUID.randomUUID()
     val nodeId1 = UUID.randomUUID()
     val nodeId2 = UUID.randomUUID()
 
     val complexInputs = Map(
-      "text" -> CValue.CString("hello world"),
+      "text"  -> CValue.CString("hello world"),
       "count" -> CValue.CInt(42L),
       "ratio" -> CValue.CFloat(3.14),
-      "flag" -> CValue.CBoolean(false),
+      "flag"  -> CValue.CBoolean(false),
       "items" -> CValue.CList(
         Vector(CValue.CString("a"), CValue.CString("b"), CValue.CString("c")),
         CType.CString
@@ -89,24 +89,24 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
   it should "round-trip with nested CProduct values" in {
     val innerProduct = CValue.CProduct(
       Map("street" -> CValue.CString("123 Main St"), "zip" -> CValue.CInt(90210L)),
-      Map("street" -> CType.CString, "zip" -> CType.CInt)
+      Map("street" -> CType.CString, "zip"                 -> CType.CInt)
     )
     val outerProduct = CValue.CProduct(
       Map(
-        "name" -> CValue.CString("Alice"),
-        "age" -> CValue.CInt(30L),
+        "name"    -> CValue.CString("Alice"),
+        "age"     -> CValue.CInt(30L),
         "address" -> innerProduct
       ),
       Map(
-        "name" -> CType.CString,
-        "age" -> CType.CInt,
+        "name"    -> CType.CString,
+        "age"     -> CType.CInt,
         "address" -> CType.CProduct(Map("street" -> CType.CString, "zip" -> CType.CInt))
       )
     )
     val inputs = Map("person" -> outerProduct)
 
     val original = mkSuspended(inputs = inputs)
-    val encoded = codec.encode(original)
+    val encoded  = codec.encode(original)
     encoded.isRight shouldBe true
 
     val decoded = codec.decode(encoded.toOption.get)
@@ -125,7 +125,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val inputs = Map("tagged" -> unionValue)
 
     val original = mkSuspended(inputs = inputs)
-    val encoded = codec.encode(original)
+    val encoded  = codec.encode(original)
     encoded.isRight shouldBe true
 
     val decoded = codec.decode(encoded.toOption.get)
@@ -148,7 +148,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val inputs = Map("lookup" -> mapValue)
 
     val original = mkSuspended(inputs = inputs)
-    val encoded = codec.encode(original)
+    val encoded  = codec.encode(original)
     encoded.isRight shouldBe true
 
     val decoded = codec.decode(encoded.toOption.get)
@@ -161,22 +161,23 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
   it should "round-trip with nested CSome containing CProduct" in {
     val product = CValue.CProduct(
       Map("x" -> CValue.CInt(10L), "y" -> CValue.CInt(20L)),
-      Map("x" -> CType.CInt, "y" -> CType.CInt)
+      Map("x" -> CType.CInt, "y"       -> CType.CInt)
     )
-    val someProduct = CValue.CSome(product, CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CInt)))
+    val someProduct =
+      CValue.CSome(product, CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CInt)))
     val inputs = Map("maybePoint" -> someProduct)
 
     val original = mkSuspended(inputs = inputs)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.providedInputs shouldBe inputs
   }
 
   it should "round-trip with CNone of complex inner type" in {
     val noneList = CValue.CNone(CType.CList(CType.CString))
-    val inputs = Map("maybeItems" -> noneList)
+    val inputs   = Map("maybeItems" -> noneList)
 
     val original = mkSuspended(inputs = inputs)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.providedInputs shouldBe inputs
   }
 
@@ -193,7 +194,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     )
 
     val original = mkSuspended(statuses = statuses)
-    val encoded = codec.encode(original)
+    val encoded  = codec.encode(original)
     encoded.isRight shouldBe true
 
     val decoded = codec.decode(encoded.toOption.get)
@@ -222,16 +223,16 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val options = Map(modId -> fullOptions)
 
     val original = mkSuspended(moduleOptions = options)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.moduleOptions shouldBe options
   }
 
   it should "round-trip with empty module options (ModuleCallOptions.empty)" in {
-    val modId = UUID.randomUUID()
+    val modId   = UUID.randomUUID()
     val options = Map(modId -> ModuleCallOptions.empty)
 
     val original = mkSuspended(moduleOptions = options)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.moduleOptions shouldBe options
   }
 
@@ -331,7 +332,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val computed = Map(
       nodeId1 -> CValue.CProduct(
         Map("a" -> CValue.CInt(1L), "b" -> CValue.CString("x")),
-        Map("a" -> CType.CInt, "b" -> CType.CString)
+        Map("a" -> CType.CInt, "b"      -> CType.CString)
       ),
       nodeId2 -> CValue.CList(
         Vector(CValue.CFloat(1.1), CValue.CFloat(2.2)),
@@ -341,7 +342,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     )
 
     val original = mkSuspended(computed = computed)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.computedValues shouldBe computed
   }
 
@@ -349,9 +350,9 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip with all CValue types simultaneously in inputs" in {
     val inputs = Map(
-      "str" -> CValue.CString("hello"),
-      "num" -> CValue.CInt(99L),
-      "dec" -> CValue.CFloat(2.718),
+      "str"  -> CValue.CString("hello"),
+      "num"  -> CValue.CInt(99L),
+      "dec"  -> CValue.CFloat(2.718),
       "bool" -> CValue.CBoolean(true),
       "list" -> CValue.CList(Vector(CValue.CInt(1L), CValue.CInt(2L)), CType.CInt),
       "map" -> CValue.CMap(
@@ -373,7 +374,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     )
 
     val original = mkSuspended(inputs = inputs)
-    val encoded = codec.encode(original)
+    val encoded  = codec.encode(original)
     encoded.isRight shouldBe true
 
     val decoded = codec.decode(encoded.toOption.get)
@@ -387,7 +388,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val inputs = Map("empty" -> CValue.CList(Vector.empty, CType.CString))
 
     val original = mkSuspended(inputs = inputs)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.providedInputs shouldBe inputs
   }
 
@@ -395,7 +396,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val inputs = Map("empty" -> CValue.CMap(Vector.empty, CType.CString, CType.CInt))
 
     val original = mkSuspended(inputs = inputs)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.providedInputs shouldBe inputs
   }
 
@@ -403,7 +404,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
     val inputs = Map("empty" -> CValue.CProduct(Map.empty, Map.empty))
 
     val original = mkSuspended(inputs = inputs)
-    val decoded = codec.decode(codec.encode(original).toOption.get).toOption.get
+    val decoded  = codec.decode(codec.encode(original).toOption.get).toOption.get
     decoded.providedInputs shouldBe inputs
   }
 
@@ -411,7 +412,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "round-trip with a non-empty DagSpec" in {
     val moduleId = UUID.randomUUID()
-    val dataId = UUID.randomUUID()
+    val dataId   = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -424,7 +425,7 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        dataId -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
+        dataId   -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((dataId, moduleId)),
@@ -463,7 +464,8 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Encode produces valid UTF-8 bytes =====
 
   it should "produce valid UTF-8 JSON bytes that can be parsed back" in {
-    val original = mkSuspended(inputs = Map("unicode" -> CValue.CString("hello \u00e9\u00e0\u00fc\u4e16\u754c")))
+    val original =
+      mkSuspended(inputs = Map("unicode" -> CValue.CString("hello \u00e9\u00e0\u00fc\u4e16\u754c")))
     val encoded = codec.encode(original)
     encoded.isRight shouldBe true
 
@@ -472,6 +474,8 @@ class CirceJsonSuspensionCodecExtendedTest extends AnyFlatSpec with Matchers {
 
     val decoded = codec.decode(encoded.toOption.get)
     decoded.isRight shouldBe true
-    decoded.toOption.get.providedInputs("unicode") shouldBe CValue.CString("hello \u00e9\u00e0\u00fc\u4e16\u754c")
+    decoded.toOption.get.providedInputs("unicode") shouldBe CValue.CString(
+      "hello \u00e9\u00e0\u00fc\u4e16\u754c"
+    )
   }
 }

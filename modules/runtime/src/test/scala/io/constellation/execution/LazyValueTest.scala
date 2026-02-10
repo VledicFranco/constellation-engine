@@ -17,10 +17,10 @@ class LazyValueExtendedTest extends AnyFlatSpec with Matchers {
 
   "LazyValue.apply" should "create a lazy value in Pending state" in {
     val result = (for {
-      lv         <- LazyValue(IO.pure(42))
-      computed   <- lv.isComputed
-      computing  <- lv.isComputing
-      peeked     <- lv.peek
+      lv        <- LazyValue(IO.pure(42))
+      computed  <- lv.isComputed
+      computing <- lv.isComputing
+      peeked    <- lv.peek
     } yield (computed, computing, peeked)).unsafeRunSync()
 
     result._1 shouldBe false
@@ -78,7 +78,7 @@ class LazyValueExtendedTest extends AnyFlatSpec with Matchers {
       counter <- Ref.of[IO, Int](0)
       lv <- LazyValue {
         counter.updateAndGet(_ + 1).flatMap { n =>
-          if (n == 1) IO.raiseError[String](new RuntimeException("first call fails"))
+          if n == 1 then IO.raiseError[String](new RuntimeException("first call fails"))
           else IO.pure(s"ok-$n")
         }
       }
@@ -149,14 +149,14 @@ class LazyValueExtendedTest extends AnyFlatSpec with Matchers {
 
   "reset" should "revert to Pending after force and force recomputation" in {
     val result = (for {
-      counter <- Ref.of[IO, Int](0)
-      lv      <- LazyValue(counter.updateAndGet(_ + 1))
-      first   <- lv.force
-      _       <- lv.reset
-      peeked  <- lv.peek
+      counter  <- Ref.of[IO, Int](0)
+      lv       <- LazyValue(counter.updateAndGet(_ + 1))
+      first    <- lv.force
+      _        <- lv.reset
+      peeked   <- lv.peek
       computed <- lv.isComputed
-      second  <- lv.force
-      count   <- counter.get
+      second   <- lv.force
+      count    <- counter.get
     } yield (first, peeked, computed, second, count)).unsafeRunSync()
 
     result._1 shouldBe 1
@@ -191,11 +191,11 @@ class LazyValueExtendedTest extends AnyFlatSpec with Matchers {
 
   "map" should "transform the value lazily" in {
     val result = (for {
-      lv      <- LazyValue(IO.pure(10))
-      mapped  <- lv.map(_ * 2)
-      before  <- mapped.isComputed
-      value   <- mapped.force
-      after   <- mapped.isComputed
+      lv     <- LazyValue(IO.pure(10))
+      mapped <- lv.map(_ * 2)
+      before <- mapped.isComputed
+      value  <- mapped.force
+      after  <- mapped.isComputed
     } yield (before, value, after)).unsafeRunSync()
 
     result._1 shouldBe false

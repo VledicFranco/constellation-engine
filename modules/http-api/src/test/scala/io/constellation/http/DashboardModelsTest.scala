@@ -35,9 +35,16 @@ class DashboardModelsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle optional children" in {
-    val dir = FileNode("scripts", "/scripts", FileType.Directory, children = Some(List(
-      FileNode("a.cst", "/scripts/a.cst", FileType.File)
-    )))
+    val dir = FileNode(
+      "scripts",
+      "/scripts",
+      FileType.Directory,
+      children = Some(
+        List(
+          FileNode("a.cst", "/scripts/a.cst", FileType.File)
+        )
+      )
+    )
     val json = dir.asJson
     json.as[FileNode] shouldBe Right(dir)
   }
@@ -45,9 +52,12 @@ class DashboardModelsTest extends AnyFlatSpec with Matchers {
   // ============= FilesResponse =============
 
   "FilesResponse" should "encode and decode" in {
-    val response = FilesResponse("/root", List(
-      FileNode("test.cst", "/root/test.cst", FileType.File)
-    ))
+    val response = FilesResponse(
+      "/root",
+      List(
+        FileNode("test.cst", "/root/test.cst", FileType.File)
+      )
+    )
     val json = response.asJson
     json.as[FilesResponse] shouldBe Right(response)
   }

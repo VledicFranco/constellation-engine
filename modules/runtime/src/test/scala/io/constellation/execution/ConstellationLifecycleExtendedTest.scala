@@ -146,7 +146,7 @@ class ConstellationLifecycleExtendedTest extends AnyFlatSpec with Matchers with 
     lc.shutdown(1.second).timeout(3.seconds).unsafeRunSync()
     lc.state.unsafeRunSync() shouldBe LifecycleState.Stopped
 
-    val (exec, _) = mockExecution().unsafeRunSync()
+    val (exec, _)  = mockExecution().unsafeRunSync()
     val registered = lc.registerExecution(exec.executionId, exec).unsafeRunSync()
     registered shouldBe false
   }
@@ -163,7 +163,7 @@ class ConstellationLifecycleExtendedTest extends AnyFlatSpec with Matchers with 
     lc.state.unsafeRunSync() shouldBe LifecycleState.Draining
 
     val (exec2, _) = mockExecution().unsafeRunSync()
-    val registered  = lc.registerExecution(exec2.executionId, exec2).unsafeRunSync()
+    val registered = lc.registerExecution(exec2.executionId, exec2).unsafeRunSync()
     registered shouldBe false
 
     // Clean up
@@ -350,13 +350,15 @@ class ConstellationLifecycleExtendedTest extends AnyFlatSpec with Matchers with 
   "ConstellationLifecycle concurrent operations" should "handle concurrent registrations safely" in {
     val lc = ConstellationLifecycle.create.unsafeRunSync()
 
-    val registrations = (1 to 20).toList.parTraverse { _ =>
-      for {
-        pair <- mockExecution()
-        (exec, _) = pair
-        registered <- lc.registerExecution(exec.executionId, exec)
-      } yield registered
-    }.unsafeRunSync()
+    val registrations = (1 to 20).toList
+      .parTraverse { _ =>
+        for {
+          pair <- mockExecution()
+          (exec, _) = pair
+          registered <- lc.registerExecution(exec.executionId, exec)
+        } yield registered
+      }
+      .unsafeRunSync()
 
     registrations.count(_ == true) shouldBe 20
     lc.inflightCount.unsafeRunSync() shouldBe 20
@@ -374,9 +376,11 @@ class ConstellationLifecycleExtendedTest extends AnyFlatSpec with Matchers with 
     lc.inflightCount.unsafeRunSync() shouldBe 20
 
     // Deregister all concurrently
-    execs.parTraverse { case (exec, _) =>
-      lc.deregisterExecution(exec.executionId)
-    }.unsafeRunSync()
+    execs
+      .parTraverse { case (exec, _) =>
+        lc.deregisterExecution(exec.executionId)
+      }
+      .unsafeRunSync()
 
     lc.inflightCount.unsafeRunSync() shouldBe 0
   }
@@ -414,8 +418,8 @@ class ConstellationLifecycleExtendedTest extends AnyFlatSpec with Matchers with 
   }
 
   it should "handle registering with the same UUID twice" in {
-    val lc    = ConstellationLifecycle.create.unsafeRunSync()
-    val id    = UUID.randomUUID()
+    val lc         = ConstellationLifecycle.create.unsafeRunSync()
+    val id         = UUID.randomUUID()
     val (exec1, _) = mockExecution(id = id).unsafeRunSync()
     val (exec2, _) = mockExecution(id = id).unsafeRunSync()
 

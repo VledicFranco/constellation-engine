@@ -110,7 +110,7 @@ class RawValueConverterTest extends AnyFlatSpec with Matchers {
   it should "convert CProduct with sorted field order" in {
     val productCV = CValue.CProduct(
       Map("z" -> CValue.CInt(3), "a" -> CValue.CString("first"), "m" -> CValue.CBoolean(true)),
-      Map("a" -> CType.CString, "m" -> CType.CBoolean, "z" -> CType.CInt)
+      Map("a" -> CType.CString, "m"  -> CType.CBoolean, "z"          -> CType.CInt)
     )
 
     val raw = RawValueConverter.fromCValue(productCV)
@@ -232,10 +232,10 @@ class RawValueConverterTest extends AnyFlatSpec with Matchers {
     val none    = CValue.CNone(CType.CString)
     val optType = CType.COptional(CType.CString)
 
-    val rawSome    = RawValueConverter.fromCValue(some)
-    val rawNone    = RawValueConverter.fromCValue(none)
-    val backSome   = RawValueConverter.toCValue(rawSome, optType)
-    val backNone   = RawValueConverter.toCValue(rawNone, optType)
+    val rawSome  = RawValueConverter.fromCValue(some)
+    val rawNone  = RawValueConverter.fromCValue(none)
+    val backSome = RawValueConverter.toCValue(rawSome, optType)
+    val backNone = RawValueConverter.toCValue(rawNone, optType)
 
     backSome shouldBe some
     backNone shouldBe none

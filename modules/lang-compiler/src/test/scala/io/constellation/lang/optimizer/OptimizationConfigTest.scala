@@ -143,7 +143,7 @@ class OptimizationConfigTest extends AnyFlatSpec with Matchers {
 
   "The default constructor (no args)" should "produce the same config as OptimizationConfig.default" in {
     val fromConstructor = OptimizationConfig()
-    val fromPreset = OptimizationConfig.default
+    val fromPreset      = OptimizationConfig.default
     fromConstructor shouldBe fromPreset
   }
 

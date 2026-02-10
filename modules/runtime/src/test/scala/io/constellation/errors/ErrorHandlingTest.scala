@@ -59,7 +59,7 @@ class ErrorHandlingTest extends AnyFlatSpec with Matchers {
   // ============= handleNotification =============
 
   "handleNotification" should "complete successfully for successful IO" in {
-    val logged = new AtomicReference[String]("")
+    val logged                     = new AtomicReference[String]("")
     val logger: String => IO[Unit] = msg => IO(logged.set(msg))
 
     ErrorHandling.handleNotification("test", logger)(IO.unit).unsafeRunSync()
@@ -67,7 +67,7 @@ class ErrorHandlingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "log error and complete for failed IO" in {
-    val logged = new AtomicReference[String]("")
+    val logged                     = new AtomicReference[String]("")
     val logger: String => IO[Unit] = msg => IO(logged.set(msg))
 
     ErrorHandling
@@ -88,7 +88,7 @@ class ErrorHandlingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return None and log for failed IO" in {
-    val logged = new AtomicReference[String]("")
+    val logged                     = new AtomicReference[String]("")
     val logger: String => IO[Unit] = msg => IO(logged.set(msg))
 
     val result = ErrorHandling

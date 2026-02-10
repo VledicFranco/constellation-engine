@@ -4,9 +4,9 @@ import java.util.UUID
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import cats.implicits._
+import cats.implicits.*
 
-import io.constellation._
+import io.constellation.*
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -22,7 +22,11 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
       .implementationPure[TestInput, TestOutput](in => TestOutput(in.x * 2))
       .build
 
-  private def createTestModuleWithVersion(name: String, major: Int, minor: Int): Module.Uninitialized =
+  private def createTestModuleWithVersion(
+      name: String,
+      major: Int,
+      minor: Int
+  ): Module.Uninitialized =
     ModuleBuilder
       .metadata(name, s"Test module $name v$major.$minor", major, minor)
       .implementationPure[TestInput, TestOutput](in => TestOutput(in.x * 2))
@@ -42,9 +46,9 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "map multiple DagSpec modules to their registered implementations" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val m1 = createTestModule("Uppercase")
-    val m2 = createTestModule("WordCount")
-    val m3 = createTestModule("Trim")
+    val m1       = createTestModule("Uppercase")
+    val m2       = createTestModule("WordCount")
+    val m3       = createTestModule("Trim")
 
     registry.register("Uppercase", m1).unsafeRunSync()
     registry.register("WordCount", m2).unsafeRunSync()
@@ -89,8 +93,12 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
         id1 -> ModuleNodeSpec(metadata = ComponentMetadata("Uppercase", "Test", List.empty, 1, 0)),
-        id2 -> ModuleNodeSpec(metadata = ComponentMetadata("MissingModule1", "Test", List.empty, 1, 0)),
-        id3 -> ModuleNodeSpec(metadata = ComponentMetadata("MissingModule2", "Test", List.empty, 1, 0))
+        id2 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("MissingModule1", "Test", List.empty, 1, 0)
+        ),
+        id3 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("MissingModule2", "Test", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -159,8 +167,12 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
-        id1 -> ModuleNodeSpec(metadata = ComponentMetadata("Uppercase", "First use", List.empty, 1, 0)),
-        id2 -> ModuleNodeSpec(metadata = ComponentMetadata("Uppercase", "Second use", List.empty, 1, 0))
+        id1 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Uppercase", "First use", List.empty, 1, 0)
+        ),
+        id2 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Uppercase", "Second use", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -184,9 +196,11 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
     val modules = (1 to 50).map(i => s"Module$i" -> createTestModule(s"Module$i")).toList
 
     // Register all modules in parallel
-    modules.parTraverse { case (name, module) =>
-      registry.register(name, module)
-    }.unsafeRunSync()
+    modules
+      .parTraverse { case (name, module) =>
+        registry.register(name, module)
+      }
+      .unsafeRunSync()
 
     val size = registry.size.unsafeRunSync()
     size shouldBe 50
@@ -255,7 +269,7 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "handle lookup of deeply nested dot-separated names" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val module = createTestModule("org.example.Transform")
+    val module   = createTestModule("org.example.Transform")
     registry.register("org.example.Transform", module).unsafeRunSync()
 
     // Exact match should work
@@ -277,8 +291,8 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "resolve short name to first registered when multiple prefixed modules share it" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync()
-    val m1 = createTestModuleWithVersion("dag1.Compute", 1, 0)
-    val m2 = createTestModuleWithVersion("dag2.Compute", 2, 0)
+    val m1       = createTestModuleWithVersion("dag1.Compute", 1, 0)
+    val m2       = createTestModuleWithVersion("dag2.Compute", 2, 0)
 
     registry.register("dag1.Compute", m1).unsafeRunSync()
     registry.register("dag2.Compute", m2).unsafeRunSync()
@@ -397,7 +411,8 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Branch module", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map("out" -> CType.CString)
         )
       ),
@@ -424,10 +439,14 @@ class ModuleRegistryImplExtendedTest extends AnyFlatSpec with Matchers {
     val m1 = createTestModule("dag1.Parser")
     val m2 = createTestModule("dag2.Parser")
 
-    val registry = ModuleRegistryImpl.withModules(List(
-      "dag1.Parser" -> m1,
-      "dag2.Parser" -> m2
-    )).unsafeRunSync()
+    val registry = ModuleRegistryImpl
+      .withModules(
+        List(
+          "dag1.Parser" -> m1,
+          "dag2.Parser" -> m2
+        )
+      )
+      .unsafeRunSync()
 
     registry.size.unsafeRunSync() shouldBe 2
 

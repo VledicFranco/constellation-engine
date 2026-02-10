@@ -159,7 +159,8 @@ class ExecutionStorageTest extends AnyFlatSpec with Matchers {
 
   it should "return None when updating non-existent execution" in {
     val storage = createStorage()
-    val result  = storage.update("non-existent")(_.copy(status = ExecutionStatus.Failed)).unsafeRunSync()
+    val result =
+      storage.update("non-existent")(_.copy(status = ExecutionStatus.Failed)).unsafeRunSync()
     result shouldBe None
   }
 
@@ -209,9 +210,9 @@ class ExecutionStorageTest extends AnyFlatSpec with Matchers {
     val exec3   = sampleExecution(id = "exec-3", startTime = 3000)
 
     val result = (for {
-      _ <- storage.store(exec1)
-      _ <- storage.store(exec2)
-      _ <- storage.store(exec3)
+      _      <- storage.store(exec1)
+      _      <- storage.store(exec2)
+      _      <- storage.store(exec3)
       first  <- storage.get("exec-1")
       second <- storage.get("exec-2")
       third  <- storage.get("exec-3")

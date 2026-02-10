@@ -129,8 +129,17 @@ class SemanticTokenTypesTest extends AnyFlatSpec with Matchers {
 
   it should "contain the expected string values in order" in {
     tokenTypes shouldBe List(
-      "namespace", "type", "function", "variable", "parameter",
-      "property", "keyword", "string", "number", "operator", "comment"
+      "namespace",
+      "type",
+      "function",
+      "variable",
+      "parameter",
+      "property",
+      "keyword",
+      "string",
+      "number",
+      "operator",
+      "comment"
     )
   }
 
@@ -142,7 +151,10 @@ class SemanticTokenTypesTest extends AnyFlatSpec with Matchers {
 
   it should "contain the expected string values in order" in {
     tokenModifiers shouldBe List(
-      "declaration", "definition", "readonly", "defaultLibrary"
+      "declaration",
+      "definition",
+      "readonly",
+      "defaultLibrary"
     )
   }
 }

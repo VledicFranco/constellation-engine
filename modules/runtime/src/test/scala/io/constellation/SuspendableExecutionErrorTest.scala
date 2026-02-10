@@ -33,9 +33,9 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
 
   it should "preserve its fields via case class accessors" in {
     val error = InputTypeMismatchError("field", CType.CFloat, CType.CBoolean)
-    error.name     shouldBe "field"
+    error.name shouldBe "field"
     error.expected shouldBe CType.CFloat
-    error.actual   shouldBe CType.CBoolean
+    error.actual shouldBe CType.CBoolean
   }
 
   // ---------------------------------------------------------------------------
@@ -98,9 +98,9 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
 
   it should "preserve its fields via case class accessors" in {
     val error = NodeTypeMismatchError("node1", CType.CBoolean, CType.CFloat)
-    error.name     shouldBe "node1"
+    error.name shouldBe "node1"
     error.expected shouldBe CType.CBoolean
-    error.actual   shouldBe CType.CFloat
+    error.actual shouldBe CType.CFloat
   }
 
   // ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
   it should "preserve its fields via case class accessors" in {
     val error = PipelineChangedError("hash1", "hash2")
     error.expected shouldBe "hash1"
-    error.actual   shouldBe "hash2"
+    error.actual shouldBe "hash2"
   }
 
   // ---------------------------------------------------------------------------
@@ -192,7 +192,7 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
   // ---------------------------------------------------------------------------
 
   "All suspendable execution error types" should "be subclasses of RuntimeException" in {
-    val uuid   = UUID.randomUUID()
+    val uuid = UUID.randomUUID()
     val errors: List[Throwable] = List(
       InputTypeMismatchError("a", CType.CString, CType.CInt),
       InputAlreadyProvidedError("b"),
@@ -223,15 +223,16 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
     val cause2 = new IllegalArgumentException("bad input")
     val error  = RetryExhaustedException("All retries failed", 2, List(cause1, cause2))
 
-    error.getMessage    shouldBe "All retries failed"
+    error.getMessage shouldBe "All retries failed"
     error.totalAttempts shouldBe 2
-    error.errors        shouldBe List(cause1, cause2)
+    error.errors shouldBe List(cause1, cause2)
   }
 
   it should "produce a detailedMessage with attempt numbers and error info" in {
     val cause1 = new RuntimeException("connection refused")
     val cause2 = new IllegalStateException("server down")
-    val error  = RetryExhaustedException("Operation failed after 2 attempts", 2, List(cause1, cause2))
+    val error =
+      RetryExhaustedException("Operation failed after 2 attempts", 2, List(cause1, cause2))
 
     val detail = error.detailedMessage
     detail should include("Operation failed after 2 attempts")
@@ -268,7 +269,7 @@ class SuspendableExecutionErrorTest extends AnyFlatSpec with Matchers {
   it should "store the message and timeout fields" in {
     val error = ModuleTimeoutException("Module X exceeded timeout", 10.seconds)
     error.getMessage shouldBe "Module X exceeded timeout"
-    error.timeout    shouldBe 10.seconds
+    error.timeout shouldBe 10.seconds
   }
 
   it should "produce a toString that includes the message and timeout in millis" in {

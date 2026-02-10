@@ -90,7 +90,7 @@ class ParserErrorRecoveryTest extends AnyFlatSpec with Matchers {
     val result = parse(source)
     // This is syntactically valid: Foo is treated as a variable reference.
     // If the parser rejects it, that is also acceptable behavior.
-    if (result.isRight) {
+    if result.isRight then {
       result.isRight shouldBe true
     } else {
       result.isLeft shouldBe true

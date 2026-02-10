@@ -143,7 +143,7 @@ class CustomJsonCodecsTest extends AnyFlatSpec with Matchers {
   it should "encode/decode CValue.CProduct with structure" in {
     val original: CValue = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
     val encoded = original.asJson
     val decoded = encoded.as[CValue]
@@ -217,8 +217,8 @@ class CustomJsonCodecsTest extends AnyFlatSpec with Matchers {
   }
 
   it should "encode/decode DataNodeSpec" in {
-    val nickId   = UUID.randomUUID()
-    val inputId  = UUID.randomUUID()
+    val nickId  = UUID.randomUUID()
+    val inputId = UUID.randomUUID()
     val original = DataNodeSpec(
       name = "inputText",
       nicknames = Map(nickId -> "text"),
@@ -292,20 +292,24 @@ class CustomJsonCodecsTest extends AnyFlatSpec with Matchers {
 
     val dagSpec = DagSpec(
       metadata = ComponentMetadata("Pipeline", "Test pipeline", List.empty, 1, 0),
-      modules = Map(moduleId -> ModuleNodeSpec(
-        metadata = ComponentMetadata("Mod", "A module", List.empty, 1, 0),
-        consumes = Map("in" -> CType.CString),
-        produces = Map("out" -> CType.CString),
-        config = ModuleConfig.default,
-        definitionContext = None
-      )),
-      data = Map(dataId -> DataNodeSpec(
-        name = "data",
-        nicknames = Map.empty,
-        cType = CType.CString,
-        inlineTransform = None,
-        transformInputs = Map.empty
-      )),
+      modules = Map(
+        moduleId -> ModuleNodeSpec(
+          metadata = ComponentMetadata("Mod", "A module", List.empty, 1, 0),
+          consumes = Map("in" -> CType.CString),
+          produces = Map("out" -> CType.CString),
+          config = ModuleConfig.default,
+          definitionContext = None
+        )
+      ),
+      data = Map(
+        dataId -> DataNodeSpec(
+          name = "data",
+          nicknames = Map.empty,
+          cType = CType.CString,
+          inlineTransform = None,
+          transformInputs = Map.empty
+        )
+      ),
       inEdges = Set((dataId, moduleId)),
       outEdges = Set.empty,
       declaredOutputs = List.empty,

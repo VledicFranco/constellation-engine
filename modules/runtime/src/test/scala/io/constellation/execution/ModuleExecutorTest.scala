@@ -401,7 +401,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
   }
 
   "RetryExhaustedException.toString" should "include detailed message" in {
-    val errors = List(new RuntimeException("err1"))
+    val errors    = List(new RuntimeException("err1"))
     val exception = RetryExhaustedException("Failed after 1", 1, errors)
     exception.toString should include("Attempt 1")
     exception.toString should include("err1")

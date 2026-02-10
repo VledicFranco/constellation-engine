@@ -8,7 +8,15 @@ import cats.Eval
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.{CType, CValue, ComponentMetadata, DagSpec, DataNodeSpec, Module, ModuleNodeSpec}
+import io.constellation.{
+  CType,
+  CValue,
+  ComponentMetadata,
+  DagSpec,
+  DataNodeSpec,
+  Module,
+  ModuleNodeSpec
+}
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -131,8 +139,8 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
       size2 <- pool.size
       // Acquire another to get pool to maxSize after release
       // pool has 2 now; let's fill it to max then release the extra
-      s1    <- pool.acquire
-      s2    <- pool.acquire
+      s1 <- pool.acquire
+      s2 <- pool.acquire
       // pool is now at 0. Release s1 and s2 to fill to 2.
       _     <- pool.release(s1)
       _     <- pool.release(s2)
@@ -141,10 +149,10 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
       _     <- pool.release(extra)
       size4 <- pool.size // should be 3
       // Now pool is at maxSize=3. Acquire and release an extra.
-      another <- pool.acquire  // pool -> 2
-      _       <- pool.acquire  // pool -> 1
-      _       <- pool.acquire  // pool -> 0
-      fresh   <- pool.acquire  // miss, pool stays 0
+      another <- pool.acquire          // pool -> 2
+      _       <- pool.acquire          // pool -> 1
+      _       <- pool.acquire          // pool -> 0
+      fresh   <- pool.acquire          // miss, pool stays 0
       _       <- pool.release(another) // pool -> 1
       _       <- pool.release(fresh)   // pool -> 2
       extra2  <- pool.acquire          // pool -> 1, miss
@@ -158,18 +166,18 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
   "release when pool is full" should "discard and not increase pool size" in {
     val test = for {
       // maxSize = 1, initialSize = 1
-      pool  <- RuntimeStatePool.create(initialSize = 1, maxSize = 1)
+      pool <- RuntimeStatePool.create(initialSize = 1, maxSize = 1)
       // Acquire the single item from pool
       state <- pool.acquire
       // Pool is now empty (size = 0). Release brings it back to 1 = maxSize.
       _     <- pool.release(state)
       size1 <- pool.size
       // Create a fresh state by acquiring from empty, then fill pool to max
-      fresh <- pool.acquire // hit, pool -> 0
+      fresh <- pool.acquire        // hit, pool -> 0
       _     <- pool.release(fresh) // pool -> 1 (at max)
       // Now acquire two: one from pool and one fresh
-      s1    <- pool.acquire // hit, pool -> 0
-      s2    <- pool.acquire // miss (fresh), pool stays 0
+      s1 <- pool.acquire // hit, pool -> 0
+      s2 <- pool.acquire // miss (fresh), pool stays 0
       // Release both -- only one should fit
       _     <- pool.release(s1) // pool -> 1 (= maxSize)
       _     <- pool.release(s2) // pool full, should discard
@@ -205,11 +213,9 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
     val test = for {
       pool       <- RuntimeStatePool.create(initialSize = 2, maxSize = 20)
       sizeBefore <- pool.size
-      result <- pool
-        .use { _ =>
-          IO.raiseError[Int](new RuntimeException("boom"))
-        }
-        .attempt
+      result <- pool.use { _ =>
+        IO.raiseError[Int](new RuntimeException("boom"))
+      }.attempt
       sizeAfter <- pool.size
     } yield (sizeBefore, result.isLeft, sizeAfter)
 
@@ -222,11 +228,9 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
   it should "propagate the error from the function" in {
     val test = for {
       pool <- RuntimeStatePool.create(initialSize = 1, maxSize = 10)
-      result <- pool
-        .use { _ =>
-          IO.raiseError[String](new IllegalArgumentException("test error"))
-        }
-        .attempt
+      result <- pool.use { _ =>
+        IO.raiseError[String](new IllegalArgumentException("test error"))
+      }.attempt
     } yield result
 
     val result = test.unsafeRunSync()
@@ -241,7 +245,7 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
 
   "PooledState.reset" should "clear moduleStatus and data maps" in {
     val state = RuntimeStatePool.PooledState.create()
-    val id = UUID.randomUUID()
+    val id    = UUID.randomUUID()
     state.moduleStatus.put(id, Eval.now(Module.Status.Unfired))
     state.data.put(id, Eval.now(CValue.CInt(42)))
     state.markInUse()
@@ -267,7 +271,7 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
 
   "PooledState.initialize" should "set processUuid and dag" in {
     val state = RuntimeStatePool.PooledState.create()
-    val dag = makeDag(3)
+    val dag   = makeDag(3)
 
     state.initialize(dag)
 
@@ -277,7 +281,7 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
   }
 
   it should "pre-populate moduleStatus with Unfired for each module in the DAG" in {
-    val dag = makeDag(5)
+    val dag   = makeDag(5)
     val state = RuntimeStatePool.PooledState.create()
 
     state.initialize(dag)
@@ -304,7 +308,7 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
 
   "PooledState.toImmutableState" should "return a RuntimeStateSnapshot with matching fields" in {
     val state = RuntimeStatePool.PooledState.create()
-    val dag = makeDag(2)
+    val dag   = makeDag(2)
     state.initialize(dag)
     state.setLatency(Some(50.millis))
 
@@ -323,10 +327,10 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
 
   it should "produce an immutable copy that is not affected by subsequent mutations" in {
     val state = RuntimeStatePool.PooledState.create()
-    val dag = makeDag(1)
+    val dag   = makeDag(1)
     state.initialize(dag)
 
-    val snapshot = state.toImmutableState
+    val snapshot            = state.toImmutableState
     val snapshotModuleCount = snapshot.moduleStatus.size
 
     // Mutate the pooled state after snapshot
@@ -342,8 +346,8 @@ class RuntimeStatePoolTest extends AnyFlatSpec with Matchers {
 
   "PooledState setters" should "update processUuid, dag, and latency" in {
     val state = RuntimeStatePool.PooledState.create()
-    val uuid = UUID.randomUUID()
-    val dag = makeDag(0)
+    val uuid  = UUID.randomUUID()
+    val dag   = makeDag(0)
 
     state.setProcessUuid(uuid)
     state.processUuid shouldBe uuid

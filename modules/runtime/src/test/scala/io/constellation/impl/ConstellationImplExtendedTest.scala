@@ -3,12 +3,12 @@ package io.constellation.impl
 import java.time.Instant
 import java.util.UUID
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.constellation._
+import io.constellation.*
 import io.constellation.cache.{CacheBackend, CacheEntry, CacheStats}
 import io.constellation.execution.{ConstellationLifecycle, GlobalScheduler}
 import io.constellation.spi.{
@@ -36,8 +36,8 @@ class ConstellationImplExtendedTest extends AnyFlatSpec with Matchers {
       .implementationPure[TextInput, TextOutput](in => TextOutput(in.text.toUpperCase))
       .build
 
-  /** Build a minimal DagSpec with one module that takes a single String input and produces
-    * a single String output. Returns the DagSpec together with the module, input, and output UUIDs.
+  /** Build a minimal DagSpec with one module that takes a single String input and produces a single
+    * String output. Returns the DagSpec together with the module, input, and output UUIDs.
     */
   private def buildSimpleDag(
       moduleName: String
@@ -90,11 +90,11 @@ class ConstellationImplExtendedTest extends AnyFlatSpec with Matchers {
 
   /** A minimal no-op CacheBackend for testing builder wiring. */
   private class NoOpCacheBackend extends CacheBackend {
-    def get[A](key: String): IO[Option[CacheEntry[A]]] = IO.pure(None)
+    def get[A](key: String): IO[Option[CacheEntry[A]]]               = IO.pure(None)
     def set[A](key: String, value: A, ttl: FiniteDuration): IO[Unit] = IO.unit
-    def delete(key: String): IO[Boolean] = IO.pure(false)
-    def clear: IO[Unit] = IO.unit
-    def stats: IO[CacheStats] = IO.pure(CacheStats.empty)
+    def delete(key: String): IO[Boolean]                             = IO.pure(false)
+    def clear: IO[Unit]                                              = IO.unit
+    def stats: IO[CacheStats]                                        = IO.pure(CacheStats.empty)
   }
 
   // =========================================================================

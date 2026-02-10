@@ -32,6 +32,30 @@ This file contains actionable rules that Claude must follow when working on this
 
 **Why:** Raw `sbt` commands bypass project-specific configurations and are harder to maintain.
 
+## Git Hooks
+
+**Install Git hooks for automatic code formatting:**
+
+```bash
+# Unix/macOS
+./scripts/install-git-hooks.sh
+
+# Windows
+.\scripts\install-git-hooks.ps1
+```
+
+**What it does:**
+- Automatically runs `scalafmt` on staged Scala files before commit
+- Re-stages formatted files
+- Prevents CI/CD failures due to formatting issues
+
+**Bypass hook (not recommended):**
+```bash
+git commit --no-verify
+```
+
+**IMPORTANT:** Run the install script once after cloning the repository. The pre-commit hook ensures all Scala code is properly formatted before committing, preventing CI/CD failures.
+
 ## Server Endpoints
 
 - HTTP API: `http://localhost:{port}` (default: 8080)

@@ -279,13 +279,13 @@ class LimiterRegistryClearExtendedTest extends AnyFlatSpec with Matchers {
 
   "clear" should "allow adding new limiters after clear" in {
     val (namesAfterClear, namesAfterAdd) = (for {
-      registry       <- LimiterRegistry.create
-      _              <- registry.getRateLimiter("r1", RateLimit.perSecond(10))
-      _              <- registry.getConcurrencyLimiter("c1", 5)
-      _              <- registry.clear
+      registry        <- LimiterRegistry.create
+      _               <- registry.getRateLimiter("r1", RateLimit.perSecond(10))
+      _               <- registry.getConcurrencyLimiter("c1", 5)
+      _               <- registry.clear
       namesAfterClear <- registry.listRateLimiters
-      _              <- registry.getRateLimiter("r2", RateLimit.perSecond(20))
-      namesAfterAdd  <- registry.listRateLimiters
+      _               <- registry.getRateLimiter("r2", RateLimit.perSecond(20))
+      namesAfterAdd   <- registry.listRateLimiters
     } yield (namesAfterClear, namesAfterAdd)).unsafeRunSync()
 
     namesAfterClear shouldBe empty

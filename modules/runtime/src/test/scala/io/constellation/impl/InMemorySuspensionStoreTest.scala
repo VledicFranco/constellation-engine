@@ -94,7 +94,7 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve all fields of the suspended execution" in {
-    val store = InMemorySuspensionStore.init.unsafeRunSync()
+    val store      = InMemorySuspensionStore.init.unsafeRunSync()
     val computedId = UUID.randomUUID()
     val suspended = mkSuspended(
       hash = "specific-hash",
@@ -129,9 +129,9 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val s3    = mkSuspended(hash = "hash-3")
 
     val result = (for {
-      _ <- store.save(s1)
-      _ <- store.save(s2)
-      _ <- store.save(s3)
+      _   <- store.save(s1)
+      _   <- store.save(s2)
+      _   <- store.save(s3)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -145,8 +145,8 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val s2    = mkSuspended()
 
     val result = (for {
-      _ <- store.save(s1)
-      _ <- store.save(s2)
+      _   <- store.save(s1)
+      _   <- store.save(s2)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -179,12 +179,12 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val s2    = mkSuspended(hash = "delete-me")
 
     val result = (for {
-      h1      <- store.save(s1)
-      h2      <- store.save(s2)
-      deleted <- store.delete(h2)
+      h1        <- store.save(s1)
+      h2        <- store.save(s2)
+      deleted   <- store.delete(h2)
       remaining <- store.list()
-      kept    <- store.load(h1)
-      gone    <- store.load(h2)
+      kept      <- store.load(h1)
+      gone      <- store.load(h2)
     } yield (deleted, remaining, kept, gone)).unsafeRunSync()
 
     result._1 shouldBe true
@@ -261,8 +261,8 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val suspended = mkSuspended()
 
     val result = (for {
-      _ <- store.save(suspended)
-      _ <- store.save(suspended)
+      _   <- store.save(suspended)
+      _   <- store.save(suspended)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -301,9 +301,9 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = InMemorySuspensionStore.initWithTTL(1.millisecond).unsafeRunSync()
 
     val result = (for {
-      _   <- store.save(mkSuspended(hash = "old-entry"))
+      _ <- store.save(mkSuspended(hash = "old-entry"))
       // Sleep to let the entry expire
-      _   <- IO.sleep(50.milliseconds)
+      _ <- IO.sleep(50.milliseconds)
       // Saving triggers eviction
       _   <- store.save(mkSuspended(hash = "new-entry"))
       all <- store.list()
@@ -331,9 +331,9 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = InMemorySuspensionStore.initWithTTL(1.millisecond).unsafeRunSync()
 
     val result = (for {
-      _ <- store.save(mkSuspended())
-      _ <- store.save(mkSuspended())
-      _ <- IO.sleep(50.milliseconds)
+      _   <- store.save(mkSuspended())
+      _   <- store.save(mkSuspended())
+      _   <- IO.sleep(50.milliseconds)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -421,13 +421,13 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val s3    = mkSuspended(hash = "hash-3")
 
     val result = (for {
-      h1 <- store.save(s1)
-      h2 <- store.save(s2)
-      h3 <- store.save(s3)
-      _  <- store.delete(h2)
-      l1 <- store.load(h1)
-      l2 <- store.load(h2)
-      l3 <- store.load(h3)
+      h1  <- store.save(s1)
+      h2  <- store.save(s2)
+      h3  <- store.save(s3)
+      _   <- store.delete(h2)
+      l1  <- store.load(h1)
+      l2  <- store.load(h2)
+      l3  <- store.load(h3)
       all <- store.list()
     } yield (l1, l2, l3, all)).unsafeRunSync()
 
@@ -442,18 +442,20 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = InMemorySuspensionStore.init.unsafeRunSync()
 
     val result = (for {
-      _ <- store.save(mkSuspended(hash = "pipeline-A", resumptionCount = 0))
-      _ <- store.save(mkSuspended(hash = "pipeline-A", resumptionCount = 1))
-      _ <- store.save(mkSuspended(hash = "pipeline-B", resumptionCount = 0))
-      _ <- store.save(mkSuspended(hash = "pipeline-B", resumptionCount = 2))
-      _ <- store.save(mkSuspended(hash = "pipeline-C", resumptionCount = 5))
-      allA <- store.list(SuspensionFilter(structuralHash = Some("pipeline-A")))
-      allB <- store.list(SuspensionFilter(structuralHash = Some("pipeline-B")))
+      _              <- store.save(mkSuspended(hash = "pipeline-A", resumptionCount = 0))
+      _              <- store.save(mkSuspended(hash = "pipeline-A", resumptionCount = 1))
+      _              <- store.save(mkSuspended(hash = "pipeline-B", resumptionCount = 0))
+      _              <- store.save(mkSuspended(hash = "pipeline-B", resumptionCount = 2))
+      _              <- store.save(mkSuspended(hash = "pipeline-C", resumptionCount = 5))
+      allA           <- store.list(SuspensionFilter(structuralHash = Some("pipeline-A")))
+      allB           <- store.list(SuspensionFilter(structuralHash = Some("pipeline-B")))
       highResumption <- store.list(SuspensionFilter(minResumptionCount = Some(2)))
-      combined <- store.list(SuspensionFilter(
-        structuralHash = Some("pipeline-B"),
-        maxResumptionCount = Some(1)
-      ))
+      combined <- store.list(
+        SuspensionFilter(
+          structuralHash = Some("pipeline-B"),
+          maxResumptionCount = Some(1)
+        )
+      )
     } yield (allA, allB, highResumption, combined)).unsafeRunSync()
 
     result._1 should have size 2
@@ -471,7 +473,7 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val suspended = mkSuspended(hash = "summary-hash", resumptionCount = 7)
 
     val result = (for {
-      handle  <- store.save(suspended)
+      handle    <- store.save(suspended)
       summaries <- store.list()
     } yield (handle, summaries)).unsafeRunSync()
 
@@ -489,7 +491,7 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val suspended = mkSuspended()
 
     val summaries = (for {
-      _ <- store.save(suspended)
+      _   <- store.save(suspended)
       all <- store.list()
     } yield all).unsafeRunSync()
 
@@ -554,12 +556,12 @@ class InMemorySuspensionStoreTest extends AnyFlatSpec with Matchers {
     val store = InMemorySuspensionStore.init.unsafeRunSync()
 
     val result = (for {
-      h1 <- store.save(mkSuspended(hash = "interleaved-1"))
-      l1 <- store.load(h1)
-      h2 <- store.save(mkSuspended(hash = "interleaved-2"))
-      l2 <- store.load(h2)
+      h1      <- store.save(mkSuspended(hash = "interleaved-1"))
+      l1      <- store.load(h1)
+      h2      <- store.save(mkSuspended(hash = "interleaved-2"))
+      l2      <- store.load(h2)
       l1Again <- store.load(h1)
-      all <- store.list()
+      all     <- store.list()
     } yield (l1, l2, l1Again, all)).unsafeRunSync()
 
     result._1.get.structuralHash shouldBe "interleaved-1"

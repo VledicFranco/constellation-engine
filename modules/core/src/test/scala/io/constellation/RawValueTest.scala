@@ -584,7 +584,9 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   // --- RList ---
   "RList" should "have correct toDebugString" in {
-    RawValue.RList(Array(RawValue.RInt(1), RawValue.RInt(2))).toDebugString shouldBe "RList(2 elements)"
+    RawValue
+      .RList(Array(RawValue.RInt(1), RawValue.RInt(2)))
+      .toDebugString shouldBe "RList(2 elements)"
   }
 
   it should "report correct length" in {
@@ -622,10 +624,12 @@ class RawValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "find existing key via get" in {
-    val map = RawValue.RMap(Array(
-      (RawValue.RString("a"), RawValue.RInt(1)),
-      (RawValue.RString("b"), RawValue.RInt(2))
-    ))
+    val map = RawValue.RMap(
+      Array(
+        (RawValue.RString("a"), RawValue.RInt(1)),
+        (RawValue.RString("b"), RawValue.RInt(2))
+      )
+    )
     map.get(RawValue.RString("a")) shouldBe Some(RawValue.RInt(1))
     map.get(RawValue.RString("b")) shouldBe Some(RawValue.RInt(2))
   }
@@ -659,7 +663,9 @@ class RawValueTest extends AnyFlatSpec with Matchers {
 
   // --- RProduct ---
   "RProduct" should "have correct toDebugString" in {
-    RawValue.RProduct(Array(RawValue.RInt(1), RawValue.RString("a"))).toDebugString shouldBe "RProduct(2 fields)"
+    RawValue
+      .RProduct(Array(RawValue.RInt(1), RawValue.RString("a")))
+      .toDebugString shouldBe "RProduct(2 fields)"
   }
 
   it should "support indexed access" in {

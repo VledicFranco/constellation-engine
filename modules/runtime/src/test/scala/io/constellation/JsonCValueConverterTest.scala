@@ -845,7 +845,7 @@ class JsonCValueConverterTest extends AnyFlatSpec with Matchers {
 
   it should "fail when invalid tag in RawValue Union path" in {
     val structure = Map("str" -> CType.CString, "num" -> CType.CInt)
-    val json = Json.obj("tag" -> Json.fromString("unknown"), "value" -> Json.fromString("hello"))
+    val json   = Json.obj("tag" -> Json.fromString("unknown"), "value" -> Json.fromString("hello"))
     val result = JsonCValueConverter.jsonToRawValue(json, CType.CUnion(structure))
     result.isLeft shouldBe true
     result.left.exists(_.contains("invalid union tag 'unknown'")) shouldBe true

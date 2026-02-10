@@ -12,14 +12,14 @@ import org.scalatest.matchers.should.Matchers
 
 class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
-  private val startedAt = Instant.parse("2025-01-01T00:00:00Z")
+  private val startedAt   = Instant.parse("2025-01-01T00:00:00Z")
   private val completedAt = Instant.parse("2025-01-01T00:00:05Z")
 
   // ===== Basic build with no options =====
 
   "MetadataBuilder.build" should "return metadata with timestamps and no optional fields" in {
-    val dag = DagSpec.empty("TestDag")
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val dag     = DagSpec.empty("TestDag")
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions()
 
     val result = MetadataBuilder.build(state, dag, options, startedAt, completedAt, Set.empty)
@@ -65,13 +65,15 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
   }
 
   it should "skip unfired modules in timings" in {
-    val firedId = UUID.randomUUID()
+    val firedId   = UUID.randomUUID()
     val unfiredId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
         firedId -> ModuleNodeSpec(metadata = ComponentMetadata("Fired", "Fired", List.empty, 1, 0)),
-        unfiredId -> ModuleNodeSpec(metadata = ComponentMetadata("Unfired", "Unfired", List.empty, 1, 0))
+        unfiredId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Unfired", "Unfired", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -81,7 +83,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       UUID.randomUUID(),
       dag,
       Map(
-        firedId -> Eval.now(Module.Status.Fired(50.millis)),
+        firedId   -> Eval.now(Module.Status.Fired(50.millis)),
         unfiredId -> Eval.now(Module.Status.Unfired)
       ),
       Map.empty
@@ -99,7 +101,9 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
-        failedId -> ModuleNodeSpec(metadata = ComponentMetadata("Failed", "Failed", List.empty, 1, 0))
+        failedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Failed", "Failed", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -122,7 +126,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "include provenance when includeProvenance is true" in {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -134,7 +138,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
+        inputId  -> DataNodeSpec("text", Map(moduleId -> "text"), CType.CString),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CString)
       ),
       inEdges = Set((inputId, moduleId)),
@@ -145,7 +149,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       dag,
       Map(moduleId -> Eval.now(Module.Status.Fired(10.millis))),
       Map(
-        inputId -> Eval.now(CValue.CString("hello")),
+        inputId  -> Eval.now(CValue.CString("hello")),
         outputId -> Eval.now(CValue.CString("HELLO"))
       )
     )
@@ -159,14 +163,17 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
   }
 
   it should "mark inline transform data nodes in provenance" in {
-    val inputId = UUID.randomUUID()
+    val inputId     = UUID.randomUUID()
     val transformId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map.empty,
       data = Map(
         inputId -> DataNodeSpec("input", Map.empty, CType.CInt),
-        transformId -> DataNodeSpec("doubled", Map.empty, CType.CInt,
+        transformId -> DataNodeSpec(
+          "doubled",
+          Map.empty,
+          CType.CInt,
           inlineTransform = Some(InlineTransform.MergeTransform(CType.CInt, CType.CInt)),
           transformInputs = Map("left" -> inputId)
         )
@@ -179,7 +186,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       dag,
       Map.empty,
       Map(
-        inputId -> Eval.now(CValue.CInt(5L)),
+        inputId     -> Eval.now(CValue.CInt(5L)),
         transformId -> Eval.now(CValue.CInt(10L))
       )
     )
@@ -196,7 +203,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "include blocked graph when includeBlockedGraph is true" in {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -208,14 +215,14 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId  -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputId, moduleId)),
       outEdges = Set((moduleId, outputId))
     )
     // State with no data computed (simulating missing input)
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions(includeBlockedGraph = true)
 
     val result = MetadataBuilder.build(state, dag, options, startedAt, completedAt, Set.empty)
@@ -227,7 +234,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "return empty blocked graph when all inputs are provided" in {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -237,7 +244,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId  -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputId, moduleId)),
@@ -245,9 +252,11 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     )
     // All data nodes computed
     val state = Runtime.State(
-      UUID.randomUUID(), dag, Map.empty,
+      UUID.randomUUID(),
+      dag,
+      Map.empty,
       Map(
-        inputId -> Eval.now(CValue.CInt(1L)),
+        inputId  -> Eval.now(CValue.CInt(1L)),
         outputId -> Eval.now(CValue.CInt(2L))
       )
     )
@@ -260,10 +269,10 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
   }
 
   it should "compute transitive blocked graph through multiple modules" in {
-    val mod1Id = UUID.randomUUID()
-    val mod2Id = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
-    val midId = UUID.randomUUID()
+    val mod1Id   = UUID.randomUUID()
+    val mod2Id   = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
+    val midId    = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -273,15 +282,15 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         mod2Id -> ModuleNodeSpec(metadata = ComponentMetadata("Mod2", "Mod2", List.empty, 1, 0))
       ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(mod1Id -> "x"), CType.CInt),
-        midId -> DataNodeSpec("mid", Map(mod1Id -> "result", mod2Id -> "x"), CType.CInt),
+        inputId  -> DataNodeSpec("input", Map(mod1Id -> "x"), CType.CInt),
+        midId    -> DataNodeSpec("mid", Map(mod1Id -> "result", mod2Id -> "x"), CType.CInt),
         outputId -> DataNodeSpec("output", Map(mod2Id -> "result"), CType.CInt)
       ),
       inEdges = Set((inputId, mod1Id), (midId, mod2Id)),
       outEdges = Set((mod1Id, midId), (mod2Id, outputId))
     )
     // No data computed - input is missing
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions(includeBlockedGraph = true)
 
     val result = MetadataBuilder.build(state, dag, options, startedAt, completedAt, Set.empty)
@@ -297,7 +306,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "include resolution sources when includeResolutionSources is true" in {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -305,16 +314,18 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("Mod", "Mod", List.empty, 1, 0))
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId  -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputId, moduleId)),
       outEdges = Set((moduleId, outputId))
     )
     val state = Runtime.State(
-      UUID.randomUUID(), dag, Map.empty,
+      UUID.randomUUID(),
+      dag,
+      Map.empty,
       Map(
-        inputId -> Eval.now(CValue.CInt(1L)),
+        inputId  -> Eval.now(CValue.CInt(1L)),
         outputId -> Eval.now(CValue.CInt(2L))
       )
     )
@@ -339,13 +350,19 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       outEdges = Set.empty
     )
     val state = Runtime.State(
-      UUID.randomUUID(), dag, Map.empty,
+      UUID.randomUUID(),
+      dag,
+      Map.empty,
       Map(inputId -> Eval.now(CValue.CInt(1L)))
     )
     val options = ExecutionOptions(includeResolutionSources = true)
 
     val result = MetadataBuilder.build(
-      state, dag, options, startedAt, completedAt,
+      state,
+      dag,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = Set.empty,
       resolvedNodeNames = Set("x")
     )
@@ -358,7 +375,7 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
 
   it should "include all metadata when all options are enabled" in {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -371,17 +388,18 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId  -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         outputId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
       inEdges = Set((inputId, moduleId)),
       outEdges = Set((moduleId, outputId))
     )
     val state = Runtime.State(
-      UUID.randomUUID(), dag,
+      UUID.randomUUID(),
+      dag,
       Map(moduleId -> Eval.now(Module.Status.Fired(50.millis))),
       Map(
-        inputId -> Eval.now(CValue.CInt(5L)),
+        inputId  -> Eval.now(CValue.CInt(5L)),
         outputId -> Eval.now(CValue.CInt(10L))
       )
     )
@@ -421,7 +439,8 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
       outEdges = Set.empty
     )
     val state = Runtime.State(
-      UUID.randomUUID(), dag,
+      UUID.randomUUID(),
+      dag,
       Map(timedId -> Eval.now(Module.Status.Timed(5.seconds))),
       Map.empty
     )
@@ -447,7 +466,9 @@ class MetadataBuilderTest extends AnyFlatSpec with Matchers {
     )
     // dataId has computed value but is not an input, not an inline transform, and not produced by any module
     val state = Runtime.State(
-      UUID.randomUUID(), dag, Map.empty,
+      UUID.randomUUID(),
+      dag,
+      Map.empty,
       Map(dataId -> Eval.now(CValue.CInt(1L)))
     )
     val options = ExecutionOptions(includeProvenance = true)

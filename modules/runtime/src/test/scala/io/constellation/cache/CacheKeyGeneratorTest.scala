@@ -12,7 +12,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   // -------------------------------------------------------------------------
 
   private val simpleInputs: Map[String, CValue] = Map(
-    "text" -> CValue.CString("hello"),
+    "text"  -> CValue.CString("hello"),
     "count" -> CValue.CInt(42)
   )
 
@@ -61,7 +61,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "produce different keys with and without version" in {
-    val keyNoVersion = CacheKeyGenerator.generateKey("Mod", simpleInputs, None)
+    val keyNoVersion   = CacheKeyGenerator.generateKey("Mod", simpleInputs, None)
     val keyWithVersion = CacheKeyGenerator.generateKey("Mod", simpleInputs, Some("1.0"))
 
     keyNoVersion should not be keyWithVersion
@@ -82,7 +82,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "default version to None" in {
-    val keyDefault = CacheKeyGenerator.generateKey("Mod", simpleInputs)
+    val keyDefault      = CacheKeyGenerator.generateKey("Mod", simpleInputs)
     val keyExplicitNone = CacheKeyGenerator.generateKey("Mod", simpleInputs, None)
 
     keyDefault shouldBe keyExplicitNone
@@ -94,30 +94,30 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
 
   "generateKey with CString" should "produce a valid key" in {
     val inputs = Map("s" -> CValue.CString("world"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   "generateKey with CInt" should "produce a valid key" in {
     val inputs = Map("i" -> CValue.CInt(99L): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   "generateKey with CFloat" should "produce a valid key" in {
     val inputs = Map("f" -> CValue.CFloat(3.14): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   "generateKey with CBoolean" should "produce a valid key" in {
-    val inputsTrue = Map("b" -> CValue.CBoolean(true): (String, CValue))
+    val inputsTrue  = Map("b" -> CValue.CBoolean(true): (String, CValue))
     val inputsFalse = Map("b" -> CValue.CBoolean(false): (String, CValue))
 
-    val keyTrue = CacheKeyGenerator.generateKey("Mod", inputsTrue)
+    val keyTrue  = CacheKeyGenerator.generateKey("Mod", inputsTrue)
     val keyFalse = CacheKeyGenerator.generateKey("Mod", inputsFalse)
 
     keyTrue should not be empty
@@ -131,7 +131,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
       CType.CInt
     )
     val inputs = Map("lst" -> list: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
@@ -166,7 +166,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
       CType.CInt
     )
     val inputs = Map("m" -> cmap: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
@@ -198,10 +198,10 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   "generateKey with CProduct" should "produce a valid key" in {
     val product = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
     val inputs = Map("p" -> product: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
@@ -209,11 +209,11 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   it should "produce the same key regardless of CProduct field ordering" in {
     val product1 = CValue.CProduct(
       Map("x" -> CValue.CInt(1), "y" -> CValue.CInt(2)),
-      Map("x" -> CType.CInt, "y" -> CType.CInt)
+      Map("x" -> CType.CInt, "y"     -> CType.CInt)
     )
     val product2 = CValue.CProduct(
       Map("y" -> CValue.CInt(2), "x" -> CValue.CInt(1)),
-      Map("y" -> CType.CInt, "x" -> CType.CInt)
+      Map("y" -> CType.CInt, "x"     -> CType.CInt)
     )
 
     val key1 = CacheKeyGenerator.generateKey("Mod", Map("p" -> product1))
@@ -229,15 +229,15 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
       "Text"
     )
     val inputs = Map("u" -> union: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "produce different keys for different union tags" in {
     val structure = Map("Text" -> CType.CString, "Number" -> CType.CInt)
-    val union1 = CValue.CUnion(CValue.CString("hello"), structure, "Text")
-    val union2 = CValue.CUnion(CValue.CInt(42), structure, "Number")
+    val union1    = CValue.CUnion(CValue.CString("hello"), structure, "Text")
+    val union2    = CValue.CUnion(CValue.CInt(42), structure, "Number")
 
     val key1 = CacheKeyGenerator.generateKey("Mod", Map("u" -> union1))
     val key2 = CacheKeyGenerator.generateKey("Mod", Map("u" -> union2))
@@ -246,17 +246,17 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   "generateKey with CSome" should "produce a valid key" in {
-    val some = CValue.CSome(CValue.CString("present"), CType.CString)
+    val some   = CValue.CSome(CValue.CString("present"), CType.CString)
     val inputs = Map("opt" -> some: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   "generateKey with CNone" should "produce a valid key" in {
-    val none = CValue.CNone(CType.CString)
+    val none   = CValue.CNone(CType.CString)
     val inputs = Map("opt" -> none: (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
@@ -288,7 +288,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "produce a prefix of the full key" in {
-    val fullKey = CacheKeyGenerator.generateKey("Mod", simpleInputs)
+    val fullKey  = CacheKeyGenerator.generateKey("Mod", simpleInputs)
     val shortKey = CacheKeyGenerator.generateShortKey("Mod", simpleInputs)
 
     fullKey should startWith(shortKey)
@@ -308,7 +308,7 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle length greater than full key length by returning full key" in {
-    val fullKey = CacheKeyGenerator.generateKey("Mod", simpleInputs)
+    val fullKey  = CacheKeyGenerator.generateKey("Mod", simpleInputs)
     val shortKey = CacheKeyGenerator.generateShortKey("Mod", simpleInputs, length = 1000)
 
     shortKey shouldBe fullKey
@@ -357,14 +357,14 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
   "generateKey (key stability)" should "produce the same key regardless of input Map insertion order" in {
     val inputs1 = Map(
       "alpha" -> CValue.CString("a"),
-      "beta" -> CValue.CInt(2),
+      "beta"  -> CValue.CInt(2),
       "gamma" -> CValue.CBoolean(true)
     ): Map[String, CValue]
 
     // Construct the same map with reversed insertion order
     val inputs2 = Map(
       "gamma" -> CValue.CBoolean(true),
-      "beta" -> CValue.CInt(2),
+      "beta"  -> CValue.CInt(2),
       "alpha" -> CValue.CString("a")
     ): Map[String, CValue]
 
@@ -392,42 +392,42 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
 
   "generateKey (escaping)" should "handle strings containing colons" in {
     val inputs = Map("s" -> CValue.CString("key:value"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "handle strings containing commas" in {
     val inputs = Map("s" -> CValue.CString("a,b,c"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "handle strings containing brackets" in {
     val inputs = Map("s" -> CValue.CString("[data]"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "handle strings containing braces" in {
     val inputs = Map("s" -> CValue.CString("{data}"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "handle strings containing parentheses" in {
     val inputs = Map("s" -> CValue.CString("(data)"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "handle strings containing backslashes" in {
     val inputs = Map("s" -> CValue.CString("path\\to\\file"): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
@@ -463,13 +463,13 @@ class CacheKeyGeneratorExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "handle empty strings" in {
     val inputs = Map("s" -> CValue.CString(""): (String, CValue))
-    val key = CacheKeyGenerator.generateKey("Mod", inputs)
+    val key    = CacheKeyGenerator.generateKey("Mod", inputs)
 
     key should not be empty
   }
 
   it should "distinguish empty string from missing key" in {
-    val inputsWithEmpty = Map("s" -> CValue.CString(""): (String, CValue))
+    val inputsWithEmpty                  = Map("s" -> CValue.CString(""): (String, CValue))
     val inputsEmpty: Map[String, CValue] = Map.empty
 
     val key1 = CacheKeyGenerator.generateKey("Mod", inputsWithEmpty)

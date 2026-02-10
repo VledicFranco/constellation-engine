@@ -248,16 +248,16 @@ class DeferredPoolTest extends AnyFlatSpec with Matchers {
       s0   <- pool.size
 
       // Phase 1: Deplete the pool
-      _ <- pool.acquireN(5)
+      _  <- pool.acquireN(5)
       s1 <- pool.size
       m1 = pool.getMetrics
 
       // Phase 2: Replenish
-      _ <- pool.replenish(10)
+      _  <- pool.replenish(10)
       s2 <- pool.size
 
       // Phase 3: Acquire again from the replenished pool
-      _ <- pool.acquireN(4)
+      _  <- pool.acquireN(4)
       s3 <- pool.size
       m3 = pool.getMetrics
     } yield (s0, s1, m1, s2, s3, m3)
@@ -277,7 +277,7 @@ class DeferredPoolTest extends AnyFlatSpec with Matchers {
 
     // After second round of acquires
     s3 shouldBe 6
-    m3.hits shouldBe 9  // 5 from first batch + 4 from second batch
+    m3.hits shouldBe 9 // 5 from first batch + 4 from second batch
     m3.misses shouldBe 0
     m3.totalAcquires shouldBe 9
     m3.hitRate shouldBe 1.0 +- 0.01

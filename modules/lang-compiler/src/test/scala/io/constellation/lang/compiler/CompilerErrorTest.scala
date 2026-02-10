@@ -165,12 +165,12 @@ class CompilerErrorTest extends AnyFlatSpec with Matchers {
     // Exhaustive match -- this would fail to compile if a variant were missing
     errors.foreach { error =>
       val description: String = error match {
-        case CompilerError.NodeNotFound(_, _)          => "node-not-found"
-        case CompilerError.LambdaParameterNotBound(_)  => "lambda-param"
-        case CompilerError.UnsupportedOperation(_)     => "unsupported-op"
-        case CompilerError.InvalidFieldAccess(_, _)    => "invalid-field"
-        case CompilerError.UnsupportedNodeType(_, _)   => "unsupported-node"
-        case CompilerError.UnsupportedFunction(_, _)   => "unsupported-func"
+        case CompilerError.NodeNotFound(_, _)         => "node-not-found"
+        case CompilerError.LambdaParameterNotBound(_) => "lambda-param"
+        case CompilerError.UnsupportedOperation(_)    => "unsupported-op"
+        case CompilerError.InvalidFieldAccess(_, _)   => "invalid-field"
+        case CompilerError.UnsupportedNodeType(_, _)  => "unsupported-node"
+        case CompilerError.UnsupportedFunction(_, _)  => "unsupported-func"
       }
       description should not be empty
     }
@@ -200,18 +200,29 @@ class CompilerErrorTest extends AnyFlatSpec with Matchers {
     CompilerError.NodeNotFound(id, "a") should not be CompilerError.NodeNotFound(id, "b")
 
     CompilerError.LambdaParameterNotBound("x") shouldBe CompilerError.LambdaParameterNotBound("x")
-    CompilerError.LambdaParameterNotBound("x") should not be CompilerError.LambdaParameterNotBound("y")
+    CompilerError.LambdaParameterNotBound("x") should not be CompilerError.LambdaParameterNotBound(
+      "y"
+    )
 
     CompilerError.UnsupportedOperation("a") shouldBe CompilerError.UnsupportedOperation("a")
     CompilerError.UnsupportedOperation("a") should not be CompilerError.UnsupportedOperation("b")
 
     CompilerError.InvalidFieldAccess("f", "T") shouldBe CompilerError.InvalidFieldAccess("f", "T")
-    CompilerError.InvalidFieldAccess("f", "T") should not be CompilerError.InvalidFieldAccess("g", "T")
+    CompilerError.InvalidFieldAccess("f", "T") should not be CompilerError.InvalidFieldAccess(
+      "g",
+      "T"
+    )
 
     CompilerError.UnsupportedNodeType("N", "c") shouldBe CompilerError.UnsupportedNodeType("N", "c")
-    CompilerError.UnsupportedNodeType("N", "c") should not be CompilerError.UnsupportedNodeType("N", "d")
+    CompilerError.UnsupportedNodeType("N", "c") should not be CompilerError.UnsupportedNodeType(
+      "N",
+      "d"
+    )
 
     CompilerError.UnsupportedFunction("M", "f") shouldBe CompilerError.UnsupportedFunction("M", "f")
-    CompilerError.UnsupportedFunction("M", "f") should not be CompilerError.UnsupportedFunction("M", "g")
+    CompilerError.UnsupportedFunction("M", "f") should not be CompilerError.UnsupportedFunction(
+      "M",
+      "g"
+    )
   }
 }

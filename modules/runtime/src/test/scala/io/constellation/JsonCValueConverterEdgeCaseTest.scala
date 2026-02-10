@@ -70,7 +70,11 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle RStringList with unicode and special characters" in {
-    val json   = Json.arr(Json.fromString(""), Json.fromString("hello\nworld"), Json.fromString("\u00e9\u00e0\u00fc"))
+    val json = Json.arr(
+      Json.fromString(""),
+      Json.fromString("hello\nworld"),
+      Json.fromString("\u00e9\u00e0\u00fc")
+    )
     val result = JsonCValueConverter.jsonToRawValue(json, CType.CList(CType.CString))
     result.isRight shouldBe true
     result.toOption.get match {
@@ -175,7 +179,9 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
     val result = JsonCValueConverter.jsonToRawValue(json, level1)
     result.isRight shouldBe true
     result.toOption.get match {
-      case RawValue.RProduct(Array(RawValue.RProduct(Array(RawValue.RProduct(Array(RawValue.RInt(v))))))) =>
+      case RawValue.RProduct(
+            Array(RawValue.RProduct(Array(RawValue.RProduct(Array(RawValue.RInt(v))))))
+          ) =>
         v shouldBe 42L
       case other => fail(s"Expected nested RProduct, got $other")
     }
@@ -471,7 +477,7 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
     )
     val result = JsonCValueConverter.jsonToCValue(json, outer)
     result.isRight shouldBe true
-    val prod  = result.toOption.get.asInstanceOf[CValue.CProduct]
+    val prod   = result.toOption.get.asInstanceOf[CValue.CProduct]
     val inner2 = prod.value("nested").asInstanceOf[CValue.CProduct]
     inner2.value("a") shouldBe CValue.CInt(1)
     inner2.value("b") shouldBe CValue.CInt(2)
@@ -729,9 +735,15 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
     val structure = Map(
       "minimal"  -> CType.CProduct(Map("id" -> CType.CInt)),
       "standard" -> CType.CProduct(Map("id" -> CType.CInt, "name" -> CType.CString)),
-      "full"     -> CType.CProduct(Map("id" -> CType.CInt, "name" -> CType.CString, "age" -> CType.CInt))
+      "full" -> CType.CProduct(
+        Map("id" -> CType.CInt, "name" -> CType.CString, "age" -> CType.CInt)
+      )
     )
-    val json   = Json.obj("id" -> Json.fromInt(1), "name" -> Json.fromString("Alice"), "age" -> Json.fromInt(30))
+    val json = Json.obj(
+      "id"   -> Json.fromInt(1),
+      "name" -> Json.fromString("Alice"),
+      "age"  -> Json.fromInt(30)
+    )
     val result = JsonCValueConverter.jsonToCValue(json, CType.CUnion(structure))
     result.isRight shouldBe true
     val union = result.toOption.get.asInstanceOf[CValue.CUnion]
@@ -752,10 +764,12 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
   it should "convert RProduct with nested product to JSON" in {
     val innerStruct = Map("x" -> CType.CInt)
     val outerStruct = Map("inner" -> CType.CProduct(innerStruct), "label" -> CType.CString)
-    val value = RawValue.RProduct(Array(
-      RawValue.RProduct(Array(RawValue.RInt(42))), // "inner" is first alphabetically
-      RawValue.RString("test")                     // "label" is second
-    ))
+    val value = RawValue.RProduct(
+      Array(
+        RawValue.RProduct(Array(RawValue.RInt(42))), // "inner" is first alphabetically
+        RawValue.RString("test")                     // "label" is second
+      )
+    )
     val result = JsonCValueConverter.rawValueToJson(value, CType.CProduct(outerStruct))
     result.hcursor.downField("label").as[String].toOption shouldBe Some("test")
     result.hcursor.downField("inner").downField("x").as[Int].toOption shouldBe Some(42)
@@ -834,20 +848,24 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
 
   "rawValueToJson map" should "convert RMap with string keys and product values" in {
     val valueType = CType.CProduct(Map("v" -> CType.CInt))
-    val value = RawValue.RMap(Array(
-      (RawValue.RString("a"), RawValue.RProduct(Array(RawValue.RInt(1)))),
-      (RawValue.RString("b"), RawValue.RProduct(Array(RawValue.RInt(2))))
-    ))
+    val value = RawValue.RMap(
+      Array(
+        (RawValue.RString("a"), RawValue.RProduct(Array(RawValue.RInt(1)))),
+        (RawValue.RString("b"), RawValue.RProduct(Array(RawValue.RInt(2))))
+      )
+    )
     val result = JsonCValueConverter.rawValueToJson(value, CType.CMap(CType.CString, valueType))
     result.hcursor.downField("a").downField("v").as[Int].toOption shouldBe Some(1)
     result.hcursor.downField("b").downField("v").as[Int].toOption shouldBe Some(2)
   }
 
   it should "convert RMap with non-string keys to array of pairs" in {
-    val value = RawValue.RMap(Array(
-      (RawValue.RInt(1), RawValue.RFloat(1.1)),
-      (RawValue.RInt(2), RawValue.RFloat(2.2))
-    ))
+    val value = RawValue.RMap(
+      Array(
+        (RawValue.RInt(1), RawValue.RFloat(1.1)),
+        (RawValue.RInt(2), RawValue.RFloat(2.2))
+      )
+    )
     val result = JsonCValueConverter.rawValueToJson(value, CType.CMap(CType.CInt, CType.CFloat))
     val arr    = result.asArray.get
     arr.length shouldBe 2
@@ -868,9 +886,11 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
   }
 
   it should "throw when RMap with CString key type has non-RString key" in {
-    val value = RawValue.RMap(Array(
-      (RawValue.RInt(1), RawValue.RString("oops"))
-    ))
+    val value = RawValue.RMap(
+      Array(
+        (RawValue.RInt(1), RawValue.RString("oops"))
+      )
+    )
     assertThrows[RuntimeException] {
       JsonCValueConverter.rawValueToJson(value, CType.CMap(CType.CString, CType.CString))
     }
@@ -1084,10 +1104,12 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve CProduct with optional fields" in {
-    val cType = CType.CProduct(Map(
-      "name"  -> CType.CString,
-      "email" -> CType.COptional(CType.CString)
-    ))
+    val cType = CType.CProduct(
+      Map(
+        "name"  -> CType.CString,
+        "email" -> CType.COptional(CType.CString)
+      )
+    )
     val json = Json.obj(
       "name"  -> Json.fromString("Test"),
       "email" -> Json.Null
@@ -1100,10 +1122,12 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve CUnion with product variant" in {
-    val cType = CType.CUnion(Map(
-      "success" -> CType.CProduct(Map("data" -> CType.CString)),
-      "failure" -> CType.CProduct(Map("error" -> CType.CString))
-    ))
+    val cType = CType.CUnion(
+      Map(
+        "success" -> CType.CProduct(Map("data" -> CType.CString)),
+        "failure" -> CType.CProduct(Map("error" -> CType.CString))
+      )
+    )
     val json = Json.obj(
       "tag"   -> Json.fromString("failure"),
       "value" -> Json.obj("error" -> Json.fromString("not found"))
@@ -1112,7 +1136,9 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
     cResult.isRight shouldBe true
     val backToJson = JsonCValueConverter.cValueToJson(cResult.toOption.get)
     backToJson.hcursor.downField("tag").as[String].toOption shouldBe Some("failure")
-    backToJson.hcursor.downField("value").downField("error").as[String].toOption shouldBe Some("not found")
+    backToJson.hcursor.downField("value").downField("error").as[String].toOption shouldBe Some(
+      "not found"
+    )
   }
 
   // ============================================================
@@ -1152,13 +1178,17 @@ class JsonCValueConverterEdgeCaseTest extends AnyFlatSpec with Matchers {
 
   it should "convert CSome wrapping a product" in {
     val structure = Map("x" -> CType.CInt)
-    val value     = CValue.CSome(CValue.CProduct(Map("x" -> CValue.CInt(5)), structure), CType.CProduct(structure))
-    val result    = JsonCValueConverter.cValueToJson(value)
+    val value = CValue.CSome(
+      CValue.CProduct(Map("x" -> CValue.CInt(5)), structure),
+      CType.CProduct(structure)
+    )
+    val result = JsonCValueConverter.cValueToJson(value)
     result.hcursor.downField("x").as[Int].toOption shouldBe Some(5)
   }
 
   it should "convert CSome wrapping a list" in {
-    val value  = CValue.CSome(CValue.CList(Vector(CValue.CInt(1)), CType.CInt), CType.CList(CType.CInt))
+    val value =
+      CValue.CSome(CValue.CList(Vector(CValue.CInt(1)), CType.CInt), CType.CList(CType.CInt))
     val result = JsonCValueConverter.cValueToJson(value)
     result shouldBe Json.arr(Json.fromLong(1))
   }

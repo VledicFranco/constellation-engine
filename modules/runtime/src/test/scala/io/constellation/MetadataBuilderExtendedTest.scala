@@ -12,17 +12,17 @@ import org.scalatest.matchers.should.Matchers
 
 class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
 
-  private val startedAt = Instant.parse("2025-06-15T10:00:00Z")
+  private val startedAt   = Instant.parse("2025-06-15T10:00:00Z")
   private val completedAt = Instant.parse("2025-06-15T10:00:07Z")
 
   // ===== Build with all parameters =====
 
   "MetadataBuilder.build" should "produce metadata with all optional fields when all options are enabled" in {
-    val mod1Id = UUID.randomUUID()
-    val mod2Id = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
-    val midId = UUID.randomUUID()
-    val outputId = UUID.randomUUID()
+    val mod1Id     = UUID.randomUUID()
+    val mod2Id     = UUID.randomUUID()
+    val inputId    = UUID.randomUUID()
+    val midId      = UUID.randomUUID()
+    val outputId   = UUID.randomUUID()
     val resolvedId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -40,9 +40,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(mod1Id -> "input"), CType.CString),
-        midId -> DataNodeSpec("mid", Map(mod1Id -> "mid", mod2Id -> "mid"), CType.CString),
-        outputId -> DataNodeSpec("output", Map(mod2Id -> "output"), CType.CString),
+        inputId    -> DataNodeSpec("input", Map(mod1Id -> "input"), CType.CString),
+        midId      -> DataNodeSpec("mid", Map(mod1Id -> "mid", mod2Id -> "mid"), CType.CString),
+        outputId   -> DataNodeSpec("output", Map(mod2Id -> "output"), CType.CString),
         resolvedId -> DataNodeSpec("resolved", Map.empty, CType.CInt)
       ),
       inEdges = Set((inputId, mod1Id), (midId, mod2Id)),
@@ -57,9 +57,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
         mod2Id -> Eval.now(Module.Status.Fired(150.millis))
       ),
       Map(
-        inputId -> Eval.now(CValue.CString("hello")),
-        midId -> Eval.now(CValue.CString("HELLO")),
-        outputId -> Eval.now(CValue.CString("HELLO!")),
+        inputId    -> Eval.now(CValue.CString("hello")),
+        midId      -> Eval.now(CValue.CString("HELLO")),
+        outputId   -> Eval.now(CValue.CString("HELLO!")),
         resolvedId -> Eval.now(CValue.CInt(42L))
       )
     )
@@ -72,7 +72,11 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     )
 
     val result = MetadataBuilder.build(
-      state, dag, options, startedAt, completedAt,
+      state,
+      dag,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("input"),
       resolvedNodeNames = Set("resolved")
     )
@@ -110,13 +114,17 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Failed modules =====
 
   it should "exclude failed modules from node timings" in {
-    val firedId = UUID.randomUUID()
+    val firedId  = UUID.randomUUID()
     val failedId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
-        firedId -> ModuleNodeSpec(metadata = ComponentMetadata("Good", "Good module", List.empty, 1, 0)),
-        failedId -> ModuleNodeSpec(metadata = ComponentMetadata("Bad", "Bad module", List.empty, 1, 0))
+        firedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Good", "Good module", List.empty, 1, 0)
+        ),
+        failedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Bad", "Bad module", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -126,7 +134,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
       UUID.randomUUID(),
       dag,
       Map(
-        firedId -> Eval.now(Module.Status.Fired(75.millis)),
+        firedId  -> Eval.now(Module.Status.Fired(75.millis)),
         failedId -> Eval.now(Module.Status.Failed(new RuntimeException("something broke")))
       ),
       Map.empty
@@ -147,8 +155,12 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("AllFailedDag"),
       modules = Map(
-        failedId1 -> ModuleNodeSpec(metadata = ComponentMetadata("Fail1", "Fail1", List.empty, 1, 0)),
-        failedId2 -> ModuleNodeSpec(metadata = ComponentMetadata("Fail2", "Fail2", List.empty, 1, 0))
+        failedId1 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Fail1", "Fail1", List.empty, 1, 0)
+        ),
+        failedId2 -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Fail2", "Fail2", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -181,8 +193,12 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
-        firedId -> ModuleNodeSpec(metadata = ComponentMetadata("Fast", "Fast module", List.empty, 1, 0)),
-        timedId -> ModuleNodeSpec(metadata = ComponentMetadata("Slow", "Slow module", List.empty, 1, 0))
+        firedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Fast", "Fast module", List.empty, 1, 0)
+        ),
+        timedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Slow", "Slow module", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -209,17 +225,21 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle mixed Fired, Failed, Timed, and Unfired statuses in timings" in {
-    val firedId = UUID.randomUUID()
-    val failedId = UUID.randomUUID()
-    val timedId = UUID.randomUUID()
+    val firedId   = UUID.randomUUID()
+    val failedId  = UUID.randomUUID()
+    val timedId   = UUID.randomUUID()
     val unfiredId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("MixedDag"),
       modules = Map(
         firedId -> ModuleNodeSpec(metadata = ComponentMetadata("Fired", "Fired", List.empty, 1, 0)),
-        failedId -> ModuleNodeSpec(metadata = ComponentMetadata("Failed", "Failed", List.empty, 1, 0)),
+        failedId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Failed", "Failed", List.empty, 1, 0)
+        ),
         timedId -> ModuleNodeSpec(metadata = ComponentMetadata("Timed", "Timed", List.empty, 1, 0)),
-        unfiredId -> ModuleNodeSpec(metadata = ComponentMetadata("Unfired", "Unfired", List.empty, 1, 0))
+        unfiredId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Unfired", "Unfired", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -229,9 +249,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
       UUID.randomUUID(),
       dag,
       Map(
-        firedId -> Eval.now(Module.Status.Fired(100.millis)),
-        failedId -> Eval.now(Module.Status.Failed(new RuntimeException("oops"))),
-        timedId -> Eval.now(Module.Status.Timed(3.seconds)),
+        firedId   -> Eval.now(Module.Status.Fired(100.millis)),
+        failedId  -> Eval.now(Module.Status.Failed(new RuntimeException("oops"))),
+        timedId   -> Eval.now(Module.Status.Timed(3.seconds)),
         unfiredId -> Eval.now(Module.Status.Unfired)
       ),
       Map.empty
@@ -248,7 +268,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Empty DAG =====
 
   it should "handle empty DAG with no modules or data" in {
-    val dag = DagSpec.empty("EmptyDag")
+    val dag   = DagSpec.empty("EmptyDag")
     val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions(
       includeTimings = true,
@@ -275,10 +295,10 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Resolved node names (resume scenarios) =====
 
   it should "classify resolved nodes correctly in resolution sources" in {
-    val inputId = UUID.randomUUID()
+    val inputId    = UUID.randomUUID()
     val resolvedId = UUID.randomUUID()
     val computedId = UUID.randomUUID()
-    val moduleId = UUID.randomUUID()
+    val moduleId   = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("ResumeDag"),
@@ -286,7 +306,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
         moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("Mod", "Mod", List.empty, 1, 0))
       ),
       data = Map(
-        inputId -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
+        inputId    -> DataNodeSpec("x", Map(moduleId -> "x"), CType.CInt),
         resolvedId -> DataNodeSpec("manual", Map.empty, CType.CString),
         computedId -> DataNodeSpec("result", Map(moduleId -> "result"), CType.CInt)
       ),
@@ -298,7 +318,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
       dag,
       Map.empty,
       Map(
-        inputId -> Eval.now(CValue.CInt(10L)),
+        inputId    -> Eval.now(CValue.CInt(10L)),
         resolvedId -> Eval.now(CValue.CString("manually-set")),
         computedId -> Eval.now(CValue.CInt(20L))
       )
@@ -306,7 +326,11 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val options = ExecutionOptions(includeResolutionSources = true)
 
     val result = MetadataBuilder.build(
-      state, dag, options, startedAt, completedAt,
+      state,
+      dag,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("x"),
       resolvedNodeNames = Set("manual")
     )
@@ -338,7 +362,11 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
 
     // Node appears in both inputNodeNames and resolvedNodeNames
     val result = MetadataBuilder.build(
-      state, dag, options, startedAt, completedAt,
+      state,
+      dag,
+      options,
+      startedAt,
+      completedAt,
       inputNodeNames = Set("x"),
       resolvedNodeNames = Set("x")
     )
@@ -351,10 +379,10 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Timestamp formatting and latency computation =====
 
   it should "compute correct totalDuration for sub-second intervals" in {
-    val start = Instant.parse("2025-01-01T12:00:00.000Z")
-    val end = Instant.parse("2025-01-01T12:00:00.250Z")
-    val dag = DagSpec.empty("FastDag")
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val start   = Instant.parse("2025-01-01T12:00:00.000Z")
+    val end     = Instant.parse("2025-01-01T12:00:00.250Z")
+    val dag     = DagSpec.empty("FastDag")
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions()
 
     val result = MetadataBuilder.build(state, dag, options, start, end, Set.empty)
@@ -365,8 +393,8 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "compute correct totalDuration for zero-length execution" in {
     val instant = Instant.parse("2025-01-01T12:00:00.000Z")
-    val dag = DagSpec.empty("InstantDag")
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val dag     = DagSpec.empty("InstantDag")
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions()
 
     val result = MetadataBuilder.build(state, dag, options, instant, instant, Set.empty)
@@ -376,10 +404,10 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "compute correct totalDuration for long execution" in {
-    val start = Instant.parse("2025-01-01T00:00:00Z")
-    val end = Instant.parse("2025-01-01T01:30:45Z")
-    val dag = DagSpec.empty("LongDag")
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val start   = Instant.parse("2025-01-01T00:00:00Z")
+    val end     = Instant.parse("2025-01-01T01:30:45Z")
+    val dag     = DagSpec.empty("LongDag")
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions()
 
     val result = MetadataBuilder.build(state, dag, options, start, end, Set.empty)
@@ -390,10 +418,10 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve nanosecond precision in totalDuration" in {
-    val start = Instant.parse("2025-01-01T00:00:00.000000000Z")
-    val end = Instant.parse("2025-01-01T00:00:00.123456789Z")
-    val dag = DagSpec.empty("NanoDag")
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val start   = Instant.parse("2025-01-01T00:00:00.000000000Z")
+    val end     = Instant.parse("2025-01-01T00:00:00.123456789Z")
+    val dag     = DagSpec.empty("NanoDag")
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions()
 
     val result = MetadataBuilder.build(state, dag, options, start, end, Set.empty)
@@ -409,14 +437,17 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("NanoTimingDag"),
       modules = Map(
-        moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("Nano", "Nano module", List.empty, 1, 0))
+        moduleId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Nano", "Nano module", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
       outEdges = Set.empty
     )
     // 123456789 nanoseconds = 123.456789 milliseconds
-    val latency = scala.concurrent.duration.Duration.fromNanos(123456789L).asInstanceOf[FiniteDuration]
+    val latency =
+      scala.concurrent.duration.Duration.fromNanos(123456789L).asInstanceOf[FiniteDuration]
     val state = Runtime.State(
       UUID.randomUUID(),
       dag,
@@ -438,7 +469,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("ContextDag"),
       modules = Map(
-        moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("WithCtx", "With context", List.empty, 1, 0))
+        moduleId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("WithCtx", "With context", List.empty, 1, 0)
+        )
       ),
       data = Map.empty,
       inEdges = Set.empty,
@@ -491,10 +524,10 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Blocked graph with multiple missing inputs =====
 
   it should "compute separate blocked graphs for multiple missing inputs" in {
-    val mod1Id = UUID.randomUUID()
-    val mod2Id = UUID.randomUUID()
-    val input1Id = UUID.randomUUID()
-    val input2Id = UUID.randomUUID()
+    val mod1Id    = UUID.randomUUID()
+    val mod2Id    = UUID.randomUUID()
+    val input1Id  = UUID.randomUUID()
+    val input2Id  = UUID.randomUUID()
     val output1Id = UUID.randomUUID()
     val output2Id = UUID.randomUUID()
 
@@ -505,8 +538,8 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
         mod2Id -> ModuleNodeSpec(metadata = ComponentMetadata("Mod2", "Mod2", List.empty, 1, 0))
       ),
       data = Map(
-        input1Id -> DataNodeSpec("a", Map(mod1Id -> "a"), CType.CInt),
-        input2Id -> DataNodeSpec("b", Map(mod2Id -> "b"), CType.CInt),
+        input1Id  -> DataNodeSpec("a", Map(mod1Id -> "a"), CType.CInt),
+        input2Id  -> DataNodeSpec("b", Map(mod2Id -> "b"), CType.CInt),
         output1Id -> DataNodeSpec("out1", Map(mod1Id -> "out1"), CType.CInt),
         output2Id -> DataNodeSpec("out2", Map(mod2Id -> "out2"), CType.CInt)
       ),
@@ -514,7 +547,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
       outEdges = Set((mod1Id, output1Id), (mod2Id, output2Id))
     )
     // No data computed (both inputs missing)
-    val state = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
+    val state   = Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
     val options = ExecutionOptions(includeBlockedGraph = true)
 
     val result = MetadataBuilder.build(state, dag, options, startedAt, completedAt, Set.empty)
@@ -558,7 +591,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Data node not in dagSpec.data =====
 
   it should "skip data nodes in state that are not in dagSpec.data for provenance" in {
-    val knownId = UUID.randomUUID()
+    val knownId   = UUID.randomUUID()
     val unknownId = UUID.randomUUID()
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
@@ -574,7 +607,7 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
       dag,
       Map.empty,
       Map(
-        knownId -> Eval.now(CValue.CInt(1L)),
+        knownId   -> Eval.now(CValue.CInt(1L)),
         unknownId -> Eval.now(CValue.CInt(2L)) // Not in dagSpec.data
       )
     )
@@ -623,9 +656,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
   // ===== Provenance with unknown source (data node produced by no module and not an input) =====
 
   it should "mark orphan data as unknown when it is not a top-level input and has no producing module" in {
-    val moduleId = UUID.randomUUID()
+    val moduleId   = UUID.randomUUID()
     val producedId = UUID.randomUUID()
-    val orphanId = UUID.randomUUID()
+    val orphanId   = UUID.randomUUID()
     // The orphan is produced by a module via outEdges, so it's not a top-level node,
     // but we won't include the edge that connects it. Let's make it a non-top-level node
     // that has no outEdge pointing to it and is not an input.
@@ -678,7 +711,9 @@ class MetadataBuilderExtendedTest extends AnyFlatSpec with Matchers {
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("TestDag"),
       modules = Map(
-        moduleId -> ModuleNodeSpec(metadata = ComponentMetadata("Producer", "Produces data", List.empty, 1, 0))
+        moduleId -> ModuleNodeSpec(metadata =
+          ComponentMetadata("Producer", "Produces data", List.empty, 1, 0)
+        )
       ),
       data = Map(
         producedId -> DataNodeSpec("produced", Map(moduleId -> "produced"), CType.CString)

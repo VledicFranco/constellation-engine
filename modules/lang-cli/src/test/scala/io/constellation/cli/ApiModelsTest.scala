@@ -12,7 +12,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
   // ============= ModuleInfo Decoder Tests =============
 
   test("ModuleInfo: decodes from valid JSON"):
-    val json = """{
+    val json   = """{
       "name": "Uppercase",
       "description": "Convert text to uppercase",
       "version": "1.0",
@@ -29,7 +29,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     info.outputs shouldBe Map("result" -> "String")
 
   test("ModuleInfo: decodes with empty inputs/outputs"):
-    val json = """{
+    val json   = """{
       "name": "NoOp",
       "description": "No operation",
       "version": "0.1",
@@ -42,14 +42,14 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     result.toOption.get.outputs shouldBe empty
 
   test("ModuleInfo: fails for missing required fields"):
-    val json = """{"name": "Test"}"""
+    val json   = """{"name": "Test"}"""
     val result = decode[ModuleInfo](json)
     result shouldBe a[Left[?, ?]]
 
   // ============= PipelineDetailResponse Decoder Tests =============
 
   test("PipelineDetailResponse: decodes from valid JSON"):
-    val json = """{
+    val json   = """{
       "structuralHash": "abc123",
       "syntacticHash": "def456",
       "aliases": ["my-pipeline"],
@@ -73,7 +73,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     detail.declaredOutputs shouldBe List("result")
 
   test("PipelineDetailResponse: handles optional fields with defaults"):
-    val json = """{
+    val json   = """{
       "structuralHash": "abc123",
       "modules": [],
       "inputSchema": {},
@@ -90,7 +90,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
   // ============= PipelineSummary Decoder Tests =============
 
   test("PipelineSummary: decodes from valid JSON"):
-    val json = """{
+    val json   = """{
       "structuralHash": "hash1",
       "syntacticHash": "hash2",
       "aliases": ["test"],
@@ -106,7 +106,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     summary.declaredOutputs shouldBe List("out1", "out2")
 
   test("PipelineSummary: handles missing optional fields"):
-    val json = """{
+    val json   = """{
       "structuralHash": "hash1",
       "syntacticHash": "hash2",
       "compiledAt": "2026-01-01T00:00:00Z",
@@ -120,7 +120,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
   // ============= ExecutionSummary Decoder Tests =============
 
   test("ExecutionSummary: decodes from valid JSON"):
-    val json = """{
+    val json   = """{
       "executionId": "exec-001",
       "structuralHash": "hash123",
       "resumptionCount": 2,
@@ -135,7 +135,7 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     exec.missingInputs shouldBe Map("name" -> "CString")
 
   test("ExecutionSummary: decodes with empty missingInputs"):
-    val json = """{
+    val json   = """{
       "executionId": "exec-002",
       "structuralHash": "hash456",
       "resumptionCount": 0,
@@ -147,6 +147,6 @@ class ApiModelsTest extends AnyFunSuite with Matchers:
     result.toOption.get.missingInputs shouldBe empty
 
   test("ExecutionSummary: fails for missing required fields"):
-    val json = """{"executionId": "exec-003"}"""
+    val json   = """{"executionId": "exec-003"}"""
     val result = decode[ExecutionSummary](json)
     result shouldBe a[Left[?, ?]]

@@ -81,8 +81,8 @@ class SuspendableExecutionResumeTest extends AnyFlatSpec with Matchers {
     moduleStatuses = Map.empty
   )
 
-  private val scheduler: GlobalScheduler         = GlobalScheduler.unbounded
-  private val backends: ConstellationBackends     = ConstellationBackends.defaults
+  private val scheduler: GlobalScheduler      = GlobalScheduler.unbounded
+  private val backends: ConstellationBackends = ConstellationBackends.defaults
 
   // ---------------------------------------------------------------------------
   // Successful resume
@@ -125,10 +125,10 @@ class SuspendableExecutionResumeTest extends AnyFlatSpec with Matchers {
 
   it should "merge additional inputs with existing provided inputs" in {
     // Create a DAG with two inputs
-    val moduleId2      = UUID.randomUUID()
-    val inputDataId2   = UUID.randomUUID()
-    val inputDataId3   = UUID.randomUUID()
-    val outputDataId2  = UUID.randomUUID()
+    val moduleId2     = UUID.randomUUID()
+    val inputDataId2  = UUID.randomUUID()
+    val inputDataId3  = UUID.randomUUID()
+    val outputDataId2 = UUID.randomUUID()
 
     case class TwoIn(text: String, suffix: String)
     case class ConcatOut(result: String)
@@ -188,7 +188,7 @@ class SuspendableExecutionResumeTest extends AnyFlatSpec with Matchers {
 
     result.status shouldBe PipelineStatus.Completed
     result.outputs("result") shouldBe CValue.CString("hello_world")
-    result.inputs should contain("text"   -> CValue.CString("hello"))
+    result.inputs should contain("text" -> CValue.CString("hello"))
     result.inputs should contain("suffix" -> CValue.CString("_world"))
   }
 
@@ -571,10 +571,10 @@ class SuspendableExecutionResumeTest extends AnyFlatSpec with Matchers {
 
   "resume with resolution sources enabled" should "classify resolved nodes correctly" in {
     // Create a DAG with two outputs so we can manually resolve one
-    val modId     = UUID.randomUUID()
-    val inId      = UUID.randomUUID()
-    val outId1    = UUID.randomUUID()
-    val outId2    = UUID.randomUUID()
+    val modId  = UUID.randomUUID()
+    val inId   = UUID.randomUUID()
+    val outId1 = UUID.randomUUID()
+    val outId2 = UUID.randomUUID()
 
     case class DualIn(text: String)
     case class DualOut(upper: String, lower: String)

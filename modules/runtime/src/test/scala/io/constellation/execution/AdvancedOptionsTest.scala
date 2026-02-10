@@ -632,10 +632,10 @@ class ConcurrencyLimiterAdditionalTest extends AnyFlatSpec with Matchers {
 
   it should "support tryAcquire" in {
     val result = (for {
-      limiter  <- ConcurrencyLimiter(1)
-      _        <- limiter.acquire
-      acquired <- limiter.tryAcquire
-      _        <- limiter.release
+      limiter   <- ConcurrencyLimiter(1)
+      _         <- limiter.acquire
+      acquired  <- limiter.tryAcquire
+      _         <- limiter.release
       acquired2 <- limiter.tryAcquire
       _         <- limiter.release
     } yield (acquired, acquired2)).unsafeRunSync()
@@ -686,7 +686,7 @@ class RateLimitToStringTest extends AnyFlatSpec with Matchers {
 
   "RateLimit.toString" should "include count and period" in {
     val rate = RateLimit(100, 1.second)
-    val str = rate.toString
+    val str  = rate.toString
     str should include("100")
   }
 

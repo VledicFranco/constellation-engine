@@ -32,9 +32,11 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
   it should "create scheduler with large maxConcurrency" in {
     val scheduler = BoundedGlobalScheduler.create(64, 30.seconds).unsafeRunSync()
     try {
-      val results = (1 to 20).toList.parTraverse { i =>
-        scheduler.submit(50, IO.pure(i))
-      }.unsafeRunSync()
+      val results = (1 to 20).toList
+        .parTraverse { i =>
+          scheduler.submit(50, IO.pure(i))
+        }
+        .unsafeRunSync()
       results should contain theSameElementsAs (1 to 20)
     } finally scheduler.shutdown.unsafeRunSync()
   }
@@ -80,20 +82,35 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
 
         // Submit tasks with different priorities while slot is blocked
         // They queue up and should execute in priority order once blocker completes
-        lowFiber <- scheduler.submit(10, IO {
-          completionOrder.synchronized(completionOrder += "low")
-          "low"
-        }).start
+        lowFiber <- scheduler
+          .submit(
+            10,
+            IO {
+              completionOrder.synchronized(completionOrder += "low")
+              "low"
+            }
+          )
+          .start
 
-        medFiber <- scheduler.submit(50, IO {
-          completionOrder.synchronized(completionOrder += "med")
-          "med"
-        }).start
+        medFiber <- scheduler
+          .submit(
+            50,
+            IO {
+              completionOrder.synchronized(completionOrder += "med")
+              "med"
+            }
+          )
+          .start
 
-        highFiber <- scheduler.submit(90, IO {
-          completionOrder.synchronized(completionOrder += "high")
-          "high"
-        }).start
+        highFiber <- scheduler
+          .submit(
+            90,
+            IO {
+              completionOrder.synchronized(completionOrder += "high")
+              "high"
+            }
+          )
+          .start
 
         _ <- IO.sleep(50.millis) // Let tasks enqueue
 
@@ -121,13 +138,23 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
         blocker <- scheduler.submit(50, gate.get).start
         _       <- IO.sleep(50.millis)
 
-        normalFiber <- scheduler.submit(50, IO {
-          completionOrder.synchronized(completionOrder += "normal")
-        }).start
+        normalFiber <- scheduler
+          .submit(
+            50,
+            IO {
+              completionOrder.synchronized(completionOrder += "normal")
+            }
+          )
+          .start
 
-        criticalFiber <- scheduler.submit(100, IO {
-          completionOrder.synchronized(completionOrder += "critical")
-        }).start
+        criticalFiber <- scheduler
+          .submit(
+            100,
+            IO {
+              completionOrder.synchronized(completionOrder += "critical")
+            }
+          )
+          .start
 
         _ <- IO.sleep(50.millis)
         _ <- gate.complete(())
@@ -152,9 +179,14 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
         _       <- IO.sleep(50.millis)
 
         fibers <- (1 to 5).toList.traverse { i =>
-          scheduler.submit(50, IO {
-            completionOrder.synchronized(completionOrder += i)
-          }).start
+          scheduler
+            .submit(
+              50,
+              IO {
+                completionOrder.synchronized(completionOrder += i)
+              }
+            )
+            .start
         }
 
         _ <- IO.sleep(50.millis)
@@ -178,13 +210,16 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
       val maxActive   = new AtomicInteger(0)
 
       val tasks = (1 to 8).toList.map { i =>
-        scheduler.submit(50, IO {
-          val current = activeCount.incrementAndGet()
-          maxActive.updateAndGet(m => math.max(m, current))
-          Thread.sleep(20)
-          activeCount.decrementAndGet()
-          i
-        })
+        scheduler.submit(
+          50,
+          IO {
+            val current = activeCount.incrementAndGet()
+            maxActive.updateAndGet(m => math.max(m, current))
+            Thread.sleep(20)
+            activeCount.decrementAndGet()
+            i
+          }
+        )
       }
 
       val results = tasks.parSequence.unsafeRunSync()
@@ -200,13 +235,16 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
       val maxActive   = new AtomicInteger(0)
 
       val tasks = (1 to 20).toList.map { i =>
-        scheduler.submit(50, IO {
-          val current = activeCount.incrementAndGet()
-          maxActive.updateAndGet(m => math.max(m, current))
-          Thread.sleep(30)
-          activeCount.decrementAndGet()
-          i
-        })
+        scheduler.submit(
+          50,
+          IO {
+            val current = activeCount.incrementAndGet()
+            maxActive.updateAndGet(m => math.max(m, current))
+            Thread.sleep(30)
+            activeCount.decrementAndGet()
+            i
+          }
+        )
       }
 
       val results = tasks.parSequence.unsafeRunSync()
@@ -222,13 +260,16 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
       val maxActive   = new AtomicInteger(0)
 
       val tasks = (1 to 50).toList.map { i =>
-        scheduler.submit(i % 100, IO {
-          val current = activeCount.incrementAndGet()
-          maxActive.updateAndGet(m => math.max(m, current))
-          Thread.sleep(10)
-          activeCount.decrementAndGet()
-          i
-        })
+        scheduler.submit(
+          i % 100,
+          IO {
+            val current = activeCount.incrementAndGet()
+            maxActive.updateAndGet(m => math.max(m, current))
+            Thread.sleep(10)
+            activeCount.decrementAndGet()
+            i
+          }
+        )
       }
 
       val results = tasks.parSequence.unsafeRunSync()
@@ -600,7 +641,7 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
     val scheduler = BoundedGlobalScheduler.create(2, 30.seconds).unsafeRunSync()
     try {
       (for {
-        _ <- scheduler.submit(50, IO.raiseError[Int](new RuntimeException("fail"))).attempt
+        _      <- scheduler.submit(50, IO.raiseError[Int](new RuntimeException("fail"))).attempt
         result <- scheduler.submit(50, IO.pure(42))
         _ = result shouldBe 42
 
@@ -640,7 +681,7 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
     val scheduler = BoundedGlobalScheduler.create(2, 30.seconds).unsafeRunSync()
     try {
       (for {
-        _ <- scheduler.submit(-50, IO.pure("neg"))
+        _     <- scheduler.submit(-50, IO.pure("neg"))
         stats <- scheduler.stats
         _ = stats.lowPriorityCompleted shouldBe 1 // 0 < 25 -> low priority
       } yield ()).unsafeRunSync()
@@ -651,7 +692,7 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
     val scheduler = BoundedGlobalScheduler.create(2, 30.seconds).unsafeRunSync()
     try {
       (for {
-        _ <- scheduler.submit(200, IO.pure("over"))
+        _     <- scheduler.submit(200, IO.pure("over"))
         stats <- scheduler.stats
         _ = stats.highPriorityCompleted shouldBe 1 // 100 >= 75 -> high priority
       } yield ()).unsafeRunSync()
@@ -689,10 +730,10 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
 
       val tasks = (1 to 200).toList.map { i =>
         val priority = i match {
-          case x if x <= 50  => 90  // high
-          case x if x <= 100 => 50  // normal
-          case x if x <= 150 => 20  // low
-          case _             => 0   // background
+          case x if x <= 50  => 90 // high
+          case x if x <= 100 => 50 // normal
+          case x if x <= 150 => 20 // low
+          case _             => 0  // background
         }
         scheduler.submit(priority, IO { counter.incrementAndGet(); i })
       }
@@ -704,8 +745,8 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
       val stats = scheduler.stats.unsafeRunSync()
       stats.totalSubmitted shouldBe 200
       stats.totalCompleted shouldBe 200
-      stats.highPriorityCompleted shouldBe 50  // priority 90 >= 75
-      stats.lowPriorityCompleted shouldBe 100  // priority 20 and 0 < 25
+      stats.highPriorityCompleted shouldBe 50 // priority 90 >= 75
+      stats.lowPriorityCompleted shouldBe 100 // priority 20 and 0 < 25
     } finally scheduler.shutdown.unsafeRunSync()
   }
 }

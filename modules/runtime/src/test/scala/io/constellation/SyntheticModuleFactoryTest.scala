@@ -19,7 +19,8 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Branch module", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map("out" -> CType.CString)
         )
       ),
@@ -54,14 +55,14 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return empty for empty dag" in {
-    val dag = DagSpec.empty("EmptyDag")
+    val dag    = DagSpec.empty("EmptyDag")
     val result = SyntheticModuleFactory.fromDagSpec(dag)
     result shouldBe empty
   }
 
   it should "detect multiple branch modules" in {
-    val branch1 = UUID.randomUUID()
-    val branch2 = UUID.randomUUID()
+    val branch1  = UUID.randomUUID()
+    val branch2  = UUID.randomUUID()
     val normalId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -69,12 +70,14 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       modules = Map(
         branch1 -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "First branch", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CInt, "otherwise" -> CType.CInt),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CInt, "otherwise" -> CType.CInt),
           produces = Map("out" -> CType.CInt)
         ),
         branch2 -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-1", "Second branch", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map("out" -> CType.CString)
         ),
         normalId -> ModuleNodeSpec(
@@ -102,7 +105,8 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-fallback", "Branch no out", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map.empty // No "out" key
         )
       ),
@@ -124,9 +128,12 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-multi", "Multi-branch", List.empty, 1, 0),
           consumes = Map(
-            "cond0" -> CType.CBoolean, "expr0" -> CType.CInt,
-            "cond1" -> CType.CBoolean, "expr1" -> CType.CInt,
-            "cond2" -> CType.CBoolean, "expr2" -> CType.CInt,
+            "cond0"     -> CType.CBoolean,
+            "expr0"     -> CType.CInt,
+            "cond1"     -> CType.CBoolean,
+            "expr1"     -> CType.CInt,
+            "cond2"     -> CType.CBoolean,
+            "expr2"     -> CType.CInt,
             "otherwise" -> CType.CInt
           ),
           produces = Map("out" -> CType.CInt)
@@ -144,26 +151,27 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   // ===== Full integration: init and run a branch module =====
 
   "Branch module" should "execute single-case branch selecting true path" in {
-    val branchId = UUID.randomUUID()
-    val cond0Id = UUID.randomUUID()
-    val expr0Id = UUID.randomUUID()
+    val branchId    = UUID.randomUUID()
+    val cond0Id     = UUID.randomUUID()
+    val expr0Id     = UUID.randomUUID()
     val otherwiseId = UUID.randomUUID()
-    val outId = UUID.randomUUID()
+    val outId       = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("BranchDag"),
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Branch", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map("out" -> CType.CString)
         )
       ),
       data = Map(
-        cond0Id -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
-        expr0Id -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CString),
+        cond0Id     -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
+        expr0Id     -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CString),
         otherwiseId -> DataNodeSpec("otherwise", Map(branchId -> "otherwise"), CType.CString),
-        outId -> DataNodeSpec("out", Map(branchId -> "out"), CType.CString)
+        outId       -> DataNodeSpec("out", Map(branchId -> "out"), CType.CString)
       ),
       inEdges = Set((cond0Id, branchId), (expr0Id, branchId), (otherwiseId, branchId)),
       outEdges = Set((branchId, outId))
@@ -189,7 +197,7 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       // Run the module
       _ <- runnable.run(runtime)
       // Get result
-      result <- runtime.getTableData(outId)
+      result     <- runtime.getTableData(outId)
       finalState <- stateRef.get
     } yield (result, finalState)).unsafeRunSync()
 
@@ -197,33 +205,34 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "execute single-case branch selecting otherwise path" in {
-    val branchId = UUID.randomUUID()
-    val cond0Id = UUID.randomUUID()
-    val expr0Id = UUID.randomUUID()
+    val branchId    = UUID.randomUUID()
+    val cond0Id     = UUID.randomUUID()
+    val expr0Id     = UUID.randomUUID()
     val otherwiseId = UUID.randomUUID()
-    val outId = UUID.randomUUID()
+    val outId       = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("BranchDag"),
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Branch", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CString, "otherwise" -> CType.CString),
           produces = Map("out" -> CType.CString)
         )
       ),
       data = Map(
-        cond0Id -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
-        expr0Id -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CString),
+        cond0Id     -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
+        expr0Id     -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CString),
         otherwiseId -> DataNodeSpec("otherwise", Map(branchId -> "otherwise"), CType.CString),
-        outId -> DataNodeSpec("out", Map(branchId -> "out"), CType.CString)
+        outId       -> DataNodeSpec("out", Map(branchId -> "out"), CType.CString)
       ),
       inEdges = Set((cond0Id, branchId), (expr0Id, branchId), (otherwiseId, branchId)),
       outEdges = Set((branchId, outId))
     )
 
     val syntheticModules = SyntheticModuleFactory.fromDagSpec(dag)
-    val branchModule = syntheticModules(branchId)
+    val branchModule     = syntheticModules(branchId)
 
     val result = (for {
       runnable <- branchModule.init(branchId, dag)
@@ -231,10 +240,10 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
         Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
       )
       runtime = Runtime(table = runnable.data, state = stateRef)
-      _ <- runtime.setTableData(cond0Id, false: Any)
-      _ <- runtime.setTableData(expr0Id, "yes-path": Any)
-      _ <- runtime.setTableData(otherwiseId, "no-path": Any)
-      _ <- runnable.run(runtime)
+      _   <- runtime.setTableData(cond0Id, false: Any)
+      _   <- runtime.setTableData(expr0Id, "yes-path": Any)
+      _   <- runtime.setTableData(otherwiseId, "no-path": Any)
+      _   <- runnable.run(runtime)
       res <- runtime.getTableData(outId)
     } yield res).unsafeRunSync()
 
@@ -242,13 +251,13 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "execute multi-case branch selecting second condition" in {
-    val branchId = UUID.randomUUID()
-    val cond0Id = UUID.randomUUID()
-    val expr0Id = UUID.randomUUID()
-    val cond1Id = UUID.randomUUID()
-    val expr1Id = UUID.randomUUID()
+    val branchId    = UUID.randomUUID()
+    val cond0Id     = UUID.randomUUID()
+    val expr0Id     = UUID.randomUUID()
+    val cond1Id     = UUID.randomUUID()
+    val expr1Id     = UUID.randomUUID()
     val otherwiseId = UUID.randomUUID()
-    val outId = UUID.randomUUID()
+    val outId       = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("MultiBranchDag"),
@@ -256,31 +265,35 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Multi-branch", List.empty, 1, 0),
           consumes = Map(
-            "cond0" -> CType.CBoolean, "expr0" -> CType.CInt,
-            "cond1" -> CType.CBoolean, "expr1" -> CType.CInt,
+            "cond0"     -> CType.CBoolean,
+            "expr0"     -> CType.CInt,
+            "cond1"     -> CType.CBoolean,
+            "expr1"     -> CType.CInt,
             "otherwise" -> CType.CInt
           ),
           produces = Map("out" -> CType.CInt)
         )
       ),
       data = Map(
-        cond0Id -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
-        expr0Id -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
-        cond1Id -> DataNodeSpec("cond1", Map(branchId -> "cond1"), CType.CBoolean),
-        expr1Id -> DataNodeSpec("expr1", Map(branchId -> "expr1"), CType.CInt),
+        cond0Id     -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
+        expr0Id     -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
+        cond1Id     -> DataNodeSpec("cond1", Map(branchId -> "cond1"), CType.CBoolean),
+        expr1Id     -> DataNodeSpec("expr1", Map(branchId -> "expr1"), CType.CInt),
         otherwiseId -> DataNodeSpec("otherwise", Map(branchId -> "otherwise"), CType.CInt),
-        outId -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
+        outId       -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
       ),
       inEdges = Set(
-        (cond0Id, branchId), (expr0Id, branchId),
-        (cond1Id, branchId), (expr1Id, branchId),
+        (cond0Id, branchId),
+        (expr0Id, branchId),
+        (cond1Id, branchId),
+        (expr1Id, branchId),
         (otherwiseId, branchId)
       ),
       outEdges = Set((branchId, outId))
     )
 
     val syntheticModules = SyntheticModuleFactory.fromDagSpec(dag)
-    val branchModule = syntheticModules(branchId)
+    val branchModule     = syntheticModules(branchId)
 
     val result = (for {
       runnable <- branchModule.init(branchId, dag)
@@ -289,12 +302,12 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       )
       runtime = Runtime(table = runnable.data, state = stateRef)
       // cond0 false, cond1 true -> should select expr1
-      _ <- runtime.setTableData(cond0Id, false: Any)
-      _ <- runtime.setTableData(expr0Id, 10L: Any)
-      _ <- runtime.setTableData(cond1Id, true: Any)
-      _ <- runtime.setTableData(expr1Id, 20L: Any)
-      _ <- runtime.setTableData(otherwiseId, 30L: Any)
-      _ <- runnable.run(runtime)
+      _   <- runtime.setTableData(cond0Id, false: Any)
+      _   <- runtime.setTableData(expr0Id, 10L: Any)
+      _   <- runtime.setTableData(cond1Id, true: Any)
+      _   <- runtime.setTableData(expr1Id, 20L: Any)
+      _   <- runtime.setTableData(otherwiseId, 30L: Any)
+      _   <- runnable.run(runtime)
       res <- runtime.getTableData(outId)
     } yield res).unsafeRunSync()
 
@@ -302,13 +315,13 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "execute multi-case branch selecting otherwise when all conditions false" in {
-    val branchId = UUID.randomUUID()
-    val cond0Id = UUID.randomUUID()
-    val expr0Id = UUID.randomUUID()
-    val cond1Id = UUID.randomUUID()
-    val expr1Id = UUID.randomUUID()
+    val branchId    = UUID.randomUUID()
+    val cond0Id     = UUID.randomUUID()
+    val expr0Id     = UUID.randomUUID()
+    val cond1Id     = UUID.randomUUID()
+    val expr1Id     = UUID.randomUUID()
     val otherwiseId = UUID.randomUUID()
-    val outId = UUID.randomUUID()
+    val outId       = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("MultiBranchDag"),
@@ -316,31 +329,35 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Multi-branch", List.empty, 1, 0),
           consumes = Map(
-            "cond0" -> CType.CBoolean, "expr0" -> CType.CInt,
-            "cond1" -> CType.CBoolean, "expr1" -> CType.CInt,
+            "cond0"     -> CType.CBoolean,
+            "expr0"     -> CType.CInt,
+            "cond1"     -> CType.CBoolean,
+            "expr1"     -> CType.CInt,
             "otherwise" -> CType.CInt
           ),
           produces = Map("out" -> CType.CInt)
         )
       ),
       data = Map(
-        cond0Id -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
-        expr0Id -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
-        cond1Id -> DataNodeSpec("cond1", Map(branchId -> "cond1"), CType.CBoolean),
-        expr1Id -> DataNodeSpec("expr1", Map(branchId -> "expr1"), CType.CInt),
+        cond0Id     -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
+        expr0Id     -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
+        cond1Id     -> DataNodeSpec("cond1", Map(branchId -> "cond1"), CType.CBoolean),
+        expr1Id     -> DataNodeSpec("expr1", Map(branchId -> "expr1"), CType.CInt),
         otherwiseId -> DataNodeSpec("otherwise", Map(branchId -> "otherwise"), CType.CInt),
-        outId -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
+        outId       -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
       ),
       inEdges = Set(
-        (cond0Id, branchId), (expr0Id, branchId),
-        (cond1Id, branchId), (expr1Id, branchId),
+        (cond0Id, branchId),
+        (expr0Id, branchId),
+        (cond1Id, branchId),
+        (expr1Id, branchId),
         (otherwiseId, branchId)
       ),
       outEdges = Set((branchId, outId))
     )
 
     val syntheticModules = SyntheticModuleFactory.fromDagSpec(dag)
-    val branchModule = syntheticModules(branchId)
+    val branchModule     = syntheticModules(branchId)
 
     val result = (for {
       runnable <- branchModule.init(branchId, dag)
@@ -349,12 +366,12 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
       )
       runtime = Runtime(table = runnable.data, state = stateRef)
       // All conditions false -> should select otherwise
-      _ <- runtime.setTableData(cond0Id, false: Any)
-      _ <- runtime.setTableData(expr0Id, 10L: Any)
-      _ <- runtime.setTableData(cond1Id, false: Any)
-      _ <- runtime.setTableData(expr1Id, 20L: Any)
-      _ <- runtime.setTableData(otherwiseId, 30L: Any)
-      _ <- runnable.run(runtime)
+      _   <- runtime.setTableData(cond0Id, false: Any)
+      _   <- runtime.setTableData(expr0Id, 10L: Any)
+      _   <- runtime.setTableData(cond1Id, false: Any)
+      _   <- runtime.setTableData(expr1Id, 20L: Any)
+      _   <- runtime.setTableData(otherwiseId, 30L: Any)
+      _   <- runnable.run(runtime)
       res <- runtime.getTableData(outId)
     } yield res).unsafeRunSync()
 
@@ -362,33 +379,34 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
   }
 
   it should "store CValue in state data after execution" in {
-    val branchId = UUID.randomUUID()
-    val cond0Id = UUID.randomUUID()
-    val expr0Id = UUID.randomUUID()
+    val branchId    = UUID.randomUUID()
+    val cond0Id     = UUID.randomUUID()
+    val expr0Id     = UUID.randomUUID()
     val otherwiseId = UUID.randomUUID()
-    val outId = UUID.randomUUID()
+    val outId       = UUID.randomUUID()
 
     val dag = DagSpec(
       metadata = ComponentMetadata.empty("BranchDag"),
       modules = Map(
         branchId -> ModuleNodeSpec(
           metadata = ComponentMetadata("branch-0", "Branch", List.empty, 1, 0),
-          consumes = Map("cond0" -> CType.CBoolean, "expr0" -> CType.CInt, "otherwise" -> CType.CInt),
+          consumes =
+            Map("cond0" -> CType.CBoolean, "expr0" -> CType.CInt, "otherwise" -> CType.CInt),
           produces = Map("out" -> CType.CInt)
         )
       ),
       data = Map(
-        cond0Id -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
-        expr0Id -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
+        cond0Id     -> DataNodeSpec("cond0", Map(branchId -> "cond0"), CType.CBoolean),
+        expr0Id     -> DataNodeSpec("expr0", Map(branchId -> "expr0"), CType.CInt),
         otherwiseId -> DataNodeSpec("otherwise", Map(branchId -> "otherwise"), CType.CInt),
-        outId -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
+        outId       -> DataNodeSpec("out", Map(branchId -> "out"), CType.CInt)
       ),
       inEdges = Set((cond0Id, branchId), (expr0Id, branchId), (otherwiseId, branchId)),
       outEdges = Set((branchId, outId))
     )
 
     val syntheticModules = SyntheticModuleFactory.fromDagSpec(dag)
-    val branchModule = syntheticModules(branchId)
+    val branchModule     = syntheticModules(branchId)
 
     val finalState = (for {
       runnable <- branchModule.init(branchId, dag)
@@ -396,10 +414,10 @@ class SyntheticModuleFactoryTest extends AnyFlatSpec with Matchers {
         Runtime.State(UUID.randomUUID(), dag, Map.empty, Map.empty)
       )
       runtime = Runtime(table = runnable.data, state = stateRef)
-      _ <- runtime.setTableData(cond0Id, true: Any)
-      _ <- runtime.setTableData(expr0Id, 42L: Any)
-      _ <- runtime.setTableData(otherwiseId, 0L: Any)
-      _ <- runnable.run(runtime)
+      _     <- runtime.setTableData(cond0Id, true: Any)
+      _     <- runtime.setTableData(expr0Id, 42L: Any)
+      _     <- runtime.setTableData(otherwiseId, 0L: Any)
+      _     <- runnable.run(runtime)
       state <- stateRef.get
     } yield state).unsafeRunSync()
 

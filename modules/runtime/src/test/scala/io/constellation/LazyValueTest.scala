@@ -17,7 +17,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "cache materialized result" in {
-    val lazy1 = LazyJsonValue(Json.fromInt(42), CType.CInt)
+    val lazy1  = LazyJsonValue(Json.fromInt(42), CType.CInt)
     val first  = lazy1.materialize
     val second = lazy1.materialize
     first shouldBe second
@@ -44,7 +44,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   // ===== LazyListValue =====
 
   "LazyListValue" should "convert elements on demand" in {
-    val arr  = Vector(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3))
+    val arr   = Vector(Json.fromInt(1), Json.fromInt(2), Json.fromInt(3))
     val lazy1 = LazyListValue(arr, CType.CInt)
 
     lazy1.size shouldBe 3
@@ -58,7 +58,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return error for out-of-bounds index" in {
-    val arr  = Vector(Json.fromInt(1))
+    val arr   = Vector(Json.fromInt(1))
     val lazy1 = LazyListValue(arr, CType.CInt)
 
     lazy1.get(-1).isLeft shouldBe true
@@ -66,7 +66,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "cache accessed elements" in {
-    val arr  = Vector(Json.fromString("a"), Json.fromString("b"))
+    val arr   = Vector(Json.fromString("a"), Json.fromString("b"))
     val lazy1 = LazyListValue(arr, CType.CString)
 
     lazy1.get(0) shouldBe Right(CValue.CString("a"))
@@ -75,7 +75,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   it should "materialize all elements" in {
-    val arr  = Vector(Json.fromInt(10), Json.fromInt(20))
+    val arr   = Vector(Json.fromInt(10), Json.fromInt(20))
     val lazy1 = LazyListValue(arr, CType.CInt)
 
     val result = lazy1.materialize
@@ -98,7 +98,7 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   "LazyListValue.fromJson" should "create from JSON array" in {
-    val json = Json.arr(Json.fromInt(1), Json.fromInt(2))
+    val json   = Json.arr(Json.fromInt(1), Json.fromInt(2))
     val result = LazyListValue.fromJson(json, CType.CInt)
     result.isRight shouldBe true
     result.toOption.get.size shouldBe 2
@@ -190,8 +190,8 @@ class LazyValueTest extends AnyFlatSpec with Matchers {
   }
 
   "LazyProductValue.fromJson" should "create from JSON object" in {
-    val json = Json.obj("x" -> Json.fromInt(1))
-    val types = Map("x" -> CType.CInt)
+    val json   = Json.obj("x" -> Json.fromInt(1))
+    val types  = Map("x" -> CType.CInt)
     val result = LazyProductValue.fromJson(json, types)
     result.isRight shouldBe true
   }

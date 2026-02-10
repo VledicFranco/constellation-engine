@@ -227,9 +227,9 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   "registerAll" should "register multiple modules at once" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync().asInstanceOf[ModuleRegistryImpl]
-    val m1 = createTestModule("Module1")
-    val m2 = createTestModule("Module2")
-    val m3 = createTestModule("Module3")
+    val m1       = createTestModule("Module1")
+    val m2       = createTestModule("Module2")
+    val m3       = createTestModule("Module3")
 
     registry.registerAll(List("Module1" -> m1, "Module2" -> m2, "Module3" -> m3)).unsafeRunSync()
 
@@ -341,8 +341,8 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   "name index conflict resolution" should "let first registration win for short name" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync().asInstanceOf[ModuleRegistryImpl]
-    val m1 = createTestModule("dag1.Transform")
-    val m2 = createTestModule("dag2.Transform")
+    val m1       = createTestModule("dag1.Transform")
+    val m2       = createTestModule("dag2.Transform")
 
     registry.register("dag1.Transform", m1).unsafeRunSync()
     registry.register("dag2.Transform", m2).unsafeRunSync()
@@ -359,7 +359,7 @@ class ModuleRegistryTest extends AnyFlatSpec with Matchers {
 
   it should "not increment index when re-registering same module" in {
     val registry = ModuleRegistryImpl.init.unsafeRunSync().asInstanceOf[ModuleRegistryImpl]
-    val m1 = createTestModule("dag1.Transform")
+    val m1       = createTestModule("dag1.Transform")
 
     registry.register("dag1.Transform", m1).unsafeRunSync()
     val indexSizeBefore = registry.indexSize.unsafeRunSync()

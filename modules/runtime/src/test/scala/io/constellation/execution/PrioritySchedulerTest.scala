@@ -147,8 +147,7 @@ class PriorityStatsSpec extends AnyFlatSpec with Matchers {
   }
 
   "PriorityStats.recordCompletion" should "increment completed and accumulate duration" in {
-    val stats = PriorityStats.empty
-      .recordSubmission
+    val stats = PriorityStats.empty.recordSubmission
       .recordCompletion(150L)
 
     stats.submitted shouldBe 1
@@ -161,8 +160,7 @@ class PriorityStatsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return the correct average duration" in {
-    val stats = PriorityStats.empty
-      .recordSubmission
+    val stats = PriorityStats.empty.recordSubmission
       .recordCompletion(100L)
       .recordSubmission
       .recordCompletion(200L)

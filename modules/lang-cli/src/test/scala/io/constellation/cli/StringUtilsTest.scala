@@ -94,31 +94,31 @@ class StringUtilsTest extends AnyFunSuite with Matchers:
   // ============= sanitizeError =============
 
   test("sanitizeError: redacts Bearer tokens"):
-    val msg = "Failed: Bearer sk-abc123xyz"
+    val msg    = "Failed: Bearer sk-abc123xyz"
     val result = StringUtils.sanitizeError(msg)
     result should include("Bearer [REDACTED]")
     result should not include "sk-abc123xyz"
 
   test("sanitizeError: redacts sk- API keys"):
-    val msg = "API key: sk-1234567890"
+    val msg    = "API key: sk-1234567890"
     val result = StringUtils.sanitizeError(msg)
     result should include("[REDACTED]")
     result should not include "sk-1234567890"
 
   test("sanitizeError: redacts Authorization headers"):
-    val msg = "Authorization: secret-token-value"
+    val msg    = "Authorization: secret-token-value"
     val result = StringUtils.sanitizeError(msg)
     result should include("Authorization: [REDACTED]")
     result should not include "secret-token-value"
 
   test("sanitizeError: redacts password patterns"):
-    val msg = "password=mysecret123"
+    val msg    = "password=mysecret123"
     val result = StringUtils.sanitizeError(msg)
     result should include("[REDACTED]")
     result should not include "mysecret123"
 
   test("sanitizeError: redacts token patterns"):
-    val msg = "token=abc123def456"
+    val msg    = "token=abc123def456"
     val result = StringUtils.sanitizeError(msg)
     result should include("[REDACTED]")
     result should not include "abc123def456"
@@ -128,7 +128,7 @@ class StringUtilsTest extends AnyFunSuite with Matchers:
     StringUtils.sanitizeError(msg) shouldBe msg
 
   test("sanitizeError: handles multiple sensitive patterns"):
-    val msg = "Bearer abc123 and Authorization: xyz789"
+    val msg       = "Bearer abc123 and Authorization: xyz789"
     val sanitized = StringUtils.sanitizeError(msg)
     sanitized should include("Bearer [REDACTED]")
     sanitized should include("Authorization: [REDACTED]")
@@ -137,7 +137,7 @@ class StringUtilsTest extends AnyFunSuite with Matchers:
     StringUtils.sanitizeError("") shouldBe ""
 
   test("sanitizeError: case-insensitive Bearer"):
-    val msg = "bearer some-token-here"
+    val msg    = "bearer some-token-here"
     val result = StringUtils.sanitizeError(msg)
     result should include("[REDACTED]")
     result should not include "some-token-here"

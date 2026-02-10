@@ -78,7 +78,9 @@ class AdaptiveJsonConverterTest extends AnyFlatSpec with Matchers {
 
   it should "correctly convert String JSON" in {
     val converter = new AdaptiveJsonConverter()
-    converter.convert(Json.fromString("hello"), CType.CString) shouldBe Right(CValue.CString("hello"))
+    converter.convert(Json.fromString("hello"), CType.CString) shouldBe Right(
+      CValue.CString("hello")
+    )
   }
 
   it should "correctly convert Boolean JSON" in {

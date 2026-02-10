@@ -177,7 +177,7 @@ class CacheRegistryExtendedTest extends AnyFlatSpec with Matchers {
 
     // Generate some activity on cache1
     backend1.set("key", "value", 1.minute).unsafeRunSync()
-    backend1.get[String]("key").unsafeRunSync() // hit
+    backend1.get[String]("key").unsafeRunSync()     // hit
     backend1.get[String]("missing").unsafeRunSync() // miss
 
     val stats = registry.allStats.unsafeRunSync()

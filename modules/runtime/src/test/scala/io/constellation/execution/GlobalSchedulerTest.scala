@@ -601,7 +601,7 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "GlobalScheduler.boundedUnsafe" should "create scheduler without Resource" in {
     val scheduler = GlobalScheduler.boundedUnsafe(maxConcurrency = 2).unsafeRunSync()
-    val result = scheduler.submit(50, IO.pure(42)).unsafeRunSync()
+    val result    = scheduler.submit(50, IO.pure(42)).unsafeRunSync()
     result shouldBe 42
   }
 
@@ -628,19 +628,23 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
         for {
           // Fill the single execution slot
           blocker <- scheduler.submit(50, IO.sleep(500.millis) *> IO.pure("blocker")).start
-          _ <- IO.sleep(50.millis) // Let blocker acquire slot
+          _       <- IO.sleep(50.millis) // Let blocker acquire slot
 
           // Fill queue to capacity (2 slots)
           queued1 <- scheduler.submit(50, IO.pure("q1")).start
           queued2 <- scheduler.submit(50, IO.pure("q2")).start
-          _ <- IO.sleep(50.millis) // Let them enter queue
+          _       <- IO.sleep(50.millis) // Let them enter queue
 
           // Third queued task should fail with QueueFullException
           result <- scheduler.submit(50, IO.pure("q3")).attempt
 
           _ = result.isLeft shouldBe true
-          _ = result.swap.getOrElse(throw new AssertionError("Expected Left")) shouldBe a[QueueFullException]
-          _ = result.swap.getOrElse(throw new AssertionError("Expected Left")).asInstanceOf[QueueFullException].maxSize shouldBe 2
+          _ = result.swap
+            .getOrElse(throw new AssertionError("Expected Left")) shouldBe a[QueueFullException]
+          _ = result.swap
+            .getOrElse(throw new AssertionError("Expected Left"))
+            .asInstanceOf[QueueFullException]
+            .maxSize shouldBe 2
 
           // Clean up
           _ <- blocker.joinWithNever
@@ -656,7 +660,7 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
   // -------------------------------------------------------------------------
 
   "SchedulerState.dequeue" should "return None when queue is empty" in {
-    val state = SchedulerState.empty
+    val state             = SchedulerState.empty
     val (entry, newState) = state.dequeue
     entry shouldBe None
     newState shouldBe state
@@ -675,8 +679,11 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
 
   "SchedulerState.toStats" should "produce correct SchedulerStats" in {
     val entry = QueueEntry(
-      id = 1, priority = 50, submittedAt = 0.seconds,
-      gate = null, effectivePriority = 50
+      id = 1,
+      priority = 50,
+      submittedAt = 0.seconds,
+      gate = null,
+      effectivePriority = 50
     )
     var state = SchedulerState.empty
     state = state.enqueue(entry)

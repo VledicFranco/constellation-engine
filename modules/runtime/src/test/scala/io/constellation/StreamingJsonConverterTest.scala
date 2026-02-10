@@ -17,8 +17,8 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   "StreamingLimits" should "have reasonable default values" in {
     val defaults = StreamingLimits.default
     defaults.maxPayloadSize shouldBe 100L * 1024 * 1024 // 100MB
-    defaults.maxArrayElements shouldBe 1_000_000         // 1M elements
-    defaults.maxNestingDepth shouldBe 50                 // 50 levels
+    defaults.maxArrayElements shouldBe 1_000_000        // 1M elements
+    defaults.maxNestingDepth shouldBe 50                // 50 levels
   }
 
   it should "validate succeeds for valid limits" in {
@@ -431,7 +431,7 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return instance with custom limits via apply(limits)" in {
-    val limits    = StreamingLimits(maxPayloadSize = 500, maxArrayElements = 10, maxNestingDepth = 5)
+    val limits = StreamingLimits(maxPayloadSize = 500, maxArrayElements = 10, maxNestingDepth = 5)
     val converter = StreamingJsonConverter(limits)
     converter should not be null
   }
@@ -510,8 +510,8 @@ class StreamingJsonConverterTest extends AnyFlatSpec with Matchers {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  /** Create a nested CType.CList wrapping CType.CInt at the given depth.
-    * depth=1 means CType.CList(CType.CInt), depth=2 means CType.CList(CType.CList(CType.CInt)), etc.
+  /** Create a nested CType.CList wrapping CType.CInt at the given depth. depth=1 means
+    * CType.CList(CType.CInt), depth=2 means CType.CList(CType.CList(CType.CInt)), etc.
     */
   private def nestedListType(depth: Int): CType =
     if depth == 0 then CType.CInt

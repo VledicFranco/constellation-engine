@@ -605,8 +605,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
   // ===== executeNextBatch with failing module =====
 
   "executeNextBatch" should "mark module as Failed when execution throws" in {
-    val moduleId    = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     case class FailInput(text: String)
@@ -645,8 +645,8 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
       .createSession("session", dag, Map.empty, modules, inputs)
       .unsafeRunSync()
 
-    val initialized          = SteppedExecution.initializeRuntime(session).unsafeRunSync()
-    val (afterBatch, _)      = SteppedExecution.executeNextBatch(initialized).unsafeRunSync()
+    val initialized     = SteppedExecution.initializeRuntime(session).unsafeRunSync()
+    val (afterBatch, _) = SteppedExecution.executeNextBatch(initialized).unsafeRunSync()
 
     val moduleState = afterBatch.nodeStates(moduleId)
     moduleState shouldBe a[SteppedExecution.NodeState.Failed]
@@ -705,7 +705,9 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
     result.isLeft shouldBe true
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include("unexpected")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include(
+      "unexpected"
+    )
   }
 
   it should "fail with wrong input type" in {
@@ -744,7 +746,9 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
     result.isLeft shouldBe true
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include("different type")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include(
+      "different type"
+    )
   }
 
   // ===== executeToCompletion for already-complete session =====

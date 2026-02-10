@@ -3,12 +3,12 @@ package io.constellation.impl
 import java.time.Instant
 import java.util.UUID
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.constellation._
+import io.constellation.*
 import io.constellation.execution.GlobalScheduler
 import io.constellation.spi.ConstellationBackends
 
@@ -239,8 +239,9 @@ class ConstellationImplTest extends AnyFlatSpec with Matchers {
   }
 
   it should "use the provided PipelineStore when one is configured" in {
-    val customStore   = PipelineStoreImpl.init.unsafeRunSync()
-    val constellation = ConstellationImpl.builder().withPipelineStore(customStore).build().unsafeRunSync()
+    val customStore = PipelineStoreImpl.init.unsafeRunSync()
+    val constellation =
+      ConstellationImpl.builder().withPipelineStore(customStore).build().unsafeRunSync()
 
     constellation.PipelineStore shouldBe customStore
   }
@@ -274,10 +275,15 @@ class ConstellationImplTest extends AnyFlatSpec with Matchers {
     val constellation = ConstellationImpl.init.unsafeRunSync()
     val handle        = SuspensionHandle("test-id")
     val result =
-      constellation.resumeFromStore(handle, Map.empty, Map.empty, ExecutionOptions()).attempt.unsafeRunSync()
+      constellation
+        .resumeFromStore(handle, Map.empty, Map.empty, ExecutionOptions())
+        .attempt
+        .unsafeRunSync()
     result.isLeft shouldBe true
     result.left.getOrElse(fail("Expected Left")) shouldBe a[IllegalStateException]
-    result.left.getOrElse(fail("Expected Left")).getMessage should include("No SuspensionStore configured")
+    result.left.getOrElse(fail("Expected Left")).getMessage should include(
+      "No SuspensionStore configured"
+    )
   }
 
   it should "raise NoSuchElementException when suspension is not found in store" in {

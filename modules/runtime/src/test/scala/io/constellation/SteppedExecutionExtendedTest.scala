@@ -49,8 +49,16 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
         moduleId2 -> ModuleNodeSpec(metadata = ComponentMetadata("M2", "M2", List.empty, 1, 0))
       ),
       data = Map(
-        dataA -> DataNodeSpec("dataA", Map(moduleId1 -> "text", moduleId2 -> "result"), CType.CString),
-        dataB -> DataNodeSpec("dataB", Map(moduleId2 -> "text", moduleId1 -> "result"), CType.CString)
+        dataA -> DataNodeSpec(
+          "dataA",
+          Map(moduleId1 -> "text", moduleId2 -> "result"),
+          CType.CString
+        ),
+        dataB -> DataNodeSpec(
+          "dataB",
+          Map(moduleId2 -> "text", moduleId1 -> "result"),
+          CType.CString
+        )
       ),
       // dataA feeds M1, dataB feeds M2
       inEdges = Set((dataA, moduleId1), (dataB, moduleId2)),
@@ -146,7 +154,7 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
     val inputDataId = UUID.randomUUID()
     // Output data node exists in DAG but the module won't actually populate it
     // because the outEdges point to a different data ID than what's in the table
-    val outputDataId = UUID.randomUUID()
+    val outputDataId  = UUID.randomUUID()
     val phantomDataId = UUID.randomUUID()
 
     case class NoopInput(text: String)
@@ -224,10 +232,10 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle deeply nested CSome values" in {
-    val level0 = CValue.CInt(7)
-    val level1 = CValue.CSome(level0, CType.CInt)
-    val level2 = CValue.CSome(level1, CType.COptional(CType.CInt))
-    val level3 = CValue.CSome(level2, CType.COptional(CType.COptional(CType.CInt)))
+    val level0  = CValue.CInt(7)
+    val level1  = CValue.CSome(level0, CType.CInt)
+    val level2  = CValue.CSome(level1, CType.COptional(CType.CInt))
+    val level3  = CValue.CSome(level2, CType.COptional(CType.COptional(CType.CInt)))
     val preview = SteppedExecution.valuePreview(level3, maxLength = 100)
     preview shouldBe "Some(Some(Some(7)))"
   }
@@ -265,8 +273,8 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle CProduct with many fields" in {
-    val fields = (1 to 10).map(i => s"field$i" -> CValue.CInt(i.toLong)).toMap
-    val types  = (1 to 10).map(i => s"field$i" -> CType.CInt).toMap
+    val fields  = (1 to 10).map(i => s"field$i" -> CValue.CInt(i.toLong)).toMap
+    val types   = (1 to 10).map(i => s"field$i" -> CType.CInt).toMap
     val preview = SteppedExecution.valuePreview(CValue.CProduct(fields, types), maxLength = 200)
     // Should list all field names
     (1 to 10).foreach { i =>
@@ -403,9 +411,9 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
       .implementationPure[AddInput, AddOutput](in => AddOutput(in.a + in.b))
       .build
 
-    val moduleId    = UUID.randomUUID()
-    val inputDataA  = UUID.randomUUID()
-    val inputDataB  = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataA   = UUID.randomUUID()
+    val inputDataB   = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     val dag = DagSpec(
@@ -449,10 +457,12 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
     initialized.nodeStates(inputDataA) shouldBe a[SteppedExecution.NodeState.Completed]
     initialized.nodeStates(inputDataB) shouldBe a[SteppedExecution.NodeState.Completed]
 
-    initialized.nodeStates(inputDataA)
+    initialized
+      .nodeStates(inputDataA)
       .asInstanceOf[SteppedExecution.NodeState.Completed]
       .value shouldBe CValue.CInt(10L)
-    initialized.nodeStates(inputDataB)
+    initialized
+      .nodeStates(inputDataB)
       .asInstanceOf[SteppedExecution.NodeState.Completed]
       .value shouldBe CValue.CInt(20L)
   }
@@ -561,7 +571,7 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
     // moduleId1 is registered, moduleId2 is synthetic
     val registeredModules = Map(moduleId1 -> createUppercaseModule())
     val syntheticModules  = Map(moduleId2 -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs            = Map("input" -> CValue.CString("hello"))
 
     val session = SteppedExecution
       .createSession("session", dag, syntheticModules, registeredModules, inputs)
@@ -619,7 +629,7 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
 
     val registeredModules = Map(moduleId1 -> createUppercaseModule())
     val syntheticModules  = Map(moduleId2 -> createUppercaseModule())
-    val inputs = Map("input" -> CValue.CString("hello"))
+    val inputs            = Map("input" -> CValue.CString("hello"))
 
     val session = SteppedExecution
       .createSession("session", dag, syntheticModules, registeredModules, inputs)
@@ -689,9 +699,9 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
   "computeBatches" should "handle diamond-shaped DAG with proper batching" in {
     // input -> M1 -> mid1 -> M3 -> output
     //       -> M2 -> mid2 ->
-    val m1 = UUID.randomUUID()
-    val m2 = UUID.randomUUID()
-    val m3 = UUID.randomUUID()
+    val m1        = UUID.randomUUID()
+    val m2        = UUID.randomUUID()
+    val m3        = UUID.randomUUID()
     val inputData = UUID.randomUUID()
     val mid1      = UUID.randomUUID()
     val mid2      = UUID.randomUUID()
@@ -706,9 +716,9 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
       ),
       data = Map(
         inputData -> DataNodeSpec("input", Map(m1 -> "text", m2 -> "text"), CType.CString),
-        mid1 -> DataNodeSpec("mid1", Map(m1 -> "result", m3 -> "a"), CType.CString),
-        mid2 -> DataNodeSpec("mid2", Map(m2 -> "result", m3 -> "b"), CType.CString),
-        output -> DataNodeSpec("output", Map(m3 -> "result"), CType.CString)
+        mid1      -> DataNodeSpec("mid1", Map(m1 -> "result", m3 -> "a"), CType.CString),
+        mid2      -> DataNodeSpec("mid2", Map(m2 -> "result", m3 -> "b"), CType.CString),
+        output    -> DataNodeSpec("output", Map(m3 -> "result"), CType.CString)
       ),
       inEdges = Set((inputData, m1), (inputData, m2), (mid1, m3), (mid2, m3)),
       outEdges = Set((m1, mid1), (m2, mid2), (m3, output))
@@ -730,9 +740,7 @@ class SteppedExecutionExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle CMap with multiple entries" in {
-    val pairs = (1 to 5).map(i =>
-      (CValue.CString(s"key$i"), CValue.CInt(i.toLong))
-    ).toVector
+    val pairs = (1 to 5).map(i => (CValue.CString(s"key$i"), CValue.CInt(i.toLong))).toVector
     val preview = SteppedExecution.valuePreview(
       CValue.CMap(pairs, CType.CString, CType.CInt)
     )

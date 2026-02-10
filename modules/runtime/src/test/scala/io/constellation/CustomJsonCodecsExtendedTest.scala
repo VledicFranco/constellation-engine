@@ -24,11 +24,14 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   "CValue.CProduct codec" should "round-trip a product with nested product values" in {
     val inner = CValue.CProduct(
       Map("x" -> CValue.CInt(1), "y" -> CValue.CInt(2)),
-      Map("x" -> CType.CInt, "y" -> CType.CInt)
+      Map("x" -> CType.CInt, "y"     -> CType.CInt)
     )
     val original: CValue = CValue.CProduct(
       Map("point" -> inner, "label" -> CValue.CString("origin")),
-      Map("point" -> CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CInt)), "label" -> CType.CString)
+      Map(
+        "point" -> CType.CProduct(Map("x" -> CType.CInt, "y" -> CType.CInt)),
+        "label" -> CType.CString
+      )
     )
     val decoded = original.asJson.as[CValue]
     decoded shouldBe Right(original)
@@ -81,11 +84,14 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   it should "round-trip a union with a nested product variant" in {
     val productValue = CValue.CProduct(
       Map("id" -> CValue.CInt(1), "name" -> CValue.CString("test")),
-      Map("id" -> CType.CInt, "name" -> CType.CString)
+      Map("id" -> CType.CInt, "name"     -> CType.CString)
     )
     val original: CValue = CValue.CUnion(
       productValue,
-      Map("record" -> CType.CProduct(Map("id" -> CType.CInt, "name" -> CType.CString)), "error" -> CType.CString),
+      Map(
+        "record" -> CType.CProduct(Map("id" -> CType.CInt, "name" -> CType.CString)),
+        "error"  -> CType.CString
+      ),
       "record"
     )
     val decoded = original.asJson.as[CValue]
@@ -456,7 +462,9 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
     result.name shouldBe "withTransform"
     result.inlineTransform shouldBe None // closures are not deserializable
     // Verify the JSON does contain the transform type name
-    json.hcursor.downField("inlineTransformType").as[Option[String]] shouldBe Right(Some("MergeTransform"))
+    json.hcursor.downField("inlineTransformType").as[Option[String]] shouldBe Right(
+      Some("MergeTransform")
+    )
   }
 
   it should "round-trip with complex CType" in {
@@ -500,10 +508,12 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
         "stats"  -> CType.CProduct(Map("total" -> CType.CInt, "avg" -> CType.CFloat))
       ),
       config = ModuleConfig(10.seconds, 5.seconds),
-      definitionContext = Some(Map(
-        "source"  -> Json.fromString("example"),
-        "version" -> Json.fromInt(2)
-      ))
+      definitionContext = Some(
+        Map(
+          "source"  -> Json.fromString("example"),
+          "version" -> Json.fromInt(2)
+        )
+      )
     )
     val decoded = original.asJson.as[ModuleNodeSpec]
     decoded shouldBe Right(original)
@@ -582,8 +592,8 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip a DAG with multiple output bindings" in {
-    val modId   = UUID.randomUUID()
-    val dataIn  = UUID.randomUUID()
+    val modId    = UUID.randomUUID()
+    val dataIn   = UUID.randomUUID()
     val dataOut1 = UUID.randomUUID()
     val dataOut2 = UUID.randomUUID()
 
@@ -650,13 +660,15 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
     val dataId = UUID.randomUUID()
     val dagSpec = DagSpec(
       metadata = ComponentMetadata("Pipe", "Test", List.empty, 1, 0),
-      modules = Map(modId -> ModuleNodeSpec(
-        ComponentMetadata("M", "Mod", List.empty, 1, 0),
-        Map("in" -> CType.CString),
-        Map("out" -> CType.CString),
-        ModuleConfig.default,
-        None
-      )),
+      modules = Map(
+        modId -> ModuleNodeSpec(
+          ComponentMetadata("M", "Mod", List.empty, 1, 0),
+          Map("in"  -> CType.CString),
+          Map("out" -> CType.CString),
+          ModuleConfig.default,
+          None
+        )
+      ),
       data = Map(dataId -> DataNodeSpec("d", Map.empty, CType.CString, None, Map.empty)),
       inEdges = Set.empty,
       outEdges = Set.empty,
@@ -683,14 +695,14 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
       modules = Map(
         modId1 -> ModuleNodeSpec(
           ComponentMetadata("A", "Module A", List.empty, 1, 0),
-          Map("in" -> CType.CInt),
+          Map("in"  -> CType.CInt),
           Map("out" -> CType.CInt),
           ModuleConfig.default,
           None
         ),
         modId2 -> ModuleNodeSpec(
           ComponentMetadata("B", "Module B", List.empty, 1, 0),
-          Map("in" -> CType.CInt),
+          Map("in"  -> CType.CInt),
           Map("out" -> CType.CString),
           ModuleConfig(3.seconds, 2.seconds),
           None
@@ -734,12 +746,14 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip CProduct with multiple fields" in {
-    val original: CType = CType.CProduct(Map(
-      "name"   -> CType.CString,
-      "age"    -> CType.CInt,
-      "active" -> CType.CBoolean,
-      "score"  -> CType.CFloat
-    ))
+    val original: CType = CType.CProduct(
+      Map(
+        "name"   -> CType.CString,
+        "age"    -> CType.CInt,
+        "active" -> CType.CBoolean,
+        "score"  -> CType.CFloat
+      )
+    )
     val decoded = original.asJson.as[CType]
     decoded shouldBe Right(original)
   }
@@ -751,11 +765,13 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip CUnion with multiple variants" in {
-    val original: CType = CType.CUnion(Map(
-      "text"   -> CType.CString,
-      "number" -> CType.CInt,
-      "flag"   -> CType.CBoolean
-    ))
+    val original: CType = CType.CUnion(
+      Map(
+        "text"   -> CType.CString,
+        "number" -> CType.CInt,
+        "flag"   -> CType.CBoolean
+      )
+    )
     val decoded = original.asJson.as[CType]
     decoded shouldBe Right(original)
   }
@@ -775,9 +791,15 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   it should "round-trip deeply nested CType" in {
     val original: CType = CType.CMap(
       CType.CString,
-      CType.CList(CType.COptional(CType.CProduct(Map(
-        "inner" -> CType.CUnion(Map("a" -> CType.CInt, "b" -> CType.CFloat))
-      ))))
+      CType.CList(
+        CType.COptional(
+          CType.CProduct(
+            Map(
+              "inner" -> CType.CUnion(Map("a" -> CType.CInt, "b" -> CType.CFloat))
+            )
+          )
+        )
+      )
     )
     val decoded = original.asJson.as[CType]
     decoded shouldBe Right(original)
@@ -830,9 +852,9 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip map with CValue values" in {
-    val id1      = UUID.randomUUID()
+    val id1                         = UUID.randomUUID()
     val original: Map[UUID, CValue] = Map(id1 -> CValue.CInt(42L))
-    val decoded  = original.asJson.as[Map[UUID, CValue]]
+    val decoded                     = original.asJson.as[Map[UUID, CValue]]
     decoded shouldBe Right(original)
   }
 
@@ -877,17 +899,24 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fail when CMap is missing keysType" in {
-    val json = Json.obj("tag" -> Json.fromString("CMap"), "valuesType" -> Json.obj("tag" -> Json.fromString("CInt")))
+    val json = Json.obj(
+      "tag"        -> Json.fromString("CMap"),
+      "valuesType" -> Json.obj("tag" -> Json.fromString("CInt"))
+    )
     json.as[CType].isLeft shouldBe true
   }
 
   it should "fail when CMap is missing valuesType" in {
-    val json = Json.obj("tag" -> Json.fromString("CMap"), "keysType" -> Json.obj("tag" -> Json.fromString("CString")))
+    val json = Json.obj(
+      "tag"      -> Json.fromString("CMap"),
+      "keysType" -> Json.obj("tag" -> Json.fromString("CString"))
+    )
     json.as[CType].isLeft shouldBe true
   }
 
   it should "fail when CProduct structure is not a map" in {
-    val json = Json.obj("tag" -> Json.fromString("CProduct"), "structure" -> Json.fromString("invalid"))
+    val json =
+      Json.obj("tag" -> Json.fromString("CProduct"), "structure" -> Json.fromString("invalid"))
     json.as[CType].isLeft shouldBe true
   }
 
@@ -922,7 +951,8 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   }
 
   it should "fail on CBoolean with wrong value type" in {
-    val json = Json.obj("tag" -> Json.fromString("CBoolean"), "value" -> Json.fromString("notabool"))
+    val json =
+      Json.obj("tag" -> Json.fromString("CBoolean"), "value" -> Json.fromString("notabool"))
     json.as[CValue].isLeft shouldBe true
   }
 
@@ -954,8 +984,8 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
 
   it should "fail on CUnion missing unionTag" in {
     val json = Json.obj(
-      "tag"       -> Json.fromString("CUnion"),
-      "value"     -> Json.obj("tag" -> Json.fromString("CString"), "value" -> Json.fromString("hi")),
+      "tag"   -> Json.fromString("CUnion"),
+      "value" -> Json.obj("tag" -> Json.fromString("CString"), "value" -> Json.fromString("hi")),
       "structure" -> Json.obj()
     )
     json.as[CValue].isLeft shouldBe true
@@ -1081,7 +1111,12 @@ class CustomJsonCodecsExtendedTest extends AnyFlatSpec with Matchers {
   it should "throw on invalid compiledAt (Instant.parse propagates exception)" in {
     val dagJson = DagSpec(
       ComponentMetadata("P", "P", List.empty, 1, 0),
-      Map.empty, Map.empty, Set.empty, Set.empty, List.empty, Map.empty
+      Map.empty,
+      Map.empty,
+      Set.empty,
+      Set.empty,
+      List.empty,
+      Map.empty
     ).asJson
     val json = Json.obj(
       "structuralHash" -> Json.fromString("h1"),

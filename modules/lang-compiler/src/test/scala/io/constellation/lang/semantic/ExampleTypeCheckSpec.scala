@@ -107,8 +107,12 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("String")
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("Int")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "String"
+    )
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "Int"
+    )
   }
 
   it should "reject String example for Int input" in {
@@ -119,8 +123,12 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("Int")
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("String")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "Int"
+    )
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "String"
+    )
   }
 
   it should "reject Boolean example for String input" in {
@@ -713,8 +721,12 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<Int>")
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<String>")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "List<Int>"
+    )
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "List<String>"
+    )
   }
 
   it should "reject list literal with mixed element types as input example" in {
@@ -727,7 +739,9 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     result.isLeft shouldBe true
     // With subtyping, mixed types produce a union: List<Int | String>
     // This fails because List<Int | String> is not assignable to List<Int>
-    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<Int>")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include(
+      "List<Int>"
+    )
   }
 
   it should "reject list literal for non-list input type" in {

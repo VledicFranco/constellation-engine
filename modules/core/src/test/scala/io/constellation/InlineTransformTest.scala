@@ -676,8 +676,8 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "throw MatchError when no pattern matches" in {
-    val matchers = List((v: Any) => v == "x")
-    val bodies   = List((v: Any) => "matched")
+    val matchers  = List((v: Any) => v == "x")
+    val bodies    = List((v: Any) => "matched")
     val transform = MatchTransform(matchers, bodies, CType.CString)
 
     a[MatchError] should be thrownBy {
@@ -686,13 +686,10 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "unwrap union values for matching" in {
-    val matchers = List(
-      (v: Any) => true // matches the inner value
+    val matchers = List((v: Any) => true // matches the inner value
     )
-    val bodies = List(
-      (v: Any) => s"matched: $v"
-    )
-    val variants = Map("Int" -> CType.CInt, "String" -> CType.CString)
+    val bodies    = List((v: Any) => s"matched: $v")
+    val variants  = Map("Int" -> CType.CInt, "String" -> CType.CString)
     val transform = MatchTransform(matchers, bodies, CType.CUnion(variants))
 
     // Union value is represented as (tag, innerValue) tuple
@@ -701,8 +698,8 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle non-union scrutinee without unwrapping" in {
-    val matchers = List((v: Any) => v.asInstanceOf[Int] > 10)
-    val bodies   = List((v: Any) => s"big: $v")
+    val matchers  = List((v: Any) => v.asInstanceOf[Int] > 10)
+    val bodies    = List((v: Any) => s"big: $v")
     val transform = MatchTransform(matchers, bodies, CType.CInt)
 
     transform(Map("scrutinee" -> 42)) shouldBe "big: 42"
@@ -737,10 +734,12 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
   it should "handle complex field values" in {
     val transform = RecordBuildTransform(List("items", "meta"))
 
-    val result = transform(Map(
-      "items" -> List(1, 2, 3),
-      "meta"  -> Map("source" -> "test")
-    ))
+    val result = transform(
+      Map(
+        "items" -> List(1, 2, 3),
+        "meta"  -> Map("source" -> "test")
+      )
+    )
 
     result shouldBe Map(
       "items" -> List(1, 2, 3),
