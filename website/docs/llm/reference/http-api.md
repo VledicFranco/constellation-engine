@@ -2147,7 +2147,7 @@ curl -X POST http://localhost:8080/pipelines/my-pipeline/canary/rollback \
 
 ## See Also
 
-- [CLI Reference](./cli-reference.md) — Command-line interface for local development
+- [CLI Reference](../cli-reference.md) — Command-line interface for local development
 - [Key Concepts](../key-concepts.md) — Core concepts (pipelines, modules, DAGs)
 - [Getting Started](../getting-started.md) — Quick start guide
 - [Pipeline Lifecycle](../foundations/pipeline-lifecycle.md) — Compilation, execution, suspension

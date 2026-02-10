@@ -1755,6 +1755,5 @@ ConstellationImpl.init  // Uses unbounded scheduler
 - [Embedding Guide](../../getting-started/embedding-guide.md) - Quick start tutorial
 - [Programmatic API](../../api-reference/programmatic-api.md) - API overview
 - [HTTP API Reference](../reference/http-api.md) - REST API for remote access
-- [Security Model](../../../architecture/security-model.md) - Trust boundaries
-- [Performance Tuning](../../../operations/performance-tuning.md) - Optimization guide
+- [Security Model](../../architecture/security-model.md) - Trust boundaries
 - [SPI Integration](../../spi/overview.md) - Custom backend providers
