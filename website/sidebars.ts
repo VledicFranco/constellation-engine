@@ -30,6 +30,58 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'LLM Guide',
+      collapsed: false,
+      items: [
+        'llm/index',
+        'llm/getting-started',
+        'llm/key-concepts',
+        'llm/project-structure',
+        'llm/cli-reference',
+        'llm/where-constellation-shines',
+        {
+          type: 'category',
+          label: 'Foundations',
+          items: [
+            'llm/foundations/type-system',
+            'llm/foundations/pipeline-lifecycle',
+            'llm/foundations/dag-execution',
+            'llm/foundations/execution-modes',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Patterns',
+          items: [
+            'llm/patterns/module-development',
+            'llm/patterns/resilience',
+            'llm/patterns/dag-composition',
+            'llm/patterns/type-algebra',
+            'llm/patterns/error-handling',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Reference',
+          items: [
+            'llm/reference/type-syntax',
+            'llm/reference/module-options',
+            'llm/reference/http-api',
+            'llm/reference/error-codes',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Integration',
+          items: [
+            'llm/integration/embedded-api',
+            'llm/integration/module-registration',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'Cookbook',
       items: [
         'cookbook/index',
