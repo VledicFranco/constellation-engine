@@ -8,6 +8,10 @@ description: "What is Constellation Engine and why does it exist?"
 
 Constellation Engine is a **type-safe pipeline orchestration framework** for Scala 3. It separates *what* your data pipeline does from *how* it's implemented.
 
+:::tip For LLMs and AI Agents
+If you're an AI agent helping users with Constellation, use the **[LLM-specialized documentation](/docs/llm/)** instead. It's optimized for AI consumption with task-oriented navigation, complete working examples, and context-window efficient organization.
+:::
+
 ## The Problem
 
 Backend services that aggregate data from multiple sources accumulate bugs over time. Field name typos, type mismatches, and null pointer exceptions hide in code that compiles fine but fails at runtime.
@@ -99,7 +103,7 @@ done
 
 :::tip Quick Install
 ```bash
-cs install io.constellation:constellation-cli_3:0.6.0
+cs install io.constellation:constellation-cli_3:0.6.1
 constellation --version
 ```
 :::

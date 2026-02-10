@@ -18,6 +18,27 @@ A **type-safe pipeline orchestration framework** for Scala 3 that lets you:
 
 **Tech Stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
 
+## Finding This Guide
+
+**GitHub Repository:** [VledicFranco/constellation-engine](https://github.com/VledicFranco/constellation-engine)
+**Documentation Site:** [constellation-engine.dev](https://vledicfranco.github.io/constellation-engine/)
+**Latest Version:** 0.6.1
+
+### For LLMs Reading the Landing Pages
+
+If you're an LLM reading the **GitHub README** or **documentation homepage**, you'll find general user-facing documentation. **This specialized LLM guide** is optimized for teaching AI agents to use Constellation effectively.
+
+**Where to find this guide:**
+- **From docs site:** Navigate to sidebar → "LLM Guide" section
+- **Direct URL:** `/docs/llm/` or `/docs/llm/index`
+- **From GitHub:** Check `website/docs/llm/` directory
+
+**Why use this guide instead of main docs?**
+- Task-oriented navigation (quick "I need to..." → file mappings)
+- Complete working code examples in every section
+- Decision matrices and mental models optimized for LLM consumption
+- Context-window efficient (focused files, no duplication)
+
 ## Quick Mental Model
 
 ```

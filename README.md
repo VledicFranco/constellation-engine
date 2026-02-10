@@ -492,12 +492,22 @@ Manifests include liveness/readiness probes, resource limits, and a ConfigMap fo
 
 ## Documentation
 
+📖 **Full documentation:** [vledicfranco.github.io/constellation-engine](https://vledicfranco.github.io/constellation-engine/)
+
 | Resource | Description |
 |----------|-------------|
-| [Language Reference](docs/constellation-lang/README.md) | Full syntax and type system |
-| [Standard Library](docs/stdlib.md) | Built-in functions |
-| [Getting Started](docs/getting-started.md) | Tutorial |
-| [Integration Guide](docs/dev/integrations/README.md) | Connect external services |
+| [Getting Started](https://vledicfranco.github.io/constellation-engine/docs/getting-started/introduction) | Quick start guide and tutorial |
+| [Language Reference](https://vledicfranco.github.io/constellation-engine/docs/language/) | Full syntax and type system |
+| [API Reference](https://vledicfranco.github.io/constellation-engine/docs/api-reference/) | HTTP API, programmatic API, LSP |
+| [Cookbook](https://vledicfranco.github.io/constellation-engine/docs/cookbook/) | Runnable examples and recipes |
+
+### 🤖 For LLMs/AI Agents
+
+If you're an AI agent helping users with Constellation, use the **[LLM-specialized documentation](https://vledicfranco.github.io/constellation-engine/docs/llm/)** at `/docs/llm/`. It's optimized for AI consumption with:
+- Task-oriented navigation (quick "I need to..." → file mappings)
+- Complete working code examples
+- Decision matrices and mental models
+- Context-window efficient organization
 
 ---
 
