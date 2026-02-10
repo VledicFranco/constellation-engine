@@ -157,7 +157,7 @@ A **type-safe pipeline orchestration framework** for Scala 3 that lets you:
 
 ### Existing Resources (Link Instead of Duplicate)
 - **[Cookbook](../cookbook/index.md)** - 23 runnable recipes for common tasks
-- **[API Reference](../api-reference/index.md)** - Detailed API documentation
+- **[API Reference](../api-reference/http-api-overview.md)** - Detailed API documentation
 - **[Language Reference](../language/index.md)** - constellation-lang syntax
 - **[Getting Started](../getting-started/introduction.md)** - Human-focused introduction
 - **[CLAUDE.md](https://github.com/VledicFranco/constellation-engine/blob/master/CLAUDE.md)** - Operational guidance for Claude

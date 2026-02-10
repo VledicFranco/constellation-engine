@@ -790,5 +790,5 @@ That's okay! Use the right tool for your problem:
 **Related Documentation:**
 - [Technical Architecture](../architecture/technical-architecture.md) - How Constellation works internally
 - [Security Model](../architecture/security-model.md) - Trust boundaries and hardening
-- [Performance Benchmarks](../../dev/benchmarks/performance-benchmarks.md) - Detailed performance data
+ - Detailed performance data
 - [PHILOSOPHY.md](https://github.com/VledicFranco/constellation-engine/blob/master/PHILOSOPHY.md) - Design rationale

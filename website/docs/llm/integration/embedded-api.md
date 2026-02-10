@@ -1752,7 +1752,7 @@ ConstellationImpl.init  // Uses unbounded scheduler
 
 ## See Also
 
-- [Embedding Guide](../../../getting-started/embedding-guide.md) - Quick start tutorial
+- [Embedding Guide](../../getting-started/embedding-guide.md) - Quick start tutorial
 - [Programmatic API](../../../api-reference/programmatic-api.md) - API overview
 - [HTTP API Reference](./http-api.md) - REST API for remote access
 - [Security Model](../../../architecture/security-model.md) - Trust boundaries
