@@ -1580,6 +1580,6 @@ Warnings appear for:
 - **[Language Guide](/docs/language/)** - Full constellation-lang syntax
 - **[Resilient Pipelines](/docs/language/resilient-pipelines)** - Real-world resilience patterns
 - **[Orchestration Algebra](/docs/language/orchestration-algebra)** - Control flow operators
-- **[ModuleBuilder API](/docs/api/module-builder)** - Defining modules in Scala
-- **[Performance Guide](/docs/operations/performance)** - Optimization strategies
+- **[ModuleBuilder API](/docs/api-reference/programmatic-api)** - Defining modules in Scala
+- **[Performance Guide](/docs/operations/performance-tuning)** - Optimization strategies
 - **[Scheduler Configuration](/docs/operations/scheduler)** - Global priority scheduler setup
