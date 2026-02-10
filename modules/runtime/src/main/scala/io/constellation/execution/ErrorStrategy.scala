@@ -163,10 +163,6 @@ object ErrorStrategyExecutor {
 
     case CType.COptional(_) =>
       CValue.CNone(ctype)
-
-    case _ =>
-      // Fallback for unknown types
-      CValue.CNone(CType.COptional(ctype))
   }
 
   /** Check if a type has a meaningful zero value.
@@ -178,6 +174,5 @@ object ErrorStrategyExecutor {
     case CType.CList(_) | CType.CMap(_, _) | CType.COptional(_)     => true
     case CType.CProduct(structure) => structure.values.forall(hasZeroValue)
     case CType.CUnion(variants)    => variants.values.exists(hasZeroValue)
-    case _                         => false
   }
 }

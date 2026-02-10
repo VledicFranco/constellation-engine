@@ -705,7 +705,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
     result.isLeft shouldBe true
-    result.left.get.getMessage should include("unexpected")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include("unexpected")
   }
 
   it should "fail with wrong input type" in {
@@ -744,7 +744,7 @@ class SteppedExecutionTest extends AnyFlatSpec with Matchers {
 
     val result = SteppedExecution.initializeRuntime(session).attempt.unsafeRunSync()
     result.isLeft shouldBe true
-    result.left.get.getMessage should include("different type")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).getMessage should include("different type")
   }
 
   // ===== executeToCompletion for already-complete session =====

@@ -107,8 +107,8 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.left.get.head.message should include("String")
-    result.left.get.head.message should include("Int")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("String")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("Int")
   }
 
   it should "reject String example for Int input" in {
@@ -119,8 +119,8 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.left.get.head.message should include("Int")
-    result.left.get.head.message should include("String")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("Int")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("String")
   }
 
   it should "reject Boolean example for String input" in {
@@ -320,7 +320,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isLeft shouldBe true
     // Should have exactly one error (for the count input)
-    result.left.get should have size 1
+    result.swap.getOrElse(throw new AssertionError("Expected Left")) should have size 1
   }
 
   // ==========================================================================
@@ -362,7 +362,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    val error = result.left.get.head
+    val error = result.swap.getOrElse(throw new AssertionError("Expected Left")).head
     error.span shouldBe defined
   }
 
@@ -374,7 +374,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    val errorMsg = result.left.get.head.message
+    val errorMsg = result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message
     errorMsg should include("String")
     errorMsg should include("Int")
   }
@@ -713,8 +713,8 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isLeft shouldBe true
-    result.left.get.head.message should include("List<Int>")
-    result.left.get.head.message should include("List<String>")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<Int>")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<String>")
   }
 
   it should "reject list literal with mixed element types as input example" in {
@@ -727,7 +727,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
     result.isLeft shouldBe true
     // With subtyping, mixed types produce a union: List<Int | String>
     // This fails because List<Int | String> is not assignable to List<Int>
-    result.left.get.head.message should include("List<Int>")
+    result.swap.getOrElse(throw new AssertionError("Expected Left")).head.message should include("List<Int>")
   }
 
   it should "reject list literal for non-list input type" in {

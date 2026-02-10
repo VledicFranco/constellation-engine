@@ -639,8 +639,8 @@ class GlobalSchedulerTest extends AnyFlatSpec with Matchers with RetrySupport {
           result <- scheduler.submit(50, IO.pure("q3")).attempt
 
           _ = result.isLeft shouldBe true
-          _ = result.left.get shouldBe a[QueueFullException]
-          _ = result.left.get.asInstanceOf[QueueFullException].maxSize shouldBe 2
+          _ = result.swap.getOrElse(throw new AssertionError("Expected Left")) shouldBe a[QueueFullException]
+          _ = result.swap.getOrElse(throw new AssertionError("Expected Left")).asInstanceOf[QueueFullException].maxSize shouldBe 2
 
           // Clean up
           _ <- blocker.joinWithNever
