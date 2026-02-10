@@ -1754,4 +1754,150 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     (stats.get \\ "evictions").headOption.flatMap(_.asNumber) shouldBe defined
     (stats.get \\ "entries").headOption.flatMap(_.asNumber) shouldBe defined
   }
+
+  // ===== Semantic Tokens Tests (Phase 6 - Critical Gap) =====
+
+  "textDocument/semanticTokens/full" should "return semantic tokens for small files" in {
+    val source = """in x: Int
+                   |in y: Int
+                   |result = add(x, y)
+                   |out result""".stripMargin
+
+    val uri = "file:///test.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleRequest(
+        Request(
+          id = StringId("init-1"),
+          method = "initialize",
+          params = Some(Json.obj("rootUri" -> Json.fromString("file:///project")))
+        )
+      )
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(source)
+              )
+            )
+          )
+        )
+      )
+      response <- server.handleRequest(
+        Request(
+          id = StringId("101"),
+          method = "textDocument/semanticTokens/full",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri" -> Json.fromString(uri)
+              )
+            )
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val tokens = response.result.get.as[SemanticTokens]
+    tokens.isRight shouldBe true
+    tokens.toOption.get.data should not be empty
+  }
+
+  it should "return empty tokens for large files (>150 lines)" in {
+    val largeLine   = "x = Uppercase(\"test\")\n"
+    val largeSource = largeLine * 200 // 200 lines, exceeds limit of 150
+    val uri         = "file:///large-test.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(largeSource)
+              )
+            )
+          )
+        )
+      )
+      response <- server.handleRequest(
+        Request(
+          id = StringId("102"),
+          method = "textDocument/semanticTokens/full",
+          params = Some(Json.obj("textDocument" -> Json.obj("uri" -> Json.fromString(uri))))
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val tokens = response.result.get.as[SemanticTokens]
+    tokens.isRight shouldBe true
+    tokens.toOption.get.data shouldBe empty
+  }
+
+  it should "return empty tokens for unknown document" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(
+          id = StringId("103"),
+          method = "textDocument/semanticTokens/full",
+          params = Some(
+            Json.obj("textDocument" -> Json.obj("uri" -> Json.fromString("file:///unknown.cst")))
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val tokens = response.result.get.as[SemanticTokens]
+    tokens.isRight shouldBe true
+    tokens.toOption.get.data shouldBe empty
+  }
+
+  it should "return error for missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(id = StringId("104"), method = "textDocument/semanticTokens/full", params = None)
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+    response.error.get.message should include("Missing params")
+  }
+
+  it should "return error for invalid params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(
+          id = StringId("105"),
+          method = "textDocument/semanticTokens/full",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
 }
