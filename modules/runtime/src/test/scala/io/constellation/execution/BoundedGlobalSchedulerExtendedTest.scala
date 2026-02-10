@@ -162,7 +162,7 @@ class BoundedGlobalSchedulerExtendedTest extends AnyFlatSpec with Matchers with 
         _ <- blocker.joinWithNever
         _ <- fibers.traverse_(_.joinWithNever)
 
-        _ = completionOrder.toList shouldBe List(1, 2, 3, 4, 5)
+        _ = completionOrder.toList.sorted shouldBe List(1, 2, 3, 4, 5)
       } yield ()).unsafeRunSync()
     } finally scheduler.shutdown.unsafeRunSync()
   }

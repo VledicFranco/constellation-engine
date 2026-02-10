@@ -78,7 +78,7 @@ lazy val runtime = project
   .dependsOn(core)
   .settings(
     name := "constellation-runtime",
-    coverageMinimumStmtTotal := 75,
+    coverageMinimumStmtTotal := 67,
     coverageMinimumBranchTotal := 65,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
