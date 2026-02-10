@@ -76,6 +76,8 @@ object CorsConfig {
       } catch {
         case e: java.net.MalformedURLException =>
           Left(s"Malformed URL: ${e.getMessage}")
+        case e: IllegalArgumentException =>
+          Left(s"Malformed URL: ${e.getMessage}")
       }
     }
 
