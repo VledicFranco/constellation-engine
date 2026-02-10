@@ -216,11 +216,12 @@ lazy val langCli = (project in file("modules/lang-cli"))
   .settings(
     name := "constellation-lang-cli",
     publish / skip := true,
-    coverageMinimumStmtTotal := 22,
-    coverageMinimumBranchTotal := 22,
+    coverageMinimumStmtTotal := 28,
+    coverageMinimumBranchTotal := 31,
     libraryDependencies ++= Seq(
       "com.monovore"      %% "decline-effect"       % "2.4.1",
       "org.http4s"        %% "http4s-ember-client"  % "0.23.25",
+      "org.http4s"        %% "http4s-dsl"           % "0.23.25",
       "org.http4s"        %% "http4s-circe"         % "0.23.25",
       "io.circe"          %% "circe-core"           % "0.14.6",
       "io.circe"          %% "circe-generic"        % "0.14.6",
