@@ -1260,4 +1260,3 @@ fi
 - [HTTP API Reference](../api-reference/http-api-overview.md) - Full HTTP API documentation
 - [Pipeline Structure](../language/pipeline-structure.md) - Pipeline language syntax
 - [Deployment Guide](../operations/deployment.md) - Production deployment best practices
-- [RFC-021](../../rfcs/rfc-021-cli.md) - CLI design specification

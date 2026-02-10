@@ -1756,4 +1756,3 @@ ConstellationImpl.init  // Uses unbounded scheduler
 - [Programmatic API](../../api-reference/programmatic-api.md) - API overview
 - [HTTP API Reference](../reference/http-api.md) - REST API for remote access
 - [Security Model](../../architecture/security-model.md) - Trust boundaries
-- [SPI Integration](../../spi/overview.md) - Custom backend providers
