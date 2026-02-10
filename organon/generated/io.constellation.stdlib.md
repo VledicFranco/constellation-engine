@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/lang-stdlib/src/main/scala/io/constellation -->
 <!-- Hash: 6f18812e5662 -->
-<!-- Generated: 2026-02-10T05:52:20.247007600Z -->
+<!-- Generated: 2026-02-10T06:41:44.730176700Z -->
 
 # io.constellation.stdlib
 
@@ -45,9 +45,9 @@
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `utilitySignatures` | `(): List` |  |
-| `mathSignatures` | `(): List` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `mathSignatures` | `(): List` |  |
 | `stringModules` | `(): Map` |  |
 | `registerAll` | `(builder: LangCompilerBuilder): LangCompilerBuilder` | /** Register all standard library functions with a LangCompiler builder */ |
 | `conversionModules` | `(): Map` |  |
