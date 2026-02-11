@@ -235,4 +235,27 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     c2.state shouldBe ConnectionState.Active
     c2.responseObserver shouldBe Some(obs2)
   }
+
+  // ===== Edge case: operations on non-existent connections =====
+
+  "ControlPlaneManager.deactivateConnection" should "be a no-op for non-existent connection" in {
+    val mgr = createManager()
+
+    noException should be thrownBy mgr.deactivateConnection("nonexistent").unsafeRunSync()
+    mgr.getConnection("nonexistent").unsafeRunSync() shouldBe None
+  }
+
+  "ControlPlaneManager.updateModules" should "be a no-op for non-existent connection" in {
+    val mgr = createManager()
+
+    noException should be thrownBy mgr.updateModules("nonexistent", Set("ml.a")).unsafeRunSync()
+    mgr.getConnection("nonexistent").unsafeRunSync() shouldBe None
+  }
+
+  "ControlPlaneManager.recordHeartbeat" should "be a no-op for unknown connection" in {
+    val mgr = createManager()
+
+    noException should be thrownBy mgr.recordHeartbeat("nonexistent").unsafeRunSync()
+    mgr.getConnection("nonexistent").unsafeRunSync() shouldBe None
+  }
 }

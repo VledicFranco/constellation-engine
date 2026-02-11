@@ -279,4 +279,65 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     results should have size 2
     results.foreach(_ shouldBe a[ModuleValidationResult.Rejected])
   }
+
+  // ===== Missing/invalid output schema =====
+
+  it should "reject module with missing output schema" in {
+    val declNoOutput = pb.ModuleDeclaration(
+      name = "broken",
+      inputSchema = Some(stringSchema),
+      outputSchema = None
+    )
+    val results = SchemaValidator.validate(
+      mkRequest("ml", Seq(declNoOutput)),
+      FunctionRegistry.empty,
+      Map.empty,
+      "conn1",
+      Set("stdlib")
+    )
+    results should have size 1
+    results.head shouldBe a[ModuleValidationResult.Rejected]
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("output")
+  }
+
+  it should "reject module with invalid output schema" in {
+    val declBadOutput = pb.ModuleDeclaration(
+      name = "broken",
+      inputSchema = Some(stringSchema),
+      outputSchema = Some(pb.TypeSchema()) // empty type
+    )
+    val results = SchemaValidator.validate(
+      mkRequest("ml", Seq(declBadOutput)),
+      FunctionRegistry.empty,
+      Map.empty,
+      "conn1",
+      Set("stdlib")
+    )
+    results should have size 1
+    results.head shouldBe a[ModuleValidationResult.Rejected]
+  }
+
+  // ===== Name conflict with no namespace owner =====
+
+  it should "reject when module exists in registry with no namespace owner" in {
+    val registry = new InMemoryFunctionRegistry
+    registry.register(FunctionSignature(
+      name = "analyze",
+      params = List("input" -> SemanticType.SString),
+      returns = SemanticType.SString,
+      moduleName = "ml.sentiment.analyze",
+      namespace = Some("ml.sentiment")
+    ))
+
+    val results = SchemaValidator.validate(
+      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+      registry,
+      Map.empty, // No namespace owners — triggers "already exists" path
+      "conn1",
+      Set("stdlib")
+    )
+    results should have size 1
+    results.head shouldBe a[ModuleValidationResult.Rejected]
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("already exists")
+  }
 }

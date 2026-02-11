@@ -326,4 +326,43 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     // PipelineStore should be accessible
     manager.PipelineStore should not be null
   }
+
+  it should "delegate getModuleByName" in {
+    val (manager, _) = createTestManager()
+
+    // Register a module via handleRegister (which calls setModule internally)
+    manager.handleRegister(
+      mkRequest("ml", Seq(mkDecl("analyze"))),
+      "conn1"
+    ).unsafeRunSync()
+
+    // getModuleByName should find the registered module
+    val moduleOpt = manager.getModuleByName("ml.analyze").unsafeRunSync()
+    moduleOpt shouldBe defined
+
+    // getModuleByName should return None for non-existent module
+    manager.getModuleByName("nonexistent").unsafeRunSync() shouldBe None
+  }
+
+  it should "delegate suspensionStore" in {
+    val (manager, _) = createTestManager()
+
+    // ConstellationImpl.init creates with suspensionStore = None by default
+    val store = manager.suspensionStore
+    store shouldBe None
+  }
+
+  it should "delegate removeModule" in {
+    val (manager, registry) = createTestManager()
+
+    // Register then remove
+    manager.handleRegister(
+      mkRequest("ml", Seq(mkDecl("analyze"))),
+      "conn1"
+    ).unsafeRunSync()
+
+    manager.getModuleByName("ml.analyze").unsafeRunSync() shouldBe defined
+    manager.removeModule("ml.analyze").unsafeRunSync()
+    manager.getModuleByName("ml.analyze").unsafeRunSync() shouldBe None
+  }
 }

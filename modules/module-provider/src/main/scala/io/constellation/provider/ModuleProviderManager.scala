@@ -244,13 +244,11 @@ object ModuleProviderManager {
 
     Resource.make(
       IO {
-        val server = ServerBuilder
-          .forPort(config.grpcPort)
-          .addService(
-            pb.ModuleProviderGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
-          )
-          .build()
-          .start()
+        // Break builder chain into separate vals to avoid scoverage instrumentation issue with Scala 3
+        val serviceDef = pb.ModuleProviderGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
+        val builder    = ServerBuilder.forPort(config.grpcPort).addService(serviceDef)
+        val server     = builder.build()
+        server.start()
         server
       }
     )(server => IO(server.shutdown()).void)

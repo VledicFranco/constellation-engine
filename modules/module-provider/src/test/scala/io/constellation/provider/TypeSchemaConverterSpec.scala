@@ -151,6 +151,77 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
     )))
   }
 
+  it should "round-trip CUnion" in {
+    roundTrip(CType.CUnion(Map("variant0" -> CType.CString, "variant1" -> CType.CInt)))
+  }
+
+  // ===== Additional error paths =====
+
+  "TypeSchemaConverter.toCType" should "reject MapType with missing value_type" in {
+    val schema = pb.TypeSchema(pb.TypeSchema.Type.Map(pb.MapType(
+      keyType = Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING)))),
+      valueType = None
+    )))
+    val result = TypeSchemaConverter.toCType(schema)
+    result.isLeft shouldBe true
+    result.left.toOption.get should include("value_type")
+  }
+
+  it should "reject OptionType with missing inner_type" in {
+    val schema = pb.TypeSchema(pb.TypeSchema.Type.Option(pb.OptionType(None)))
+    val result = TypeSchemaConverter.toCType(schema)
+    result.isLeft shouldBe true
+    result.left.toOption.get should include("inner_type")
+  }
+
+  it should "reject unrecognized primitive kind" in {
+    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
+      pb.PrimitiveType(pb.PrimitiveType.Kind.Unrecognized(999))
+    ))
+    val result = TypeSchemaConverter.toCType(schema)
+    result.isLeft shouldBe true
+    result.left.toOption.get should include("Unrecognized")
+  }
+
+  it should "propagate error from nested record field" in {
+    val schema = pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
+      "name" -> pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))),
+      "bad"  -> pb.TypeSchema() // empty type
+    ))))
+    TypeSchemaConverter.toCType(schema).isLeft shouldBe true
+  }
+
+  it should "propagate error from nested list element" in {
+    val schema = pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(
+      Some(pb.TypeSchema()) // empty type
+    )))
+    TypeSchemaConverter.toCType(schema).isLeft shouldBe true
+  }
+
+  // ===== toTypeSchema additional paths =====
+
+  "TypeSchemaConverter.toTypeSchema" should "convert CUnion" in {
+    val ctype = CType.CUnion(Map("a" -> CType.CString, "b" -> CType.CInt))
+    val schema = TypeSchemaConverter.toTypeSchema(ctype)
+
+    schema.`type` match {
+      case pb.TypeSchema.Type.Union(ut) =>
+        ut.variants should have size 2
+      case other => fail(s"Expected Union, got $other")
+    }
+  }
+
+  it should "convert COptional" in {
+    val ctype = CType.COptional(CType.CString)
+    val schema = TypeSchemaConverter.toTypeSchema(ctype)
+
+    schema.`type` match {
+      case pb.TypeSchema.Type.Option(ot) =>
+        ot.innerType shouldBe defined
+      case other => fail(s"Expected Option, got $other")
+    }
+  }
+
   private def roundTrip(ctype: CType): Unit = {
     val schema = TypeSchemaConverter.toTypeSchema(ctype)
     val result = TypeSchemaConverter.toCType(schema)
