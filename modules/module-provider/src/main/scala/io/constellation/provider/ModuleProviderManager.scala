@@ -16,15 +16,6 @@ import io.constellation.provider.v1.{provider => pb}
 import io.grpc.{Server, ServerBuilder, Status}
 import io.grpc.stub.StreamObserver
 
-/** Tracks a provider's active connection state. */
-final case class ProviderConnection(
-    connectionId: String,
-    namespace: String,
-    executorUrl: String,
-    registeredModules: Set[String], // qualified names
-    protocolVersion: Int
-)
-
 /** Central manager that wraps a Constellation instance and hosts the gRPC ModuleProvider service.
   *
   * Implements the Constellation trait via delegation, so existing infrastructure (http-api, LSP)
@@ -34,7 +25,7 @@ class ModuleProviderManager(
     delegate: Constellation,
     compiler: LangCompiler,
     config: ProviderManagerConfig,
-    providerState: Ref[IO, Map[String, ProviderConnection]],
+    val controlPlane: ControlPlaneManager,
     serializer: CValueSerializer
 ) extends Constellation {
 
@@ -66,8 +57,8 @@ class ModuleProviderManager(
   /** Handle a Register RPC. */
   def handleRegister(request: pb.RegisterRequest, connectionId: String): IO[pb.RegisterResponse] =
     for {
-      state <- providerState.get
-      namespaceOwners = state.map { case (ns, conn) => ns -> conn.connectionId }
+      conns <- controlPlane.getAllConnections
+      namespaceOwners = conns.map(c => c.namespace -> c.connectionId).toMap
       validationResults = SchemaValidator.validate(
         request, functionRegistry, namespaceOwners, connectionId, config.reservedNamespaces
       )
@@ -81,17 +72,15 @@ class ModuleProviderManager(
           IO.pure(None)
       }.map(_.flatten)
 
-      // Update provider state
-      _ <- providerState.update { current =>
-        val existingModules = current.get(request.namespace).map(_.registeredModules).getOrElse(Set.empty)
-        current + (request.namespace -> ProviderConnection(
-          connectionId = connectionId,
-          namespace = request.namespace,
-          executorUrl = request.executorUrl,
-          registeredModules = existingModules ++ registeredNames.toSet,
-          protocolVersion = math.min(request.protocolVersion, currentProtocolVersion)
-        ))
-      }
+      // Track connection in control plane
+      negotiatedVersion = math.min(request.protocolVersion, currentProtocolVersion)
+      _ <- controlPlane.registerConnection(
+        connectionId = connectionId,
+        namespace = request.namespace,
+        executorUrl = request.executorUrl,
+        modules = registeredNames.toSet,
+        protocolVersion = negotiatedVersion
+      )
 
       // Build response
       allAccepted = validationResults.forall(_.isInstanceOf[ModuleValidationResult.Accepted])
@@ -104,16 +93,17 @@ class ModuleProviderManager(
     } yield pb.RegisterResponse(
       success = allAccepted,
       results = results,
-      protocolVersion = currentProtocolVersion
+      protocolVersion = currentProtocolVersion,
+      connectionId = connectionId
     )
 
   /** Handle a Deregister RPC. */
   def handleDeregister(request: pb.DeregisterRequest, connectionId: String): IO[pb.DeregisterResponse] =
     for {
-      state <- providerState.get
+      connOpt <- controlPlane.getConnectionByNamespace(request.namespace)
       results <- request.moduleNames.toList.traverse { moduleName =>
         val qualifiedName = s"${request.namespace}.$moduleName"
-        state.get(request.namespace) match {
+        connOpt match {
           case Some(conn) if conn.connectionId == connectionId =>
             if conn.registeredModules.contains(qualifiedName) then
               deregisterExternalModule(qualifiedName).as(
@@ -130,31 +120,28 @@ class ModuleProviderManager(
         }
       }
 
-      // Update provider state
-      _ <- providerState.update { current =>
-        current.get(request.namespace) match {
-          case Some(conn) =>
-            val removedNames = results.filter(_.removed).map(r => s"${request.namespace}.${r.moduleName}").toSet
-            val updatedModules = conn.registeredModules -- removedNames
-            if updatedModules.isEmpty then current - request.namespace
-            else current + (request.namespace -> conn.copy(registeredModules = updatedModules))
-          case None => current
-        }
+      // Update control plane state
+      _ <- connOpt match {
+        case Some(conn) if conn.connectionId == connectionId =>
+          val removedNames = results.filter(_.removed).map(r => s"${request.namespace}.${r.moduleName}").toSet
+          val updatedModules = conn.registeredModules -- removedNames
+          if updatedModules.isEmpty then controlPlane.removeConnection(connectionId)
+          else controlPlane.updateModules(connectionId, updatedModules)
+        case _ => IO.unit
       }
     } yield pb.DeregisterResponse(
       success = results.forall(_.removed),
       results = results
     )
 
-  /** Deregister all modules owned by a connection (e.g., on control plane stream break). */
+  /** Deregister all modules owned by a connection (e.g., on control plane stream break or liveness timeout). */
   def deregisterAllForConnection(connectionId: String): IO[Unit] =
     for {
-      state <- providerState.get
-      namespacesToClean = state.filter(_._2.connectionId == connectionId)
-      _ <- namespacesToClean.toList.traverse_ { case (_, conn) =>
+      connOpt <- controlPlane.getConnection(connectionId)
+      _ <- connOpt.traverse_ { conn =>
         conn.registeredModules.toList.traverse_(deregisterExternalModule)
       }
-      _ <- providerState.update(_.filter(_._2.connectionId != connectionId))
+      _ <- controlPlane.removeConnection(connectionId)
     } yield ()
 
   private def registerExternalModule(
@@ -205,7 +192,8 @@ object ModuleProviderManager {
 
   /** Create a ModuleProviderManager that wraps a Constellation instance and starts a gRPC server.
     *
-    * The Resource manages the gRPC server lifecycle (started on acquire, shutdown on release).
+    * The Resource manages the gRPC server lifecycle, liveness monitor, and report sender.
+    * On release: deregisters all connections, stops gRPC server, cancels background fibers.
     */
   def apply(
       delegate: Constellation,
@@ -214,9 +202,20 @@ object ModuleProviderManager {
       serializer: CValueSerializer = JsonCValueSerializer
   ): Resource[IO, ModuleProviderManager] =
     for {
-      state   <- Resource.eval(Ref.of[IO, Map[String, ProviderConnection]](Map.empty))
-      manager = new ModuleProviderManager(delegate, compiler, config, state, serializer)
-      _       <- startGrpcServer(manager, config)
+      state       <- Resource.eval(Ref.of[IO, Map[String, ProviderConnection]](Map.empty))
+      callbackRef <- Resource.eval(Ref.of[IO, String => IO[Unit]](_ => IO.unit))
+      cp = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
+      manager = new ModuleProviderManager(delegate, compiler, config, cp, serializer)
+      _ <- Resource.eval(callbackRef.set(connId => manager.deregisterAllForConnection(connId)))
+      _ <- cp.startLivenessMonitor
+      _ <- cp.startActiveModulesReporter
+      _ <- startGrpcServer(manager, config)
+      // Graceful shutdown: deregister all active connections before server stops
+      _ <- Resource.make(IO.unit)(_ =>
+        cp.getAllConnections.flatMap(_.traverse_(conn =>
+          manager.deregisterAllForConnection(conn.connectionId)
+        ))
+      )
     } yield manager
 
   private def startGrpcServer(
@@ -255,8 +254,10 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
   }
 
   override def deregister(request: pb.DeregisterRequest): scala.concurrent.Future[pb.DeregisterResponse] = {
-    // For deregister, we need to identify the connection — use namespace as a proxy
-    val connectionId = request.namespace // simplified; in production, track from Register
+    // Use connection_id from proto if present, fall back to namespace for backwards compat
+    val connectionId =
+      if request.connectionId.nonEmpty then request.connectionId
+      else request.namespace
     val io = manager.handleDeregister(request, connectionId)
     toFuture(io)
   }
@@ -264,16 +265,26 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
   override def controlPlane(
       responseObserver: StreamObserver[pb.ControlMessage]
   ): StreamObserver[pb.ControlMessage] = {
-    val connectionId = UUID.randomUUID().toString
+    // connectionId comes from the FIRST message on the stream
+    val connectionIdRef = new AtomicReference[String](null)
 
     new StreamObserver[pb.ControlMessage] {
       override def onNext(msg: pb.ControlMessage): Unit = {
+        val connId = msg.connectionId
+
+        // First message → activate the control plane
+        if connectionIdRef.compareAndSet(null, connId) then {
+          manager.controlPlane.activateControlPlane(connId, responseObserver)
+            .unsafeRunSync()
+        }
+
         msg.payload match {
           case pb.ControlMessage.Payload.Heartbeat(hb) =>
-            // Respond with ack
+            manager.controlPlane.recordHeartbeat(connId).unsafeRunSync()
             responseObserver.onNext(
               pb.ControlMessage(
                 protocolVersion = msg.protocolVersion,
+                connectionId = connId,
                 payload = pb.ControlMessage.Payload.HeartbeatAck(
                   pb.HeartbeatAck(timestamp = hb.timestamp)
                 )
@@ -284,12 +295,15 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
       }
 
       override def onError(t: Throwable): Unit = {
-        // Control plane stream broke — auto-deregister all modules for this connection
-        manager.deregisterAllForConnection(connectionId).unsafeRunSync()
+        Option(connectionIdRef.get()).foreach { connId =>
+          manager.deregisterAllForConnection(connId).unsafeRunSync()
+        }
       }
 
       override def onCompleted(): Unit = {
-        manager.deregisterAllForConnection(connectionId).unsafeRunSync()
+        Option(connectionIdRef.get()).foreach { connId =>
+          manager.deregisterAllForConnection(connId).unsafeRunSync()
+        }
         responseObserver.onCompleted()
       }
     }

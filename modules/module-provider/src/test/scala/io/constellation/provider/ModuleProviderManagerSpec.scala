@@ -1,6 +1,6 @@
 package io.constellation.provider
 
-import cats.effect.IO
+import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
 
 import io.constellation.*
@@ -58,8 +58,9 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
       reservedNamespaces = Set("stdlib")
     )
 
-    val state   = cats.effect.Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val manager = new ModuleProviderManager(constellation, compiler, config, state, JsonCValueSerializer)
+    val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
+    val cp    = new ControlPlaneManager(state, config, _ => IO.unit)
+    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer)
 
     (manager, testFunctionRegistry)
   }
@@ -126,6 +127,32 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     response.protocolVersion shouldBe 1
   }
 
+  it should "return connection_id in response" in {
+    val (manager, _) = createTestManager()
+
+    val response = manager.handleRegister(
+      mkRequest("ml", Seq(mkDecl("test"))),
+      "my-connection-id"
+    ).unsafeRunSync()
+
+    response.connectionId shouldBe "my-connection-id"
+  }
+
+  it should "track connection in ControlPlaneManager" in {
+    val (manager, _) = createTestManager()
+
+    manager.handleRegister(
+      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+      "conn1"
+    ).unsafeRunSync()
+
+    val conn = manager.controlPlane.getConnection("conn1").unsafeRunSync()
+    conn shouldBe defined
+    conn.get.namespace shouldBe "ml.sentiment"
+    conn.get.state shouldBe ConnectionState.Registered
+    conn.get.registeredModules shouldBe Set("ml.sentiment.analyze")
+  }
+
   // ===== Deregister =====
 
   "ModuleProviderManager.handleDeregister" should "deregister modules" in {
@@ -139,7 +166,7 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
 
     // Deregister
     val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze")),
+      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze"), connectionId = "conn1"),
       "conn1"
     ).unsafeRunSync()
 
@@ -160,7 +187,7 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     ).unsafeRunSync()
 
     val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze")),
+      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze"), connectionId = "other-conn"),
       "other-conn"
     ).unsafeRunSync()
 
@@ -172,13 +199,29 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     val (manager, _) = createTestManager()
 
     val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("nonexistent")),
+      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("nonexistent"), connectionId = "conn1"),
       "conn1"
     ).unsafeRunSync()
 
     response.success shouldBe false
     response.results.head.removed shouldBe false
     response.results.head.error should include("not found")
+  }
+
+  it should "remove connection from ControlPlaneManager when all modules deregistered" in {
+    val (manager, _) = createTestManager()
+
+    manager.handleRegister(
+      mkRequest("ml", Seq(mkDecl("analyze"))),
+      "conn1"
+    ).unsafeRunSync()
+
+    manager.handleDeregister(
+      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("analyze"), connectionId = "conn1"),
+      "conn1"
+    ).unsafeRunSync()
+
+    manager.controlPlane.getConnection("conn1").unsafeRunSync() shouldBe None
   }
 
   // ===== DeregisterAll =====

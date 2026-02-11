@@ -12,6 +12,8 @@ import scala.concurrent.duration.*
   *   Time to wait for heartbeat response before considering provider dead
   * @param controlPlaneRequiredTimeout
   *   Time to wait after registration for control plane connection before auto-deregistering
+  * @param activeModulesReportInterval
+  *   Interval between ActiveModulesReport messages sent to providers
   * @param reservedNamespaces
   *   Namespace prefixes that providers cannot claim
   */
@@ -20,6 +22,7 @@ final case class ProviderManagerConfig(
     heartbeatInterval: FiniteDuration = 5.seconds,
     heartbeatTimeout: FiniteDuration = 15.seconds,
     controlPlaneRequiredTimeout: FiniteDuration = 30.seconds,
+    activeModulesReportInterval: FiniteDuration = 30.seconds,
     reservedNamespaces: Set[String] = Set("stdlib")
 )
 
@@ -32,11 +35,17 @@ object ProviderManagerConfig {
       .flatMap(parseDuration).getOrElse(5.seconds)
     val heartbeatTimeout = sys.env.get("CONSTELLATION_PROVIDER_HEARTBEAT_TIMEOUT")
       .flatMap(parseDuration).getOrElse(15.seconds)
+    val controlPlaneTimeout = sys.env.get("CONSTELLATION_PROVIDER_CONTROL_PLANE_TIMEOUT")
+      .flatMap(parseDuration).getOrElse(30.seconds)
+    val reportInterval = sys.env.get("CONSTELLATION_PROVIDER_REPORT_INTERVAL")
+      .flatMap(parseDuration).getOrElse(30.seconds)
 
     ProviderManagerConfig(
       grpcPort = port,
       heartbeatInterval = heartbeatInterval,
-      heartbeatTimeout = heartbeatTimeout
+      heartbeatTimeout = heartbeatTimeout,
+      controlPlaneRequiredTimeout = controlPlaneTimeout,
+      activeModulesReportInterval = reportInterval
     )
   }
 

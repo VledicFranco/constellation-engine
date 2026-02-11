@@ -68,6 +68,9 @@ message RegisterResponse {
 
   // Protocol version supported by this Constellation instance.
   int32 protocol_version = 3;
+
+  // Connection ID assigned by Constellation — provider must send this in ControlPlane and Deregister.
+  string connection_id = 4;
 }
 
 message ModuleRegistrationResult {
@@ -82,6 +85,8 @@ message DeregisterRequest {
   string namespace = 1;
   // Short names within the namespace
   repeated string module_names = 2;
+  // Connection ID from RegisterResponse — identifies the provider session.
+  string connection_id = 3;
 }
 
 message DeregisterResponse {
@@ -100,6 +105,9 @@ message ModuleDeregistrationResult {
 message ControlMessage {
   // Echoes the negotiated protocol version.
   int32 protocol_version = 1;
+
+  // Connection ID from RegisterResponse — identifies the provider session.
+  string connection_id = 2;
 
   oneof payload {
     Heartbeat heartbeat = 10;
