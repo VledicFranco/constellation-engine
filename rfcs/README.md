@@ -140,7 +140,7 @@ RFC-015 (terminology rename)
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
-| [RFC-021](./rfc-021-cli.md) | Constellation CLI | Draft | Unified CLI for compile, run, viz, deploy, and server operations |
+| [RFC-021](./rfc-021-cli.md) | Constellation CLI | Implemented | Unified CLI for compile, run, viz, deploy, and server operations |
 
 ---
 
