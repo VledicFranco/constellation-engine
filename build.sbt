@@ -147,8 +147,8 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
   .dependsOn(runtime, langCompiler)
   .settings(
     name := "constellation-lang-lsp",
-    coverageMinimumStmtTotal := 50,
-    coverageMinimumBranchTotal := 80,
+    coverageMinimumStmtTotal := 53,
+    coverageMinimumBranchTotal := 81,
     libraryDependencies ++= Seq(
       "org.typelevel" %% "cats-core" % "2.10.0",
       "org.typelevel" %% "cats-effect" % "3.5.2",

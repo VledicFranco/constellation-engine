@@ -1900,4 +1900,267 @@ class ConstellationLanguageServerTest extends AnyFlatSpec with Matchers {
     response.error shouldBe defined
     response.error.get.code shouldBe ErrorCodes.InvalidParams
   }
+
+  // ===== DAG Visualization Tests (Phase 6 Part 2 - Critical Gap) =====
+
+  "constellation/getDagVisualization" should "return DAG for valid source" in {
+    val source = """in text: String
+                   |result = Uppercase(text)
+                   |out result""".stripMargin
+
+    val uri = "file:///dag-test.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleRequest(
+        Request(
+          id = StringId("init-dag"),
+          method = "initialize",
+          params = Some(Json.obj("rootUri" -> Json.fromString("file:///project")))
+        )
+      )
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(source)
+              )
+            )
+          )
+        )
+      )
+      response <- server.handleRequest(
+        Request(
+          id = StringId("201"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString(uri),
+              "layoutDirection" -> Json.fromString("LR")
+            )
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+    (resultJson \\ "dag").headOption shouldBe defined
+  }
+
+  it should "return error for invalid source" in {
+    val invalidSource = "this is not valid constellation syntax !!!"
+    val uri           = "file:///dag-invalid.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(invalidSource)
+              )
+            )
+          )
+        )
+      )
+      response <- server.handleRequest(
+        Request(
+          id = StringId("202"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString(uri),
+              "layoutDirection" -> Json.fromString("LR")
+            )
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+  }
+
+  it should "support different layout directions (TB vs LR)" in {
+    val source = """in x: Int
+                   |out x""".stripMargin
+
+    val uri = "file:///dag-layout.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(source)
+              )
+            )
+          )
+        )
+      )
+      responseTB <- server.handleRequest(
+        Request(
+          id = StringId("203a"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString(uri),
+              "layoutDirection" -> Json.fromString("TB")
+            )
+          )
+        )
+      )
+      responseLR <- server.handleRequest(
+        Request(
+          id = StringId("203b"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString(uri),
+              "layoutDirection" -> Json.fromString("LR")
+            )
+          )
+        )
+      )
+    } yield (responseTB, responseLR)
+
+    val (responseTB, responseLR) = result.unsafeRunSync()
+
+    // Both should succeed
+    responseTB.result shouldBe defined
+    (responseTB.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+
+    responseLR.result shouldBe defined
+    (responseLR.result.get \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+  }
+
+  it should "return error for unknown document" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(
+          id = StringId("204"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString("file:///unknown-dag.cst"),
+              "layoutDirection" -> Json.fromString("LR")
+            )
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(false)
+    (resultJson \\ "error").headOption shouldBe defined
+  }
+
+  it should "return error for missing params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(
+          id = StringId("205"),
+          method = "constellation/getDagVisualization",
+          params = None
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+    response.error.get.message should include("Missing params")
+  }
+
+  it should "return error for invalid params" in {
+    val result = for {
+      server <- createTestServer()
+      response <- server.handleRequest(
+        Request(
+          id = StringId("206"),
+          method = "constellation/getDagVisualization",
+          params = Some(Json.obj("invalid" -> Json.fromString("params")))
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.error shouldBe defined
+    response.error.get.code shouldBe ErrorCodes.InvalidParams
+  }
+
+  it should "handle complex DAGs with multiple nodes" in {
+    val complexSource = """in a: String
+                          |in b: String
+                          |text1 = Uppercase(a)
+                          |text2 = Uppercase(b)
+                          |out text1""".stripMargin
+
+    val uri = "file:///dag-complex.cst"
+
+    val result = for {
+      server <- createTestServer()
+      _ <- server.handleNotification(
+        Notification(
+          method = "textDocument/didOpen",
+          params = Some(
+            Json.obj(
+              "textDocument" -> Json.obj(
+                "uri"        -> Json.fromString(uri),
+                "languageId" -> Json.fromString("constellation"),
+                "version"    -> Json.fromInt(1),
+                "text"       -> Json.fromString(complexSource)
+              )
+            )
+          )
+        )
+      )
+      response <- server.handleRequest(
+        Request(
+          id = StringId("207"),
+          method = "constellation/getDagVisualization",
+          params = Some(
+            Json.obj(
+              "uri"             -> Json.fromString(uri),
+              "layoutDirection" -> Json.fromString("LR")
+            )
+          )
+        )
+      )
+    } yield response
+
+    val response = result.unsafeRunSync()
+    response.result shouldBe defined
+    val resultJson = response.result.get
+    (resultJson \\ "success").headOption.flatMap(_.asBoolean) shouldBe Some(true)
+
+    // Verify DAG structure exists
+    val dag = resultJson \\ "dag"
+    dag.headOption shouldBe defined
+  }
 }
