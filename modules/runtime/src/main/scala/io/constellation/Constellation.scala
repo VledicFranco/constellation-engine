@@ -48,6 +48,13 @@ trait Constellation {
     */
   def setModule(module: Module.Uninitialized): IO[Unit]
 
+  /** Remove a module by name.
+    *
+    * Default no-op for backwards compatibility. Implementations that support dynamic
+    * registration/deregistration should override this.
+    */
+  def removeModule(name: String): IO[Unit] = IO.unit
+
   // ---------------------------------------------------------------------------
   // New API (Phase 1)
   // ---------------------------------------------------------------------------

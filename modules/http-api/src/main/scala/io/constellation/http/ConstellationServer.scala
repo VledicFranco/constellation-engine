@@ -443,6 +443,7 @@ object ConstellationServer {
       def getModuleByName(name: String): IO[Option[Module.Uninitialized]] =
         delegate.getModuleByName(name)
       def setModule(module: Module.Uninitialized): IO[Unit] = delegate.setModule(module)
+      override def removeModule(name: String): IO[Unit]    = delegate.removeModule(name)
       def PipelineStore: PipelineStore                      = store
       def run(
           loaded: LoadedPipeline,

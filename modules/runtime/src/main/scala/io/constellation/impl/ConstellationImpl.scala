@@ -76,6 +76,9 @@ final class ConstellationImpl(
   def setModule(factory: Module.Uninitialized): IO[Unit] =
     moduleRegistry.register(factory.spec.name, factory)
 
+  override def removeModule(name: String): IO[Unit] =
+    moduleRegistry.deregister(name)
+
   // ---------------------------------------------------------------------------
   // New API
   // ---------------------------------------------------------------------------

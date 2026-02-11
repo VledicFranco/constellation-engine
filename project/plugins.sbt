@@ -21,3 +21,7 @@ addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")
 
 // Binary compatibility checking (MiMa)
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
+
+// Protocol Buffers / gRPC code generation (ScalaPB)
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7")
+libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.15"

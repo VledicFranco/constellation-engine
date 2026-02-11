@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package constellation.provider.v1;
+
+option java_package = "io.constellation.provider.v1";
+option java_multiple_files = true;
+
+// ===== Registration Protocol =====
+// Hosted by: CONSTELLATION
+// Provider connects to Constellation to register/deregister modules and maintain liveness.
+
+service ModuleProvider {
+  // Register one or more modules with this Constellation instance.
+  // Constellation validates schemas and rejects on conflict or malformed types.
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+
+  // Deregister modules by name. Only modules in the provider's namespace can be removed.
+  rpc Deregister(DeregisterRequest) returns (DeregisterResponse);
+
+  // Bidirectional control plane stream. Serves as:
+  // 1. Liveness signal (stream break -> auto-deregister)
+  // 2. Application-level control channel (extensible via message types)
+  rpc ControlPlane(stream ControlMessage) returns (stream ControlMessage);
+}
+
+// ===== Module Execution =====
+// Hosted by: PROVIDER
+// Constellation calls back to the provider's execution endpoint to run modules.
+// The provider advertises its executor_url during registration.
+
+service ModuleExecutor {
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+}
+
+// ===== Registration Messages =====
+
+message RegisterRequest {
+  // constellation-lang namespace (dot-separated, e.g., "ml.sentiment").
+  string namespace = 1;
+
+  repeated ModuleDeclaration modules = 2;
+
+  // Protocol version supported by this SDK.
+  int32 protocol_version = 3;
+
+  // The gRPC endpoint where Constellation can call ModuleExecutor.Execute().
+  string executor_url = 4;
+}
+
+message ModuleDeclaration {
+  // Short name within the namespace (e.g., "analyze").
+  string name = 1;
+  // CType-compatible input definition
+  TypeSchema input_schema = 2;
+  // CType-compatible output definition
+  TypeSchema output_schema = 3;
+  // Semantic version (informational)
+  string version = 4;
+  // Human-readable description
+  string description = 5;
+}
+
+message RegisterResponse {
+  bool success = 1;
+
+  // Per-module results (in same order as request)
+  repeated ModuleRegistrationResult results = 2;
+
+  // Protocol version supported by this Constellation instance.
+  int32 protocol_version = 3;
+}
+
+message ModuleRegistrationResult {
+  string module_name = 1;
+  bool accepted = 2;
+  string rejection_reason = 3;
+}
+
+// ===== Deregistration Messages =====
+
+message DeregisterRequest {
+  string namespace = 1;
+  // Short names within the namespace
+  repeated string module_names = 2;
+}
+
+message DeregisterResponse {
+  bool success = 1;
+  repeated ModuleDeregistrationResult results = 2;
+}
+
+message ModuleDeregistrationResult {
+  string module_name = 1;
+  bool removed = 2;
+  string error = 3;
+}
+
+// ===== Control Plane Messages =====
+
+message ControlMessage {
+  // Echoes the negotiated protocol version.
+  int32 protocol_version = 1;
+
+  oneof payload {
+    Heartbeat heartbeat = 10;
+    HeartbeatAck heartbeat_ack = 11;
+    ActiveModulesReport active_modules_report = 12;
+  }
+}
+
+message Heartbeat {
+  string namespace = 1;
+  int64 timestamp = 2;
+}
+
+message HeartbeatAck {
+  int64 timestamp = 1;
+}
+
+message ActiveModulesReport {
+  // Constellation sends this periodically so the provider can reconcile
+  repeated string active_modules = 1;
+}
+
+// ===== Execution Messages =====
+
+message ExecuteRequest {
+  // Short name within the provider's namespace
+  string module_name = 1;
+  // Serialized CValue (JSON-over-bytes in v1, MessagePack in future)
+  bytes input_data = 2;
+  // For tracing
+  string execution_id = 3;
+  map<string, string> metadata = 4;
+}
+
+message ExecuteResponse {
+  oneof result {
+    bytes output_data = 1;
+    ExecutionError error = 2;
+  }
+  ExecutionMetrics metrics = 3;
+}
+
+message ExecutionError {
+  // TYPE_ERROR, RUNTIME_ERROR, TIMEOUT, MODULE_NOT_FOUND
+  string code = 1;
+  string message = 2;
+  string stack_trace = 3;
+}
+
+message ExecutionMetrics {
+  int64 duration_ms = 1;
+  int64 memory_bytes = 2;
+}
+
+// ===== Type System Messages =====
+
+message TypeSchema {
+  oneof type {
+    PrimitiveType primitive = 1;
+    RecordType record = 2;
+    ListType list = 3;
+    MapType map = 4;
+    UnionType union = 5;
+    OptionType option = 6;
+  }
+}
+
+message PrimitiveType {
+  enum Kind {
+    STRING = 0;
+    INT = 1;
+    FLOAT = 2;
+    BOOL = 3;
+  }
+  Kind kind = 1;
+}
+
+message RecordType {
+  map<string, TypeSchema> fields = 1;
+}
+
+message ListType {
+  TypeSchema element_type = 1;
+}
+
+message MapType {
+  TypeSchema key_type = 1;
+  TypeSchema value_type = 2;
+}
+
+message UnionType {
+  repeated TypeSchema variants = 1;
+}
+
+message OptionType {
+  TypeSchema inner_type = 1;
+}

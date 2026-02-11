@@ -175,6 +175,23 @@ lazy val httpApi = (project in file("modules/http-api"))
     ) ++ loggingDeps
   )
 
+// Module Provider - gRPC-based dynamic module registration protocol
+lazy val moduleProvider = (project in file("modules/module-provider"))
+  .dependsOn(runtime, langCompiler)
+  .settings(
+    name := "constellation-module-provider",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
+      "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb"  %% "scalapb-runtime"         % scalapb.compiler.Version.scalapbVersion % "protobuf",
+      "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+    ) ++ loggingDeps,
+    Compile / PB.targets := Seq(
+      scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
+    )
+  )
+
 // Cache Memcached - optional Memcached-backed distributed cache backend
 lazy val cacheMemcached = (project in file("modules/cache-memcached"))
   .dependsOn(runtime)
@@ -274,6 +291,7 @@ lazy val root = (project in file("."))
     langLsp,
     httpApi,
     cacheMemcached,
+    moduleProvider,
     exampleApp,
     langCli,
     docGenerator

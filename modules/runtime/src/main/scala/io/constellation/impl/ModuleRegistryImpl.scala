@@ -52,6 +52,30 @@ class ModuleRegistryImpl(
       _ <- modules.traverse_ { case (name, _) => updateNameIndex(name) }
     } yield ()
 
+  override def deregister(name: String): IO[Unit] =
+    for {
+      _ <- modulesRef.update(_ - name)
+      _ <- removeFromNameIndex(name)
+    } yield ()
+
+  /** Remove a canonical name and its short name alias from the index. */
+  private def removeFromNameIndex(canonicalName: String): IO[Unit] =
+    nameIndexRef.update { index =>
+      // Remove the full name entry
+      val withoutFull = index - canonicalName
+
+      // Remove short name entry if it pointed to this module
+      if canonicalName.contains(".") then {
+        val shortName = canonicalName.split('.').last
+        withoutFull.get(shortName) match {
+          case Some(target) if target == canonicalName => withoutFull - shortName
+          case _                                       => withoutFull
+        }
+      } else {
+        withoutFull
+      }
+    }
+
   /** Fast module lookup using pre-computed index. Tries exact match first, then stripped name
     * (without prefix).
     */
