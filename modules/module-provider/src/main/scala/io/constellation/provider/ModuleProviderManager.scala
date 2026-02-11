@@ -26,7 +26,8 @@ class ModuleProviderManager(
     compiler: LangCompiler,
     config: ProviderManagerConfig,
     val controlPlane: ControlPlaneManager,
-    serializer: CValueSerializer
+    serializer: CValueSerializer,
+    private[provider] val channelCache: GrpcChannelCache
 ) extends Constellation {
 
   // ===== Constellation delegation =====
@@ -66,8 +67,14 @@ class ModuleProviderManager(
       // Process accepted modules
       registeredNames <- validationResults.traverse {
         case ModuleValidationResult.Accepted(qualifiedName) =>
-          val decl = request.modules.find(d => s"${request.namespace}.${d.name}" == qualifiedName).get
-          registerExternalModule(decl, request.namespace, request.executorUrl).as(Some(qualifiedName))
+          request.modules.toList.find(d => s"${request.namespace}.${d.name}" == qualifiedName) match {
+            case Some(decl) =>
+              registerExternalModule(decl, request.namespace, request.executorUrl).as(Some(qualifiedName))
+            case None =>
+              IO.raiseError(new RuntimeException(
+                s"Internal error: accepted module $qualifiedName not found in request"
+              ))
+          }
         case ModuleValidationResult.Rejected(_, _) =>
           IO.pure(None)
       }.map(_.flatten)
@@ -139,7 +146,8 @@ class ModuleProviderManager(
     for {
       connOpt <- controlPlane.getConnection(connectionId)
       _ <- connOpt.traverse_ { conn =>
-        conn.registeredModules.toList.traverse_(deregisterExternalModule)
+        conn.registeredModules.toList.traverse_(deregisterExternalModule) >>
+          IO(channelCache.shutdownChannel(conn.executorUrl))
       }
       _ <- controlPlane.removeConnection(connectionId)
     } yield ()
@@ -148,38 +156,46 @@ class ModuleProviderManager(
       decl: pb.ModuleDeclaration,
       namespace: String,
       executorUrl: String
-  ): IO[Unit] = {
-    val qualifiedName = s"$namespace.${decl.name}"
-
-    // Convert schemas (already validated by SchemaValidator)
-    val inputType  = TypeSchemaConverter.toCType(decl.inputSchema.get).toOption.get
-    val outputType = TypeSchemaConverter.toCType(decl.outputSchema.get).toOption.get
-
-    // Create external module
-    val module = ExternalModule.create(
-      name = decl.name,
-      namespace = namespace,
-      executorUrl = executorUrl,
-      inputType = inputType,
-      outputType = outputType,
-      description = decl.description,
-      serializer = serializer
-    )
-
-    // Create function signature
-    val signature = ExternalFunctionSignature.create(
-      name = decl.name,
-      namespace = namespace,
-      inputType = inputType,
-      outputType = outputType
-    )
-
-    // Register in both registries
+  ): IO[Unit] =
     for {
+      inputSchema  <- IO.fromOption(decl.inputSchema)(
+        new RuntimeException(s"Missing input schema for ${decl.name}")
+      )
+      outputSchema <- IO.fromOption(decl.outputSchema)(
+        new RuntimeException(s"Missing output schema for ${decl.name}")
+      )
+      inputType <- IO.fromEither(
+        TypeSchemaConverter.toCType(inputSchema).left.map(e =>
+          new RuntimeException(s"Invalid input schema for ${decl.name}: $e")
+        )
+      )
+      outputType <- IO.fromEither(
+        TypeSchemaConverter.toCType(outputSchema).left.map(e =>
+          new RuntimeException(s"Invalid output schema for ${decl.name}: $e")
+        )
+      )
+
+      module = ExternalModule.create(
+        name = decl.name,
+        namespace = namespace,
+        executorUrl = executorUrl,
+        inputType = inputType,
+        outputType = outputType,
+        description = decl.description,
+        serializer = serializer,
+        channelCache = channelCache
+      )
+
+      signature = ExternalFunctionSignature.create(
+        name = decl.name,
+        namespace = namespace,
+        inputType = inputType,
+        outputType = outputType
+      )
+
       _ <- delegate.setModule(module)
       _ <- IO(functionRegistry.register(signature))
     } yield ()
-  }
 
   private def deregisterExternalModule(qualifiedName: String): IO[Unit] =
     for {
@@ -192,8 +208,8 @@ object ModuleProviderManager {
 
   /** Create a ModuleProviderManager that wraps a Constellation instance and starts a gRPC server.
     *
-    * The Resource manages the gRPC server lifecycle, liveness monitor, and report sender.
-    * On release: deregisters all connections, stops gRPC server, cancels background fibers.
+    * The Resource manages gRPC server lifecycle, liveness monitor, report sender, and channel cache.
+    * Release order: cancel fibers → deregister connections → stop gRPC server → shut down channels.
     */
   def apply(
       delegate: Constellation,
@@ -204,11 +220,10 @@ object ModuleProviderManager {
     for {
       state       <- Resource.eval(Ref.of[IO, Map[String, ProviderConnection]](Map.empty))
       callbackRef <- Resource.eval(Ref.of[IO, String => IO[Unit]](_ => IO.unit))
+      cache       <- Resource.make(IO(new GrpcChannelCache))(c => IO(c.shutdownAll()))
       cp = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
-      manager = new ModuleProviderManager(delegate, compiler, config, cp, serializer)
+      manager = new ModuleProviderManager(delegate, compiler, config, cp, serializer, cache)
       _ <- Resource.eval(callbackRef.set(connId => manager.deregisterAllForConnection(connId)))
-      _ <- cp.startLivenessMonitor
-      _ <- cp.startActiveModulesReporter
       _ <- startGrpcServer(manager, config)
       // Graceful shutdown: deregister all active connections before server stops
       _ <- Resource.make(IO.unit)(_ =>
@@ -216,14 +231,15 @@ object ModuleProviderManager {
           manager.deregisterAllForConnection(conn.connectionId)
         ))
       )
+      // Background fibers — released first (before deregister and server stop)
+      _ <- cp.startLivenessMonitor
+      _ <- cp.startActiveModulesReporter
     } yield manager
 
   private def startGrpcServer(
       manager: ModuleProviderManager,
       config: ProviderManagerConfig
   ): Resource[IO, Server] = {
-    import cats.effect.unsafe.implicits.global
-
     val serviceImpl = new ModuleProviderServiceImpl(manager)
 
     Resource.make(
@@ -254,11 +270,20 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
   }
 
   override def deregister(request: pb.DeregisterRequest): scala.concurrent.Future[pb.DeregisterResponse] = {
-    // Use connection_id from proto if present, fall back to namespace for backwards compat
-    val connectionId =
-      if request.connectionId.nonEmpty then request.connectionId
-      else request.namespace
-    val io = manager.handleDeregister(request, connectionId)
+    val io = if request.connectionId.nonEmpty then
+      manager.handleDeregister(request, request.connectionId)
+    else {
+      // Backwards compat: resolve actual connectionId from namespace
+      manager.controlPlane.getConnectionByNamespace(request.namespace).flatMap {
+        case Some(conn) => manager.handleDeregister(request, conn.connectionId)
+        case None => IO.pure(pb.DeregisterResponse(
+          success = false,
+          results = request.moduleNames.toList.map(n =>
+            pb.ModuleDeregistrationResult(moduleName = n, removed = false, error = "not found")
+          )
+        ))
+      }
+    }
     toFuture(io)
   }
 
@@ -272,15 +297,15 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
       override def onNext(msg: pb.ControlMessage): Unit = {
         val connId = msg.connectionId
 
-        // First message → activate the control plane
+        // First message → activate the control plane (fire-and-forget to avoid blocking gRPC thread)
         if connectionIdRef.compareAndSet(null, connId) then {
           manager.controlPlane.activateControlPlane(connId, responseObserver)
-            .unsafeRunSync()
+            .unsafeRunAndForget()
         }
 
         msg.payload match {
           case pb.ControlMessage.Payload.Heartbeat(hb) =>
-            manager.controlPlane.recordHeartbeat(connId).unsafeRunSync()
+            manager.controlPlane.recordHeartbeat(connId).unsafeRunAndForget()
             responseObserver.onNext(
               pb.ControlMessage(
                 protocolVersion = msg.protocolVersion,
@@ -296,13 +321,13 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
 
       override def onError(t: Throwable): Unit = {
         Option(connectionIdRef.get()).foreach { connId =>
-          manager.deregisterAllForConnection(connId).unsafeRunSync()
+          manager.deregisterAllForConnection(connId).unsafeRunAndForget()
         }
       }
 
       override def onCompleted(): Unit = {
         Option(connectionIdRef.get()).foreach { connId =>
-          manager.deregisterAllForConnection(connId).unsafeRunSync()
+          manager.deregisterAllForConnection(connId).unsafeRunAndForget()
         }
         responseObserver.onCompleted()
       }

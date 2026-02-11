@@ -60,7 +60,8 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
 
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val cp    = new ControlPlaneManager(state, config, _ => IO.unit)
-    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer)
+    val cache = new GrpcChannelCache
+    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
 
     (manager, testFunctionRegistry)
   }
@@ -151,6 +152,60 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     conn.get.namespace shouldBe "ml.sentiment"
     conn.get.state shouldBe ConnectionState.Registered
     conn.get.registeredModules shouldBe Set("ml.sentiment.analyze")
+  }
+
+  it should "reject modules with invalid executor_url" in {
+    val (manager, _) = createTestManager()
+
+    val badRequest = pb.RegisterRequest(
+      namespace = "ml",
+      modules = Seq(mkDecl("analyze")),
+      protocolVersion = 1,
+      executorUrl = ""
+    )
+
+    val response = manager.handleRegister(badRequest, "conn1").unsafeRunSync()
+
+    response.success shouldBe false
+    response.results.head.accepted shouldBe false
+    response.results.head.rejectionReason should include("executor_url")
+  }
+
+  it should "reject modules with scheme-prefixed executor_url" in {
+    val (manager, _) = createTestManager()
+
+    val badRequest = pb.RegisterRequest(
+      namespace = "ml",
+      modules = Seq(mkDecl("analyze")),
+      protocolVersion = 1,
+      executorUrl = "http://localhost:9090"
+    )
+
+    val response = manager.handleRegister(badRequest, "conn1").unsafeRunSync()
+
+    response.success shouldBe false
+    response.results.head.accepted shouldBe false
+  }
+
+  it should "reject modules with invalid module name characters" in {
+    val (manager, _) = createTestManager()
+
+    val badDecl = pb.ModuleDeclaration(
+      name = "analyze stuff",
+      inputSchema = Some(stringSchema),
+      outputSchema = Some(stringSchema),
+      version = "1.0.0",
+      description = "Bad name"
+    )
+
+    val response = manager.handleRegister(
+      mkRequest("ml", Seq(badDecl)),
+      "conn1"
+    ).unsafeRunSync()
+
+    response.success shouldBe false
+    response.results.head.accepted shouldBe false
+    response.results.head.rejectionReason should include("alphanumeric")
   }
 
   // ===== Deregister =====

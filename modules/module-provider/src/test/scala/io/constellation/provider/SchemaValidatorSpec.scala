@@ -55,6 +55,99 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     SchemaValidator.validateNamespace("ml.1sentiment").isDefined shouldBe true
   }
 
+  // ===== Executor URL validation =====
+
+  "SchemaValidator.validateExecutorUrl" should "accept valid host:port" in {
+    SchemaValidator.validateExecutorUrl("localhost:9090") shouldBe None
+  }
+
+  it should "accept hostname only (port defaults)" in {
+    SchemaValidator.validateExecutorUrl("myhost") shouldBe None
+  }
+
+  it should "accept hostname with valid port" in {
+    SchemaValidator.validateExecutorUrl("example.com:8080") shouldBe None
+  }
+
+  it should "reject empty URL" in {
+    SchemaValidator.validateExecutorUrl("") shouldBe defined
+    SchemaValidator.validateExecutorUrl("   ") shouldBe defined
+  }
+
+  it should "reject URL with scheme prefix" in {
+    val result = SchemaValidator.validateExecutorUrl("http://localhost:9090")
+    result shouldBe defined
+    result.get should include("scheme")
+  }
+
+  it should "reject URL with grpc scheme prefix" in {
+    SchemaValidator.validateExecutorUrl("grpc://host:9090") shouldBe defined
+  }
+
+  it should "reject URL with invalid port" in {
+    SchemaValidator.validateExecutorUrl("localhost:abc") shouldBe defined
+  }
+
+  it should "reject URL with port out of range" in {
+    SchemaValidator.validateExecutorUrl("localhost:0") shouldBe defined
+    SchemaValidator.validateExecutorUrl("localhost:70000") shouldBe defined
+  }
+
+  it should "reject all modules when executor_url is invalid" in {
+    val results = SchemaValidator.validate(
+      mkRequest("ml", Seq(mkDecl("a"), mkDecl("b")), executorUrl = ""),
+      FunctionRegistry.empty,
+      Map.empty,
+      "conn1",
+      Set("stdlib")
+    )
+    results should have size 2
+    results.foreach(_ shouldBe a[ModuleValidationResult.Rejected])
+  }
+
+  // ===== Module name validation =====
+
+  "SchemaValidator.validateModuleName" should "accept valid module name" in {
+    SchemaValidator.validateModuleName("analyze") shouldBe None
+    SchemaValidator.validateModuleName("myModule_v2") shouldBe None
+    SchemaValidator.validateModuleName("A") shouldBe None
+  }
+
+  it should "reject empty name" in {
+    SchemaValidator.validateModuleName("") shouldBe defined
+  }
+
+  it should "reject name starting with digit" in {
+    SchemaValidator.validateModuleName("1analyze") shouldBe defined
+  }
+
+  it should "reject name with spaces" in {
+    SchemaValidator.validateModuleName("analyze stuff") shouldBe defined
+  }
+
+  it should "reject name with dots" in {
+    SchemaValidator.validateModuleName("analyze.v2") shouldBe defined
+  }
+
+  it should "reject name with special characters" in {
+    SchemaValidator.validateModuleName("analyze!") shouldBe defined
+    SchemaValidator.validateModuleName("analyze@home") shouldBe defined
+    SchemaValidator.validateModuleName("analyze-v2") shouldBe defined
+  }
+
+  it should "reject module with invalid characters via full validate" in {
+    val results = SchemaValidator.validate(
+      mkRequest("ml", Seq(mkDecl("analyze-v2").copy(name = "analyze-v2"))),
+      FunctionRegistry.empty,
+      Map.empty,
+      "conn1",
+      Set("stdlib")
+    )
+    results should have size 1
+    results.head shouldBe a[ModuleValidationResult.Rejected]
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("alphanumeric")
+  }
+
   // ===== Module validation =====
 
   "SchemaValidator.validate" should "accept valid module" in {

@@ -30,16 +30,19 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     new ControlPlaneManager(state, config, onDead)
   }
 
-  /** A simple StreamObserver that records messages sent to it. */
+  /** Thread-safe StreamObserver that records messages sent to it. */
   private class RecordingObserver extends StreamObserver[pb.ControlMessage] {
-    @volatile var messages: List[pb.ControlMessage] = Nil
-    @volatile var completed: Boolean                = false
-    @volatile var error: Option[Throwable]          = None
+    private val _messages = new java.util.concurrent.ConcurrentLinkedQueue[pb.ControlMessage]()
+    @volatile var completed: Boolean = false
+
+    def messages: List[pb.ControlMessage] = {
+      import scala.jdk.CollectionConverters.*
+      _messages.asScala.toList
+    }
 
     override def onNext(value: pb.ControlMessage): Unit =
-      messages = messages :+ value
-    override def onError(t: Throwable): Unit =
-      error = Some(t)
+      _messages.add(value)
+    override def onError(t: Throwable): Unit = ()
     override def onCompleted(): Unit =
       completed = true
   }

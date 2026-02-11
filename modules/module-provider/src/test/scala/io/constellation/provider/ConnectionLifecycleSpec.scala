@@ -44,13 +44,18 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
       executorUrl = "localhost:9999"
     )
 
-  /** A simple StreamObserver that records messages sent to it. */
+  /** Thread-safe StreamObserver that records messages sent to it. */
   private class RecordingObserver extends StreamObserver[pb.ControlMessage] {
-    @volatile var messages: List[pb.ControlMessage] = Nil
-    @volatile var completed: Boolean                = false
+    private val _messages = new java.util.concurrent.ConcurrentLinkedQueue[pb.ControlMessage]()
+    @volatile var completed: Boolean = false
+
+    def messages: List[pb.ControlMessage] = {
+      import scala.jdk.CollectionConverters.*
+      _messages.asScala.toList
+    }
 
     override def onNext(value: pb.ControlMessage): Unit =
-      messages = messages :+ value
+      _messages.add(value)
     override def onError(t: Throwable): Unit = ()
     override def onCompleted(): Unit =
       completed = true
@@ -84,7 +89,8 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val deregRef = Ref.of[IO, String => IO[Unit]](_ => IO.unit).unsafeRunSync()
     val cp = new ControlPlaneManager(state, config, connId => deregRef.get.flatMap(_(connId)))
-    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer)
+    val cache = new GrpcChannelCache
+    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
     deregRef.set(connId => manager.deregisterAllForConnection(connId)).unsafeRunSync()
 
     (manager, cp, testFunctionRegistry)

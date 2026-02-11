@@ -156,25 +156,31 @@ class ControlPlaneManager(
 
   private def checkLiveness: IO[Unit] =
     for {
-      now   <- IO.realTime.map(_.toMillis)
-      state <- providerState.get
-      deadConnections = state.values.filter { conn =>
-        conn.state match {
-          case ConnectionState.Registered =>
-            now - conn.registeredAt > config.controlPlaneRequiredTimeout.toMillis
-          case ConnectionState.Active =>
-            conn.lastHeartbeatAt.exists(last => now - last > config.heartbeatTimeout.toMillis)
-          case ConnectionState.Disconnected =>
-            false
+      now <- IO.realTime.map(_.toMillis)
+      // Atomically identify dead connections and mark them Disconnected, clearing observers
+      deadConnections <- providerState.modify { state =>
+        val (dead, alive) = state.partition { case (_, conn) =>
+          conn.state match {
+            case ConnectionState.Registered =>
+              now - conn.registeredAt > config.controlPlaneRequiredTimeout.toMillis
+            case ConnectionState.Active =>
+              conn.lastHeartbeatAt.exists(last => now - last > config.heartbeatTimeout.toMillis)
+            case ConnectionState.Disconnected =>
+              false
+          }
         }
-      }.toList
+        val disconnected = dead.view.mapValues(_.copy(
+          state = ConnectionState.Disconnected,
+          responseObserver = None
+        )).toMap
+        (alive ++ disconnected, dead.values.toList)
+      }
       _ <- deadConnections.traverse_ { conn =>
-        // Close the observer stream if present
+        // Close the observer stream if present (using the atomically-claimed snapshot)
         IO(conn.responseObserver.foreach(obs =>
           try obs.onCompleted()
           catch { case _: Exception => () }
         )) >>
-          deactivateConnection(conn.connectionId) >>
           onConnectionDead(conn.connectionId)
       }
     } yield ()
