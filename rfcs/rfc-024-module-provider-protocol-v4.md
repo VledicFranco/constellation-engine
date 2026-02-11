@@ -1,6 +1,6 @@
 # RFC-024: Module Provider Protocol (v4)
 
-**Status:** Draft (Revision 4 - Dynamic Registration)
+**Status:** Accepted
 **Priority:** P3 (Extensibility)
 **Author:** Claude + User
 **Created:** 2026-02-10
