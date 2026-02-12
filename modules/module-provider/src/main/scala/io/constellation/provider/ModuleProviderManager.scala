@@ -13,8 +13,8 @@ import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.provider.v1.provider as pb
 
-import io.grpc.{Server, ServerBuilder, Status}
 import io.grpc.stub.StreamObserver
+import io.grpc.{Server, ServerBuilder, Status}
 
 /** Central manager that wraps a Constellation instance and hosts the gRPC ModuleProvider service.
   *

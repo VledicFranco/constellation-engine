@@ -1,11 +1,11 @@
 package io.constellation.provider.sdk
 
-import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Ref}
 
-import io.constellation.{CType, CValue}
-import io.constellation.provider.{CValueSerializer, JsonCValueSerializer}
 import io.constellation.provider.v1.provider as pb
+import io.constellation.provider.{CValueSerializer, JsonCValueSerializer}
+import io.constellation.{CType, CValue}
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

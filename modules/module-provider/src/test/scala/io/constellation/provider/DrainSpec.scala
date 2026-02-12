@@ -2,13 +2,12 @@ package io.constellation.provider
 
 import scala.concurrent.duration.*
 
-import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Ref}
 
 import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

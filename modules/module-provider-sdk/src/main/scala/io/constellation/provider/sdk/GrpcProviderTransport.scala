@@ -6,8 +6,8 @@ import cats.effect.{IO, Resource}
 
 import io.constellation.provider.v1.provider as pb
 
-import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import io.grpc.stub.StreamObserver
+import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
 /** Production ProviderTransport backed by gRPC stubs.
   *

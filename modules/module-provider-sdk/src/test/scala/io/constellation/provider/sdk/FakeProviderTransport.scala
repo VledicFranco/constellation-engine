@@ -2,8 +2,8 @@ package io.constellation.provider.sdk
 
 import java.util.concurrent.ConcurrentLinkedQueue
 
-import cats.effect.{IO, Ref, Resource}
 import cats.effect.std.Queue
+import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
 
 import io.constellation.provider.v1.provider as pb

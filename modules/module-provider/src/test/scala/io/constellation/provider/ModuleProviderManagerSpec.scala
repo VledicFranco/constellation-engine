@@ -1,7 +1,7 @@
 package io.constellation.provider
 
-import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Ref}
 
 import io.constellation.*
 import io.constellation.impl.ConstellationImpl

@@ -1,7 +1,7 @@
 package io.constellation.provider
 
 import io.constellation.CValue
-import io.constellation.json.{cvalueEncoder, cvalueDecoder}
+import io.constellation.json.{cvalueDecoder, cvalueEncoder}
 
 import io.circe.parser.decode
 import io.circe.syntax.*

@@ -2,9 +2,9 @@ package io.constellation.provider.sdk
 
 import cats.effect.IO
 
-import io.constellation.{CType, CValue}
 import io.constellation.provider.TypeSchemaConverter
 import io.constellation.provider.v1.provider as pb
+import io.constellation.{CType, CValue}
 
 /** Describes a module that a provider offers for execution.
   *
