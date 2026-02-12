@@ -4,7 +4,7 @@
 **Priority:** P3 (Extensibility)
 **Author:** Claude + User
 **Created:** 2026-02-10
-**Revised:** 2026-02-11
+**Revised:** 2026-02-12
 **Supersedes:** RFC-024 v1, v2, v3
 
 ---
@@ -62,6 +62,21 @@ Constellation's type system must extend across process boundaries. When a provid
 │                  │◄════════════►│  Constellation Instance B     │
 │                  │              │  (same structure)              │
 └─────────────────┘              └──────────────────────────────┘
+
+Provider Group (horizontal scaling):
+┌─────────────────┐
+│ Provider A       │──┐
+│ group: "ml-grp"  │  │  All register with same       ┌───────────────────┐
+│ ns: ml.sentiment │  │  group_id + namespace.         │ Constellation      │
+├─────────────────┤  ├─────────────────────────────►│                   │
+│ Provider B       │  │  Constellation maintains an    │  ExecutorPool:     │
+│ group: "ml-grp"  │──┤  ExecutorPool per namespace    │  ┌─A──B──C─┐     │
+│ ns: ml.sentiment │  │  and load-balances Execute     │  │ round-robin │   │
+├─────────────────┤  │  calls across healthy members.  │  └───────────┘    │
+│ Provider C       │──┘                                └───────────────────┘
+│ group: "ml-grp"  │  Modules are only deregistered
+│ ns: ml.sentiment │  when ALL group members disconnect.
+└─────────────────┘
 ```
 
 ### Layer Decomposition
@@ -83,7 +98,7 @@ The module registry is the central integration point. The compiler resolves modu
 
 | Operation | Semantics |
 |-----------|-----------|
-| **Add** | Register a new module. The fully qualified name (`namespace.name`) must be globally unique. Fails if: (a) same qualified name exists in a different provider's namespace (ownership violation), or (b) same qualified name exists in a reserved namespace (e.g., `stdlib.*`). |
+| **Add** | Register a new module. The fully qualified name (`namespace.name`) must be globally unique. Fails if: (a) same qualified name exists in a different provider's namespace with a different `group_id` (ownership violation), or (b) same qualified name exists in a reserved namespace (e.g., `stdlib.*`). If the same qualified name is registered by a connection with the same `group_id`, the new connection joins the provider group. |
 | **Remove** | Deregister a module. Removes it from both registries. In-flight executions complete (modules bound at `initModules` time); new compilations no longer see it. |
 | **Replace** | Atomic remove + add of a module within the same namespace by the same provider. Used for upgrades. |
 | **Query** | List registered modules, their schemas, and their provider namespace. |
@@ -123,6 +138,7 @@ result = ml.sentiment.analyze(text)  # fully qualified
 - A provider can only replace/remove modules **in its own namespace**.
 - Cross-namespace name collisions are rejected.
 - The namespace is validated syntactically at registration time (must parse as a valid `QualifiedName`).
+- **Provider Groups:** Multiple provider instances can share namespace ownership by registering with the same `group_id` (see §2 Registration Messages). All members of a group are co-owners of the namespace and may replace/remove modules within it. Namespace ownership is released only when **all** group members disconnect.
 
 **Implications:**
 - `.cst` scripts are agnostic to whether a namespace is backed by local Scala modules or remote providers.
@@ -134,16 +150,29 @@ result = ml.sentiment.analyze(text)  # fully qualified
 - A module name must be unique within its namespace. The fully qualified name (`namespace.name`) must be globally unique.
 - Registering a fully qualified name that already exists **in a different provider's namespace**: not a conflict (namespaces are isolated).
 - Registering a name that already exists **in the same namespace by the same provider connection**: treated as a **Replace** operation (upgrade).
-- Registering a name that already exists **in the same namespace by a different provider connection**: REJECTED (namespace ownership violation).
+- Registering a name that already exists **in the same namespace by a different provider connection with the same `group_id`**: ALLOWED — the new connection joins the provider group and its executor is added to the pool.
+- Registering a name that already exists **in the same namespace by a different provider connection with a different (or empty) `group_id`**: REJECTED (namespace ownership violation).
 - Built-in modules (e.g., `stdlib.*`) occupy reserved namespaces and can never be replaced by providers.
 
 ### Namespace Ownership Identity
 
-Constellation identifies provider ownership **by the active control plane connection**. The first provider to establish a control plane stream under a given namespace becomes its owner for the lifetime of that connection. If the connection drops (provider crash, network failure), the namespace is released and another provider may claim it.
+Constellation identifies provider ownership by one of two mechanisms:
 
-**v1 trust model:** Namespace ownership is trust-based. Any process with network access can claim any namespace. This is acceptable for internal/trusted networks (same model as most service meshes).
+1. **Solo provider (no `group_id`):** The first provider to establish a control plane stream under a given namespace becomes its sole owner for the lifetime of that connection. If the connection drops, the namespace is released.
 
-**Future hardening:** mTLS with client certificates can bind namespaces to authenticated identities. The gRPC connection's client certificate CN could be validated against the declared namespace, preventing unauthorized claims. This is a natural Phase 2+ addition and does not require protocol changes (TLS is a transport concern).
+2. **Provider Group (with `group_id`):** Multiple provider instances register with the same `group_id` and namespace. All members are co-owners. The namespace is released only when **all** group members disconnect. This enables provider-side horizontal scaling — each provider replica registers independently and Constellation treats them as a single logical provider with multiple executors.
+
+**Group membership rules:**
+- The first connection to register under a namespace establishes the `group_id` for that namespace.
+- Subsequent connections to the same namespace must present the same `group_id`. A mismatched `group_id` is rejected as a namespace ownership violation.
+- If `group_id` is empty, the namespace operates in solo mode (single-owner).
+- Each group member has its own control plane stream and liveness tracking.
+- Individual member disconnection removes that member's executor from the pool but does NOT deregister the modules — other members continue serving.
+- Module deregistration occurs only when the **last** group member disconnects.
+
+**v1 trust model:** Namespace ownership is trust-based. Any process with network access can claim any namespace (or join any group). This is acceptable for internal/trusted networks (same model as most service meshes).
+
+**Future hardening:** mTLS with client certificates can bind namespaces and group IDs to authenticated identities. The gRPC connection's client certificate CN could be validated against the declared namespace and group, preventing unauthorized claims or joins. This is a natural Phase 2+ addition and does not require protocol changes (TLS is a transport concern).
 
 ### Registry Architecture (RESOLVED)
 
@@ -228,6 +257,13 @@ message RegisterRequest {
   // The gRPC endpoint where Constellation can call ModuleExecutor.Execute().
   // e.g., "ml-service:9090". The provider hosts the ModuleExecutor service at this address.
   string executor_url = 4;
+
+  // Optional: Provider group identifier for horizontal scaling.
+  // Multiple provider instances registering with the same group_id + namespace
+  // are treated as a single logical provider with multiple executors.
+  // Constellation load-balances Execute calls across healthy group members.
+  // If empty, the provider operates in solo mode (single-owner namespace).
+  string group_id = 5;
 }
 
 message ModuleDeclaration {
@@ -295,9 +331,13 @@ message ControlMessage {
     // v1: Reconciliation
     ActiveModulesReport active_modules_report = 12;
 
+    // v1: Drain (graceful shutdown)
+    DrainRequest drain_request = 20;
+    DrainAck drain_ack = 21;
+
     // Reserved for future protocol versions:
-    // v2: Drain, backpressure, schema hot-update, metrics push, config push
-    // Fields 20-29 reserved for v2 control messages
+    // v2: Backpressure, schema hot-update, metrics push, config push
+    // Fields 22-29 reserved for v2 control messages
   }
 }
 
@@ -313,6 +353,16 @@ message HeartbeatAck {
 message ActiveModulesReport {
   // Constellation sends this periodically so the provider can reconcile
   repeated string active_modules = 1;
+}
+
+message DrainRequest {
+  string reason = 1;       // Human-readable reason for drain (e.g., "maintenance", "scaling down")
+  int64 deadline_ms = 2;   // Suggested deadline (Unix timestamp ms). Provider should finish in-flight work by this time.
+}
+
+message DrainAck {
+  bool accepted = 1;        // Whether the provider accepted the drain request
+  int32 in_flight_count = 2; // Number of in-flight executions at time of acknowledgement
 }
 ```
 
@@ -396,7 +446,7 @@ message OptionType {
 
 The liveness mechanism is a **bidirectional gRPC stream** between provider and Constellation. This stream serves a dual purpose:
 
-1. **Liveness detection.** If the stream breaks (provider crash, network partition), Constellation immediately deregisters the provider's modules. The provider SDK detects the break symmetrically and enters reconnection/re-registration logic.
+1. **Liveness detection.** If the stream breaks (provider crash, network partition), Constellation handles it based on the provider's mode: for solo providers, modules are immediately deregistered; for provider groups, the disconnected member's executor is removed from the pool but modules remain registered as long as other group members are active. The provider SDK detects the break symmetrically and enters reconnection/re-registration logic.
 
 2. **Application-level control plane.** The stream is the extensibility surface for the protocol. Beyond heartbeat pings, both sides can send typed messages to coordinate behavior. This avoids adding new RPC endpoints for every new feature.
 
@@ -407,6 +457,10 @@ The liveness mechanism is a **bidirectional gRPC stream** between provider and C
 | Provider → Constellation | `Heartbeat` | Liveness signal, carries provider timestamp |
 | Constellation → Provider | `HeartbeatAck` | Liveness acknowledgement |
 | Constellation → Provider | `ActiveModulesReport` | Periodic reconciliation of registered modules |
+| Constellation → Provider | `DrainRequest` | Ask provider to gracefully stop accepting new executions |
+| Provider → Constellation | `DrainAck` | Acknowledge drain with in-flight execution count |
+
+**Drain flow:** Constellation sends `DrainRequest` to a provider (e.g., during maintenance or scaling). The provider acknowledges with `DrainAck`, finishes in-flight work, and disconnects. The connection transitions to `Draining` state — liveness checks are suspended for draining connections. For provider groups, draining one member removes it from the executor pool while other members continue serving.
 
 **Future control plane capabilities (v2+):**
 
@@ -414,7 +468,6 @@ The bidirectional stream can be extended with new message types in future protoc
 
 | Capability | Direction | Description |
 |------------|-----------|-------------|
-| **Drain request** | Constellation → Provider | Ask provider to gracefully stop accepting new executions (for maintenance) |
 | **Backpressure signal** | Constellation → Provider | Inform provider that execution queue is saturated |
 | **Schema update** | Provider → Constellation | Hot-update a module's type schema without full deregister/register cycle |
 | **Metrics push** | Provider → Constellation | Provider-side execution metrics (latency histograms, error rates) |
@@ -565,6 +618,40 @@ case class StaticDiscovery(addresses: List[String]) extends DiscoveryStrategy {
 
 **Why no gossip:** Gossip protocols (seed node + instance discovery) would require Constellation instances to maintain cluster membership state, handle split-brain scenarios, and synchronize registries. This adds significant complexity for a narrow benefit (detecting cross-instance namespace conflicts). The stateless model is simpler, easier to operate, and aligns with standard stateless service deployment patterns. Cross-instance consistency is an operational concern managed by the provider SDK, not a protocol concern.
 
+### Provider-Side Horizontal Scaling (Provider Groups)
+
+The cluster awareness model above describes how a **single provider** registers with **multiple Constellation instances**. But what about scaling the provider itself? If a provider needs more execution capacity, it must run multiple replicas — and those replicas must coordinate their registration with Constellation.
+
+**Problem:** Naive replication causes namespace ownership conflicts. If two provider replicas both try to register `ml.sentiment` independently, the second is rejected (namespace already owned by a different connection).
+
+**Solution: Provider Groups.** Provider replicas register with the same `group_id` in their `RegisterRequest`. Constellation recognizes connections with matching `group_id` + namespace as members of the same logical provider:
+
+```scala
+// All replicas use the same group_id + namespace
+val provider = ConstellationProvider(
+  namespace = "ml.sentiment",
+  groupId = Some("ml-sentiment-group"),   // Same across all replicas
+  instances = List("constellation-a:9090", "constellation-b:9090")
+)
+```
+
+**Server-side behavior:**
+- Each group member has its own `executor_url` and control plane stream.
+- Constellation maintains an **ExecutorPool** per namespace that tracks all healthy group members.
+- `Execute` calls are load-balanced across the pool using **round-robin** routing.
+- If a member disconnects, it is removed from the pool. Other members continue serving.
+- Modules are deregistered only when the **last** member disconnects — providing resilience against individual member failures.
+- Reconnecting members rejoin the pool automatically upon re-registration.
+
+**SDK behavior:**
+- The SDK includes `group_id` in every `RegisterRequest` if configured.
+- Provider replicas are completely independent — they don't need to know about each other.
+- Each replica runs its own executor server, manages its own connections, and maintains its own liveness.
+- Scaling up: start a new replica. It registers, joins the group, and starts receiving execution requests.
+- Scaling down: stop a replica. It deregisters (or times out), is removed from the pool. Remaining members are unaffected.
+
+**This is the Kafka consumer group pattern** applied to module execution: a group of independent consumers (executors) share a logical identity (group_id + namespace), and the broker (Constellation) distributes work across them.
+
 ### Replace Semantics and Consistency (RESOLVED)
 
 **Per-instance:** Replace is atomic — a single registry operation that swaps the module implementation and function signature. DAGs already in flight are unaffected (modules are bound at `initModules` time); new DAGs pick up the replacement immediately.
@@ -614,7 +701,8 @@ Provider v1 (shuts down) ◀──────│  (only after full promotion)
 // First SDK will be Scala
 val provider = ConstellationProvider(
   namespace = "ml.sentiment",  // constellation-lang namespace
-  instances = List("constellation-a:9090", "constellation-b:9090")
+  instances = List("constellation-a:9090", "constellation-b:9090"),
+  groupId = Some("ml-sentiment-group")  // Optional: enables provider-side horizontal scaling
 )
 
 // Registers as ml.sentiment.analyze — users call via:
@@ -671,7 +759,7 @@ Validation occurs **at registration time**, not at execution time. When a provid
 1. **Parse:** Convert `TypeSchema` protobuf messages to `CType` values.
 2. **Well-formedness:** Verify the types are valid (no empty records, no unsupported primitives, etc.).
 3. **Name check:** Verify module names are valid identifiers that can appear in constellation-lang.
-4. **Conflict check:** Verify no name collision with existing modules (or same-namespace replace).
+4. **Conflict check:** Verify no name collision with existing modules (or same-namespace replace, or same-group join).
 5. **Accept/Reject:** Return per-module results.
 
 ### What Is NOT Validated at Registration (RESOLVED: Schema-Only)
@@ -783,7 +871,8 @@ Runtime (executes DAG, reaches ExternalModule node)
 ExternalModule.execute(input: CValue)
   │
   ├── Serialize input to MessagePack
-  ├── gRPC Execute call to provider (at executor_url from registration)
+  ├── ExecutorPool selects healthy executor (round-robin)
+  ├── gRPC Execute call to selected executor
   │   └── ExecuteRequest { module_name: "analyze", input_data: <bytes> }
   ├── Deserialize output from MessagePack
   │
@@ -791,16 +880,45 @@ ExternalModule.execute(input: CValue)
 CValue output (continues DAG execution)
 ```
 
-`ExternalModule` implements `Module.Uninitialized` — the same interface as local Scala modules. The runtime doesn't know or care that execution crosses a process boundary:
+### ExecutorPool (Load Balancing)
+
+`ExternalModule` delegates executor selection to an **ExecutorPool** that manages one or more executors for a given namespace. For solo providers (no `group_id`), the pool contains a single executor. For provider groups, it tracks all healthy group members.
+
+```scala
+trait ExecutorPool {
+  /** Select the next healthy executor (round-robin). */
+  def next: IO[ExecutorEndpoint]
+
+  /** Add an executor to the pool. */
+  def add(endpoint: ExecutorEndpoint): IO[Unit]
+
+  /** Remove an executor from the pool. Returns true if the pool is now empty. */
+  def remove(connectionId: String): IO[Boolean]
+
+  /** Number of healthy executors in the pool. */
+  def size: IO[Int]
+}
+
+case class ExecutorEndpoint(
+  connectionId: String,    // Unique connection identifier
+  executorUrl: String,     // gRPC endpoint (e.g., "ml-service-1:9090")
+  grpcClient: ModuleExecutorGrpc.Client
+)
+```
+
+**Routing strategy:** Round-robin (server-side). Constellation distributes `Execute` calls evenly across healthy pool members. This is a simple, predictable strategy that works well for stateless module execution.
+
+**Health tracking:** An executor is removed from the pool when its control plane connection drops (liveness failure) or when it enters `Draining` state. It is added back when the connection re-registers.
+
+`ExternalModule` implements `Module.Uninitialized` — the same interface as local Scala modules. The runtime doesn't know or care that execution crosses a process boundary or that load balancing occurs:
 
 ```scala
 class ExternalModule(
   name: String,                // Short name (e.g., "analyze")
   namespace: String,           // constellation-lang namespace (e.g., "ml.sentiment")
-  executorUrl: String,         // gRPC endpoint from RegisterRequest.executor_url
+  executorPool: ExecutorPool,  // Pool of healthy executors (may be 1 for solo, N for group)
   inputType: CType,
-  outputType: CType,
-  grpcClient: ModuleExecutorGrpc.Client
+  outputType: CType
 ) extends Module.Uninitialized {
 
   override val spec: ModuleNodeSpec = ModuleNodeSpec(
@@ -810,8 +928,9 @@ class ExternalModule(
 
   override def execute(input: CValue): IO[CValue] =
     for {
+      executor    <- executorPool.next
       inputBytes  <- IO(MessagePack.encode(input))
-      response    <- grpcClient.execute(ExecuteRequest(
+      response    <- executor.grpcClient.execute(ExecuteRequest(
                        module_name = name,
                        input_data = inputBytes
                      ))
@@ -839,37 +958,55 @@ class ExternalModule(
 | 6 | How atomic does replace need to be? | **Resolved:** Per-instance atomic, cross-cluster eventual consistency. Canary via per-instance rolling replacement orchestrated by SDK (Model A). | RESOLVED |
 | 7 | Should registration include test-case validation? | **Resolved:** Schema-only (v1). Same trust model as native Scala modules — schema validated at boundary, implementation trusted. | RESOLVED |
 | 8 | Protocol versioning and backwards compatibility | **Resolved:** Version negotiation at registration. Both sides operate at `min(provider, constellation)`. Protobuf wire compat for additive changes; version bump for new TypeSchema variants. | RESOLVED |
+| 9 | How does the provider side scale horizontally? | **Resolved:** Provider Groups. Multiple replicas register with the same `group_id` + namespace. Constellation maintains an ExecutorPool per namespace and load-balances across healthy members (round-robin). Modules deregistered only when last member disconnects. Analogous to Kafka consumer groups. | RESOLVED |
 
 ---
 
 ## Implementation Phases
 
-### Phase 0: Prerequisites
+### Phase 0: Prerequisites ✅
 - Make `InMemoryFunctionRegistry` thread-safe (replace `private var` with `AtomicReference` or `Ref[IO]`)
 - Add `deregister` to `FunctionRegistry` trait (`deregister(qualifiedName: String)`)
 - Add `deregister` to `ModuleRegistry` trait (`deregister(name: String)`)
-- This is a bounded refactor and should be its own PR
 
-### Phase 1: Single-Instance Protocol
+### Phase 1: Single-Instance Protocol ✅
 - Protobuf definitions and codegen
 - `ExternalModule` implementation (wraps gRPC `ModuleExecutor` call with MessagePack ser/de)
 - Module Provider Manager (decorator, gRPC server, schema validation, dual registry mutation)
-- Scala SDK (single-instance registration, execution server hosting)
 - Register, Deregister, Execute working end-to-end on a single Constellation instance
 
-### Phase 2: Cluster & Lifecycle
-- Static `DiscoveryStrategy` (SDK registers with multiple instances)
+### Phase 2: Cluster & Lifecycle ✅
 - Control plane stream (liveness detection, auto-deregister on disconnect)
-- SDK reconnection and re-registration logic
-- Graceful shutdown (deregister all modules before process exit)
+- Connection identity tracking (per-connection state management)
+- Graceful shutdown support (Drain/DrainAck control messages)
 - Version negotiation
 
-### Phase 3: Advanced Operations
-- Canary release coordination (per-instance rolling replacement with health monitoring)
-- `DiscoveryStrategy` extensibility (DNS-based discovery)
+### Phase 3: Scala SDK + Operational Tooling ✅
+- Transport abstraction (ProviderTransport, ExecutorServerFactory traits)
+- ModuleDefinition, SdkConfig, DiscoveryStrategy (Static + DNS)
+- ModuleExecutorServer (dispatches ExecuteRequest to module handlers)
+- InstanceConnection (per-instance lifecycle: register, liveness, reconnect, drain)
+- CanaryCoordinator (rolling replacement with health monitoring)
+- ConstellationProvider (top-level SDK entry point)
+- GrpcProviderTransport + GrpcExecutorServer (production gRPC implementations)
+- Server-side operational tooling (list providers, drain provider)
+
+### Phase 4: Provider Groups (Horizontal Scaling)
+- Add `group_id` to `RegisterRequest` proto and codegen
+- Implement `ExecutorPool` (round-robin load balancing across group members)
+- Modify `SchemaValidator` to allow same namespace from same `group_id`
+- Modify `ExternalModule` to use `ExecutorPool` instead of single `executorUrl`
+- Modify `ControlPlaneManager` for group membership tracking (deregister on last member disconnect)
+- Modify `ModuleProviderManager` to wire group-aware registration
+- Update SDK to include `group_id` in `RegisterRequest` and `SdkConfig`
+- Tests for: group registration, pool routing, member add/remove, last-member deregistration, mixed solo/group namespaces
+
+### Phase 5: Future
 - Python SDK
 - Node.js SDK
-- Operational tooling (list providers, drain, metrics)
+- mTLS authentication and namespace ACLs
+- Service registry discovery (Consul, etcd)
+- Backpressure signaling
 
 ---
 
@@ -921,6 +1058,8 @@ This is the same trust model as most internal service meshes and is acceptable f
 | Schema-only validation | Same trust model as Scala modules, fast registration | Provider bugs surface at runtime, not registration |
 | gRPC transport | ~2.5x faster than HTTP+JSON | Protobuf codegen, harder debugging |
 | Bidirectional control plane | Extensible, doubles as liveness signal | More protocol surface than simple heartbeat |
+| Provider Groups | Provider-side horizontal scaling, resilient to member failures | ExecutorPool management, group membership tracking |
+| Server-side round-robin | Simple, predictable load distribution | No affinity or weighted routing (acceptable for stateless execution) |
 
 ---
 
@@ -933,3 +1072,6 @@ This is the same trust model as most internal service meshes and is acceptable f
 - SDK handles cluster registration with retry and liveness
 - All resilience clauses work with external modules
 - gRPC execution overhead <2ms per call
+- Multiple provider replicas can share a namespace via `group_id` (provider groups)
+- Execute calls are load-balanced across healthy group members
+- Individual member failure does not deregister modules (group resilience)
