@@ -16,7 +16,7 @@ A **type-safe pipeline orchestration framework** for Scala 3 that lets you:
 3. Execute pipelines with automatic dependency resolution and parallelization
 4. Expose pipelines via HTTP API or embed in Scala applications
 
-**Tech Stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
+**Tech Stack:** Scala 3.3.4 | Cats Effect 3 | http4s | Circe | cats-parse
 
 ## Finding This Guide
 

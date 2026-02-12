@@ -39,7 +39,7 @@ mv constellation ~/.local/bin/
 ```bash
 cd constellation-engine
 make cli-assembly
-# JAR created at: modules/lang-cli/target/scala-3.3.1/constellation-cli.jar
+# JAR created at: modules/lang-cli/target/scala-3.3.4/constellation-cli.jar
 ```
 
 ## Quick Start

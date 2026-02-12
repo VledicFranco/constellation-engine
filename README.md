@@ -466,7 +466,7 @@ Constellation is an embeddable library — you integrate it into your own applic
 
 ```bash
 make assembly
-java -jar modules/example-app/target/scala-3.3.1/constellation-*.jar
+java -jar modules/example-app/target/scala-3.3.4/constellation-*.jar
 ```
 
 ### Docker

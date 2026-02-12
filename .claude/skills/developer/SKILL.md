@@ -22,7 +22,7 @@ A framework that lets users:
 3. **Execute** pipelines with automatic dependency resolution and parallelization
 4. **Expose** pipelines via HTTP API or embed in Scala applications
 
-**Tech stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
+**Tech stack:** Scala 3.3.4 | Cats Effect 3 | http4s | Circe | cats-parse
 
 ### Processing Pipeline
 

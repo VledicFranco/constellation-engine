@@ -30,8 +30,8 @@ cd constellation-engine
 # Build the CLI fat JAR
 make cli-assembly
 
-# The JAR will be at modules/lang-cli/target/scala-3.3.1/constellation-cli.jar
-java -jar modules/lang-cli/target/scala-3.3.1/constellation-cli.jar --version
+# The JAR will be at modules/lang-cli/target/scala-3.3.4/constellation-cli.jar
+java -jar modules/lang-cli/target/scala-3.3.4/constellation-cli.jar --version
 ```
 
 ## Quick Start

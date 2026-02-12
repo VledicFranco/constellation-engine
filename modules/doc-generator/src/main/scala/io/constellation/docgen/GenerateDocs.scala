@@ -34,14 +34,14 @@ object GenerateDocs:
 
   /** Module target directories to scan for TASTy files */
   val moduleTargets: List[String] = List(
-    "modules/core/target/scala-3.3.1/classes",
-    "modules/runtime/target/scala-3.3.1/classes",
-    "modules/lang-ast/target/scala-3.3.1/classes",
-    "modules/lang-parser/target/scala-3.3.1/classes",
-    "modules/lang-compiler/target/scala-3.3.1/classes",
-    "modules/lang-stdlib/target/scala-3.3.1/classes",
-    "modules/lang-lsp/target/scala-3.3.1/classes",
-    "modules/http-api/target/scala-3.3.1/classes"
+    "modules/core/target/scala-3.3.4/classes",
+    "modules/runtime/target/scala-3.3.4/classes",
+    "modules/lang-ast/target/scala-3.3.4/classes",
+    "modules/lang-parser/target/scala-3.3.4/classes",
+    "modules/lang-compiler/target/scala-3.3.4/classes",
+    "modules/lang-stdlib/target/scala-3.3.4/classes",
+    "modules/lang-lsp/target/scala-3.3.4/classes",
+    "modules/http-api/target/scala-3.3.4/classes"
   )
 
   def main(args: Array[String]): Unit =
