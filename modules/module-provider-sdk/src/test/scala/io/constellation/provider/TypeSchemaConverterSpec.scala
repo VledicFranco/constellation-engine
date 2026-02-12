@@ -1,7 +1,7 @@
 package io.constellation.provider
 
 import io.constellation.CType
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -11,70 +11,122 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   // ===== toCType =====
 
   "TypeSchemaConverter.toCType" should "convert STRING primitive" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
-      pb.PrimitiveType(pb.PrimitiveType.Kind.STRING)
-    ))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Primitive(
+        pb.PrimitiveType(pb.PrimitiveType.Kind.STRING)
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CString)
   }
 
   it should "convert INT primitive" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
-      pb.PrimitiveType(pb.PrimitiveType.Kind.INT)
-    ))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Primitive(
+        pb.PrimitiveType(pb.PrimitiveType.Kind.INT)
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CInt)
   }
 
   it should "convert FLOAT primitive" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
-      pb.PrimitiveType(pb.PrimitiveType.Kind.FLOAT)
-    ))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Primitive(
+        pb.PrimitiveType(pb.PrimitiveType.Kind.FLOAT)
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CFloat)
   }
 
   it should "convert BOOL primitive" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
-      pb.PrimitiveType(pb.PrimitiveType.Kind.BOOL)
-    ))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Primitive(
+        pb.PrimitiveType(pb.PrimitiveType.Kind.BOOL)
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CBoolean)
   }
 
   it should "convert RecordType" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-      "name" -> pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))),
-      "age"  -> pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT)))
-    ))))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Record(
+        pb.RecordType(
+          Map(
+            "name" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            ),
+            "age" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT))
+            )
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(
       CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
     )
   }
 
   it should "convert ListType" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(
-      Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))))
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.List(
+        pb.ListType(
+          Some(
+            pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CList(CType.CString))
   }
 
   it should "convert MapType" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Map(pb.MapType(
-      keyType = Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING)))),
-      valueType = Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT))))
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Map(
+        pb.MapType(
+          keyType = Some(
+            pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          ),
+          valueType = Some(
+            pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT)))
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.CMap(CType.CString, CType.CInt))
   }
 
   it should "convert OptionType" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Option(pb.OptionType(
-      Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))))
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Option(
+        pb.OptionType(
+          Some(
+            pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema) shouldBe Right(CType.COptional(CType.CString))
   }
 
   it should "convert UnionType" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Union(pb.UnionType(Seq(
-      pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))),
-      pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT)))
-    ))))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Union(
+        pb.UnionType(
+          Seq(
+            pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            ),
+            pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT)))
+          )
+        )
+      )
+    )
     val result = TypeSchemaConverter.toCType(schema)
     result.isRight shouldBe true
     result.toOption.get match {
@@ -95,10 +147,16 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject MapType with missing key_type" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Map(pb.MapType(
-      keyType = None,
-      valueType = Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT))))
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Map(
+        pb.MapType(
+          keyType = None,
+          valueType = Some(
+            pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.INT)))
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema).isLeft shouldBe true
   }
 
@@ -142,13 +200,21 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip nested types" in {
-    roundTrip(CType.CProduct(Map(
-      "items" -> CType.CList(CType.CProduct(Map(
-        "name"  -> CType.CString,
-        "score" -> CType.CFloat
-      ))),
-      "count" -> CType.CInt
-    )))
+    roundTrip(
+      CType.CProduct(
+        Map(
+          "items" -> CType.CList(
+            CType.CProduct(
+              Map(
+                "name"  -> CType.CString,
+                "score" -> CType.CFloat
+              )
+            )
+          ),
+          "count" -> CType.CInt
+        )
+      )
+    )
   }
 
   it should "round-trip CUnion" in {
@@ -158,10 +224,18 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   // ===== Additional error paths =====
 
   "TypeSchemaConverter.toCType" should "reject MapType with missing value_type" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Map(pb.MapType(
-      keyType = Some(pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING)))),
-      valueType = None
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Map(
+        pb.MapType(
+          keyType = Some(
+            pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          ),
+          valueType = None
+        )
+      )
+    )
     val result = TypeSchemaConverter.toCType(schema)
     result.isLeft shouldBe true
     result.left.toOption.get should include("value_type")
@@ -175,33 +249,47 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject unrecognized primitive kind" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Primitive(
-      pb.PrimitiveType(pb.PrimitiveType.Kind.Unrecognized(999))
-    ))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Primitive(
+        pb.PrimitiveType(pb.PrimitiveType.Kind.Unrecognized(999))
+      )
+    )
     val result = TypeSchemaConverter.toCType(schema)
     result.isLeft shouldBe true
     result.left.toOption.get should include("Unrecognized")
   }
 
   it should "propagate error from nested record field" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-      "name" -> pb.TypeSchema(pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))),
-      "bad"  -> pb.TypeSchema() // empty type
-    ))))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.Record(
+        pb.RecordType(
+          Map(
+            "name" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            ),
+            "bad" -> pb.TypeSchema() // empty type
+          )
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema).isLeft shouldBe true
   }
 
   it should "propagate error from nested list element" in {
-    val schema = pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(
-      Some(pb.TypeSchema()) // empty type
-    )))
+    val schema = pb.TypeSchema(
+      pb.TypeSchema.Type.List(
+        pb.ListType(
+          Some(pb.TypeSchema()) // empty type
+        )
+      )
+    )
     TypeSchemaConverter.toCType(schema).isLeft shouldBe true
   }
 
   // ===== toTypeSchema additional paths =====
 
   "TypeSchemaConverter.toTypeSchema" should "convert CUnion" in {
-    val ctype = CType.CUnion(Map("a" -> CType.CString, "b" -> CType.CInt))
+    val ctype  = CType.CUnion(Map("a" -> CType.CString, "b" -> CType.CInt))
     val schema = TypeSchemaConverter.toTypeSchema(ctype)
 
     schema.`type` match {
@@ -212,7 +300,7 @@ class TypeSchemaConverterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "convert COptional" in {
-    val ctype = CType.COptional(CType.CString)
+    val ctype  = CType.COptional(CType.CString)
     val schema = TypeSchemaConverter.toTypeSchema(ctype)
 
     schema.`type` match {

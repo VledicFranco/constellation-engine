@@ -7,7 +7,7 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.{CType, CValue}
 import io.constellation.provider.{CValueSerializer, JsonCValueSerializer}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -30,12 +30,20 @@ class CanaryCoordinatorSpec extends AnyFlatSpec with Matchers {
   )
 
   private val oldModule = ModuleDefinition(
-    "echo", CType.CString, CType.CString, "1.0.0", "Echo v1",
+    "echo",
+    CType.CString,
+    CType.CString,
+    "1.0.0",
+    "Echo v1",
     v => IO.pure(v)
   )
 
   private val newModule = ModuleDefinition(
-    "echo", CType.CString, CType.CString, "2.0.0", "Echo v2",
+    "echo",
+    CType.CString,
+    CType.CString,
+    "2.0.0",
+    "Echo v2",
     v => IO.pure(v)
   )
 
@@ -60,8 +68,8 @@ class CanaryCoordinatorSpec extends AnyFlatSpec with Matchers {
   // ===== All healthy → Promoted =====
 
   "CanaryCoordinator" should "promote when all instances are healthy" in {
-    val t1   = FakeProviderTransport.create.unsafeRunSync()
-    val t2   = FakeProviderTransport.create.unsafeRunSync()
+    val t1    = FakeProviderTransport.create.unsafeRunSync()
+    val t2    = FakeProviderTransport.create.unsafeRunSync()
     val conn1 = mkConnection(t1)
     val conn2 = mkConnection(t2)
 
@@ -211,7 +219,7 @@ class CanaryCoordinatorSpec extends AnyFlatSpec with Matchers {
       config = longConfig
     )
 
-    val start  = System.currentTimeMillis()
+    val start = System.currentTimeMillis()
     coordinator.rollout(List(oldModule), List(newModule)).unsafeRunSync()
     val elapsed = System.currentTimeMillis() - start
 

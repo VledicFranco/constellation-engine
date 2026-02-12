@@ -48,16 +48,12 @@ class FunctionRegistryTest extends AnyFlatSpec with Matchers {
 
     // Concurrently register 50 more and deregister the first 50
     val registerThreads = (51 to 100).map { i =>
-      val t = new Thread(() => {
-        registry.register(mkSig(s"Func$i", s"Module$i", Some(s"ns$i")))
-      })
+      val t = new Thread(() => registry.register(mkSig(s"Func$i", s"Module$i", Some(s"ns$i"))))
       t.start()
       t
     }
     val deregisterThreads = (1 to 50).map { i =>
-      val t = new Thread(() => {
-        registry.deregister(s"ns$i.Func$i")
-      })
+      val t = new Thread(() => registry.deregister(s"ns$i.Func$i"))
       t.start()
       t
     }

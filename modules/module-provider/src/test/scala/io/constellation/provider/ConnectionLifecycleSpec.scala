@@ -10,7 +10,7 @@ import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.{FunctionRegistry, InMemoryFunctionRegistry}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
 
@@ -26,12 +26,28 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
   private def mkDecl(name: String): pb.ModuleDeclaration =
     pb.ModuleDeclaration(
       name = name,
-      inputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-        "text" -> stringSchema
-      ))))),
-      outputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-        "result" -> stringSchema
-      ))))),
+      inputSchema = Some(
+        pb.TypeSchema(
+          pb.TypeSchema.Type.Record(
+            pb.RecordType(
+              Map(
+                "text" -> stringSchema
+              )
+            )
+          )
+        )
+      ),
+      outputSchema = Some(
+        pb.TypeSchema(
+          pb.TypeSchema.Type.Record(
+            pb.RecordType(
+              Map(
+                "result" -> stringSchema
+              )
+            )
+          )
+        )
+      ),
       version = "1.0.0",
       description = s"Test module $name"
     )
@@ -86,11 +102,12 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
       reservedNamespaces = Set("stdlib")
     )
 
-    val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
+    val state    = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val deregRef = Ref.of[IO, String => IO[Unit]](_ => IO.unit).unsafeRunSync()
-    val cp = new ControlPlaneManager(state, config, connId => deregRef.get.flatMap(_(connId)))
-    val cache = new GrpcChannelCache
-    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
+    val cp       = new ControlPlaneManager(state, config, connId => deregRef.get.flatMap(_(connId)))
+    val cache    = new GrpcChannelCache
+    val manager =
+      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
     deregRef.set(connId => manager.deregisterAllForConnection(connId)).unsafeRunSync()
 
     (manager, cp, testFunctionRegistry)
@@ -102,10 +119,12 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val (manager, cp, registry) = createTestSetup(controlPlaneTimeout = 150.millis)
 
     // Register a module
-    val response = manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
     response.success shouldBe true
 
     // Verify module is registered
@@ -162,8 +181,8 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val monitorFiber = cp.startLivenessMonitor.use(_ => IO.sleep(2500.millis)).start.unsafeRunSync()
 
     // Send heartbeats every 50ms for 2500ms
-    val heartbeatFiber = (IO.sleep(50.millis) >> cp.recordHeartbeat("conn1")).replicateA(50)
-      .start.unsafeRunSync()
+    val heartbeatFiber =
+      (IO.sleep(50.millis) >> cp.recordHeartbeat("conn1")).replicateA(50).start.unsafeRunSync()
 
     monitorFiber.joinWithNever.unsafeRunSync()
     heartbeatFiber.joinWithNever.unsafeRunSync()
@@ -181,10 +200,12 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val (manager, cp, registry) = createTestSetup()
 
     // Register multiple modules
-    manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"), mkDecl("classify"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"), mkDecl("classify"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     registry.lookupQualified("ml.analyze") shouldBe defined
     registry.lookupQualified("ml.classify") shouldBe defined
@@ -217,8 +238,8 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
 
     // conn1 stops heartbeating, conn2 keeps going; wait >1s for second liveness check
     val monitorFiber = cp.startLivenessMonitor.use(_ => IO.sleep(1500.millis)).start.unsafeRunSync()
-    val hbFiber = (IO.sleep(50.millis) >> cp.recordHeartbeat("conn2")).replicateA(30)
-      .start.unsafeRunSync()
+    val hbFiber =
+      (IO.sleep(50.millis) >> cp.recordHeartbeat("conn2")).replicateA(30).start.unsafeRunSync()
 
     monitorFiber.joinWithNever.unsafeRunSync()
     hbFiber.joinWithNever.unsafeRunSync()
@@ -269,10 +290,12 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
   it should "return connection_id in RegisterResponse" in {
     val (manager, _, _) = createTestSetup()
 
-    val response = manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("test"))),
-      "my-conn-id"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("test"))),
+        "my-conn-id"
+      )
+      .unsafeRunSync()
 
     response.connectionId shouldBe "my-conn-id"
   }
@@ -284,10 +307,16 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
 
     manager.handleRegister(mkRequest("ml", Seq(mkDecl("analyze"))), "conn1").unsafeRunSync()
 
-    val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("analyze"), connectionId = "conn1"),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml",
+          moduleNames = Seq("analyze"),
+          connectionId = "conn1"
+        ),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe true
     registry.lookupQualified("ml.analyze") shouldBe None
@@ -298,10 +327,16 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
 
     manager.handleRegister(mkRequest("ml", Seq(mkDecl("analyze"))), "conn1").unsafeRunSync()
 
-    val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("analyze"), connectionId = "wrong"),
-      "wrong"
-    ).unsafeRunSync()
+    val response = manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml",
+          moduleNames = Seq("analyze"),
+          connectionId = "wrong"
+        ),
+        "wrong"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe false
     // Module should still be registered

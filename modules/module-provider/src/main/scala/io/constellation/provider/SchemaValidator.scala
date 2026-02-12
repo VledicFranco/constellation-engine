@@ -1,12 +1,12 @@
 package io.constellation.provider
 
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** Validation result for a single module declaration. */
 sealed trait ModuleValidationResult
 object ModuleValidationResult {
-  final case class Accepted(qualifiedName: String) extends ModuleValidationResult
+  final case class Accepted(qualifiedName: String)              extends ModuleValidationResult
   final case class Rejected(moduleName: String, reason: String) extends ModuleValidationResult
 }
 
@@ -53,8 +53,16 @@ object SchemaValidator {
 
           case None =>
             request.modules.toList.map { decl =>
-              validateModule(decl, namespace, request.groupId, functionRegistry,
-                namespaceOwners, namespaceGroupIds, connectionId, reservedNamespaces)
+              validateModule(
+                decl,
+                namespace,
+                request.groupId,
+                functionRegistry,
+                namespaceOwners,
+                namespaceGroupIds,
+                connectionId,
+                reservedNamespaces
+              )
             }
         }
     }
@@ -88,8 +96,7 @@ object SchemaValidator {
           case Some(_) => Some(s"Port out of range in executor_url: $trimmed")
           case None    => Some(s"Invalid port in executor_url: $trimmed")
         }
-      }
-      else None // Just a hostname, port defaults to 9090
+      } else None // Just a hostname, port defaults to 9090
     }
   }
 
@@ -137,10 +144,9 @@ object SchemaValidator {
               val existingGroupId = namespaceGroupIds.getOrElse(namespace, "")
               if requestGroupId.nonEmpty && existingGroupId == requestGroupId then
                 None // Same group — allow join
-              else if requestGroupId.nonEmpty && existingGroupId.nonEmpty && existingGroupId != requestGroupId then
-                Some(s"Namespace '$namespace' is owned by a different provider group")
-              else
-                Some(s"Namespace '$namespace' is owned by another provider")
+              else if requestGroupId.nonEmpty && existingGroupId.nonEmpty && existingGroupId != requestGroupId
+              then Some(s"Namespace '$namespace' is owned by a different provider group")
+              else Some(s"Namespace '$namespace' is owned by another provider")
 
             case None =>
               // Namespace is not owned — check if the module already exists (e.g., built-in)

@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit
 
 import cats.effect.{IO, Resource}
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 import io.grpc.stub.StreamObserver
@@ -33,10 +33,11 @@ class GrpcProviderTransport(private[sdk] val channel: ManagedChannel) extends Pr
 
           override def onNext(msg: pb.ControlMessage): Unit =
             (msg.payload match {
-              case pb.ControlMessage.Payload.HeartbeatAck(ack)          => handler.onHeartbeatAck(ack)
-              case pb.ControlMessage.Payload.ActiveModulesReport(report) => handler.onActiveModulesReport(report)
-              case pb.ControlMessage.Payload.DrainRequest(drain)        => handler.onDrainRequest(drain)
-              case _                                                     => IO.unit
+              case pb.ControlMessage.Payload.HeartbeatAck(ack) => handler.onHeartbeatAck(ack)
+              case pb.ControlMessage.Payload.ActiveModulesReport(report) =>
+                handler.onActiveModulesReport(report)
+              case pb.ControlMessage.Payload.DrainRequest(drain) => handler.onDrainRequest(drain)
+              case _                                             => IO.unit
             }).unsafeRunAndForget()
 
           override def onError(t: Throwable): Unit =
@@ -63,11 +64,13 @@ object GrpcProviderTransport {
         val channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
         new GrpcProviderTransport(channel)
       }
-    )(transport => IO {
-      transport.channel.shutdown()
-      try transport.channel.awaitTermination(5, TimeUnit.SECONDS)
-      catch { case _: InterruptedException => () }
-    })
+    )(transport =>
+      IO {
+        transport.channel.shutdown()
+        try transport.channel.awaitTermination(5, TimeUnit.SECONDS)
+        catch { case _: InterruptedException => () }
+      }
+    )
 }
 
 /** Production ControlPlaneStream backed by a gRPC StreamObserver. */
@@ -76,15 +79,19 @@ private class GrpcControlPlaneStream(
 ) extends ControlPlaneStream {
 
   def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] = IO {
-    requestObserver.onNext(pb.ControlMessage(
-      payload = pb.ControlMessage.Payload.Heartbeat(hb)
-    ))
+    requestObserver.onNext(
+      pb.ControlMessage(
+        payload = pb.ControlMessage.Payload.Heartbeat(hb)
+      )
+    )
   }
 
   def sendDrainAck(ack: pb.DrainAck): IO[Unit] = IO {
-    requestObserver.onNext(pb.ControlMessage(
-      payload = pb.ControlMessage.Payload.DrainAck(ack)
-    ))
+    requestObserver.onNext(
+      pb.ControlMessage(
+        payload = pb.ControlMessage.Payload.DrainAck(ack)
+      )
+    )
   }
 
   def close: IO[Unit] = IO {

@@ -4,7 +4,7 @@ import cats.effect.{IO, Ref}
 import cats.implicits.*
 
 import io.constellation.provider.CValueSerializer
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 // ===== Connection State =====
 
@@ -19,8 +19,8 @@ enum InstanceConnectionState:
 
 /** Manages a single connection to a Constellation instance.
   *
-  * Handles registration, deregistration, and state tracking.
-  * Control plane (heartbeats, reconnection) is managed externally by ConstellationProvider.
+  * Handles registration, deregistration, and state tracking. Control plane (heartbeats,
+  * reconnection) is managed externally by ConstellationProvider.
   */
 class InstanceConnection(
     val instanceAddress: String,
@@ -31,8 +31,8 @@ class InstanceConnection(
     serializer: CValueSerializer
 ) {
 
-  private val state       = Ref.unsafe[IO, InstanceConnectionState](InstanceConnectionState.Disconnected)
-  private val connIdRef   = Ref.unsafe[IO, Option[String]](None)
+  private val state = Ref.unsafe[IO, InstanceConnectionState](InstanceConnectionState.Disconnected)
+  private val connIdRef = Ref.unsafe[IO, Option[String]](None)
 
   /** Get the current connection state. */
   def currentState: IO[InstanceConnectionState] = state.get
@@ -65,14 +65,17 @@ class InstanceConnection(
             state.set(InstanceConnectionState.Disconnected) >>
               IO.raiseError(error)
           }
-          _ <- if response.success then
-            connIdRef.set(Some(response.connectionId)) >>
-              state.set(InstanceConnectionState.Active)
-          else
-            state.set(InstanceConnectionState.Disconnected) >>
-              IO.raiseError(new RuntimeException(
-                s"Registration failed: ${response.results.filterNot(_.accepted).map(r => s"${r.moduleName}: ${r.rejectionReason}").mkString(", ")}"
-              ))
+          _ <-
+            if response.success then
+              connIdRef.set(Some(response.connectionId)) >>
+                state.set(InstanceConnectionState.Active)
+            else
+              state.set(InstanceConnectionState.Disconnected) >>
+                IO.raiseError(
+                  new RuntimeException(
+                    s"Registration failed: ${response.results.filterNot(_.accepted).map(r => s"${r.moduleName}: ${r.rejectionReason}").mkString(", ")}"
+                  )
+                )
         } yield ()
     }
 
@@ -88,11 +91,16 @@ class InstanceConnection(
           modules <- modulesRef.get
           connId  <- connIdRef.get
           _ <- connId.traverse_ { cid =>
-            transport.deregister(pb.DeregisterRequest(
-              namespace = namespace,
-              moduleNames = modules.map(_.name),
-              connectionId = cid
-            )).void.handleErrorWith(_ => IO.unit)
+            transport
+              .deregister(
+                pb.DeregisterRequest(
+                  namespace = namespace,
+                  moduleNames = modules.map(_.name),
+                  connectionId = cid
+                )
+              )
+              .void
+              .handleErrorWith(_ => IO.unit)
           }
           _ <- connIdRef.set(None)
           _ <- state.set(InstanceConnectionState.Disconnected)

@@ -4,7 +4,7 @@ import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
 
 import io.constellation.provider.CValueSerializer
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** Top-level entry point for the provider SDK.
   *

@@ -5,7 +5,7 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.CType
 import io.constellation.provider.TypeSchemaConverter
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -81,7 +81,7 @@ class ModuleDefinitionSpec extends AnyFlatSpec with Matchers {
   it should "convert primitive types in toDeclaration" in {
     val md = ModuleDefinition("echo", stringType, intType, "0.1.0", "Echo", echoHandler)
 
-    val decl = md.toDeclaration
+    val decl     = md.toDeclaration
     val inputRt  = TypeSchemaConverter.toCType(decl.inputSchema.get)
     val outputRt = TypeSchemaConverter.toCType(decl.outputSchema.get)
 

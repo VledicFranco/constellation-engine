@@ -5,7 +5,7 @@ import scala.concurrent.duration.*
 import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
 
@@ -52,7 +52,15 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.registerConnection" should "add connection in Registered state" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", "", Set("ml.sentiment.analyze"), 1)
+    mgr
+      .registerConnection(
+        "conn1",
+        "ml.sentiment",
+        "localhost:9999",
+        "",
+        Set("ml.sentiment.analyze"),
+        1
+      )
       .unsafeRunSync()
 
     val conn = mgr.getConnection("conn1").unsafeRunSync()
@@ -86,7 +94,9 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1).unsafeRunSync()
+    mgr
+      .registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1)
+      .unsafeRunSync()
 
     val result = mgr.activateControlPlane("conn1", observer).unsafeRunSync()
     result shouldBe true
@@ -157,7 +167,9 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1).unsafeRunSync()
+    mgr
+      .registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1)
+      .unsafeRunSync()
     mgr.activateControlPlane("conn1", observer).unsafeRunSync()
     mgr.deactivateConnection("conn1").unsafeRunSync()
 
@@ -171,7 +183,9 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.getConnectionByNamespace" should "find connection by namespace" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
+    mgr
+      .registerConnection("conn1", "ml.sentiment", "localhost:9999", "", Set.empty, 1)
+      .unsafeRunSync()
 
     mgr.getConnectionByNamespace("ml.sentiment").unsafeRunSync() shouldBe defined
     mgr.getConnectionByNamespace("other").unsafeRunSync() shouldBe None
@@ -193,7 +207,9 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.updateModules" should "update registered modules" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a", "ml.b"), 1).unsafeRunSync()
+    mgr
+      .registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a", "ml.b"), 1)
+      .unsafeRunSync()
     mgr.updateModules("conn1", Set("ml.a")).unsafeRunSync()
 
     val conn = mgr.getConnection("conn1").unsafeRunSync().get
@@ -216,7 +232,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   // ===== Multiple connections coexist independently =====
 
   "ControlPlaneManager" should "handle multiple connections independently" in {
-    val mgr = createManager()
+    val mgr  = createManager()
     val obs1 = new RecordingObserver
     val obs2 = new RecordingObserver
 

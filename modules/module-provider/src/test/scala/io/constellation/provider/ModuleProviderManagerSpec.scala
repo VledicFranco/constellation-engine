@@ -7,7 +7,7 @@ import io.constellation.*
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.{FunctionRegistry, InMemoryFunctionRegistry}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -21,12 +21,28 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   private def mkDecl(name: String): pb.ModuleDeclaration =
     pb.ModuleDeclaration(
       name = name,
-      inputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-        "text" -> stringSchema
-      ))))),
-      outputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map(
-        "result" -> stringSchema
-      ))))),
+      inputSchema = Some(
+        pb.TypeSchema(
+          pb.TypeSchema.Type.Record(
+            pb.RecordType(
+              Map(
+                "text" -> stringSchema
+              )
+            )
+          )
+        )
+      ),
+      outputSchema = Some(
+        pb.TypeSchema(
+          pb.TypeSchema.Type.Record(
+            pb.RecordType(
+              Map(
+                "result" -> stringSchema
+              )
+            )
+          )
+        )
+      ),
       version = "1.0.0",
       description = s"Test module $name"
     )
@@ -61,7 +77,8 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val cp    = new ControlPlaneManager(state, config, _ => IO.unit)
     val cache = new GrpcChannelCache
-    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
+    val manager =
+      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
 
     (manager, testFunctionRegistry)
   }
@@ -71,10 +88,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   "ModuleProviderManager.handleRegister" should "register modules successfully" in {
     val (manager, registry) = createTestManager()
 
-    val response = manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe true
     response.results should have size 1
@@ -92,10 +111,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "register multiple modules" in {
     val (manager, registry) = createTestManager()
 
-    val response = manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"), mkDecl("classify"))),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"), mkDecl("classify"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe true
     response.results should have size 2
@@ -108,10 +129,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "reject modules in reserved namespace" in {
     val (manager, _) = createTestManager()
 
-    val response = manager.handleRegister(
-      mkRequest("stdlib.math", Seq(mkDecl("add"))),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("stdlib.math", Seq(mkDecl("add"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe false
     response.results.head.accepted shouldBe false
@@ -120,10 +143,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "return protocol version" in {
     val (manager, _) = createTestManager()
 
-    val response = manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("test"))),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("test"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.protocolVersion shouldBe 1
   }
@@ -131,10 +156,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "return connection_id in response" in {
     val (manager, _) = createTestManager()
 
-    val response = manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("test"))),
-      "my-connection-id"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("test"))),
+        "my-connection-id"
+      )
+      .unsafeRunSync()
 
     response.connectionId shouldBe "my-connection-id"
   }
@@ -142,10 +169,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "track connection in ControlPlaneManager" in {
     val (manager, _) = createTestManager()
 
-    manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     val conn = manager.controlPlane.getConnection("conn1").unsafeRunSync()
     conn shouldBe defined
@@ -198,10 +227,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
       description = "Bad name"
     )
 
-    val response = manager.handleRegister(
-      mkRequest("ml", Seq(badDecl)),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleRegister(
+        mkRequest("ml", Seq(badDecl)),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe false
     response.results.head.accepted shouldBe false
@@ -214,16 +245,24 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     val (manager, registry) = createTestManager()
 
     // Register first
-    manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     // Deregister
-    val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze"), connectionId = "conn1"),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml.sentiment",
+          moduleNames = Seq("analyze"),
+          connectionId = "conn1"
+        ),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe true
     response.results should have size 1
@@ -236,15 +275,23 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "reject deregister from wrong owner" in {
     val (manager, _) = createTestManager()
 
-    manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
-    val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml.sentiment", moduleNames = Seq("analyze"), connectionId = "other-conn"),
-      "other-conn"
-    ).unsafeRunSync()
+    val response = manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml.sentiment",
+          moduleNames = Seq("analyze"),
+          connectionId = "other-conn"
+        ),
+        "other-conn"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe false
     response.results.head.removed shouldBe false
@@ -253,10 +300,16 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "report not found for non-existent module" in {
     val (manager, _) = createTestManager()
 
-    val response = manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("nonexistent"), connectionId = "conn1"),
-      "conn1"
-    ).unsafeRunSync()
+    val response = manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml",
+          moduleNames = Seq("nonexistent"),
+          connectionId = "conn1"
+        ),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     response.success shouldBe false
     response.results.head.removed shouldBe false
@@ -266,15 +319,23 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "remove connection from ControlPlaneManager when all modules deregistered" in {
     val (manager, _) = createTestManager()
 
-    manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
-    manager.handleDeregister(
-      pb.DeregisterRequest(namespace = "ml", moduleNames = Seq("analyze"), connectionId = "conn1"),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleDeregister(
+        pb.DeregisterRequest(
+          namespace = "ml",
+          moduleNames = Seq("analyze"),
+          connectionId = "conn1"
+        ),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     manager.controlPlane.getConnection("conn1").unsafeRunSync() shouldBe None
   }
@@ -284,10 +345,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   "ModuleProviderManager.deregisterAllForConnection" should "clean up all modules for a connection" in {
     val (manager, registry) = createTestManager()
 
-    manager.handleRegister(
-      mkRequest("ml.sentiment", Seq(mkDecl("analyze"), mkDecl("classify"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml.sentiment", Seq(mkDecl("analyze"), mkDecl("classify"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     manager.deregisterAllForConnection("conn1").unsafeRunSync()
 
@@ -298,15 +361,19 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
   it should "not affect other connections" in {
     val (manager, registry) = createTestManager()
 
-    manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
-    manager.handleRegister(
-      mkRequest("text", Seq(mkDecl("uppercase"))),
-      "conn2"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("text", Seq(mkDecl("uppercase"))),
+        "conn2"
+      )
+      .unsafeRunSync()
 
     manager.deregisterAllForConnection("conn1").unsafeRunSync()
 
@@ -331,10 +398,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     val (manager, _) = createTestManager()
 
     // Register a module via handleRegister (which calls setModule internally)
-    manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     // getModuleByName should find the registered module
     val moduleOpt = manager.getModuleByName("ml.analyze").unsafeRunSync()
@@ -356,10 +425,12 @@ class ModuleProviderManagerSpec extends AnyFlatSpec with Matchers {
     val (manager, registry) = createTestManager()
 
     // Register then remove
-    manager.handleRegister(
-      mkRequest("ml", Seq(mkDecl("analyze"))),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(mkDecl("analyze"))),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     manager.getModuleByName("ml.analyze").unsafeRunSync() shouldBe defined
     manager.removeModule("ml.analyze").unsafeRunSync()

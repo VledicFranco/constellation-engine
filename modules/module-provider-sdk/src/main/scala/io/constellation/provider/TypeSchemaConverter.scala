@@ -1,7 +1,7 @@
 package io.constellation.provider
 
 import io.constellation.CType
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** Bidirectional converter between protobuf TypeSchema and core CType. */
 object TypeSchemaConverter {
@@ -75,9 +75,11 @@ object TypeSchemaConverter {
       pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(Some(toTypeSchema(elemType)))))
 
     case CType.CMap(keyType, valType) =>
-      pb.TypeSchema(pb.TypeSchema.Type.Map(
-        pb.MapType(Some(toTypeSchema(keyType)), Some(toTypeSchema(valType)))
-      ))
+      pb.TypeSchema(
+        pb.TypeSchema.Type.Map(
+          pb.MapType(Some(toTypeSchema(keyType)), Some(toTypeSchema(valType)))
+        )
+      )
 
     case CType.CUnion(structure) =>
       val variants = structure.values.map(toTypeSchema).toSeq

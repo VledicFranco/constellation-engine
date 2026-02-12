@@ -5,7 +5,7 @@ import scala.concurrent.duration.*
 import cats.effect.{IO, Ref, Resource}
 import cats.implicits.*
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
 
@@ -57,22 +57,26 @@ class ControlPlaneManager(
       protocolVersion: Int
   ): IO[Unit] =
     IO.realTime.flatMap { now =>
-      providerState.update(_ + (connectionId -> ProviderConnection(
-        connectionId = connectionId,
-        namespace = namespace,
-        executorUrl = executorUrl,
-        groupId = groupId,
-        registeredModules = modules,
-        protocolVersion = protocolVersion,
-        state = ConnectionState.Registered,
-        registeredAt = now.toMillis,
-        controlPlaneEstablishedAt = None,
-        lastHeartbeatAt = None,
-        responseObserver = None
-      )))
+      providerState.update(
+        _ + (connectionId -> ProviderConnection(
+          connectionId = connectionId,
+          namespace = namespace,
+          executorUrl = executorUrl,
+          groupId = groupId,
+          registeredModules = modules,
+          protocolVersion = protocolVersion,
+          state = ConnectionState.Registered,
+          registeredAt = now.toMillis,
+          controlPlaneEstablishedAt = None,
+          lastHeartbeatAt = None,
+          responseObserver = None
+        ))
+      )
     }
 
-  /** Transition a connection to Active when its control plane stream opens. Returns false if connection not found. */
+  /** Transition a connection to Active when its control plane stream opens. Returns false if
+    * connection not found.
+    */
   def activateControlPlane(
       connectionId: String,
       observer: StreamObserver[pb.ControlMessage]
@@ -139,9 +143,9 @@ class ControlPlaneManager(
   def getConnectionsByNamespace(namespace: String): IO[List[ProviderConnection]] =
     providerState.get.map(_.values.filter(_.namespace == namespace).toList)
 
-  /** Check if a connection is the last member of its group for a namespace.
-    * Solo providers (empty groupId) always return true.
-    * Group members return true only when no other group member with the same namespace exists.
+  /** Check if a connection is the last member of its group for a namespace. Solo providers (empty
+    * groupId) always return true. Group members return true only when no other group member with
+    * the same namespace exists.
     */
   def isLastGroupMember(connectionId: String): IO[Boolean] =
     providerState.get.map { state =>
@@ -150,37 +154,42 @@ class ControlPlaneManager(
         case Some(conn) =>
           val otherGroupMembers = state.values.count { other =>
             other.connectionId != connectionId &&
-              other.namespace == conn.namespace &&
-              other.groupId == conn.groupId &&
-              other.state != ConnectionState.Disconnected
+            other.namespace == conn.namespace &&
+            other.groupId == conn.groupId &&
+            other.state != ConnectionState.Disconnected
           }
           otherGroupMembers == 0
         case None => true
       }
     }
 
-  /** Send a DrainRequest to an active provider. Returns false if connection not found or not active. */
+  /** Send a DrainRequest to an active provider. Returns false if connection not found or not
+    * active.
+    */
   def drainConnection(connectionId: String, reason: String, deadlineMs: Long): IO[Boolean] =
-    providerState.modify { state =>
-      state.get(connectionId) match {
-        case Some(conn) if conn.state == ConnectionState.Active && conn.responseObserver.isDefined =>
-          val drainMsg = pb.ControlMessage(
-            protocolVersion = conn.protocolVersion,
-            connectionId = connectionId,
-            payload = pb.ControlMessage.Payload.DrainRequest(
-              pb.DrainRequest(reason = reason, deadlineMs = deadlineMs)
+    providerState
+      .modify { state =>
+        state.get(connectionId) match {
+          case Some(conn)
+              if conn.state == ConnectionState.Active && conn.responseObserver.isDefined =>
+            val drainMsg = pb.ControlMessage(
+              protocolVersion = conn.protocolVersion,
+              connectionId = connectionId,
+              payload = pb.ControlMessage.Payload.DrainRequest(
+                pb.DrainRequest(reason = reason, deadlineMs = deadlineMs)
+              )
             )
-          )
-          (state, Some((conn.responseObserver.get, drainMsg)))
-        case _ =>
-          (state, None)
+            (state, Some((conn.responseObserver.get, drainMsg)))
+          case _ =>
+            (state, None)
+        }
       }
-    }.flatMap {
-      case Some((observer, msg)) =>
-        IO(observer.onNext(msg)).as(true).handleErrorWith(_ => IO.pure(false))
-      case None =>
-        IO.pure(false)
-    }
+      .flatMap {
+        case Some((observer, msg)) =>
+          IO(observer.onNext(msg)).as(true).handleErrorWith(_ => IO.pure(false))
+        case None =>
+          IO.pure(false)
+      }
 
   /** Record a DrainAck from a provider — transition Active → Draining. */
   def recordDrainAck(connectionId: String, ack: pb.DrainAck): IO[Unit] =
@@ -232,18 +241,24 @@ class ControlPlaneManager(
               false
           }
         }
-        val disconnected = dead.view.mapValues(_.copy(
-          state = ConnectionState.Disconnected,
-          responseObserver = None
-        )).toMap
+        val disconnected = dead.view
+          .mapValues(
+            _.copy(
+              state = ConnectionState.Disconnected,
+              responseObserver = None
+            )
+          )
+          .toMap
         (alive ++ disconnected, dead.values.toList)
       }
       _ <- deadConnections.traverse_ { conn =>
         // Close the observer stream if present (using the atomically-claimed snapshot)
-        IO(conn.responseObserver.foreach(obs =>
-          try obs.onCompleted()
-          catch { case _: Exception => () }
-        )) >>
+        IO(
+          conn.responseObserver.foreach(obs =>
+            try obs.onCompleted()
+            catch { case _: Exception => () }
+          )
+        ) >>
           onConnectionDead(conn.connectionId)
       }
     } yield ()
@@ -251,10 +266,12 @@ class ControlPlaneManager(
   private def sendActiveModulesReports: IO[Unit] =
     for {
       state <- providerState.get
-      activeConnections = state.values.filter(c =>
-        c.state == ConnectionState.Active && c.responseObserver.isDefined &&
-          c.state != ConnectionState.Draining
-      ).toList
+      activeConnections = state.values
+        .filter(c =>
+          c.state == ConnectionState.Active && c.responseObserver.isDefined &&
+            c.state != ConnectionState.Draining
+        )
+        .toList
       _ <- activeConnections.traverse_ { conn =>
         val moduleNames = conn.registeredModules.map { qualifiedName =>
           // Strip namespace prefix to get short name

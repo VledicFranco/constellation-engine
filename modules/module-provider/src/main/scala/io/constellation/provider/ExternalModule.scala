@@ -9,7 +9,7 @@ import cats.effect.{Deferred, IO}
 import cats.implicits.*
 
 import io.constellation.*
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
 
@@ -24,13 +24,16 @@ class GrpcChannelCache {
 
   /** Get or create a channel for the given executor URL. */
   def getChannel(executorUrl: String): ManagedChannel =
-    channels.computeIfAbsent(executorUrl, url => {
-      val (host, port) = ExternalModule.parseHostPort(url) match {
-        case Right(hp) => hp
-        case Left(_)   => (url, 9090) // fallback; should not happen after registration validation
+    channels.computeIfAbsent(
+      executorUrl,
+      url => {
+        val (host, port) = ExternalModule.parseHostPort(url) match {
+          case Right(hp) => hp
+          case Left(_)   => (url, 9090) // fallback; should not happen after registration validation
+        }
+        ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
       }
-      ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
-    })
+    )
 
   /** Shut down and remove the channel for a given executor URL. */
   def shutdownChannel(executorUrl: String): Unit =
@@ -57,8 +60,8 @@ object ExternalModule {
 
   /** Create an uninitialized module that executes via gRPC callback.
     *
-    * The executorPool provides one or more executor endpoints — for solo providers
-    * it contains a single endpoint, for provider groups it load-balances across members.
+    * The executorPool provides one or more executor endpoints — for solo providers it contains a
+    * single endpoint, for provider groups it load-balances across members.
     */
   def create(
       name: String,
@@ -137,16 +140,23 @@ object ExternalModule {
 
               // Serialize
               inputBytes <- IO.fromEither(
-                serializer.serialize(inputCValue).left.map(e =>
-                  new RuntimeException(s"Serialization error: $e")
-                )
+                serializer
+                  .serialize(inputCValue)
+                  .left
+                  .map(e => new RuntimeException(s"Serialization error: $e"))
               )
 
               // gRPC call (uses cached channel, pool selects executor)
               executor  <- executorPool.next
               startTime <- IO.monotonic
-              response  <- callExecutor(channelCache, executor.executorUrl, name, inputBytes, moduleId.toString)
-              endTime   <- IO.monotonic
+              response <- callExecutor(
+                channelCache,
+                executor.executorUrl,
+                name,
+                inputBytes,
+                moduleId.toString
+              )
+              endTime <- IO.monotonic
               durationNs = (endTime - startTime).toNanos
 
               // Handle response
@@ -154,9 +164,10 @@ object ExternalModule {
                 case pb.ExecuteResponse.Result.OutputData(outputBytes) =>
                   for {
                     outputCValue <- IO.fromEither(
-                      serializer.deserialize(outputBytes.toByteArray).left.map(e =>
-                        new RuntimeException(s"Deserialization error: $e")
-                      )
+                      serializer
+                        .deserialize(outputBytes.toByteArray)
+                        .left
+                        .map(e => new RuntimeException(s"Deserialization error: $e"))
                     )
                     // Write outputs to data table
                     _ <- outputCValue match {
@@ -167,9 +178,11 @@ object ExternalModule {
                               runtime.setTableDataCValue(dataId, value) >>
                                 runtime.setStateData(dataId, value)
                             case None =>
-                              IO.raiseError(new RuntimeException(
-                                s"External module '$name' output missing field '$fieldName'"
-                              ))
+                              IO.raiseError(
+                                new RuntimeException(
+                                  s"External module '$name' output missing field '$fieldName'"
+                                )
+                              )
                           }
                         }
                       case singleValue if producesSpec.size == 1 =>
@@ -177,21 +190,27 @@ object ExternalModule {
                         runtime.setTableDataCValue(dataId, singleValue) >>
                           runtime.setStateData(dataId, singleValue)
                       case other =>
-                        IO.raiseError(new RuntimeException(
-                          s"External module '$name' returned unexpected output type: ${other.ctype}"
-                        ))
+                        IO.raiseError(
+                          new RuntimeException(
+                            s"External module '$name' returned unexpected output type: ${other.ctype}"
+                          )
+                        )
                     }
                   } yield ()
 
                 case pb.ExecuteResponse.Result.Error(err) =>
-                  IO.raiseError(new RuntimeException(
-                    s"External module '$name' failed: [${err.code}] ${err.message}"
-                  ))
+                  IO.raiseError(
+                    new RuntimeException(
+                      s"External module '$name' failed: [${err.code}] ${err.message}"
+                    )
+                  )
 
                 case pb.ExecuteResponse.Result.Empty =>
-                  IO.raiseError(new RuntimeException(
-                    s"External module '$name' returned empty response"
-                  ))
+                  IO.raiseError(
+                    new RuntimeException(
+                      s"External module '$name' returned empty response"
+                    )
+                  )
               }
 
               _ <- runtime.setModuleStatus(
@@ -213,7 +232,7 @@ object ExternalModule {
       executionId: String
   ): IO[pb.ExecuteResponse] = IO {
     val channel = channelCache.getChannel(executorUrl)
-    val stub = pb.ModuleExecutorGrpc.blockingStub(channel)
+    val stub    = pb.ModuleExecutorGrpc.blockingStub(channel)
     stub.execute(
       pb.ExecuteRequest(
         moduleName = moduleName,
@@ -243,20 +262,21 @@ object ExternalModule {
           }
         else Left(s"Invalid URL format: $trimmed")
       }
-    }
-    else if trimmed.contains("://") then Left(s"executor_url must be host:port format, not a URL with scheme: $trimmed")
+    } else if trimmed.contains("://") then
+      Left(s"executor_url must be host:port format, not a URL with scheme: $trimmed")
     else {
       val lastColon = trimmed.lastIndexOf(':')
       if lastColon < 0 then Right((trimmed, 9090))
       else {
-        val host = trimmed.substring(0, lastColon)
+        val host    = trimmed.substring(0, lastColon)
         val portStr = trimmed.substring(lastColon + 1)
         if host.isEmpty then Left(s"Empty host in URL: $trimmed")
-        else portStr.toIntOption match {
-          case Some(port) if port > 0 && port <= 65535 => Right((host, port))
-          case Some(_) => Left(s"Port out of range in URL: $trimmed")
-          case None    => Left(s"Invalid port '$portStr' in URL: $trimmed")
-        }
+        else
+          portStr.toIntOption match {
+            case Some(port) if port > 0 && port <= 65535 => Right((host, port))
+            case Some(_) => Left(s"Port out of range in URL: $trimmed")
+            case None    => Left(s"Invalid port '$portStr' in URL: $trimmed")
+          }
       }
     }
   }

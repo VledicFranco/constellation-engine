@@ -7,7 +7,7 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.{CType, CValue}
 import io.constellation.provider.{CValueSerializer, JsonCValueSerializer}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -25,7 +25,11 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
   )
 
   private val echoModule = ModuleDefinition(
-    "echo", CType.CString, CType.CString, "1.0.0", "Echo",
+    "echo",
+    CType.CString,
+    CType.CString,
+    "1.0.0",
+    "Echo",
     v => IO.pure(v)
   )
 
@@ -73,9 +77,11 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
 
   it should "store connectionId from register response" in {
     val transport = FakeProviderTransport.create.unsafeRunSync()
-    transport.setRegisterResponse(
-      pb.RegisterResponse(success = true, connectionId = "my-conn-123", protocolVersion = 1)
-    ).unsafeRunSync()
+    transport
+      .setRegisterResponse(
+        pb.RegisterResponse(success = true, connectionId = "my-conn-123", protocolVersion = 1)
+      )
+      .unsafeRunSync()
 
     val conn = mkConnection(transport)
     conn.connect.unsafeRunSync()
@@ -87,9 +93,11 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
 
   it should "transition to Disconnected on registration failure" in {
     val transport = FakeProviderTransport.create.unsafeRunSync()
-    transport.setRegisterResponse(
-      pb.RegisterResponse(success = false, connectionId = "")
-    ).unsafeRunSync()
+    transport
+      .setRegisterResponse(
+        pb.RegisterResponse(success = false, connectionId = "")
+      )
+      .unsafeRunSync()
 
     val conn = mkConnection(transport)
 
@@ -163,7 +171,14 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
   it should "include module declarations in register request" in {
     val transport = FakeProviderTransport.create.unsafeRunSync()
     val modules = List(
-      ModuleDefinition("upper", CType.CString, CType.CString, "1.0.0", "Uppercase", v => IO.pure(v)),
+      ModuleDefinition(
+        "upper",
+        CType.CString,
+        CType.CString,
+        "1.0.0",
+        "Uppercase",
+        v => IO.pure(v)
+      ),
       ModuleDefinition("lower", CType.CString, CType.CString, "2.0.0", "Lowercase", v => IO.pure(v))
     )
     val conn = mkConnection(transport, modules)

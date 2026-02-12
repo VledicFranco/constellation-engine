@@ -14,8 +14,8 @@ enum CanaryResult:
 
 /** Coordinates sequential canary rollout across instances.
   *
-  * For each instance: replace modules → wait observation window → check health.
-  * If unhealthy: rollback all previously upgraded instances to old modules.
+  * For each instance: replace modules → wait observation window → check health. If unhealthy:
+  * rollback all previously upgraded instances to old modules.
   */
 class CanaryCoordinator(
     connections: Map[String, InstanceConnection],
@@ -24,8 +24,8 @@ class CanaryCoordinator(
 
   /** Roll out new modules sequentially across all instances.
     *
-    * Returns Promoted if all instances pass health check,
-    * RolledBack if any instance fails (with rollback of previously upgraded instances).
+    * Returns Promoted if all instances pass health check, RolledBack if any instance fails (with
+    * rollback of previously upgraded instances).
     */
   def rollout(
       oldModules: List[ModuleDefinition],
@@ -52,15 +52,20 @@ class CanaryCoordinator(
           _       <- conn.replaceModules(newModules)
           _       <- IO.sleep(config.observationWindow)
           healthy <- conn.isHealthy
-          result <- if healthy then
-            rolloutSequential(rest, oldModules, newModules, upgraded :+ (instanceId -> conn))
-          else {
-            // Rollback all previously upgraded instances
-            val allToRollback = upgraded :+ (instanceId -> conn)
-            allToRollback.traverse_ { case (_, c) => c.replaceModules(oldModules) }.as(
-              CanaryResult.RolledBack(s"Instance $instanceId failed health check after canary deployment")
-            )
-          }
+          result <-
+            if healthy then
+              rolloutSequential(rest, oldModules, newModules, upgraded :+ (instanceId -> conn))
+            else {
+              // Rollback all previously upgraded instances
+              val allToRollback = upgraded :+ (instanceId -> conn)
+              allToRollback
+                .traverse_ { case (_, c) => c.replaceModules(oldModules) }
+                .as(
+                  CanaryResult.RolledBack(
+                    s"Instance $instanceId failed health check after canary deployment"
+                  )
+                )
+            }
         } yield result
     }
 }

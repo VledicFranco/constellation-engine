@@ -15,9 +15,9 @@ import scala.concurrent.duration.*
   * @param maxReconnectAttempts
   *   Maximum number of consecutive reconnection attempts before giving up
   * @param groupId
-  *   Optional provider group ID for horizontal scaling. When set, multiple provider
-  *   replicas with the same groupId + namespace are treated as a single logical provider.
-  *   Constellation load-balances Execute calls across healthy group members.
+  *   Optional provider group ID for horizontal scaling. When set, multiple provider replicas with
+  *   the same groupId + namespace are treated as a single logical provider. Constellation
+  *   load-balances Execute calls across healthy group members.
   * @param canary
   *   Configuration for canary rollout behavior
   */

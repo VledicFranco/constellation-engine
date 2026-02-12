@@ -1,7 +1,12 @@
 package io.constellation.provider
 
-import io.constellation.lang.semantic.{FunctionRegistry, FunctionSignature, InMemoryFunctionRegistry, SemanticType}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.lang.semantic.{
+  FunctionRegistry,
+  FunctionSignature,
+  InMemoryFunctionRegistry,
+  SemanticType
+}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -216,18 +221,22 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     )
     results should have size 1
     results.head shouldBe a[ModuleValidationResult.Rejected]
-    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("another provider")
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include(
+      "another provider"
+    )
   }
 
   it should "allow same provider to re-register (upgrade)" in {
     val registry = new InMemoryFunctionRegistry
-    registry.register(FunctionSignature(
-      name = "analyze",
-      params = List("input" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "ml.sentiment.analyze",
-      namespace = Some("ml.sentiment")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "analyze",
+        params = List("input" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "ml.sentiment.analyze",
+        namespace = Some("ml.sentiment")
+      )
+    )
 
     val results = SchemaValidator.validate(
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
@@ -334,13 +343,15 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
 
   it should "reject when module exists in registry with no namespace owner" in {
     val registry = new InMemoryFunctionRegistry
-    registry.register(FunctionSignature(
-      name = "analyze",
-      params = List("input" -> SemanticType.SString),
-      returns = SemanticType.SString,
-      moduleName = "ml.sentiment.analyze",
-      namespace = Some("ml.sentiment")
-    ))
+    registry.register(
+      FunctionSignature(
+        name = "analyze",
+        params = List("input" -> SemanticType.SString),
+        returns = SemanticType.SString,
+        moduleName = "ml.sentiment.analyze",
+        namespace = Some("ml.sentiment")
+      )
+    )
 
     val results = SchemaValidator.validate(
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
@@ -352,6 +363,8 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     )
     results should have size 1
     results.head shouldBe a[ModuleValidationResult.Rejected]
-    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("already exists")
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include(
+      "already exists"
+    )
   }
 }

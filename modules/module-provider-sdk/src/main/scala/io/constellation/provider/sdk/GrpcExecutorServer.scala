@@ -2,7 +2,7 @@ package io.constellation.provider.sdk
 
 import cats.effect.{IO, Resource}
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.{Server, ServerBuilder}
 
@@ -20,9 +20,10 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
 
     Resource.make(
       IO {
-        val serviceDef = pb.ModuleExecutorGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
-        val builder    = ServerBuilder.forPort(port).addService(serviceDef)
-        val server     = builder.build()
+        val serviceDef =
+          pb.ModuleExecutorGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
+        val builder = ServerBuilder.forPort(port).addService(serviceDef)
+        val server  = builder.build()
         server.start()
         server.getPort // Return actual bound port (may differ if port was 0)
       }
@@ -40,12 +41,17 @@ private class GrpcModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.Execute
     val promise = scala.concurrent.Promise[pb.ExecuteResponse]()
     handler(request).unsafeRunAsync {
       case Right(response) => promise.success(response)
-      case Left(error) => promise.success(pb.ExecuteResponse(
-        result = pb.ExecuteResponse.Result.Error(pb.ExecutionError(
-          code = "RUNTIME_ERROR",
-          message = error.getMessage
-        ))
-      ))
+      case Left(error) =>
+        promise.success(
+          pb.ExecuteResponse(
+            result = pb.ExecuteResponse.Result.Error(
+              pb.ExecutionError(
+                code = "RUNTIME_ERROR",
+                message = error.getMessage
+              )
+            )
+          )
+        )
     }
     promise.future
   }

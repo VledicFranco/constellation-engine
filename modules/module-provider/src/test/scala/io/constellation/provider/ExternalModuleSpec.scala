@@ -86,9 +86,7 @@ class ExternalModuleSpec extends AnyFlatSpec with Matchers {
       val ch1 = cache.getChannel("localhost:50051")
       val ch2 = cache.getChannel("localhost:50051")
       ch1 shouldBe theSameInstanceAs(ch2)
-    } finally {
-      cache.shutdownAll()
-    }
+    } finally cache.shutdownAll()
   }
 
   it should "return different channels for different URLs" in {
@@ -97,9 +95,7 @@ class ExternalModuleSpec extends AnyFlatSpec with Matchers {
       val ch1 = cache.getChannel("localhost:50051")
       val ch2 = cache.getChannel("localhost:50052")
       ch1 should not be theSameInstanceAs(ch2)
-    } finally {
-      cache.shutdownAll()
-    }
+    } finally cache.shutdownAll()
   }
 
   it should "remove channel on shutdownChannel" in {
@@ -110,9 +106,7 @@ class ExternalModuleSpec extends AnyFlatSpec with Matchers {
       // Getting the same URL should create a new channel
       val ch2 = cache.getChannel("localhost:50051")
       ch1 should not be theSameInstanceAs(ch2)
-    } finally {
-      cache.shutdownAll()
-    }
+    } finally cache.shutdownAll()
   }
 
   it should "handle shutdownChannel for unknown URL gracefully" in {

@@ -6,7 +6,7 @@ import cats.effect.{IO, Ref, Resource}
 import cats.effect.std.Queue
 import cats.implicits.*
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** In-memory ProviderTransport for testing. Records calls and returns configurable responses. */
 class FakeProviderTransport(
@@ -77,8 +77,8 @@ class FakeControlPlaneStream(
 ) extends ControlPlaneStream {
 
   val sentHeartbeats: ConcurrentLinkedQueue[pb.Heartbeat] = new ConcurrentLinkedQueue()
-  val sentDrainAcks: ConcurrentLinkedQueue[pb.DrainAck] = new ConcurrentLinkedQueue()
-  @volatile var closed: Boolean = false
+  val sentDrainAcks: ConcurrentLinkedQueue[pb.DrainAck]   = new ConcurrentLinkedQueue()
+  @volatile var closed: Boolean                           = false
 
   def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] =
     IO(sentHeartbeats.add(hb)).void
@@ -114,8 +114,8 @@ class FakeControlPlaneStream(
 /** In-memory ExecutorServerFactory for testing. */
 class FakeExecutorServerFactory extends ExecutorServerFactory {
   @volatile var handler: Option[pb.ExecuteRequest => IO[pb.ExecuteResponse]] = None
-  @volatile var started: Boolean = false
-  @volatile var stopped: Boolean = false
+  @volatile var started: Boolean                                             = false
+  @volatile var stopped: Boolean                                             = false
 
   def create(
       h: pb.ExecuteRequest => IO[pb.ExecuteResponse],

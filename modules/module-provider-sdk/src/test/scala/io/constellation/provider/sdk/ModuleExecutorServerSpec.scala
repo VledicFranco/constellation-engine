@@ -5,7 +5,7 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.{CType, CValue}
 import io.constellation.provider.{CValueSerializer, JsonCValueSerializer}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -17,7 +17,7 @@ class ModuleExecutorServerSpec extends AnyFlatSpec with Matchers {
   private def upperHandler(input: CValue): IO[CValue] = IO {
     input match {
       case CValue.CString(s) => CValue.CString(s.toUpperCase)
-      case other              => other
+      case other             => other
     }
   }
 
@@ -26,7 +26,9 @@ class ModuleExecutorServerSpec extends AnyFlatSpec with Matchers {
     ModuleDefinition("echo", CType.CInt, CType.CInt, "1.0.0", "Echo", v => IO.pure(v))
   )
 
-  private def createServer(mods: List[ModuleDefinition] = modules): (ModuleExecutorServer, Ref[IO, List[ModuleDefinition]]) = {
+  private def createServer(
+      mods: List[ModuleDefinition] = modules
+  ): (ModuleExecutorServer, Ref[IO, List[ModuleDefinition]]) = {
     val ref = Ref.of[IO, List[ModuleDefinition]](mods).unsafeRunSync()
     (new ModuleExecutorServer(ref, serializer), ref)
   }
@@ -97,7 +99,11 @@ class ModuleExecutorServerSpec extends AnyFlatSpec with Matchers {
 
   it should "return RUNTIME_ERROR when handler throws" in {
     val failingModule = ModuleDefinition(
-      "fail", CType.CString, CType.CString, "1.0.0", "Fails",
+      "fail",
+      CType.CString,
+      CType.CString,
+      "1.0.0",
+      "Fails",
       _ => IO.raiseError(new RuntimeException("handler boom"))
     )
     val (server, _) = createServer(List(failingModule))

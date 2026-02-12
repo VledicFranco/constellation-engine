@@ -53,7 +53,7 @@ class ProviderManagerConfigSpec extends AnyFlatSpec with Matchers {
 
   it should "produce consistent values with default constructor" in {
     val fromConstructor = ProviderManagerConfig()
-    val fromEnv = ProviderManagerConfig.fromEnv
+    val fromEnv         = ProviderManagerConfig.fromEnv
 
     fromConstructor.grpcPort shouldBe fromEnv.grpcPort
     fromConstructor.heartbeatInterval shouldBe fromEnv.heartbeatInterval

@@ -4,7 +4,7 @@ import cats.effect.IO
 
 import io.constellation.{CType, CValue}
 import io.constellation.provider.TypeSchemaConverter
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** Describes a module that a provider offers for execution.
   *

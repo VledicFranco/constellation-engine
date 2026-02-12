@@ -5,7 +5,7 @@ import scala.concurrent.duration.*
 import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
 
@@ -32,8 +32,8 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
 
   private class RecordingObserver extends StreamObserver[pb.ControlMessage] {
     override def onNext(value: pb.ControlMessage): Unit = ()
-    override def onError(t: Throwable): Unit = ()
-    override def onCompleted(): Unit = ()
+    override def onError(t: Throwable): Unit            = ()
+    override def onCompleted(): Unit                    = ()
   }
 
   // ===== ProviderInfo construction =====
@@ -63,7 +63,7 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
 
   "ControlPlaneManager.getAllConnections" should "return connections across all states" in {
     val mgr = createManager()
-    val obs  = new RecordingObserver
+    val obs = new RecordingObserver
 
     mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
     mgr.registerConnection("conn2", "text", "localhost:8888", "", Set("text.b"), 1).unsafeRunSync()
@@ -79,7 +79,7 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
 
   it should "include draining connections" in {
     val mgr = createManager()
-    val obs  = new RecordingObserver
+    val obs = new RecordingObserver
 
     mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", obs).unsafeRunSync()
@@ -94,8 +94,8 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
 
   "ControlPlaneManager liveness" should "skip draining connections" in {
     val deadConnections = Ref.of[IO, List[String]](List.empty).unsafeRunSync()
-    val config = defaultConfig.copy(heartbeatTimeout = 1.millisecond)
-    val mgr = createManager(config, connId => deadConnections.update(_ :+ connId))
+    val config          = defaultConfig.copy(heartbeatTimeout = 1.millisecond)
+    val mgr             = createManager(config, connId => deadConnections.update(_ :+ connId))
 
     val obs = new RecordingObserver
     mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()

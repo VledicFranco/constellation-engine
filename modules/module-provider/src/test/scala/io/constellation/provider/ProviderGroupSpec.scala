@@ -4,7 +4,7 @@ import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
 
 import io.constellation.lang.semantic.FunctionRegistry
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import io.grpc.stub.StreamObserver
 
@@ -66,7 +66,9 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
     )
     results should have size 1
     results.head shouldBe a[ModuleValidationResult.Rejected]
-    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("different provider group")
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include(
+      "different provider group"
+    )
   }
 
   it should "reject solo provider joining existing namespace" in {
@@ -80,7 +82,9 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
     )
     results should have size 1
     results.head shouldBe a[ModuleValidationResult.Rejected]
-    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("another provider")
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include(
+      "another provider"
+    )
   }
 
   it should "reject group provider joining solo namespace" in {
@@ -94,14 +98,16 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
     )
     results should have size 1
     results.head shouldBe a[ModuleValidationResult.Rejected]
-    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include("another provider")
+    results.head.asInstanceOf[ModuleValidationResult.Rejected].reason should include(
+      "another provider"
+    )
   }
 
   // ===== ControlPlaneManager Group Membership Tests =====
 
   "ControlPlaneManager.isLastGroupMember" should "return true for solo provider" in {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val mgr = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
+    val mgr   = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
 
     mgr.registerConnection("conn1", "ml", "localhost:9090", "", Set("ml.a"), 1).unsafeRunSync()
 
@@ -110,7 +116,7 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
 
   it should "return false when other group members exist" in {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val mgr = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
+    val mgr   = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
 
     mgr.registerConnection("conn1", "ml", "host1:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()
     mgr.registerConnection("conn2", "ml", "host2:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()
@@ -118,8 +124,8 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
     // Activate both so they're not just Registered
     val obs = new StreamObserver[pb.ControlMessage] {
       override def onNext(msg: pb.ControlMessage): Unit = ()
-      override def onError(t: Throwable): Unit = ()
-      override def onCompleted(): Unit = ()
+      override def onError(t: Throwable): Unit          = ()
+      override def onCompleted(): Unit                  = ()
     }
     mgr.activateControlPlane("conn1", obs).unsafeRunSync()
     mgr.activateControlPlane("conn2", obs).unsafeRunSync()
@@ -130,7 +136,7 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
 
   it should "return true when only remaining group member" in {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val mgr = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
+    val mgr   = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
 
     mgr.registerConnection("conn1", "ml", "host1:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()
     mgr.registerConnection("conn2", "ml", "host2:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()
@@ -144,14 +150,14 @@ class ProviderGroupSpec extends AnyFlatSpec with Matchers {
 
   it should "return true for unknown connection" in {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val mgr = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
+    val mgr   = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
 
     mgr.isLastGroupMember("nonexistent").unsafeRunSync() shouldBe true
   }
 
   "ControlPlaneManager.getConnectionsByNamespace" should "return all connections for a namespace" in {
     val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val mgr = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
+    val mgr   = new ControlPlaneManager(state, ProviderManagerConfig(), _ => IO.unit)
 
     mgr.registerConnection("conn1", "ml", "host1:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()
     mgr.registerConnection("conn2", "ml", "host2:9090", "ml-group", Set("ml.a"), 1).unsafeRunSync()

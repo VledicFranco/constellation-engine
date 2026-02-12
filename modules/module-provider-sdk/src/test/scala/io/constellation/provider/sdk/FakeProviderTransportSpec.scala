@@ -3,7 +3,7 @@ package io.constellation.provider.sdk
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -53,21 +53,24 @@ class FakeProviderTransportSpec extends AnyFlatSpec with Matchers {
     val transport = FakeProviderTransport.create.unsafeRunSync()
 
     val handler = new ControlPlaneHandler {
-      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit] = IO.unit
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                  = IO.unit
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
-      def onDrainRequest(drain: pb.DrainRequest): IO[Unit] = IO.unit
-      def onStreamError(error: Throwable): IO[Unit] = IO.unit
-      def onStreamCompleted: IO[Unit] = IO.unit
+      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]                = IO.unit
+      def onStreamError(error: Throwable): IO[Unit]                       = IO.unit
+      def onStreamCompleted: IO[Unit]                                     = IO.unit
     }
 
     transport.controlPlaneOpened shouldBe false
 
-    transport.openControlPlane(handler).use { stream =>
-      IO {
-        transport.controlPlaneOpened shouldBe true
-        transport.controlPlaneClosed shouldBe false
+    transport
+      .openControlPlane(handler)
+      .use { stream =>
+        IO {
+          transport.controlPlaneOpened shouldBe true
+          transport.controlPlaneClosed shouldBe false
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
 
     transport.controlPlaneClosed shouldBe true
   }
@@ -79,20 +82,28 @@ class FakeProviderTransportSpec extends AnyFlatSpec with Matchers {
 
     factory.started shouldBe false
 
-    val resp = factory.create(
-      req => IO.pure(pb.ExecuteResponse(result = pb.ExecuteResponse.Result.OutputData(
-        com.google.protobuf.ByteString.copyFromUtf8("ok")
-      ))),
-      9091
-    ).use { port =>
-      IO {
-        port shouldBe 9091
-        factory.started shouldBe true
-        factory.stopped shouldBe false
-      } >> factory.execute(pb.ExecuteRequest(moduleName = "test")).map { resp =>
-        resp.result.isOutputData shouldBe true
+    val resp = factory
+      .create(
+        req =>
+          IO.pure(
+            pb.ExecuteResponse(result =
+              pb.ExecuteResponse.Result.OutputData(
+                com.google.protobuf.ByteString.copyFromUtf8("ok")
+              )
+            )
+          ),
+        9091
+      )
+      .use { port =>
+        IO {
+          port shouldBe 9091
+          factory.started shouldBe true
+          factory.stopped shouldBe false
+        } >> factory.execute(pb.ExecuteRequest(moduleName = "test")).map { resp =>
+          resp.result.isOutputData shouldBe true
+        }
       }
-    }.unsafeRunSync()
+      .unsafeRunSync()
 
     factory.stopped shouldBe true
   }

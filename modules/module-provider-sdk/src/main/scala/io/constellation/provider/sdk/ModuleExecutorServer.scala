@@ -4,7 +4,7 @@ import cats.effect.{IO, Ref}
 
 import io.constellation.CValue
 import io.constellation.provider.CValueSerializer
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 /** Dispatches incoming ExecuteRequest to the correct ModuleDefinition handler.
   *
@@ -19,16 +19,18 @@ class ModuleExecutorServer(
   def handleRequest(request: pb.ExecuteRequest): IO[pb.ExecuteResponse] =
     for {
       startTime <- IO.monotonic
-      response  <- dispatch(request).handleError {
+      response <- dispatch(request).handleError {
         case e: ModuleNotFoundException => e.errorResponse
         case e: TypeErrorException      => e.errorResponse
         case error =>
           pb.ExecuteResponse(
-            result = pb.ExecuteResponse.Result.Error(pb.ExecutionError(
-              code = "RUNTIME_ERROR",
-              message = error.getMessage,
-              stackTrace = error.getStackTrace.take(10).mkString("\n")
-            ))
+            result = pb.ExecuteResponse.Result.Error(
+              pb.ExecutionError(
+                code = "RUNTIME_ERROR",
+                message = error.getMessage,
+                stackTrace = error.getStackTrace.take(10).mkString("\n")
+              )
+            )
           )
       }
       endTime <- IO.monotonic
@@ -46,15 +48,17 @@ class ModuleExecutorServer(
         case None     => IO.raiseError(new ModuleNotFoundException(request.moduleName))
       }
       inputCValue <- IO.fromEither(
-        serializer.deserialize(request.inputData.toByteArray).left.map(e =>
-          new TypeErrorException(s"Failed to deserialize input: $e")
-        )
+        serializer
+          .deserialize(request.inputData.toByteArray)
+          .left
+          .map(e => new TypeErrorException(s"Failed to deserialize input: $e"))
       )
       outputCValue <- moduleDef.handler(inputCValue)
       outputBytes <- IO.fromEither(
-        serializer.serialize(outputCValue).left.map(e =>
-          new RuntimeException(s"Failed to serialize output: $e")
-        )
+        serializer
+          .serialize(outputCValue)
+          .left
+          .map(e => new RuntimeException(s"Failed to serialize output: $e"))
       )
     } yield pb.ExecuteResponse(
       result = pb.ExecuteResponse.Result.OutputData(
@@ -69,18 +73,22 @@ class ModuleExecutorServer(
 private[sdk] class ModuleNotFoundException(moduleName: String)
     extends RuntimeException(s"Module not found: $moduleName") {
   def errorResponse: pb.ExecuteResponse = pb.ExecuteResponse(
-    result = pb.ExecuteResponse.Result.Error(pb.ExecutionError(
-      code = "MODULE_NOT_FOUND",
-      message = s"Module not found: $moduleName"
-    ))
+    result = pb.ExecuteResponse.Result.Error(
+      pb.ExecutionError(
+        code = "MODULE_NOT_FOUND",
+        message = s"Module not found: $moduleName"
+      )
+    )
   )
 }
 
 private[sdk] class TypeErrorException(msg: String) extends RuntimeException(msg) {
   def errorResponse: pb.ExecuteResponse = pb.ExecuteResponse(
-    result = pb.ExecuteResponse.Result.Error(pb.ExecutionError(
-      code = "TYPE_ERROR",
-      message = msg
-    ))
+    result = pb.ExecuteResponse.Result.Error(
+      pb.ExecutionError(
+        code = "TYPE_ERROR",
+        message = msg
+      )
+    )
   )
 }

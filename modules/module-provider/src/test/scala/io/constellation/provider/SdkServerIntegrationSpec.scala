@@ -8,15 +8,15 @@ import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.semantic.{FunctionRegistry, InMemoryFunctionRegistry, SemanticType}
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** Integration tests verifying the SDK↔Server boundary.
   *
-  * These tests exercise the full path from protobuf schema declarations (SDK types)
-  * through server-side registration, type conversion, module creation, and serialization.
+  * These tests exercise the full path from protobuf schema declarations (SDK types) through
+  * server-side registration, type conversion, module creation, and serialization.
   */
 class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
 
@@ -74,7 +74,7 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
 
   private def createTestManager(): (ModuleProviderManager, FunctionRegistry) = {
     val testFunctionRegistry = new InMemoryFunctionRegistry
-    val constellation = ConstellationImpl.init.unsafeRunSync()
+    val constellation        = ConstellationImpl.init.unsafeRunSync()
 
     val compiler = new LangCompiler {
       def compile(source: String, dagName: String) =
@@ -85,10 +85,11 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
     }
 
     val config = ProviderManagerConfig(grpcPort = 0, reservedNamespaces = Set("stdlib"))
-    val state = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
-    val cp = new ControlPlaneManager(state, config, _ => IO.unit)
-    val cache = new GrpcChannelCache
-    val manager = new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
+    val state  = Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
+    val cp     = new ControlPlaneManager(state, config, _ => IO.unit)
+    val cache  = new GrpcChannelCache
+    val manager =
+      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
     (manager, testFunctionRegistry)
   }
 
@@ -245,7 +246,7 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
   "CValueSerializer integration" should "serialize CProduct round-trip" in {
     val input = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
 
     val bytes = JsonCValueSerializer.serialize(input)
@@ -302,12 +303,12 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
     val decl = mkDecl(
       "analyze",
       inputSchema = mkRecordSchema(
-        "text" -> stringSchema,
+        "text"    -> stringSchema,
         "options" -> mkRecordSchema("maxLength" -> intSchema, "language" -> stringSchema)
       ),
       outputSchema = mkRecordSchema(
         "sentiment" -> floatSchema,
-        "tokens" -> mkListSchema(stringSchema)
+        "tokens"    -> mkListSchema(stringSchema)
       )
     )
 
@@ -341,8 +342,16 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
     val (manager, registry) = createTestManager()
 
     // Register two modules from different namespaces
-    val decl1 = mkDecl("analyze", inputSchema = mkRecordSchema("text" -> stringSchema), outputSchema = mkRecordSchema("score" -> floatSchema))
-    val decl2 = mkDecl("transform", inputSchema = mkRecordSchema("input" -> stringSchema), outputSchema = mkRecordSchema("output" -> stringSchema))
+    val decl1 = mkDecl(
+      "analyze",
+      inputSchema = mkRecordSchema("text" -> stringSchema),
+      outputSchema = mkRecordSchema("score" -> floatSchema)
+    )
+    val decl2 = mkDecl(
+      "transform",
+      inputSchema = mkRecordSchema("input" -> stringSchema),
+      outputSchema = mkRecordSchema("output" -> stringSchema)
+    )
 
     manager.handleRegister(mkRequest("ml", Seq(decl1)), "conn1").unsafeRunSync()
     manager.handleRegister(mkRequest("text", Seq(decl2)), "conn2").unsafeRunSync()
@@ -364,9 +373,21 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
     val (manager, registry) = createTestManager()
 
     val decls = Seq(
-      mkDecl("tokenize", inputSchema = mkRecordSchema("text" -> stringSchema), outputSchema = mkRecordSchema("tokens" -> mkListSchema(stringSchema))),
-      mkDecl("embed", inputSchema = mkRecordSchema("tokens" -> mkListSchema(stringSchema)), outputSchema = mkRecordSchema("vector" -> mkListSchema(floatSchema))),
-      mkDecl("classify", inputSchema = mkRecordSchema("vector" -> mkListSchema(floatSchema)), outputSchema = mkRecordSchema("label" -> stringSchema, "confidence" -> floatSchema))
+      mkDecl(
+        "tokenize",
+        inputSchema = mkRecordSchema("text" -> stringSchema),
+        outputSchema = mkRecordSchema("tokens" -> mkListSchema(stringSchema))
+      ),
+      mkDecl(
+        "embed",
+        inputSchema = mkRecordSchema("tokens" -> mkListSchema(stringSchema)),
+        outputSchema = mkRecordSchema("vector" -> mkListSchema(floatSchema))
+      ),
+      mkDecl(
+        "classify",
+        inputSchema = mkRecordSchema("vector" -> mkListSchema(floatSchema)),
+        outputSchema = mkRecordSchema("label" -> stringSchema, "confidence" -> floatSchema)
+      )
     )
 
     val response = manager.handleRegister(mkRequest("ml.nlp", decls), "conn1").unsafeRunSync()
@@ -390,23 +411,37 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
   "Executor pool integration" should "track pool per namespace across registrations" in {
     val (manager, _) = createTestManager()
 
-    val decl = mkDecl("analyze", inputSchema = mkRecordSchema("text" -> stringSchema), outputSchema = mkRecordSchema("result" -> stringSchema))
+    val decl = mkDecl(
+      "analyze",
+      inputSchema = mkRecordSchema("text" -> stringSchema),
+      outputSchema = mkRecordSchema("result" -> stringSchema)
+    )
 
     // First registration creates pool
-    manager.handleRegister(
-      mkRequest("ml", Seq(decl), executorUrl = "host1:9090"),
-      "conn1"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        mkRequest("ml", Seq(decl), executorUrl = "host1:9090"),
+        "conn1"
+      )
+      .unsafeRunSync()
 
     val pools = manager.executorPools.get.unsafeRunSync()
     pools should contain key "ml"
     pools("ml").size.unsafeRunSync() shouldBe 1
 
     // Second registration (same group) adds to pool without creating new module
-    manager.handleRegister(
-      pb.RegisterRequest(namespace = "ml", modules = Seq(decl), protocolVersion = 1, executorUrl = "host2:9090", groupId = "ml-group"),
-      "conn2"
-    ).unsafeRunSync()
+    manager
+      .handleRegister(
+        pb.RegisterRequest(
+          namespace = "ml",
+          modules = Seq(decl),
+          protocolVersion = 1,
+          executorUrl = "host2:9090",
+          groupId = "ml-group"
+        ),
+        "conn2"
+      )
+      .unsafeRunSync()
 
     // Note: the first registration was solo (no groupId), so the second is rejected by SchemaValidator.
     // This verifies the integration: validator correctly prevents mixing solo + group.
@@ -418,7 +453,11 @@ class SdkServerIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "clean up pool on deregister" in {
     val (manager, _) = createTestManager()
 
-    val decl = mkDecl("analyze", inputSchema = mkRecordSchema("text" -> stringSchema), outputSchema = mkRecordSchema("result" -> stringSchema))
+    val decl = mkDecl(
+      "analyze",
+      inputSchema = mkRecordSchema("text" -> stringSchema),
+      outputSchema = mkRecordSchema("result" -> stringSchema)
+    )
 
     manager.handleRegister(mkRequest("ml", Seq(decl)), "conn1").unsafeRunSync()
     manager.executorPools.get.unsafeRunSync() should contain key "ml"

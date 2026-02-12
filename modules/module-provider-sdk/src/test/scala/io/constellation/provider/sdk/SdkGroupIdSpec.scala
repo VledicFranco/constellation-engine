@@ -6,7 +6,7 @@ import cats.effect.unsafe.implicits.global
 import io.constellation.CType
 import io.constellation.provider.CValueSerializer
 import io.constellation.provider.JsonCValueSerializer
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -24,7 +24,7 @@ class SdkGroupIdSpec extends AnyFlatSpec with Matchers {
   }
 
   "InstanceConnection" should "include groupId in RegisterRequest" in {
-    val config = SdkConfig(executorPort = 9091, groupId = Some("test-group"))
+    val config                       = SdkConfig(executorPort = 9091, groupId = Some("test-group"))
     val serializer: CValueSerializer = JsonCValueSerializer
 
     // Use a recording transport to capture the RegisterRequest
@@ -36,17 +36,21 @@ class SdkGroupIdSpec extends AnyFlatSpec with Matchers {
       }
       def deregister(request: pb.DeregisterRequest): IO[pb.DeregisterResponse] =
         IO.pure(pb.DeregisterResponse(success = true))
-      def openControlPlane(handler: ControlPlaneHandler): cats.effect.Resource[IO, ControlPlaneStream] =
+      def openControlPlane(
+          handler: ControlPlaneHandler
+      ): cats.effect.Resource[IO, ControlPlaneStream] =
         cats.effect.Resource.pure(new ControlPlaneStream {
           def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] = IO.unit
-          def sendDrainAck(ack: pb.DrainAck): IO[Unit] = IO.unit
-          def close: IO[Unit] = IO.unit
+          def sendDrainAck(ack: pb.DrainAck): IO[Unit]  = IO.unit
+          def close: IO[Unit]                           = IO.unit
         })
     }
 
-    val modulesRef = cats.effect.Ref.unsafe[IO, List[ModuleDefinition]](List(
-      ModuleDefinition("echo", CType.CString, CType.CString, "1.0.0", "Echo", v => IO.pure(v))
-    ))
+    val modulesRef = cats.effect.Ref.unsafe[IO, List[ModuleDefinition]](
+      List(
+        ModuleDefinition("echo", CType.CString, CType.CString, "1.0.0", "Echo", v => IO.pure(v))
+      )
+    )
 
     val conn = new InstanceConnection(
       instanceAddress = "localhost",
@@ -64,7 +68,7 @@ class SdkGroupIdSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "send empty groupId when not configured" in {
-    val config = SdkConfig(executorPort = 9091)
+    val config                       = SdkConfig(executorPort = 9091)
     val serializer: CValueSerializer = JsonCValueSerializer
 
     var capturedRequest: Option[pb.RegisterRequest] = None
@@ -75,17 +79,21 @@ class SdkGroupIdSpec extends AnyFlatSpec with Matchers {
       }
       def deregister(request: pb.DeregisterRequest): IO[pb.DeregisterResponse] =
         IO.pure(pb.DeregisterResponse(success = true))
-      def openControlPlane(handler: ControlPlaneHandler): cats.effect.Resource[IO, ControlPlaneStream] =
+      def openControlPlane(
+          handler: ControlPlaneHandler
+      ): cats.effect.Resource[IO, ControlPlaneStream] =
         cats.effect.Resource.pure(new ControlPlaneStream {
           def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] = IO.unit
-          def sendDrainAck(ack: pb.DrainAck): IO[Unit] = IO.unit
-          def close: IO[Unit] = IO.unit
+          def sendDrainAck(ack: pb.DrainAck): IO[Unit]  = IO.unit
+          def close: IO[Unit]                           = IO.unit
         })
     }
 
-    val modulesRef = cats.effect.Ref.unsafe[IO, List[ModuleDefinition]](List(
-      ModuleDefinition("echo", CType.CString, CType.CString, "1.0.0", "Echo", v => IO.pure(v))
-    ))
+    val modulesRef = cats.effect.Ref.unsafe[IO, List[ModuleDefinition]](
+      List(
+        ModuleDefinition("echo", CType.CString, CType.CString, "1.0.0", "Echo", v => IO.pure(v))
+      )
+    )
 
     val conn = new InstanceConnection(
       instanceAddress = "localhost",

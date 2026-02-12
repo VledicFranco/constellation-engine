@@ -26,25 +26,31 @@ class CValueSerializerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip CList" in {
-    roundTrip(CValue.CList(
-      Vector(CValue.CString("a"), CValue.CString("b")),
-      CType.CString
-    ))
+    roundTrip(
+      CValue.CList(
+        Vector(CValue.CString("a"), CValue.CString("b")),
+        CType.CString
+      )
+    )
   }
 
   it should "round-trip CProduct" in {
-    roundTrip(CValue.CProduct(
-      Map("name" -> CValue.CString("test"), "count" -> CValue.CInt(5)),
-      Map("name" -> CType.CString, "count" -> CType.CInt)
-    ))
+    roundTrip(
+      CValue.CProduct(
+        Map("name" -> CValue.CString("test"), "count" -> CValue.CInt(5)),
+        Map("name" -> CType.CString, "count"          -> CType.CInt)
+      )
+    )
   }
 
   it should "round-trip CMap" in {
-    roundTrip(CValue.CMap(
-      Vector((CValue.CString("key1"), CValue.CInt(1)), (CValue.CString("key2"), CValue.CInt(2))),
-      CType.CString,
-      CType.CInt
-    ))
+    roundTrip(
+      CValue.CMap(
+        Vector((CValue.CString("key1"), CValue.CInt(1)), (CValue.CString("key2"), CValue.CInt(2))),
+        CType.CString,
+        CType.CInt
+      )
+    )
   }
 
   it should "round-trip empty CList" in {
@@ -61,7 +67,7 @@ class CValueSerializerSpec extends AnyFlatSpec with Matchers {
   }
 
   private def roundTrip(value: CValue): Unit = {
-    val bytes  = serializer.serialize(value)
+    val bytes = serializer.serialize(value)
     bytes.isRight shouldBe true
     val result = serializer.deserialize(bytes.toOption.get)
     result shouldBe Right(value)

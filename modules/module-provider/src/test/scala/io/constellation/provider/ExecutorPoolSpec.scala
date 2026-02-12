@@ -68,14 +68,14 @@ class ExecutorPoolSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "remove the last endpoint and return true" in {
-    val pool = RoundRobinExecutorPool.withEndpoint(ep("a")).unsafeRunSync()
+    val pool    = RoundRobinExecutorPool.withEndpoint(ep("a")).unsafeRunSync()
     val isEmpty = pool.remove("a").unsafeRunSync()
     isEmpty shouldBe true
     pool.size.unsafeRunSync() shouldBe 0
   }
 
   it should "return false when removing non-existent endpoint" in {
-    val pool = RoundRobinExecutorPool.withEndpoint(ep("a")).unsafeRunSync()
+    val pool    = RoundRobinExecutorPool.withEndpoint(ep("a")).unsafeRunSync()
     val isEmpty = pool.remove("nonexistent").unsafeRunSync()
     isEmpty shouldBe false
     pool.size.unsafeRunSync() shouldBe 1

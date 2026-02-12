@@ -2,7 +2,7 @@ package io.constellation.provider.sdk
 
 import cats.effect.{IO, Resource}
 
-import io.constellation.provider.v1.{provider => pb}
+import io.constellation.provider.v1.provider as pb
 
 // ===== Provider Transport =====
 

@@ -42,11 +42,13 @@ class ExternalFunctionSignatureSpec extends AnyFlatSpec with Matchers {
     val sig = ExternalFunctionSignature.create(
       name = "transform",
       namespace = "data",
-      inputType = CType.CProduct(Map(
-        "name"  -> CType.CString,
-        "age"   -> CType.CInt,
-        "score" -> CType.CFloat
-      )),
+      inputType = CType.CProduct(
+        Map(
+          "name"  -> CType.CString,
+          "age"   -> CType.CInt,
+          "score" -> CType.CFloat
+        )
+      ),
       outputType = CType.CProduct(Map("result" -> CType.CBoolean))
     )
 
