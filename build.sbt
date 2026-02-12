@@ -175,19 +175,16 @@ lazy val httpApi = (project in file("modules/http-api"))
     ) ++ loggingDeps
   )
 
-// Module Provider - gRPC-based dynamic module registration protocol
-lazy val moduleProvider = (project in file("modules/module-provider"))
-  .dependsOn(runtime, langCompiler)
+// Module Provider SDK - lightweight client library for provider developers
+lazy val moduleProviderSdk = (project in file("modules/module-provider-sdk"))
+  .dependsOn(runtime)
   .settings(
-    name := "constellation-module-provider",
-    publish / skip := true,
-    // Coverage thresholds account for ~3750 non-excludable ScalaPB-generated statements.
-    // Scala 3 built-in coverage doesn't support package/file exclusions (sbt-scoverage 2.x limitation).
-    // Hand-written source: ~1600 stmts (incl. SDK), ~1100 testable (excl. gRPC impls), ~70% covered.
-    // Diluted totals: stmt ≈ 12%, branch ≈ 11%. Thresholds set as ratchets on the diluted total.
+    name := "constellation-module-provider-sdk",
+    // Coverage: ~3750 generated stmts + ~650 hand-written SDK stmts.
+    // Hand-written coverage is high (~70%) but diluted by codegen.
     coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
-    coverageMinimumStmtTotal := 13,
-    coverageMinimumBranchTotal := 12,
+    coverageMinimumStmtTotal := 6,
+    coverageMinimumBranchTotal := 1,
     libraryDependencies ++= Seq(
       "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,
@@ -197,6 +194,21 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     Compile / PB.targets := Seq(
       scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
     )
+  )
+
+// Module Provider - gRPC-based dynamic module registration protocol (server-side)
+lazy val moduleProvider = (project in file("modules/module-provider"))
+  .dependsOn(moduleProviderSdk, langCompiler)
+  .settings(
+    name := "constellation-module-provider",
+    publish / skip := true,
+    // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
+    // Proto types come transitively from moduleProviderSdk.
+    coverageMinimumStmtTotal := 44,
+    coverageMinimumBranchTotal := 74,
+    libraryDependencies ++= Seq(
+      "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+    ) ++ loggingDeps
   )
 
 // Cache Memcached - optional Memcached-backed distributed cache backend
@@ -298,6 +310,7 @@ lazy val root = (project in file("."))
     langLsp,
     httpApi,
     cacheMemcached,
+    moduleProviderSdk,
     moduleProvider,
     exampleApp,
     langCli,
