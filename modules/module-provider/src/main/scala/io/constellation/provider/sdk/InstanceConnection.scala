@@ -58,7 +58,8 @@ class InstanceConnection(
             namespace = namespace,
             modules = modules.map(_.toDeclaration),
             protocolVersion = 1,
-            executorUrl = s"$instanceAddress:${config.executorPort}"
+            executorUrl = s"$instanceAddress:${config.executorPort}",
+            groupId = config.groupId.getOrElse("")
           )
           response <- transport.register(request).handleErrorWith { error =>
             state.set(InstanceConnectionState.Disconnected) >>

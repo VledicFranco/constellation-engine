@@ -43,6 +43,7 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
       connectionId = "conn1",
       namespace = "ml.sentiment",
       executorUrl = "localhost:9999",
+      groupId = "",
       modules = Set("ml.sentiment.analyze"),
       state = ConnectionState.Active,
       registeredAt = 1000L,
@@ -64,8 +65,8 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
     val mgr = createManager()
     val obs  = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a"), 1).unsafeRunSync()
-    mgr.registerConnection("conn2", "text", "localhost:8888", Set("text.b"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
+    mgr.registerConnection("conn2", "text", "localhost:8888", "", Set("text.b"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn2", obs).unsafeRunSync()
 
     val conns = mgr.getAllConnections.unsafeRunSync()
@@ -80,7 +81,7 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
     val mgr = createManager()
     val obs  = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", obs).unsafeRunSync()
     mgr.recordDrainAck("conn1", pb.DrainAck(accepted = true, inFlightCount = 2)).unsafeRunSync()
 
@@ -97,7 +98,7 @@ class ProviderListingSpec extends AnyFlatSpec with Matchers {
     val mgr = createManager(config, connId => deadConnections.update(_ :+ connId))
 
     val obs = new RecordingObserver
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", obs).unsafeRunSync()
     mgr.recordDrainAck("conn1", pb.DrainAck(accepted = true, inFlightCount = 1)).unsafeRunSync()
 

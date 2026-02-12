@@ -55,13 +55,18 @@ class ModuleProviderManager(
   private val functionRegistry: FunctionRegistry = compiler.functionRegistry
   private val currentProtocolVersion: Int        = 1
 
+  /** Executor pools per namespace. Solo providers use a pool of size 1; groups use multi-member pools. */
+  private[provider] val executorPools: Ref[IO, Map[String, ExecutorPool]] =
+    Ref.unsafe[IO, Map[String, ExecutorPool]](Map.empty)
+
   /** Handle a Register RPC. */
   def handleRegister(request: pb.RegisterRequest, connectionId: String): IO[pb.RegisterResponse] =
     for {
       conns <- controlPlane.getAllConnections
       namespaceOwners = conns.map(c => c.namespace -> c.connectionId).toMap
+      namespaceGroupIds = conns.collect { case c if c.groupId.nonEmpty => c.namespace -> c.groupId }.toMap
       validationResults = SchemaValidator.validate(
-        request, functionRegistry, namespaceOwners, connectionId, config.reservedNamespaces
+        request, functionRegistry, namespaceOwners, namespaceGroupIds, connectionId, config.reservedNamespaces
       )
 
       // Process accepted modules
@@ -69,7 +74,7 @@ class ModuleProviderManager(
         case ModuleValidationResult.Accepted(qualifiedName) =>
           request.modules.toList.find(d => s"${request.namespace}.${d.name}" == qualifiedName) match {
             case Some(decl) =>
-              registerExternalModule(decl, request.namespace, request.executorUrl).as(Some(qualifiedName))
+              registerExternalModule(decl, request.namespace, request.executorUrl, connectionId).as(Some(qualifiedName))
             case None =>
               IO.raiseError(new RuntimeException(
                 s"Internal error: accepted module $qualifiedName not found in request"
@@ -85,6 +90,7 @@ class ModuleProviderManager(
         connectionId = connectionId,
         namespace = request.namespace,
         executorUrl = request.executorUrl,
+        groupId = request.groupId,
         modules = registeredNames.toSet,
         protocolVersion = negotiatedVersion
       )
@@ -141,13 +147,24 @@ class ModuleProviderManager(
       results = results
     )
 
-  /** Deregister all modules owned by a connection (e.g., on control plane stream break or liveness timeout). */
+  /** Deregister all modules owned by a connection (e.g., on control plane stream break or liveness timeout).
+    *
+    * For group members: modules are only deregistered when the last group member disconnects.
+    * The executor is always removed from the pool, but modules stay registered for other members.
+    */
   def deregisterAllForConnection(connectionId: String): IO[Unit] =
     for {
-      connOpt <- controlPlane.getConnection(connectionId)
+      connOpt  <- controlPlane.getConnection(connectionId)
+      isLast   <- controlPlane.isLastGroupMember(connectionId)
       _ <- connOpt.traverse_ { conn =>
-        conn.registeredModules.toList.traverse_(deregisterExternalModule) >>
-          IO(channelCache.shutdownChannel(conn.executorUrl))
+        // Remove executor from pool
+        removeFromExecutorPool(conn.namespace, connectionId) >>
+          // Only deregister modules if this is the last group member (or solo provider)
+          (if isLast then
+            conn.registeredModules.toList.traverse_(deregisterExternalModule) >>
+              IO(channelCache.shutdownChannel(conn.executorUrl))
+          else
+            IO.unit)
       }
       _ <- controlPlane.removeConnection(connectionId)
     } yield ()
@@ -155,7 +172,8 @@ class ModuleProviderManager(
   private def registerExternalModule(
       decl: pb.ModuleDeclaration,
       namespace: String,
-      executorUrl: String
+      executorUrl: String,
+      connectionId: String
   ): IO[Unit] =
     for {
       inputSchema  <- IO.fromOption(decl.inputSchema)(
@@ -175,27 +193,65 @@ class ModuleProviderManager(
         )
       )
 
-      module = ExternalModule.create(
-        name = decl.name,
-        namespace = namespace,
-        executorUrl = executorUrl,
-        inputType = inputType,
-        outputType = outputType,
-        description = decl.description,
-        serializer = serializer,
-        channelCache = channelCache
-      )
+      // Get or create executor pool for this namespace
+      pool <- getOrCreateExecutorPool(namespace)
+      _    <- pool.add(ExecutorEndpoint(connectionId, executorUrl))
 
-      signature = ExternalFunctionSignature.create(
-        name = decl.name,
-        namespace = namespace,
-        inputType = inputType,
-        outputType = outputType
-      )
+      // Only create the module and signature if this is the first registration for the namespace
+      // (subsequent group members just add to the pool)
+      poolSize <- pool.size
+      _ <- if poolSize == 1 then {
+        val module = ExternalModule.create(
+          name = decl.name,
+          namespace = namespace,
+          executorPool = pool,
+          inputType = inputType,
+          outputType = outputType,
+          description = decl.description,
+          serializer = serializer,
+          channelCache = channelCache
+        )
 
-      _ <- delegate.setModule(module)
-      _ <- IO(functionRegistry.register(signature))
+        val signature = ExternalFunctionSignature.create(
+          name = decl.name,
+          namespace = namespace,
+          inputType = inputType,
+          outputType = outputType
+        )
+
+        delegate.setModule(module) >> IO(functionRegistry.register(signature))
+      } else IO.unit
     } yield ()
+
+  /** Get or create an executor pool for a namespace. */
+  private def getOrCreateExecutorPool(namespace: String): IO[ExecutorPool] =
+    executorPools.get.flatMap { pools =>
+      pools.get(namespace) match {
+        case Some(pool) => IO.pure(pool)
+        case None =>
+          RoundRobinExecutorPool.create.flatMap { newPool =>
+            executorPools.modify { current =>
+              current.get(namespace) match {
+                case Some(existing) => (current, existing) // Another thread created it
+                case None           => (current + (namespace -> newPool), newPool)
+              }
+            }
+          }
+      }
+    }
+
+  /** Remove a connection's executor from the namespace pool. */
+  private def removeFromExecutorPool(namespace: String, connectionId: String): IO[Unit] =
+    executorPools.get.flatMap { pools =>
+      pools.get(namespace) match {
+        case Some(pool) =>
+          pool.remove(connectionId).flatMap { isEmpty =>
+            if isEmpty then executorPools.update(_ - namespace)
+            else IO.unit
+          }
+        case None => IO.unit
+      }
+    }
 
   // ===== Operational Tooling =====
 
@@ -206,6 +262,7 @@ class ModuleProviderManager(
         connectionId = conn.connectionId,
         namespace = conn.namespace,
         executorUrl = conn.executorUrl,
+        groupId = conn.groupId,
         modules = conn.registeredModules,
         state = conn.state,
         registeredAt = conn.registeredAt,
@@ -229,6 +286,7 @@ final case class ProviderInfo(
     connectionId: String,
     namespace: String,
     executorUrl: String,
+    groupId: String,
     modules: Set[String],
     state: ConnectionState,
     registeredAt: Long,

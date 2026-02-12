@@ -20,7 +20,9 @@ object SchemaValidator {
     * @param functionRegistry
     *   Current compile-time function registry (for name conflict detection)
     * @param namespaceOwners
-    *   Map of namespace -> active provider connection ID
+    *   Map of namespace -> active provider connection ID (first owner)
+    * @param namespaceGroupIds
+    *   Map of namespace -> group_id (empty string for solo providers)
     * @param connectionId
     *   The connection ID of the requesting provider
     * @param reservedNamespaces
@@ -32,6 +34,7 @@ object SchemaValidator {
       request: pb.RegisterRequest,
       functionRegistry: FunctionRegistry,
       namespaceOwners: Map[String, String],
+      namespaceGroupIds: Map[String, String],
       connectionId: String,
       reservedNamespaces: Set[String]
   ): List[ModuleValidationResult] = {
@@ -50,8 +53,8 @@ object SchemaValidator {
 
           case None =>
             request.modules.toList.map { decl =>
-              validateModule(decl, namespace, functionRegistry, namespaceOwners, connectionId,
-                reservedNamespaces)
+              validateModule(decl, namespace, request.groupId, functionRegistry,
+                namespaceOwners, namespaceGroupIds, connectionId, reservedNamespaces)
             }
         }
     }
@@ -101,8 +104,10 @@ object SchemaValidator {
   private def validateModule(
       decl: pb.ModuleDeclaration,
       namespace: String,
+      requestGroupId: String,
       functionRegistry: FunctionRegistry,
       namespaceOwners: Map[String, String],
+      namespaceGroupIds: Map[String, String],
       connectionId: String,
       reservedNamespaces: Set[String]
   ): ModuleValidationResult = {
@@ -122,19 +127,26 @@ object SchemaValidator {
           ModuleValidationResult.Rejected(decl.name, error)
 
         case None =>
-          // Check name conflicts
-          val namespaceConflict = functionRegistry.lookupQualified(qualifiedName) match {
+          // Check name conflicts with group-awareness
+          val namespaceConflict = namespaceOwners.get(namespace) match {
+            case Some(owner) if owner == connectionId =>
+              None // Same connection — allow upgrade
+
             case Some(_) =>
-              namespaceOwners.get(namespace) match {
-                case Some(owner) if owner == connectionId => None // Same provider — allow upgrade
-                case Some(_) => Some(s"Namespace '$namespace' is owned by another provider")
-                case None    => Some(s"Module '$qualifiedName' already exists")
-              }
+              // Different connection owns this namespace — check group membership
+              val existingGroupId = namespaceGroupIds.getOrElse(namespace, "")
+              if requestGroupId.nonEmpty && existingGroupId == requestGroupId then
+                None // Same group — allow join
+              else if requestGroupId.nonEmpty && existingGroupId.nonEmpty && existingGroupId != requestGroupId then
+                Some(s"Namespace '$namespace' is owned by a different provider group")
+              else
+                Some(s"Namespace '$namespace' is owned by another provider")
+
             case None =>
-              namespaceOwners.get(namespace) match {
-                case Some(owner) if owner != connectionId =>
-                  Some(s"Namespace '$namespace' is owned by another provider")
-                case _ => None
+              // Namespace is not owned — check if the module already exists (e.g., built-in)
+              functionRegistry.lookupQualified(qualifiedName) match {
+                case Some(_) => Some(s"Module '$qualifiedName' already exists")
+                case None    => None
               }
           }
 

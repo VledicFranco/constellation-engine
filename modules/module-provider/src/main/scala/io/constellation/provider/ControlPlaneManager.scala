@@ -22,6 +22,7 @@ final case class ProviderConnection(
     connectionId: String,
     namespace: String,
     executorUrl: String,
+    groupId: String,
     registeredModules: Set[String],
     protocolVersion: Int,
     state: ConnectionState,
@@ -51,6 +52,7 @@ class ControlPlaneManager(
       connectionId: String,
       namespace: String,
       executorUrl: String,
+      groupId: String,
       modules: Set[String],
       protocolVersion: Int
   ): IO[Unit] =
@@ -59,6 +61,7 @@ class ControlPlaneManager(
         connectionId = connectionId,
         namespace = namespace,
         executorUrl = executorUrl,
+        groupId = groupId,
         registeredModules = modules,
         protocolVersion = protocolVersion,
         state = ConnectionState.Registered,
@@ -131,6 +134,30 @@ class ControlPlaneManager(
   /** Get all active connections. */
   def getAllConnections: IO[List[ProviderConnection]] =
     providerState.get.map(_.values.toList)
+
+  /** Get all connections for a given namespace. */
+  def getConnectionsByNamespace(namespace: String): IO[List[ProviderConnection]] =
+    providerState.get.map(_.values.filter(_.namespace == namespace).toList)
+
+  /** Check if a connection is the last member of its group for a namespace.
+    * Solo providers (empty groupId) always return true.
+    * Group members return true only when no other group member with the same namespace exists.
+    */
+  def isLastGroupMember(connectionId: String): IO[Boolean] =
+    providerState.get.map { state =>
+      state.get(connectionId) match {
+        case Some(conn) if conn.groupId.isEmpty => true // Solo provider
+        case Some(conn) =>
+          val otherGroupMembers = state.values.count { other =>
+            other.connectionId != connectionId &&
+              other.namespace == conn.namespace &&
+              other.groupId == conn.groupId &&
+              other.state != ConnectionState.Disconnected
+          }
+          otherGroupMembers == 0
+        case None => true
+      }
+    }
 
   /** Send a DrainRequest to an active provider. Returns false if connection not found or not active. */
   def drainConnection(connectionId: String, reason: String, deadlineMs: Long): IO[Boolean] =

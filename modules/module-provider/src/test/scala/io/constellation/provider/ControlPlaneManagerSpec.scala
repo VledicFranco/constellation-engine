@@ -52,7 +52,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.registerConnection" should "add connection in Registered state" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", Set("ml.sentiment.analyze"), 1)
+    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", "", Set("ml.sentiment.analyze"), 1)
       .unsafeRunSync()
 
     val conn = mgr.getConnection("conn1").unsafeRunSync()
@@ -72,7 +72,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr = createManager()
 
     val before = System.currentTimeMillis()
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     val after = System.currentTimeMillis()
 
     val conn = mgr.getConnection("conn1").unsafeRunSync().get
@@ -86,7 +86,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.analyze"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1).unsafeRunSync()
 
     val result = mgr.activateControlPlane("conn1", observer).unsafeRunSync()
     result shouldBe true
@@ -111,7 +111,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val obs1 = new RecordingObserver
     val obs2 = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", obs1).unsafeRunSync() shouldBe true
 
     // Second activation should fail (already Active, not Registered)
@@ -128,7 +128,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", observer).unsafeRunSync()
 
     val connBefore = mgr.getConnection("conn1").unsafeRunSync().get
@@ -144,7 +144,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   it should "be a no-op for non-Active connection" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     mgr.recordHeartbeat("conn1").unsafeRunSync() // Registered, not Active
 
     val conn = mgr.getConnection("conn1").unsafeRunSync().get
@@ -157,7 +157,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.analyze"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.analyze"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", observer).unsafeRunSync()
     mgr.deactivateConnection("conn1").unsafeRunSync()
 
@@ -171,7 +171,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.getConnectionByNamespace" should "find connection by namespace" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml.sentiment", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
 
     mgr.getConnectionByNamespace("ml.sentiment").unsafeRunSync() shouldBe defined
     mgr.getConnectionByNamespace("other").unsafeRunSync() shouldBe None
@@ -182,7 +182,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.removeConnection" should "remove connection from state" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     mgr.removeConnection("conn1").unsafeRunSync()
 
     mgr.getConnection("conn1").unsafeRunSync() shouldBe None
@@ -193,7 +193,7 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.updateModules" should "update registered modules" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a", "ml.b"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a", "ml.b"), 1).unsafeRunSync()
     mgr.updateModules("conn1", Set("ml.a")).unsafeRunSync()
 
     val conn = mgr.getConnection("conn1").unsafeRunSync().get
@@ -205,8 +205,8 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
   "ControlPlaneManager.getAllConnections" should "return all connections" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
-    mgr.registerConnection("conn2", "text", "localhost:8888", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn2", "text", "localhost:8888", "", Set.empty, 1).unsafeRunSync()
 
     val conns = mgr.getAllConnections.unsafeRunSync()
     conns should have size 2
@@ -220,8 +220,8 @@ class ControlPlaneManagerSpec extends AnyFlatSpec with Matchers {
     val obs1 = new RecordingObserver
     val obs2 = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a"), 1).unsafeRunSync()
-    mgr.registerConnection("conn2", "text", "localhost:8888", Set("text.b"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
+    mgr.registerConnection("conn2", "text", "localhost:8888", "", Set("text.b"), 1).unsafeRunSync()
 
     mgr.activateControlPlane("conn1", obs1).unsafeRunSync()
     mgr.activateControlPlane("conn2", obs2).unsafeRunSync()

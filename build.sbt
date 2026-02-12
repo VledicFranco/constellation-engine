@@ -186,8 +186,8 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     // Hand-written source: ~1600 stmts (incl. SDK), ~1100 testable (excl. gRPC impls), ~70% covered.
     // Diluted totals: stmt ≈ 12%, branch ≈ 11%. Thresholds set as ratchets on the diluted total.
     coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
-    coverageMinimumStmtTotal := 12,
-    coverageMinimumBranchTotal := 11,
+    coverageMinimumStmtTotal := 13,
+    coverageMinimumBranchTotal := 12,
     libraryDependencies ++= Seq(
       "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,

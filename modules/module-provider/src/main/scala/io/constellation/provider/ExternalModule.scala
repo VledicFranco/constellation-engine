@@ -55,11 +55,15 @@ class GrpcChannelCache {
 /** Creates Module.Uninitialized instances backed by gRPC execution on an external provider. */
 object ExternalModule {
 
-  /** Create an uninitialized module that executes via gRPC callback. */
+  /** Create an uninitialized module that executes via gRPC callback.
+    *
+    * The executorPool provides one or more executor endpoints — for solo providers
+    * it contains a single endpoint, for provider groups it load-balances across members.
+    */
   def create(
       name: String,
       namespace: String,
-      executorUrl: String,
+      executorPool: ExecutorPool,
       inputType: CType,
       outputType: CType,
       description: String,
@@ -138,9 +142,10 @@ object ExternalModule {
                 )
               )
 
-              // gRPC call (uses cached channel)
+              // gRPC call (uses cached channel, pool selects executor)
+              executor  <- executorPool.next
               startTime <- IO.monotonic
-              response  <- callExecutor(channelCache, executorUrl, name, inputBytes, moduleId.toString)
+              response  <- callExecutor(channelCache, executor.executorUrl, name, inputBytes, moduleId.toString)
               endTime   <- IO.monotonic
               durationNs = (endTime - startTime).toNanos
 

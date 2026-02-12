@@ -52,7 +52,7 @@ class DrainSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set("ml.a"), 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set("ml.a"), 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", observer).unsafeRunSync()
 
     val result = mgr.drainConnection("conn1", "rolling update", 30000L).unsafeRunSync()
@@ -74,7 +74,7 @@ class DrainSpec extends AnyFlatSpec with Matchers {
   it should "return false for non-active connection" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
 
     val result = mgr.drainConnection("conn1", "test", 30000L).unsafeRunSync()
     result shouldBe false
@@ -86,7 +86,7 @@ class DrainSpec extends AnyFlatSpec with Matchers {
     val mgr      = createManager()
     val observer = new RecordingObserver
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
     mgr.activateControlPlane("conn1", observer).unsafeRunSync()
 
     mgr.recordDrainAck("conn1", pb.DrainAck(accepted = true, inFlightCount = 3)).unsafeRunSync()
@@ -98,7 +98,7 @@ class DrainSpec extends AnyFlatSpec with Matchers {
   it should "be a no-op for non-active connection" in {
     val mgr = createManager()
 
-    mgr.registerConnection("conn1", "ml", "localhost:9999", Set.empty, 1).unsafeRunSync()
+    mgr.registerConnection("conn1", "ml", "localhost:9999", "", Set.empty, 1).unsafeRunSync()
 
     mgr.recordDrainAck("conn1", pb.DrainAck(accepted = true, inFlightCount = 0)).unsafeRunSync()
 

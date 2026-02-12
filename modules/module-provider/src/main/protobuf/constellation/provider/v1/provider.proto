@@ -45,6 +45,12 @@ message RegisterRequest {
 
   // The gRPC endpoint where Constellation can call ModuleExecutor.Execute().
   string executor_url = 4;
+
+  // Optional: Provider group identifier for horizontal scaling.
+  // Multiple provider instances registering with the same group_id + namespace
+  // are treated as a single logical provider with multiple executors.
+  // If empty, the provider operates in solo mode (single-owner namespace).
+  string group_id = 5;
 }
 
 message ModuleDeclaration {

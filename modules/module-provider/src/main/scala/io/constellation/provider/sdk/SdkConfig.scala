@@ -14,6 +14,10 @@ import scala.concurrent.duration.*
   *   Maximum backoff duration for reconnection attempts
   * @param maxReconnectAttempts
   *   Maximum number of consecutive reconnection attempts before giving up
+  * @param groupId
+  *   Optional provider group ID for horizontal scaling. When set, multiple provider
+  *   replicas with the same groupId + namespace are treated as a single logical provider.
+  *   Constellation load-balances Execute calls across healthy group members.
   * @param canary
   *   Configuration for canary rollout behavior
   */
@@ -23,6 +27,7 @@ final case class SdkConfig(
     reconnectBackoff: FiniteDuration = 1.second,
     maxReconnectBackoff: FiniteDuration = 60.seconds,
     maxReconnectAttempts: Int = 10,
+    groupId: Option[String] = None,
     canary: CanaryConfig = CanaryConfig()
 )
 

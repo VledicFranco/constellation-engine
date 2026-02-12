@@ -98,6 +98,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml", Seq(mkDecl("a"), mkDecl("b")), executorUrl = ""),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -140,6 +141,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml", Seq(mkDecl("analyze-v2").copy(name = "analyze-v2"))),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -155,6 +157,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -167,6 +170,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml", Seq(mkDecl("analyze"), mkDecl("classify"))),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -178,6 +182,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     val results = SchemaValidator.validate(
       mkRequest("stdlib.math", Seq(mkDecl("add"))),
       FunctionRegistry.empty,
+      Map.empty,
       Map.empty,
       "conn1",
       Set("stdlib")
@@ -192,6 +197,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("stdlib", Seq(mkDecl("add"))),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -204,6 +210,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
       FunctionRegistry.empty,
       Map("ml.sentiment" -> "other-conn"),
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -226,6 +233,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
       registry,
       Map("ml.sentiment" -> "conn1"),
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -242,6 +250,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     val results = SchemaValidator.validate(
       mkRequest("ml", Seq(declNoInput)),
       FunctionRegistry.empty,
+      Map.empty,
       Map.empty,
       "conn1",
       Set("stdlib")
@@ -261,6 +270,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml", Seq(declBadInput)),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -272,6 +282,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     val results = SchemaValidator.validate(
       mkRequest("", Seq(mkDecl("analyze"), mkDecl("classify"))),
       FunctionRegistry.empty,
+      Map.empty,
       Map.empty,
       "conn1",
       Set("stdlib")
@@ -292,6 +303,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml", Seq(declNoOutput)),
       FunctionRegistry.empty,
       Map.empty,
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
@@ -309,6 +321,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
     val results = SchemaValidator.validate(
       mkRequest("ml", Seq(declBadOutput)),
       FunctionRegistry.empty,
+      Map.empty,
       Map.empty,
       "conn1",
       Set("stdlib")
@@ -333,6 +346,7 @@ class SchemaValidatorSpec extends AnyFlatSpec with Matchers {
       mkRequest("ml.sentiment", Seq(mkDecl("analyze"))),
       registry,
       Map.empty, // No namespace owners — triggers "already exists" path
+      Map.empty,
       "conn1",
       Set("stdlib")
     )
