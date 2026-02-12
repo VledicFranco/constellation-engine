@@ -11,7 +11,7 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 
 // Code coverage reporting
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.9")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.4.4")
 
 // Fat JAR packaging for deployment
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.1.5")
@@ -21,3 +21,7 @@ addSbtPlugin("com.github.sbt" % "sbt-ci-release" % "1.11.2")
 
 // Binary compatibility checking (MiMa)
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "1.1.4")
+
+// Protocol Buffers / gRPC code generation (ScalaPB)
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "1.0.7")
+libraryDependencies += "com.thesamet.scalapb" %% "compilerplugin" % "0.11.15"

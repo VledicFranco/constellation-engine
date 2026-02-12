@@ -66,12 +66,14 @@ When Following Procedure:
 - [lsp](./components/lsp/) — Language server protocol
 - [http-api](./components/http-api/) — REST API, WebSocket, dashboard
 - [stdlib](./components/stdlib/) — Standard library modules
+- [module-provider](./components/module-provider/) — gRPC-based dynamic module registration
 
 ### Features
 - [execution](./features/execution/) — Hot/cold execution, suspension
 - [resilience](./features/resilience/) — Retry, fallback, caching
 - [parallelization](./features/parallelization/) — Layer execution, scheduling
 - [type-safety](./features/type-safety/) — Type algebra, optionals
+- [extensibility](./features/extensibility/) — SPIs, module provider protocol
 - [tooling](./features/tooling/) — LSP, dashboard, VSCode extension
 
 ### Protocols

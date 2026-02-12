@@ -190,7 +190,7 @@ val path = BenchmarkReporter.generateReportPath("target")
     "timestamp": "2026-01-24T14:30:52.123Z",
     "javaVersion": "17.0.2",
     "jvmName": "OpenJDK 64-Bit Server VM",
-    "scalaVersion": "3.3.1",
+    "scalaVersion": "3.3.4",
     "gitCommit": "a1b2c3d",
     "hostname": "dev-machine"
   },

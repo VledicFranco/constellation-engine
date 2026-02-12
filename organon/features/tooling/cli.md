@@ -126,7 +126,7 @@ Input files are limited to 10MB to prevent memory exhaustion.
 |--------|------|
 | Source | `modules/lang-cli/src/main/scala/io/constellation/cli/` |
 | Tests | `modules/lang-cli/src/test/scala/io/constellation/cli/` |
-| Fat JAR | `modules/lang-cli/target/scala-3.3.1/constellation-cli.jar` |
+| Fat JAR | `modules/lang-cli/target/scala-3.3.4/constellation-cli.jar` |
 
 ## Related Documentation
 

@@ -105,6 +105,16 @@ val myModule = ModuleBuilder
 
 Modules are automatically available in your `.cst` pipelines once registered.
 
+### Cross-Process Modules (Module Provider Protocol)
+
+External services can contribute pipeline modules via gRPC using the Module Provider Protocol. This enables modules written in any language, running in separate processes, with independent scaling.
+
+```
+Provider (Python, Go, etc.) ──gRPC──> ModuleProviderManager ──> ExternalModule (in pipeline)
+```
+
+The server validates schemas, manages connection lifecycle via heartbeats, and load-balances across provider groups. See [Module Provider Integration](../integrations/module-provider.md).
+
 ### Backend Integrations
 
 Constellation Engine supports pluggable backends for observability and resilience:
@@ -116,6 +126,7 @@ Constellation Engine supports pluggable backends for observability and resilienc
 | ExecutionListener | Event streaming to Kafka, webhooks, etc. |
 | CacheBackend | Cache compiled pipelines in Redis, Memcached |
 | CircuitBreakerRegistry | Per-module circuit breakers for resilience |
+| ModuleProviderManager | Cross-process module registration via gRPC |
 
 All backends default to no-op implementations with zero overhead.
 
@@ -170,6 +181,8 @@ The source code is organized by module:
 | runtime | `modules/runtime/` | Module execution and DAG runtime |
 | lang-parser | `modules/lang-parser/` | constellation-lang parser |
 | lang-compiler | `modules/lang-compiler/` | Type checking and DAG compilation |
+| module-provider-sdk | `modules/module-provider-sdk/` | Client library for cross-process providers |
+| module-provider | `modules/module-provider/` | Server-side gRPC registration and lifecycle |
 | http-api | `modules/http-api/` | HTTP server and WebSocket LSP |
 
 ## Next Steps

@@ -52,7 +52,7 @@ jobs:
           mkdir -p website/static/api
           for module_dir in modules/*/; do
             module_name=$(basename "$module_dir")
-            api_dir="$module_dir/target/scala-3.3.1/api"
+            api_dir="$module_dir/target/scala-3.3.4/api"
             if [ -d "$api_dir" ]; then
               cp -r "$api_dir" "website/static/api/$module_name"
               echo "Copied Scaladoc for $module_name"

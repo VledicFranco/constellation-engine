@@ -45,9 +45,14 @@ final case class ResumeInProgressError(executionId: UUID)
   */
 object SuspendableExecution {
 
-  // Track in-flight resume operations to prevent concurrent modifications
-  // Key: executionId, Value: timestamp when resume started
-  private val inFlightResumes = new ConcurrentHashMap[UUID, Long]()
+  // Track in-flight resume operations to prevent concurrent modifications.
+  // IMPORTANT: Uses a ConcurrentHashMap key-set (reference types only) instead of
+  // ConcurrentHashMap[UUID, Long] because sbt-scoverage instrumentation introduces
+  // intermediate val assignments that trigger Scala's primitive null-unboxing:
+  //   Java putIfAbsent returns null → scoverage temp val unboxes to 0L →
+  //   Option(0L) = Some(0) instead of None → lock always appears held.
+  // Using a Set<UUID> avoids primitive values entirely.
+  private val inFlightResumes: java.util.Set[UUID] = ConcurrentHashMap.newKeySet[UUID]()
 
   /** Resume a suspended execution with additional inputs and/or resolved nodes.
     *
@@ -79,16 +84,15 @@ object SuspendableExecution {
   ): IO[DataSignature] = {
     val executionId = suspended.executionId
 
-    // Atomic check-and-set wrapped in IO.delay so both acquisition and release
-    // happen during IO execution (not at IO construction time).
-    // Using IO.delay + flatMap instead of IO.defer to avoid scoverage
-    // instrumentation breaking by-name evaluation semantics.
+    // Atomic check-and-set: add returns false if already present (lock held).
+    // Using Set.add (reference-type only) avoids the primitive null-unboxing
+    // issue that affects ConcurrentHashMap[UUID, Long].putIfAbsent under scoverage.
     IO.delay {
-      Option(inFlightResumes.putIfAbsent(executionId, System.currentTimeMillis()))
+      inFlightResumes.add(executionId)
     }.flatMap {
-      case Some(_) =>
+      case false =>
         IO.raiseError(ResumeInProgressError(executionId))
-      case None =>
+      case true =>
         doResume(
           suspended,
           additionalInputs,
@@ -100,9 +104,8 @@ object SuspendableExecution {
           Instant.now()
         )
           .guaranteeCase { _ =>
-            // Use guaranteeCase instead of guarantee to ensure cleanup runs
-            // even when the fiber is cancelled (guarantee may be skipped in
-            // certain cancellation scenarios with Cats Effect).
+            // guaranteeCase (not guarantee) ensures cleanup runs even when
+            // the fiber is cancelled.
             IO.delay { inFlightResumes.remove(executionId); () }
           }
     }

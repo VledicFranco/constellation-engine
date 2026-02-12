@@ -51,7 +51,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: target/scala-3.3.1/scoverage-report/scoverage.xml
+          files: target/scala-3.3.4/scoverage-report/scoverage.xml
           fail_ci_if_error: false
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: target/scala-3.3.1/scoverage-report/
+          path: target/scala-3.3.4/scoverage-report/
           retention-days: 7
 
   vscode-extension:

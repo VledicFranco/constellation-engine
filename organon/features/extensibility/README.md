@@ -3,7 +3,7 @@
 > **Path**: `organon/features/extensibility/`
 > **Parent**: [features/](../README.md)
 
-Service Provider Interfaces (SPI) for custom cache backends, metrics providers, execution listeners, and storage. Constellation Engine's extensibility model enables integration with your infrastructure without modifying core code.
+Two extensibility mechanisms: **SPIs** for in-process pluggability (cache backends, metrics, listeners) and the **Module Provider Protocol** for cross-process modules via gRPC. Both enable integration with your infrastructure without modifying core code.
 
 ## Ethos Summary
 
@@ -23,6 +23,7 @@ Service Provider Interfaces (SPI) for custom cache backends, metrics providers, 
 | [metrics-provider.md](./metrics-provider.md) | Custom metrics export (Prometheus, DataDog, etc.) |
 | [execution-listener.md](./execution-listener.md) | Execution event hooks (Kafka, audit logs, etc.) |
 | [execution-storage.md](./execution-storage.md) | Pipeline and suspension persistence |
+| [module-provider.md](./module-provider.md) | Cross-process module registration via gRPC |
 
 ## Quick Reference
 
@@ -50,6 +51,8 @@ val constellation = ConstellationImpl.builder()
 
 ## Extension Points
 
+### In-Process SPIs
+
 | Interface | Purpose | Default |
 |-----------|---------|---------|
 | `CacheBackend` | Custom cache storage (Redis, Memcached, etc.) | `InMemoryCacheBackend` |
@@ -57,6 +60,14 @@ val constellation = ConstellationImpl.builder()
 | `ExecutionListener` | Hooks for execution events (logging, tracing, etc.) | `ExecutionListener.noop` |
 | `PipelineStore` | Compiled pipeline persistence | `PipelineStoreImpl` (in-memory) |
 | `SuspensionStore` | Suspended execution persistence | `InMemorySuspensionStore` |
+
+### Cross-Process
+
+| Protocol | Purpose | Module |
+|----------|---------|--------|
+| Module Provider | External services contribute pipeline modules via gRPC | `module-provider-sdk` (client), `module-provider` (server) |
+
+See [module-provider.md](./module-provider.md) for the full protocol documentation.
 
 ## Components Involved
 
@@ -67,6 +78,8 @@ val constellation = ConstellationImpl.builder()
 | `runtime/cache` | Default cache implementation | `InMemoryCacheBackend.scala` |
 | `runtime` | Storage interfaces | `PipelineStore.scala`, `SuspensionStore.scala` |
 | `runtime/impl` | Default storage implementations | `PipelineStoreImpl.scala`, `InMemorySuspensionStore.scala` |
+| `module-provider-sdk` | Provider client library | `ConstellationProvider.scala`, `ModuleDefinition.scala` |
+| `module-provider` | Server-side registration | `ModuleProviderManager.scala`, `ExternalModule.scala` |
 
 ## Design Principles
 

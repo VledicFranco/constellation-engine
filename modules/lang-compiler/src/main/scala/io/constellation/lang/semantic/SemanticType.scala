@@ -255,6 +255,13 @@ trait FunctionRegistry {
   /** Register a function signature */
   def register(sig: FunctionSignature): Unit
 
+  /** Deregister a function by its fully qualified name.
+    *
+    * Removes from qualified name index, simple name index, and namespace tracking. No-op if the
+    * function is not registered.
+    */
+  def deregister(qualifiedName: String): Unit
+
   /** Get all registered function signatures */
   def all: List[FunctionSignature]
 
@@ -262,24 +269,30 @@ trait FunctionRegistry {
   def namespaces: Set[String]
 }
 
-/** In-memory implementation of FunctionRegistry */
+/** Thread-safe in-memory implementation of FunctionRegistry.
+  *
+  * Uses AtomicReference for lock-free concurrent access. Registration and deregistration from
+  * provider threads is safe while compiler threads read.
+  */
 class InMemoryFunctionRegistry extends FunctionRegistry {
+  import java.util.concurrent.atomic.AtomicReference
+
   // Map from simple name -> list of signatures (may have multiple in different namespaces)
-  private var bySimpleName: Map[String, List[FunctionSignature]] = Map.empty
+  private val bySimpleName = new AtomicReference(Map.empty[String, List[FunctionSignature]])
   // Map from qualified name -> signature
-  private var byQualifiedName: Map[String, FunctionSignature] = Map.empty
+  private val byQualifiedName = new AtomicReference(Map.empty[String, FunctionSignature])
   // All registered namespaces
-  private var allNamespaces: Set[String] = Set.empty
+  private val allNamespaces = new AtomicReference(Set.empty[String])
 
   def lookup(name: String): Option[FunctionSignature] =
     // First try qualified, then simple (return first match for backwards compat)
-    byQualifiedName.get(name).orElse(bySimpleName.get(name).flatMap(_.headOption))
+    byQualifiedName.get().get(name).orElse(bySimpleName.get().get(name).flatMap(_.headOption))
 
   def lookupSimple(name: String): List[FunctionSignature] =
-    bySimpleName.getOrElse(name, List.empty)
+    bySimpleName.get().getOrElse(name, List.empty)
 
   def lookupQualified(qualifiedName: String): Option[FunctionSignature] =
-    byQualifiedName.get(qualifiedName)
+    byQualifiedName.get().get(qualifiedName)
 
   def lookupInScope(
       name: QualifiedName,
@@ -351,7 +364,7 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
           // Try as a fully qualified name
           lookupQualified(name.fullName).toRight(
             // Check if namespace exists but function doesn't
-            if allNamespaces.contains(name.namespace.getOrElse("")) then {
+            if allNamespaces.get().contains(name.namespace.getOrElse("")) then {
               CompileError.UndefinedFunction(name.fullName, span)
             } else {
               name.namespace match {
@@ -364,24 +377,51 @@ class InMemoryFunctionRegistry extends FunctionRegistry {
     }
 
   def register(sig: FunctionSignature): Unit = {
-    // Register by simple name
-    bySimpleName = bySimpleName.updatedWith(sig.name) {
-      case Some(existing) => Some(existing :+ sig)
-      case None           => Some(List(sig))
+    // Atomically update all three indexes. Each uses updateAndGet for thread-safety.
+    bySimpleName.updateAndGet { current =>
+      current.updatedWith(sig.name) {
+        case Some(existing) => Some(existing :+ sig)
+        case None           => Some(List(sig))
+      }
     }
 
-    // Register by qualified name
-    byQualifiedName = byQualifiedName + (sig.qualifiedName -> sig)
+    byQualifiedName.updateAndGet(_ + (sig.qualifiedName -> sig))
 
-    // Track namespace
     sig.namespace.foreach { ns =>
-      allNamespaces = allNamespaces + ns
+      allNamespaces.updateAndGet(_ + ns)
     }
   }
 
-  def all: List[FunctionSignature] = byQualifiedName.values.toList
+  def deregister(qualifiedName: String): Unit = {
+    // Remove from qualified name index, capturing the signature for cleanup
+    val removed = byQualifiedName.get().get(qualifiedName)
 
-  def namespaces: Set[String] = allNamespaces
+    removed.foreach { sig =>
+      byQualifiedName.updateAndGet(_ - qualifiedName)
+
+      // Remove from simple name index
+      bySimpleName.updateAndGet { current =>
+        current.updatedWith(sig.name) {
+          case Some(existing) =>
+            val filtered = existing.filterNot(_.qualifiedName == qualifiedName)
+            if filtered.isEmpty then None else Some(filtered)
+          case None => None
+        }
+      }
+
+      // Remove namespace if no other functions use it
+      sig.namespace.foreach { ns =>
+        val remaining = byQualifiedName.get().values.exists(_.namespace.contains(ns))
+        if !remaining then {
+          allNamespaces.updateAndGet(_ - ns)
+        }
+      }
+    }
+  }
+
+  def all: List[FunctionSignature] = byQualifiedName.get().values.toList
+
+  def namespaces: Set[String] = allNamespaces.get()
 }
 
 object FunctionRegistry {

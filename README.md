@@ -443,6 +443,7 @@ libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % co
 | Lang Stdlib | `constellation-lang-stdlib` | Built-in functions |
 | Lang LSP | `constellation-lang-lsp` | Language Server Protocol |
 | HTTP API | `constellation-http-api` | REST API + WebSocket LSP |
+| Module Provider SDK | `constellation-module-provider-sdk` | Client library for cross-process gRPC module providers |
 | CLI | `constellation-lang-cli` | Command-line interface |
 
 ### Quick Start (Example App)
@@ -466,7 +467,7 @@ Constellation is an embeddable library — you integrate it into your own applic
 
 ```bash
 make assembly
-java -jar modules/example-app/target/scala-3.3.1/constellation-*.jar
+java -jar modules/example-app/target/scala-3.3.4/constellation-*.jar
 ```
 
 ### Docker

@@ -29,6 +29,7 @@ Constellation Engine ships a set of optional, first-party modules that extend th
 | Module | Artifact | Description | Status |
 |--------|----------|-------------|--------|
 | [Memcached Cache](./cache-memcached.md) | `constellation-cache-memcached` | Distributed caching via Memcached (spymemcached) | Stable |
+| [Module Provider SDK](/docs/integrations/module-provider) | `constellation-module-provider-sdk` | gRPC-based dynamic module registration for cross-process modules | Stable |
 
 ### Planned Modules
 
@@ -168,15 +169,16 @@ constellation-runtime
        └── DistributedCacheBackend (SPI trait)
        │
        ▼
-┌──────────────────────────────────────────────┐
-│           Optional Modules                    │
-├──────────────────────────────────────────────┤
-│  cache-memcached    MemcachedCacheBackend    │
-│  cache-redis        (planned)                │
-│  cache-caffeine     (planned)                │
-│  metrics-prometheus (planned)                │
-│  tracing-otel       (planned)                │
-└──────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│           Optional Modules                            │
+├──────────────────────────────────────────────────────┤
+│  cache-memcached        MemcachedCacheBackend        │
+│  module-provider-sdk    ConstellationProvider (gRPC)  │
+│  cache-redis            (planned)                    │
+│  cache-caffeine         (planned)                    │
+│  metrics-prometheus     (planned)                    │
+│  tracing-otel           (planned)                    │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---

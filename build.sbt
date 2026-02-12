@@ -1,5 +1,5 @@
 ThisBuild / version := "0.6.1"
-ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / scalaVersion := "3.3.4"
 ThisBuild / organization := "io.github.vledicfranco"
 
 // Maven Central POM metadata
@@ -175,6 +175,42 @@ lazy val httpApi = (project in file("modules/http-api"))
     ) ++ loggingDeps
   )
 
+// Module Provider SDK - lightweight client library for provider developers
+lazy val moduleProviderSdk = (project in file("modules/module-provider-sdk"))
+  .dependsOn(runtime)
+  .settings(
+    name := "constellation-module-provider-sdk",
+    // Exclude ScalaPB-generated code from coverage (requires Scala 3.3.4+ and sbt-scoverage 2.2.2+)
+    coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
+    coverageExcludedFiles := ".*[\\\\/]src_managed[\\\\/].*",
+    coverageMinimumStmtTotal := 79,
+    coverageMinimumBranchTotal := 85,
+    libraryDependencies ++= Seq(
+      "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
+      "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,
+      "com.thesamet.scalapb"  %% "scalapb-runtime"         % scalapb.compiler.Version.scalapbVersion % "protobuf",
+      "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+    ) ++ loggingDeps,
+    Compile / PB.targets := Seq(
+      scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
+    )
+  )
+
+// Module Provider - gRPC-based dynamic module registration protocol (server-side)
+lazy val moduleProvider = (project in file("modules/module-provider"))
+  .dependsOn(moduleProviderSdk, langCompiler)
+  .settings(
+    name := "constellation-module-provider",
+    publish / skip := true,
+    // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
+    // Proto types come transitively from moduleProviderSdk.
+    coverageMinimumStmtTotal := 66,
+    coverageMinimumBranchTotal := 70,
+    libraryDependencies ++= Seq(
+      "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+    ) ++ loggingDeps
+  )
+
 // Cache Memcached - optional Memcached-backed distributed cache backend
 lazy val cacheMemcached = (project in file("modules/cache-memcached"))
   .dependsOn(runtime)
@@ -274,6 +310,8 @@ lazy val root = (project in file("."))
     langLsp,
     httpApi,
     cacheMemcached,
+    moduleProviderSdk,
+    moduleProvider,
     exampleApp,
     langCli,
     docGenerator

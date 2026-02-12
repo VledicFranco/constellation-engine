@@ -16,7 +16,7 @@ A **type-safe pipeline orchestration framework** for Scala 3 that lets you:
 3. Execute pipelines with automatic dependency resolution and parallelization
 4. Expose pipelines via HTTP API or embed in Scala applications
 
-**Tech Stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
+**Tech Stack:** Scala 3.3.4 | Cats Effect 3 | http4s | Circe | cats-parse
 
 ## Finding This Guide
 
@@ -97,6 +97,7 @@ If you're an LLM reading the **GitHub README** or **documentation homepage**, yo
 | **Fix type errors** | [Error Handling](./patterns/error-handling.md) |
 | **Use the HTTP API** | [HTTP API Reference](./reference/http-api.md) |
 | **Embed in Scala app** | [Embedded API](./integration/embedded-api.md) |
+| **Build a cross-process module (gRPC)** | [Module Provider](./integration/module-provider.md) |
 | **Understand execution** | [DAG Execution](./foundations/dag-execution.md) |
 | **Debug compiler errors** | [Error Codes Reference](./reference/error-codes.md) |
 
@@ -120,10 +121,16 @@ If you're an LLM reading the **GitHub README** or **documentation homepage**, yo
 3. [CLI Reference](./cli-reference.md)
 4. [Resilience Patterns](./patterns/resilience.md)
 
+#### **Building Module Providers (Cross-Process)**
+1. [Module Provider](./integration/module-provider.md)
+2. [Module Registration](./integration/module-registration.md)
+3. [Key Concepts](./key-concepts.md) (Provider, Namespace, Provider Group)
+
 #### **Extending Constellation**
 1. [Embedded API](./integration/embedded-api.md)
 2. [Module Registration](./integration/module-registration.md)
-3. [Type Algebra](./patterns/type-algebra.md)
+3. [Module Provider](./integration/module-provider.md)
+4. [Type Algebra](./patterns/type-algebra.md)
 
 ## Document Categories
 
@@ -157,6 +164,7 @@ If you're an LLM reading the **GitHub README** or **documentation homepage**, yo
 
 - [Embedded API](./integration/embedded-api.md) - Programmatic usage
 - [Module Registration](./integration/module-registration.md) - Runtime module loading
+- [Module Provider](./integration/module-provider.md) - Cross-process modules via gRPC
 
 ## Key Files in This Guide
 

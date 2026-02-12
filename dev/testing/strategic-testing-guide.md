@@ -275,7 +275,7 @@ find modules/http-api/src/test -name "*Middleware*"
 2. **Identify Gaps**
    ```bash
    # Open HTML report for target module
-   open modules/<module>/target/scala-3.3.1/scoverage-report/index.html
+   open modules/<module>/target/scala-3.3.4/scoverage-report/index.html
 
    # Find low-coverage areas
    # Prioritize: P0 (0% user-facing) > P1 (>0% user-facing) > P2 (internal)
@@ -405,13 +405,13 @@ sbt clean coverage test coverageReport
 sbt clean coverage "<module>/test" coverageReport
 
 # View HTML report (most useful for gap analysis)
-open modules/<module>/target/scala-3.3.1/scoverage-report/index.html
+open modules/<module>/target/scala-3.3.4/scoverage-report/index.html
 ```
 
 ### Gap Analysis
 ```bash
 # Find low-coverage functions
-grep -A 3 "Statement coverage.*%" modules/<module>/target/scala-3.3.1/scoverage-report/index.html
+grep -A 3 "Statement coverage.*%" modules/<module>/target/scala-3.3.4/scoverage-report/index.html
 
 # Find handler functions (for LSP, HTTP modules)
 grep -n "def handle" modules/<module>/src/main/scala/**/*.scala

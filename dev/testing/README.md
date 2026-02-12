@@ -29,7 +29,7 @@ This directory contains strategic testing documentation and guidelines for Const
 ### Run Coverage Report
 ```bash
 sbt clean coverage test coverageReport
-open modules/<module>/target/scala-3.3.1/scoverage-report/index.html
+open modules/<module>/target/scala-3.3.4/scoverage-report/index.html
 ```
 
 ### Check Existing Tests

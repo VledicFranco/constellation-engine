@@ -54,6 +54,7 @@ Your Application
   │   └─ State management     ← Track execution state
   │
   └─ SPI Backends (optional)  ← Pluggable integrations
+      ├─ ModuleProviderManager← Cross-process modules via gRPC (optional)
       ├─ MetricsProvider      ← Prometheus, etc.
       ├─ TracerProvider       ← OpenTelemetry, etc.
       ├─ CacheBackend         ← Redis, etc.
@@ -1753,6 +1754,7 @@ ConstellationImpl.init  // Uses unbounded scheduler
 ## See Also
 
 - [Embedding Guide](../../getting-started/embedding-guide.md) - Quick start tutorial
+- [Module Provider](./module-provider.md) - Cross-process modules via gRPC
 - [Programmatic API](../../api-reference/programmatic-api.md) - API overview
 - [HTTP API Reference](../reference/http-api.md) - REST API for remote access
 - [Security Model](../../architecture/security-model.md) - Trust boundaries

@@ -1437,9 +1437,21 @@ import cats.implicits._  // Required for .traverse
 modules.traverse(constellation.setModule)
 ```
 
+## Cross-Process Modules
+
+All patterns above register **in-process** modules that run in the same JVM. For modules that need their own process, language runtime, or independent scaling, see the **Module Provider Protocol**:
+
+- External services register modules via gRPC instead of `setModule`
+- Modules can be written in any language (Python, Go, Rust, etc.)
+- Server handles namespace isolation, heartbeats, and load balancing
+- Trade-off: higher latency (network round-trip) for better isolation and scalability
+
+**See:** [Module Provider Integration](./module-provider.md)
+
 ## See Also
 
 - **[ModuleBuilder Reference](../patterns/module-development.md)** - Building modules
+- **[Module Provider](./module-provider.md)** - Cross-process modules via gRPC
 - **[Type System Reference](../reference/type-syntax.md)** - Type signatures
 - **[HTTP API Reference](../reference/http-api.md)** - Exposing modules via API
 - **[Error Codes](../reference/error-codes.md)** - Registration error codes

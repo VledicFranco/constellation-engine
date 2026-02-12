@@ -406,4 +406,4 @@ Tests in `vscode-extension/src/test/suite/e2e/memory-management.test.ts` verify:
 ---
 
 *Measured on: 2026-01-24*
-*Environment: JVM 17, Scala 3.3.1*
+*Environment: JVM 17, Scala 3.3.4*

@@ -76,6 +76,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'llm/integration/embedded-api',
             'llm/integration/module-registration',
+            'llm/integration/module-provider',
           ],
         },
       ],
@@ -213,6 +214,7 @@ const sidebars: SidebarsConfig = {
         'integrations/execution-listener',
         'integrations/cache-backend',
         'integrations/execution-storage',
+        'integrations/module-provider',
       ],
     },
     {

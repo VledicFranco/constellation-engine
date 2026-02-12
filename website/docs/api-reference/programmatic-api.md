@@ -505,6 +505,57 @@ object MyPipeline extends IOApp.Simple {
 }
 ```
 
+## Cross-Process Modules with ModuleProviderManager
+
+For modules that need their own process, language runtime, or independent scaling, wrap your `Constellation` instance with `ModuleProviderManager`. This enables external services to register pipeline modules via gRPC while keeping the same programmatic API.
+
+```scala
+import io.constellation.provider.{ModuleProviderManager, ProviderManagerConfig, JsonCValueSerializer}
+import io.constellation.impl.ConstellationImpl
+import io.constellation.lang.LangCompiler
+
+for {
+  // 1. Create base Constellation instance
+  constellation <- ConstellationImpl.builder().build()
+
+  // 2. Create compiler
+  compiler <- LangCompiler.builder.build
+
+  // 3. Wrap with module provider support
+  manager <- ModuleProviderManager(
+    delegate   = constellation,
+    compiler   = compiler,
+    config     = ProviderManagerConfig(),  // gRPC port 9090 by default
+    serializer = JsonCValueSerializer
+  )
+
+  // 4. Use 'manager' everywhere you'd use 'constellation'
+  // It delegates all Constellation methods and also accepts gRPC registrations
+  _ <- manager.setModule(myInProcessModule)  // In-process modules still work
+
+  // 5. Optionally start HTTP server with provider support
+  _ <- ConstellationServer.builder(manager, compiler).run
+  // Now: HTTP API on port 8080, gRPC provider service on port 9090
+} yield ()
+```
+
+**When to use `ModuleProviderManager`:**
+
+| Scenario | Use `ConstellationImpl` | Use `ModuleProviderManager` |
+|----------|------------------------|----------------------------|
+| All modules are in-process Scala | Yes | No |
+| Need external modules (Python, Go, etc.) | No | Yes |
+| Need horizontally scaled module pools | No | Yes |
+| Need independent module deployment | No | Yes |
+
+`ModuleProviderManager` is a drop-in wrapper — it implements `Constellation` and delegates all calls to the underlying instance. Add the `module-provider` dependency to your project:
+
+```scala
+libraryDependencies += "io.github.vledicfranco" %% "constellation-module-provider-sdk" % constellationVersion
+```
+
+See the [Module Provider Integration Guide](../integrations/module-provider.md) for the full protocol, SDK setup, and configuration options.
+
 ## Next Steps
 
 - [HTTP API Overview](./http-api-overview.md) — REST API for polyglot architectures
@@ -512,3 +563,4 @@ object MyPipeline extends IOApp.Simple {
 - [Error Reference](./error-reference.md) — Compile and runtime error handling
 - [Technical Architecture](../architecture/technical-architecture.md) — How pipelines are compiled and executed
 - [Cache Backend](../integrations/cache-backend.md) — Implement custom caching for module results
+- [Module Provider](../integrations/module-provider.md) — Cross-process modules via gRPC

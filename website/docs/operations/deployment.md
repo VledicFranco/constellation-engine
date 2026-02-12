@@ -35,6 +35,19 @@ docker run -d \
   constellation-engine:latest
 ```
 
+If you use the [Module Provider Protocol](../integrations/module-provider.md), also expose the gRPC port:
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -p 9090:9090 \
+  -e CONSTELLATION_PORT=8080 \
+  -e CONSTELLATION_PROVIDER_PORT=9090 \
+  -e JAVA_OPTS="-Xms256m -Xmx1g" \
+  --name constellation \
+  constellation-engine:latest
+```
+
 ### Docker Compose
 
 ```bash
@@ -63,7 +76,7 @@ kubectl apply -f deploy/k8s/service.yaml
 | `namespace.yaml` | `constellation` namespace |
 | `configmap.yaml` | Scheduler, rate limit, JVM settings |
 | `deployment.yaml` | 2 replicas, probes, resource limits, security context |
-| `service.yaml` | ClusterIP service on port 8080 |
+| `service.yaml` | ClusterIP service on port 8080 (add port 9090 for module providers) |
 
 ### Health Probes
 
@@ -153,7 +166,9 @@ Set `terminationGracePeriodSeconds` to at least your drain timeout plus 15 secon
 ```bash
 docker run -d \
   -p 8080:8080 \
+  -p 9090:9090 \
   -e CONSTELLATION_PORT=8080 \
+  -e CONSTELLATION_PROVIDER_PORT=9090 \
   -e CONSTELLATION_API_KEYS="sk-prod-your-admin-key-here-24chars:Admin" \
   -e CONSTELLATION_CORS_ORIGINS="https://your-app.example.com" \
   -e CONSTELLATION_RATE_LIMIT_RPM=200 \
@@ -371,6 +386,10 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+    # Add this if using Module Provider Protocol:
+    # - name: grpc-provider
+    #   port: 9090
+    #   targetPort: 9090
 ```
 
 #### Nginx IP Hash

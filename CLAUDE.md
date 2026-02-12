@@ -168,17 +168,19 @@ result = Uppercase(text)  // Must match exactly (case-sensitive)
 core
   ↓
 runtime ← lang-ast
-            ↓
-         lang-parser
-            ↓
-       lang-compiler
-            ↓
-    ┌───────┼───────┐
-lang-stdlib  │    lang-lsp
-             ↓
-          http-api
-             ↓
-        example-app
+  ↓         ↓
+  │      lang-parser
+  │         ↓
+  │    lang-compiler
+  │         ↓
+  │  ┌──────┼───────┬──────────────────┐
+  │  │      │       │                  │
+  │ lang-stdlib  lang-lsp    module-provider (server)
+  │              http-api              ↑
+  │                 ↓         module-provider-sdk
+  │           example-app              ↑
+  ↓                                    │
+  └────────────────────────────────────┘
 ```
 
 **NEVER create circular dependencies.**
@@ -222,6 +224,13 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | Docker Compose | `docker-compose.yml` |
 | Docker ignore | `.dockerignore` |
 | K8s Manifests | `deploy/k8s/` |
+| Provider Proto | `modules/module-provider-sdk/.../provider.proto` |
+| Provider SDK (transport) | `modules/module-provider-sdk/.../sdk/` |
+| CValueSerializer | `modules/module-provider-sdk/.../CValueSerializer.scala` |
+| TypeSchemaConverter | `modules/module-provider-sdk/.../TypeSchemaConverter.scala` |
+| ModuleProviderManager | `modules/module-provider/.../ModuleProviderManager.scala` |
+| ExternalModule | `modules/module-provider/.../ExternalModule.scala` |
+| SchemaValidator | `modules/module-provider/.../SchemaValidator.scala` |
 
 ## Adding New Functions
 
@@ -641,7 +650,7 @@ A type-safe pipeline orchestration framework for Scala 3. Users:
 3. Execute pipelines with automatic dependency resolution
 4. Expose pipelines via HTTP API
 
-**Tech Stack:** Scala 3.3.1 | Cats Effect 3 | http4s | Circe | cats-parse
+**Tech Stack:** Scala 3.3.4 | Cats Effect 3 | http4s | Circe | cats-parse
 
 **Issue Triage - Where to Look:**
 
@@ -656,6 +665,8 @@ A type-safe pipeline orchestration framework for Scala 3. Users:
 | LSP, autocomplete, diagnostics | `lang-lsp` | `ConstellationLanguageServer.scala` |
 | HTTP endpoints, WebSocket | `http-api` | `ConstellationServer.scala`, `ConstellationRoutes.scala` |
 | Example modules (text, data) | `example-app` | `modules/TextModules.scala`, `modules/DataModules.scala` |
+| Provider SDK (client library) | `module-provider-sdk` | `CValueSerializer.scala`, `TypeSchemaConverter.scala`, `sdk/ConstellationProvider.scala` |
+| Provider server (gRPC registration) | `module-provider` | `ModuleProviderManager.scala`, `ExternalModule.scala`, `ControlPlaneManager.scala` |
 | VSCode extension | `vscode-extension/` | `src/extension.ts`, `src/panels/*.ts` |
 
 **Quick Exploration Commands:**
