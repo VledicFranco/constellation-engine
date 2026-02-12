@@ -443,6 +443,7 @@ libraryDependencies += "io.github.vledicfranco" %% "constellation-http-api" % co
 | Lang Stdlib | `constellation-lang-stdlib` | Built-in functions |
 | Lang LSP | `constellation-lang-lsp` | Language Server Protocol |
 | HTTP API | `constellation-http-api` | REST API + WebSocket LSP |
+| Module Provider SDK | `constellation-module-provider-sdk` | Client library for cross-process gRPC module providers |
 | CLI | `constellation-lang-cli` | Command-line interface |
 
 ### Quick Start (Example App)

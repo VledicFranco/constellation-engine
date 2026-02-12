@@ -90,6 +90,17 @@ Both checks must pass. Exempt paths: `/health`, `/health/live`, `/health/ready`,
 
 When a client exceeds the limit, a `429 Too Many Requests` response is returned with a `Retry-After` header.
 
+### Module Provider (gRPC)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CONSTELLATION_PROVIDER_PORT` | `9090` | gRPC port for module provider registrations |
+| `CONSTELLATION_PROVIDER_HEARTBEAT_TIMEOUT` | `15s` | Auto-deregister providers after this heartbeat lapse |
+| `CONSTELLATION_PROVIDER_CONTROL_PLANE_TIMEOUT` | `30s` | Deadline for providers to establish control plane stream |
+| `CONSTELLATION_PROVIDER_RESERVED_NS` | `stdlib` | Comma-separated namespace prefixes that providers cannot use |
+
+These variables only apply when using `ModuleProviderManager` to accept external module registrations via gRPC. The gRPC port is separate from the HTTP port (`CONSTELLATION_PORT`). See the [Module Provider Integration Guide](../integrations/module-provider.md) for setup instructions.
+
 ### Dashboard
 
 | Variable | Default | Description |

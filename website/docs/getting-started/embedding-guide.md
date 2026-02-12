@@ -428,10 +428,50 @@ ConstellationServer
 
 All hardening features (auth, CORS, rate limiting) are opt-in and disabled by default. See the [Security Model](../architecture/security-model.md) for details.
 
+## Optional: Cross-Process Modules
+
+If you need modules that run outside the JVM (Python ML models, Go services, etc.), add the Module Provider SDK and wrap your `Constellation` instance with `ModuleProviderManager`:
+
+```scala
+libraryDependencies += "io.github.vledicfranco" %% "constellation-module-provider-sdk" % constellationVersion
+```
+
+```scala
+import io.constellation.provider.{ModuleProviderManager, ProviderManagerConfig, JsonCValueSerializer}
+
+for {
+  constellation <- ConstellationImpl.builder().build()
+  compiler      <- LangCompiler.builder.build
+
+  // Wrap with gRPC provider support
+  manager <- ModuleProviderManager(
+    delegate   = constellation,
+    compiler   = compiler,
+    config     = ProviderManagerConfig(),  // gRPC on port 9090
+    serializer = JsonCValueSerializer
+  )
+
+  // Use 'manager' instead of 'constellation' — it's a drop-in wrapper
+  _ <- StdLib.allModules.values.toList.traverse(manager.setModule)
+
+  // HTTP API on port 8080 + gRPC provider service on port 9090
+  _ <- ConstellationServer.builder(manager, compiler).run
+} yield ()
+```
+
+External providers can then register modules via gRPC:
+```constellation
+result = ml.Predict(text)        # Calls external Python provider
+enriched = data.Enrich(record)   # Calls external Go provider
+```
+
+See the [Module Provider Integration Guide](../integrations/module-provider.md) for provider SDK setup, configuration, and horizontal scaling.
+
 ## Next Steps
 
 - [Security Model](../architecture/security-model.md) — trust boundaries and HTTP hardening
 - [Performance Tuning](../operations/performance-tuning.md) — scheduler, circuit breakers, caching
 - [Error Reference](../api-reference/error-reference.md) — structured error catalog
 - [SPI Integration Guides](../integrations/metrics-provider.md) — plug in metrics, tracing, storage
+- [Module Provider](../integrations/module-provider.md) — cross-process modules via gRPC
 - [Migration Guide](../resources/migration-v030.md) — upgrading from earlier versions

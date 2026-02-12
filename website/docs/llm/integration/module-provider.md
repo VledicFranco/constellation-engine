@@ -159,6 +159,27 @@ for {
 // manager is a Constellation that also accepts gRPC registrations on port 9090
 ```
 
+### Combined HTTP + gRPC Server
+
+Pass `manager` to `ConstellationServer.builder()` to run both services:
+
+```scala
+for {
+  constellation <- ConstellationImpl.builder().build()
+  compiler      <- LangCompiler.builder.build
+  manager       <- ModuleProviderManager(
+    delegate   = constellation,
+    compiler   = compiler,
+    config     = ProviderManagerConfig(),
+    serializer = JsonCValueSerializer
+  )
+  // HTTP API on port 8080, gRPC provider service on port 9090
+  _ <- ConstellationServer.builder(manager, compiler).run
+} yield ()
+```
+
+`ModuleProviderManager` implements `Constellation` — it's a drop-in wrapper. In-process modules via `setModule` still work alongside external gRPC-provided modules.
+
 ## Type System Mapping
 
 | CType | Protobuf |

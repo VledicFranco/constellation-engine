@@ -155,6 +155,32 @@ for {
 } yield manager
 ```
 
+### Combined HTTP API + gRPC Server
+
+To run both the HTTP API and the gRPC provider service, pass the `manager` to `ConstellationServer.builder()`:
+
+```scala
+import io.constellation.http.ConstellationServer
+import io.constellation.stdlib.StdLib
+import cats.implicits._
+
+for {
+  constellation <- ConstellationImpl.builder().build()
+  _             <- StdLib.allModules.values.toList.traverse(constellation.setModule)
+  compiler      <- LangCompiler.builder.build
+  manager       <- ModuleProviderManager(
+    delegate   = constellation,
+    compiler   = compiler,
+    config     = ProviderManagerConfig(),
+    serializer = JsonCValueSerializer
+  )
+  // HTTP API on port 8080, gRPC provider service on port 9090
+  _ <- ConstellationServer.builder(manager, compiler).run
+} yield ()
+```
+
+`ModuleProviderManager` implements the `Constellation` trait, so it's a drop-in replacement anywhere you use a `Constellation` instance. In-process modules registered via `setModule` continue to work alongside external gRPC-provided modules.
+
 ### Server Configuration
 
 | Parameter | Default | Env Variable |
