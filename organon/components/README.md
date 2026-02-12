@@ -16,6 +16,7 @@ Technical documentation organized by codebase module. Use this for implementatio
 | [lsp/](./lsp/) | Language server protocol implementation | `modules/lang-lsp/` |
 | [http-api/](./http-api/) | REST endpoints, WebSocket, dashboard | `modules/http-api/` |
 | [cli/](./cli/) | Command-line interface | `modules/lang-cli/` |
+| [module-provider/](./module-provider/) | gRPC-based dynamic module registration (SDK + server) | `modules/module-provider-sdk/`, `modules/module-provider/` |
 
 ## When to Use Components vs Features
 
@@ -54,6 +55,10 @@ Technical documentation organized by codebase module. Use this for implementatio
                │
                ▼
          example-app
+
+    runtime ──► module-provider-sdk ──► module-provider
+                                            ▲
+                  lang-compiler ─────────────┘
 ```
 
 **Rule:** Components can only depend on components above them. No cycles.

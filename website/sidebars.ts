@@ -213,6 +213,7 @@ const sidebars: SidebarsConfig = {
         'integrations/execution-listener',
         'integrations/cache-backend',
         'integrations/execution-storage',
+        'integrations/module-provider',
       ],
     },
     {
