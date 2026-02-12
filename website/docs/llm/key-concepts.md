@@ -442,6 +442,77 @@ result = UnreliableAPI(input) with {
 
 ---
 
+## Cross-Process Modules
+
+### Module Provider
+An **external service** that contributes pipeline modules to Constellation via gRPC.
+
+**What it does:**
+- Runs in a separate process (can be any language)
+- Registers modules with a Constellation server
+- Receives `ExecuteRequest` RPCs when pipelines call its modules
+- Maintains a heartbeat-based control plane
+
+**Example:**
+```scala
+import io.constellation.provider.sdk._
+
+val provider = ConstellationProvider.create(
+  namespace = "ml",
+  instances = List("localhost:9090"),
+  config = SdkConfig(),
+  transportFactory = addr => new GrpcProviderTransport(channel),
+  executorServerFactory = new GrpcExecutorServerFactory(),
+  serializer = JsonCValueSerializer
+)
+provider.register(myModule)
+provider.start.useForever
+```
+
+**Key properties:**
+- Decoupled from JVM (Python, Go, Rust modules possible)
+- Independent scaling and deployment
+- Higher latency than in-process modules (network round-trip)
+
+**See also:** [Module Provider](./integration/module-provider.md)
+
+---
+
+### Provider Namespace
+A **dot-separated identifier** (e.g., `ml`, `data.transform`) that groups modules from one provider.
+
+**Rules:**
+- Each segment: starts with letter, alphanumeric + underscores only
+- Exclusively owned by one provider (or one provider group)
+- Cannot use reserved prefixes (e.g., `stdlib`)
+
+**Usage in constellation-lang:**
+```constellation
+result = ml.Analyze(text)
+enriched = data.transform.Enrich(record)
+```
+
+**See also:** [Module Provider](./integration/module-provider.md)
+
+---
+
+### Provider Group
+Multiple provider instances sharing a **group ID** to serve the same namespace with load balancing.
+
+**What it enables:**
+- Horizontal scaling of external modules
+- Round-robin load balancing across group members
+- Resilient operation (remaining members continue if one disconnects)
+
+**Example:**
+```scala
+val config = SdkConfig(groupId = Some("ml-pool"))
+```
+
+**See also:** [Module Provider](./integration/module-provider.md)
+
+---
+
 ## API Concepts
 
 ### HTTP API
@@ -701,6 +772,9 @@ result = Module(input) with {
 | **Timeout** | Resilience | Maximum execution time |
 | **Cache** | Resilience | Store and reuse results |
 | **Fallback** | Resilience | Alternative on failure |
+| **Module Provider** | Cross-Process | External service contributing modules via gRPC |
+| **Provider Namespace** | Cross-Process | Dot-separated module group owned by one provider |
+| **Provider Group** | Cross-Process | Multiple providers sharing a namespace with load balancing |
 | **HTTP API** | API | REST interface for execution |
 | **Embedded API** | API | Programmatic Scala usage |
 | **LSP** | API | Language server for editors |

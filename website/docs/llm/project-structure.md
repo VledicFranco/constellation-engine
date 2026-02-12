@@ -26,7 +26,7 @@ A comprehensive guide to navigating the Constellation Engine codebase. This docu
 
 ## Module Organization
 
-Constellation Engine is organized into 12 primary modules:
+Constellation Engine is organized into 14 primary modules:
 
 | Module | Purpose | Dependencies |
 |--------|---------|--------------|
@@ -39,6 +39,8 @@ Constellation Engine is organized into 12 primary modules:
 | `lang-lsp` | Language Server Protocol implementation | `lang-compiler`, `lang-ast`, `core` |
 | `lang-cli` | Command-line interface | `lang-compiler`, `http-api`, `runtime`, `core` |
 | `http-api` | HTTP server, WebSocket, middleware | `lang-compiler`, `runtime`, `core` |
+| `module-provider-sdk` | Client library for cross-process module providers | `runtime`, `core` |
+| `module-provider` | Server-side gRPC registration and lifecycle | `module-provider-sdk`, `lang-compiler`, `runtime`, `core` |
 | `example-app` | Example modules (Text, Data processing) | `lang-stdlib`, `lang-compiler`, `runtime`, `core` |
 | `cache-memcached` | Memcached cache backend | `runtime`, `core` |
 | `doc-generator` | Documentation generation utilities | `runtime`, `core` |
@@ -52,6 +54,7 @@ core (foundation - no dependencies)
   ├─> runtime
   │     ├─> cache-memcached
   │     ├─> doc-generator
+  │     ├─> module-provider-sdk ──> module-provider (also depends on lang-compiler)
   │     └─> (used by everything below)
   │
   └─> lang-ast
@@ -61,6 +64,7 @@ core (foundation - no dependencies)
                     ├─> lang-lsp
                     ├─> lang-cli
                     ├─> http-api
+                    ├─> module-provider (also depends on module-provider-sdk)
                     └─> example-app
 ```
 
@@ -123,6 +127,14 @@ modules/<module-name>/
 **Standard library packages:**
 - `io.constellation.stdlib.*` - StdLib registry
 - `io.constellation.stdlib.categories.*` - Function categories (String, List, Math, etc.)
+
+**Module Provider packages:**
+- `io.constellation.provider.*` - Shared types (CValueSerializer, TypeSchemaConverter)
+- `io.constellation.provider.sdk.*` - SDK client library (ConstellationProvider, ModuleDefinition)
+- `io.constellation.provider.v1.provider.*` - Generated protobuf types (do not edit)
+
+**Module Provider server packages:**
+- `io.constellation.provider.*` - Server-side (ModuleProviderManager, SchemaValidator, ControlPlaneManager)
 
 **Example app packages:**
 - `io.constellation.examples.app.*` - Example library registry
@@ -277,6 +289,35 @@ modules/<module-name>/
 | Text modules | `src/main/scala/io/constellation/examples/app/modules/TextModules.scala` |
 | Data modules | `src/main/scala/io/constellation/examples/app/modules/DataModules.scala` |
 | Resilience modules | `src/main/scala/io/constellation/examples/app/modules/ResilienceModules.scala` |
+
+### Module Provider SDK (`modules/module-provider-sdk`)
+
+| Component | Path |
+|-----------|------|
+| ConstellationProvider | `src/main/scala/io/constellation/provider/sdk/ConstellationProvider.scala` |
+| ModuleDefinition | `src/main/scala/io/constellation/provider/sdk/ModuleDefinition.scala` |
+| SdkConfig | `src/main/scala/io/constellation/provider/sdk/SdkConfig.scala` |
+| InstanceConnection | `src/main/scala/io/constellation/provider/sdk/InstanceConnection.scala` |
+| CanaryCoordinator | `src/main/scala/io/constellation/provider/sdk/CanaryCoordinator.scala` |
+| Transport traits | `src/main/scala/io/constellation/provider/sdk/transport.scala` |
+| gRPC transport | `src/main/scala/io/constellation/provider/sdk/GrpcProviderTransport.scala` |
+| Executor server | `src/main/scala/io/constellation/provider/sdk/GrpcExecutorServer.scala` |
+| CValue serialization | `src/main/scala/io/constellation/provider/CValueSerializer.scala` |
+| Type schema conversion | `src/main/scala/io/constellation/provider/TypeSchemaConverter.scala` |
+| Protobuf definitions | `src/main/protobuf/constellation/provider/v1/provider.proto` |
+
+### Module Provider Server (`modules/module-provider`)
+
+| Component | Path |
+|-----------|------|
+| ModuleProviderManager | `src/main/scala/io/constellation/provider/ModuleProviderManager.scala` |
+| ExternalModule | `src/main/scala/io/constellation/provider/ExternalModule.scala` |
+| SchemaValidator | `src/main/scala/io/constellation/provider/SchemaValidator.scala` |
+| ControlPlaneManager | `src/main/scala/io/constellation/provider/ControlPlaneManager.scala` |
+| ExecutorPool | `src/main/scala/io/constellation/provider/ExecutorPool.scala` |
+| ExternalFunctionSignature | `src/main/scala/io/constellation/provider/ExternalFunctionSignature.scala` |
+| ProviderManagerConfig | `src/main/scala/io/constellation/provider/ProviderManagerConfig.scala` |
+| GrpcChannelCache | `src/main/scala/io/constellation/provider/GrpcChannelCache.scala` |
 
 ### Cache Memcached Module (`modules/cache-memcached`)
 
@@ -438,6 +479,18 @@ sbt "langLsp/testOnly *CompletionSpec"
 - CORS: `modules/http-api/.../CorsMiddleware.scala`
 - Rate limiting: `modules/http-api/.../RateLimitMiddleware.scala`
 
+**Module Providers (Cross-Process):**
+- Provider SDK entry point: `modules/module-provider-sdk/.../sdk/ConstellationProvider.scala`
+- Module definition: `modules/module-provider-sdk/.../sdk/ModuleDefinition.scala`
+- CValue serialization: `modules/module-provider-sdk/.../CValueSerializer.scala`
+- Type schema conversion: `modules/module-provider-sdk/.../TypeSchemaConverter.scala`
+- Transport traits: `modules/module-provider-sdk/.../sdk/transport.scala`
+- Server orchestrator: `modules/module-provider/.../ModuleProviderManager.scala`
+- Schema validation: `modules/module-provider/.../SchemaValidator.scala`
+- Connection lifecycle: `modules/module-provider/.../ControlPlaneManager.scala`
+- Load balancing: `modules/module-provider/.../ExecutorPool.scala`
+- Protobuf definitions: `modules/module-provider-sdk/src/main/protobuf/constellation/provider/v1/provider.proto`
+
 **Caching:**
 - Cache registry: `modules/runtime/.../cache/CacheRegistry.scala`
 - Compilation cache: `modules/lang-compiler/.../CompilationCache.scala`
@@ -482,6 +535,13 @@ sbt "langLsp/testOnly *CompletionSpec"
 2. Add models in `modules/http-api/.../ApiModels.scala`
 3. Test with `curl` or dashboard
 
+**Building a cross-process module provider:**
+1. Add `module-provider-sdk` dependency to your project
+2. Define `ModuleDefinition` with name, types, and handler function
+3. Create `ConstellationProvider` with namespace, instance addresses, and transport
+4. Call `provider.register(module)` then `provider.start.useForever`
+5. See [Module Provider Integration Guide](/docs/integrations/module-provider)
+
 **Adding standard library function:**
 1. Create module in appropriate category file in `modules/lang-stdlib/.../categories/`
 2. Register in `modules/lang-stdlib/.../StdLib.scala`
@@ -501,6 +561,9 @@ sbt "langLsp/testOnly *CompletionSpec"
 | LSP, autocomplete, diagnostics | `lang-lsp` | `ConstellationLanguageServer.scala` |
 | HTTP endpoints, WebSocket | `http-api` | `ConstellationServer.scala`, `ConstellationRoutes.scala` |
 | Example modules (text, data) | `example-app` | `modules/TextModules.scala`, `modules/DataModules.scala` |
+| Cross-process module providers | `module-provider-sdk`, `module-provider` | `ConstellationProvider.scala`, `ModuleProviderManager.scala` |
+| Provider SDK (client library) | `module-provider-sdk` | `ConstellationProvider.scala`, `ModuleDefinition.scala` |
+| Provider server (registration) | `module-provider` | `ModuleProviderManager.scala`, `SchemaValidator.scala` |
 | VSCode extension | `vscode-extension/` | `src/extension.ts`, `src/panels/*.ts` |
 | Dashboard UI | `dashboard/` | `src/` |
 | Dashboard E2E tests | `dashboard-tests/` | `tests/`, `pages/` |

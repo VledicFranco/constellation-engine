@@ -76,6 +76,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'llm/integration/embedded-api',
             'llm/integration/module-registration',
+            'llm/integration/module-provider',
           ],
         },
       ],
