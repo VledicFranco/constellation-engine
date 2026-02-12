@@ -113,6 +113,8 @@ message ControlMessage {
     Heartbeat heartbeat = 10;
     HeartbeatAck heartbeat_ack = 11;
     ActiveModulesReport active_modules_report = 12;
+    DrainRequest drain_request = 20;
+    DrainAck drain_ack = 21;
   }
 }
 
@@ -128,6 +130,18 @@ message HeartbeatAck {
 message ActiveModulesReport {
   // Constellation sends this periodically so the provider can reconcile
   repeated string active_modules = 1;
+}
+
+// ===== Drain Messages =====
+
+message DrainRequest {
+  string reason = 1;
+  int64 deadline_ms = 2;
+}
+
+message DrainAck {
+  bool accepted = 1;
+  int32 in_flight_count = 2;
 }
 
 // ===== Execution Messages =====

@@ -181,12 +181,12 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
   .settings(
     name := "constellation-module-provider",
     publish / skip := true,
-    // Coverage thresholds account for ~3650 non-excludable ScalaPB-generated statements.
+    // Coverage thresholds account for ~3750 non-excludable ScalaPB-generated statements.
     // Scala 3 built-in coverage doesn't support package/file exclusions (sbt-scoverage 2.x limitation).
-    // Hand-written source: 949 stmts, 627 testable (excl. gRPC server/service code), ~68% covered.
-    // Diluted totals: stmt ≈ 9%, branch ≈ 11%. Thresholds set as ratchets on the diluted total.
+    // Hand-written source: ~1600 stmts (incl. SDK), ~1100 testable (excl. gRPC impls), ~70% covered.
+    // Diluted totals: stmt ≈ 12%, branch ≈ 11%. Thresholds set as ratchets on the diluted total.
     coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
-    coverageMinimumStmtTotal := 9,
+    coverageMinimumStmtTotal := 12,
     coverageMinimumBranchTotal := 11,
     libraryDependencies ++= Seq(
       "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,

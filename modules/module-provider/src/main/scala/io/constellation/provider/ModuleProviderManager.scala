@@ -197,12 +197,43 @@ class ModuleProviderManager(
       _ <- IO(functionRegistry.register(signature))
     } yield ()
 
+  // ===== Operational Tooling =====
+
+  /** List all provider connections with summary info. */
+  def listProviders: IO[List[ProviderInfo]] =
+    controlPlane.getAllConnections.map(_.map { conn =>
+      ProviderInfo(
+        connectionId = conn.connectionId,
+        namespace = conn.namespace,
+        executorUrl = conn.executorUrl,
+        modules = conn.registeredModules,
+        state = conn.state,
+        registeredAt = conn.registeredAt,
+        lastHeartbeatAt = conn.lastHeartbeatAt
+      )
+    })
+
+  /** Drain a provider connection by ID. Returns false if connection not found or not active. */
+  def drainProvider(connectionId: String, reason: String, deadlineMs: Long = 30000L): IO[Boolean] =
+    controlPlane.drainConnection(connectionId, reason, deadlineMs)
+
   private def deregisterExternalModule(qualifiedName: String): IO[Unit] =
     for {
       _ <- delegate.removeModule(qualifiedName)
       _ <- IO(functionRegistry.deregister(qualifiedName))
     } yield ()
 }
+
+/** Summary information about a connected provider. */
+final case class ProviderInfo(
+    connectionId: String,
+    namespace: String,
+    executorUrl: String,
+    modules: Set[String],
+    state: ConnectionState,
+    registeredAt: Long,
+    lastHeartbeatAt: Option[Long]
+)
 
 object ModuleProviderManager {
 
@@ -313,6 +344,8 @@ private class ModuleProviderServiceImpl(manager: ModuleProviderManager)
                 )
               )
             )
+          case pb.ControlMessage.Payload.DrainAck(ack) =>
+            manager.controlPlane.recordDrainAck(connId, ack).unsafeRunAndForget()
           case _ => ()
         }
       }

@@ -14,6 +14,7 @@ import io.grpc.stub.StreamObserver
 enum ConnectionState:
   case Registered   // Register RPC succeeded, awaiting control plane stream
   case Active       // Control plane stream established, heartbeats flowing
+  case Draining     // Drain requested, waiting for in-flight work to complete
   case Disconnected // Stream broke or timed out — cleanup pending
 
 /** Tracks a provider's active connection state. */
@@ -131,6 +132,39 @@ class ControlPlaneManager(
   def getAllConnections: IO[List[ProviderConnection]] =
     providerState.get.map(_.values.toList)
 
+  /** Send a DrainRequest to an active provider. Returns false if connection not found or not active. */
+  def drainConnection(connectionId: String, reason: String, deadlineMs: Long): IO[Boolean] =
+    providerState.modify { state =>
+      state.get(connectionId) match {
+        case Some(conn) if conn.state == ConnectionState.Active && conn.responseObserver.isDefined =>
+          val drainMsg = pb.ControlMessage(
+            protocolVersion = conn.protocolVersion,
+            connectionId = connectionId,
+            payload = pb.ControlMessage.Payload.DrainRequest(
+              pb.DrainRequest(reason = reason, deadlineMs = deadlineMs)
+            )
+          )
+          (state, Some((conn.responseObserver.get, drainMsg)))
+        case _ =>
+          (state, None)
+      }
+    }.flatMap {
+      case Some((observer, msg)) =>
+        IO(observer.onNext(msg)).as(true).handleErrorWith(_ => IO.pure(false))
+      case None =>
+        IO.pure(false)
+    }
+
+  /** Record a DrainAck from a provider — transition Active → Draining. */
+  def recordDrainAck(connectionId: String, ack: pb.DrainAck): IO[Unit] =
+    providerState.update { state =>
+      state.get(connectionId) match {
+        case Some(conn) if conn.state == ConnectionState.Active =>
+          state + (connectionId -> conn.copy(state = ConnectionState.Draining))
+        case _ => state
+      }
+    }
+
   /** Update registered modules for a connection. */
   def updateModules(connectionId: String, modules: Set[String]): IO[Unit] =
     providerState.update { state =>
@@ -165,6 +199,8 @@ class ControlPlaneManager(
               now - conn.registeredAt > config.controlPlaneRequiredTimeout.toMillis
             case ConnectionState.Active =>
               conn.lastHeartbeatAt.exists(last => now - last > config.heartbeatTimeout.toMillis)
+            case ConnectionState.Draining =>
+              false // Draining connections are winding down — don't kill them
             case ConnectionState.Disconnected =>
               false
           }
@@ -189,7 +225,8 @@ class ControlPlaneManager(
     for {
       state <- providerState.get
       activeConnections = state.values.filter(c =>
-        c.state == ConnectionState.Active && c.responseObserver.isDefined
+        c.state == ConnectionState.Active && c.responseObserver.isDefined &&
+          c.state != ConnectionState.Draining
       ).toList
       _ <- activeConnections.traverse_ { conn =>
         val moduleNames = conn.registeredModules.map { qualifiedName =>
