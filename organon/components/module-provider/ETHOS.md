@@ -55,8 +55,7 @@
 | `ProviderManagerConfig` | Server config: gRPC port, heartbeat intervals, reserved namespaces |
 | `ProviderInfo` | Summary of a provider connection for operational listing |
 
-For complete type signatures, see:
-- [io.constellation.provider](/organon/generated/io.constellation.provider.md) (if generated)
+For complete type signatures, see the source files in `modules/module-provider-sdk/` and `modules/module-provider/`.
 
 ---
 

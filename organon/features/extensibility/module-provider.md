@@ -138,7 +138,7 @@ The SDK's `CanaryCoordinator` orchestrates safe module upgrades:
 |--------|---------|--------------|-------------|
 | `grpcPort` | `9090` | `CONSTELLATION_PROVIDER_PORT` | gRPC service port |
 | `heartbeatTimeout` | `15s` | `CONSTELLATION_PROVIDER_HEARTBEAT_TIMEOUT` | Liveness timeout |
-| `controlPlaneRequiredTimeout` | `30s` | `CONSTELLATION_PROVIDER_CP_TIMEOUT` | Control plane establishment deadline |
+| `controlPlaneRequiredTimeout` | `30s` | `CONSTELLATION_PROVIDER_CONTROL_PLANE_TIMEOUT` | Control plane establishment deadline |
 | `reservedNamespaces` | `stdlib` | `CONSTELLATION_PROVIDER_RESERVED_NS` | Protected namespace prefixes |
 
 ## Related

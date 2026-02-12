@@ -50,9 +50,9 @@ libraryDependencies += "io.github.vledicfranco" %% "constellation-module-provide
 
 ```scala
 import io.constellation.{CType, CValue}
-import io.constellation.provider.sdk.{ConstellationProvider, ModuleDefinition, SdkConfig}
-import io.constellation.provider.sdk.{StaticDiscovery, GrpcProviderTransport, GrpcExecutorServerFactory}
+import io.constellation.provider.sdk._
 import io.constellation.provider.JsonCValueSerializer
+import io.grpc.ManagedChannelBuilder
 import cats.effect.{IO, IOApp}
 
 object MyProvider extends IOApp.Simple {
@@ -80,8 +80,12 @@ object MyProvider extends IOApp.Simple {
         namespace = "ml",
         instances = List("localhost:9090"),
         config = SdkConfig(),
-        transportFactory = (host, port) => GrpcProviderTransport(host, port),
-        executorServerFactory = GrpcExecutorServerFactory(),
+        transportFactory = { addr =>
+          val Array(host, port) = addr.split(":")
+          val channel = ManagedChannelBuilder.forAddress(host, port.toInt).usePlaintext().build()
+          new GrpcProviderTransport(channel)
+        },
+        executorServerFactory = new GrpcExecutorServerFactory(),
         serializer = JsonCValueSerializer
       )
       _ <- provider.register(analyzeModule)
@@ -157,7 +161,7 @@ for {
 |-----------|---------|--------------|
 | `grpcPort` | `9090` | `CONSTELLATION_PROVIDER_PORT` |
 | `heartbeatTimeout` | `15s` | `CONSTELLATION_PROVIDER_HEARTBEAT_TIMEOUT` |
-| `controlPlaneRequiredTimeout` | `30s` | `CONSTELLATION_PROVIDER_CP_TIMEOUT` |
+| `controlPlaneRequiredTimeout` | `30s` | `CONSTELLATION_PROVIDER_CONTROL_PLANE_TIMEOUT` |
 | `reservedNamespaces` | `stdlib` | `CONSTELLATION_PROVIDER_RESERVED_NS` |
 
 ## Type System
