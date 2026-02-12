@@ -1,6 +1,6 @@
 # RFC-024: Module Provider Protocol (v4)
 
-**Status:** Accepted
+**Status:** Implemented
 **Priority:** P3 (Extensibility)
 **Author:** Claude + User
 **Created:** 2026-02-10
@@ -991,7 +991,7 @@ class ExternalModule(
 - GrpcProviderTransport + GrpcExecutorServer (production gRPC implementations)
 - Server-side operational tooling (list providers, drain provider)
 
-### Phase 4: Provider Groups (Horizontal Scaling)
+### Phase 4: Provider Groups (Horizontal Scaling) ✅
 - Add `group_id` to `RegisterRequest` proto and codegen
 - Implement `ExecutorPool` (round-robin load balancing across group members)
 - Modify `SchemaValidator` to allow same namespace from same `group_id`
