@@ -3,7 +3,7 @@ package io.constellation.provider.sdk
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.{CType, CValue}
+import io.constellation.CType
 import io.constellation.provider.CValueSerializer
 import io.constellation.provider.JsonCValueSerializer
 import io.constellation.provider.v1.{provider => pb}

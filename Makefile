@@ -202,6 +202,12 @@ test-http:
 test-stdlib:
 	sbt "langStdlib/test"
 
+test-provider-sdk:
+	sbt "moduleProviderSdk/test"
+
+test-provider:
+	sbt "moduleProvider/test"
+
 # =============================================================================
 # Dashboard E2E Tests
 # =============================================================================
@@ -266,9 +272,9 @@ coverage:
 	sbt clean coverage test coverageReport coverageAggregate
 	@echo ""
 	@echo "Coverage reports generated:"
-	@echo "  - HTML: target/scala-3.3.1/scoverage-report/index.html"
-	@echo "  - XML:  target/scala-3.3.1/scoverage-report/scoverage.xml"
-	@echo "  - Aggregate: target/scala-3.3.1/scoverage-report/index.html"
+	@echo "  - HTML: target/scala-3.3.4/scoverage-report/index.html"
+	@echo "  - XML:  target/scala-3.3.4/scoverage-report/scoverage.xml"
+	@echo "  - Aggregate: target/scala-3.3.4/scoverage-report/index.html"
 
 # Generate coverage report (run after 'sbt coverage test')
 coverage-report:
@@ -278,11 +284,11 @@ coverage-report:
 # Open HTML coverage report in browser
 coverage-html:
 	@echo "Opening coverage report..."
-	@if [ -f target/scala-3.3.1/scoverage-report/index.html ]; then \
-		xdg-open target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
-		open target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
-		start target/scala-3.3.1/scoverage-report/index.html 2>/dev/null || \
-		echo "Please open target/scala-3.3.1/scoverage-report/index.html in your browser"; \
+	@if [ -f target/scala-3.3.4/scoverage-report/index.html ]; then \
+		xdg-open target/scala-3.3.4/scoverage-report/index.html 2>/dev/null || \
+		open target/scala-3.3.4/scoverage-report/index.html 2>/dev/null || \
+		start target/scala-3.3.4/scoverage-report/index.html 2>/dev/null || \
+		echo "Please open target/scala-3.3.4/scoverage-report/index.html in your browser"; \
 	else \
 		echo "Coverage report not found. Run 'make coverage' first."; \
 	fi
@@ -339,7 +345,7 @@ lint-fix:
 assembly:
 	@echo "Building fat JAR..."
 	sbt "exampleApp/assembly"
-	@echo "JAR created: modules/example-app/target/scala-3.3.1/constellation-*.jar"
+	@echo "JAR created: modules/example-app/target/scala-3.3.4/constellation-*.jar"
 
 # Build Docker image
 docker-build:
@@ -410,7 +416,7 @@ test-cli:
 # Build CLI fat JAR
 cli-assembly:
 	sbt "langCli/assembly"
-	@echo "JAR created: modules/lang-cli/target/scala-3.3.1/constellation-cli.jar"
+	@echo "JAR created: modules/lang-cli/target/scala-3.3.4/constellation-cli.jar"
 
 # =============================================================================
 # Utilities
@@ -426,7 +432,7 @@ package-ext:
 
 # Show project info
 info:
-	@echo "Scala version: 3.3.1"
+	@echo "Scala version: 3.3.4"
 	@echo "SBT version: 1.9.7"
 	@sbt "show version"
 

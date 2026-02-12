@@ -3,7 +3,7 @@ package io.constellation.provider
 import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
 
-import io.constellation.lang.semantic.{FunctionRegistry, InMemoryFunctionRegistry, FunctionSignature, SemanticType}
+import io.constellation.lang.semantic.FunctionRegistry
 import io.constellation.provider.v1.{provider => pb}
 
 import io.grpc.stub.StreamObserver
