@@ -1,5 +1,5 @@
 ThisBuild / version := "0.6.1"
-ThisBuild / scalaVersion := "3.3.1"
+ThisBuild / scalaVersion := "3.3.4"
 ThisBuild / organization := "io.github.vledicfranco"
 
 // Maven Central POM metadata
@@ -180,11 +180,11 @@ lazy val moduleProviderSdk = (project in file("modules/module-provider-sdk"))
   .dependsOn(runtime)
   .settings(
     name := "constellation-module-provider-sdk",
-    // Coverage: ~3750 generated stmts + ~650 hand-written SDK stmts.
-    // Hand-written coverage is high (~70%) but diluted by codegen.
+    // Exclude ScalaPB-generated code from coverage (requires Scala 3.3.4+ and sbt-scoverage 2.2.2+)
     coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
-    coverageMinimumStmtTotal := 6,
-    coverageMinimumBranchTotal := 1,
+    coverageExcludedFiles := ".*[\\\\/]src_managed[\\\\/].*",
+    coverageMinimumStmtTotal := 79,
+    coverageMinimumBranchTotal := 85,
     libraryDependencies ++= Seq(
       "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,
@@ -204,8 +204,8 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     publish / skip := true,
     // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
     // Proto types come transitively from moduleProviderSdk.
-    coverageMinimumStmtTotal := 44,
-    coverageMinimumBranchTotal := 74,
+    coverageMinimumStmtTotal := 66,
+    coverageMinimumBranchTotal := 70,
     libraryDependencies ++= Seq(
       "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
     ) ++ loggingDeps

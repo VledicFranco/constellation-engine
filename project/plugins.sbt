@@ -11,7 +11,7 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.2")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.11.1")
 
 // Code coverage reporting
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.9")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.4.4")
 
 // Fat JAR packaging for deployment
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "2.1.5")
