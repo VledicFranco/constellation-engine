@@ -42,7 +42,7 @@
   },
   "scripts": {
     "copy-proto": "node scripts/copy-proto.mjs",
-    "proto-gen": "npm run copy-proto && npx grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true,exportCommonSymbols=false --proto_path=./proto ./proto/constellation/provider/v1/provider.proto",
+    "proto-gen": "npm run copy-proto && node -e \"require('fs').mkdirSync('src/generated',{recursive:true})\" && npx grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true,exportCommonSymbols=false --proto_path=./proto ./proto/constellation/provider/v1/provider.proto",
     "build": "npm run proto-gen && tsup",
     "build:only": "tsup",
     "pretest": "node scripts/copy-proto.mjs || exit 0",
