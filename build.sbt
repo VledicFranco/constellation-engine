@@ -183,13 +183,14 @@ lazy val moduleProviderSdk = (project in file("modules/module-provider-sdk"))
     // Exclude ScalaPB-generated code from coverage (requires Scala 3.3.4+ and sbt-scoverage 2.2.2+)
     coverageExcludedPackages := "io\\.constellation\\.provider\\.v1\\..*",
     coverageExcludedFiles := ".*[\\\\/]src_managed[\\\\/].*",
-    coverageMinimumStmtTotal := 79,
-    coverageMinimumBranchTotal := 85,
+    coverageMinimumStmtTotal := 87,
+    coverageMinimumBranchTotal := 90,
     libraryDependencies ++= Seq(
       "io.grpc"               %  "grpc-netty-shaded"       % scalapb.compiler.Version.grpcJavaVersion,
       "com.thesamet.scalapb"  %% "scalapb-runtime-grpc"    % scalapb.compiler.Version.scalapbVersion,
       "com.thesamet.scalapb"  %% "scalapb-runtime"         % scalapb.compiler.Version.scalapbVersion % "protobuf",
       "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+      "io.grpc"               %  "grpc-inprocess"          % scalapb.compiler.Version.grpcJavaVersion % Test,
     ) ++ loggingDeps,
     Compile / PB.targets := Seq(
       scalapb.gen() -> (Compile / sourceManaged).value / "scalapb"
@@ -204,10 +205,11 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     publish / skip := true,
     // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
     // Proto types come transitively from moduleProviderSdk.
-    coverageMinimumStmtTotal := 66,
-    coverageMinimumBranchTotal := 70,
+    coverageMinimumStmtTotal := 78,
+    coverageMinimumBranchTotal := 78,
     libraryDependencies ++= Seq(
       "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
+      "io.grpc"               %  "grpc-inprocess"          % scalapb.compiler.Version.grpcJavaVersion % Test,
     ) ++ loggingDeps
   )
 

@@ -181,4 +181,52 @@ describe("ConstellationProvider", () => {
     // Executor server should be cleaned up
     expect(executorFactory.stopped).toBe(true);
   });
+
+  it("should handle disconnect errors gracefully during stop", async () => {
+    const provider = await createProvider(["host1:9090"]);
+    provider.register(testModule);
+    await provider.start();
+
+    // Make deregister throw
+    const transport = transports.get("host1:9090")!;
+    transport.deregister = async () => {
+      throw new Error("deregister boom");
+    };
+
+    // stop() should not throw even if disconnect fails
+    await provider.stop();
+    expect(executorFactory.stopped).toBe(true);
+  });
+
+  it("should handle transport close errors gracefully during stop", async () => {
+    executorFactory = new FakeExecutorServerFactory();
+    const provider = await ConstellationProvider.create({
+      namespace: "test.ns",
+      instances: ["host1:9090"],
+      transportFactory: (addr) => {
+        const transport = new FakeProviderTransport();
+        transports.set(addr, transport);
+        // Add a close method that throws
+        (transport as any).close = () => {
+          throw new Error("close failed");
+        };
+        return transport;
+      },
+      executorServerFactory: executorFactory,
+      config: {
+        canary: {
+          observationWindowMs: 1,
+          healthThreshold: 0.95,
+          maxLatencyMs: 5000,
+          rollbackOnFailure: true,
+        },
+      },
+    });
+    provider.register(testModule);
+    await provider.start();
+
+    // stop() should not throw even if transport close throws
+    await provider.stop();
+    expect(executorFactory.stopped).toBe(true);
+  });
 });

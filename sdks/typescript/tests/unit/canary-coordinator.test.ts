@@ -109,4 +109,40 @@ describe("CanaryCoordinator", () => {
     // host2 should also have been rolled back
     expect(conn2.modules[0].name).toBe("OldModule");
   });
+
+  it("should handle mixed healthy/unhealthy during observation window", async () => {
+    const { conn: conn1 } = await createConnection("host1:9090");
+    const { conn: conn2 } = await createConnection("host2:9090");
+    const { conn: conn3 } = await createConnection("host3:9090", false); // unhealthy
+
+    const connections = new Map([
+      ["host1", conn1],
+      ["host2", conn2],
+      ["host3", conn3],
+    ]);
+
+    const coordinator = new CanaryCoordinator(connections, testCanaryConfig);
+    const result = await coordinator.rollout([oldModule], [newModule]);
+
+    // Should roll back because host3 is unhealthy
+    expect(result.status).toBe("RolledBack");
+    if (result.status === "RolledBack") {
+      expect(result.reason).toContain("host3");
+    }
+    // Previously upgraded instances should be rolled back
+    expect(conn1.modules[0].name).toBe("OldModule");
+    expect(conn2.modules[0].name).toBe("OldModule");
+  });
+
+  it("should handle empty new modules list", async () => {
+    const { conn: conn1 } = await createConnection("host1:9090");
+
+    const connections = new Map([["host1", conn1]]);
+
+    const coordinator = new CanaryCoordinator(connections, testCanaryConfig);
+    const result = await coordinator.rollout([oldModule], []);
+    expect(result.status).toBe("Promoted");
+    // Modules should be replaced with empty list
+    expect(conn1.modules).toHaveLength(0);
+  });
 });

@@ -129,4 +129,24 @@ describe("InstanceConnection", () => {
     expect(conn.modules).toHaveLength(1);
     expect(conn.modules[0].name).toBe("NewModule");
   });
+
+  it("should include groupId in register request when configured", async () => {
+    const groupTransport = new FakeProviderTransport();
+    const configWithGroup = {
+      ...DEFAULT_SDK_CONFIG,
+      groupId: "my-group-1",
+    };
+    const groupConn = new InstanceConnection(
+      "localhost:9090",
+      "test.ns",
+      groupTransport,
+      configWithGroup,
+      [testModule],
+      "localhost:9091",
+    );
+
+    await groupConn.connect();
+    expect(groupTransport.registerCalls).toHaveLength(1);
+    expect(groupTransport.registerCalls[0].groupId).toBe("my-group-1");
+  });
 });
