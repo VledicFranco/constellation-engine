@@ -77,7 +77,7 @@ export class FakeControlPlaneStream implements ControlPlaneStream {
     private controlMessages: ControlMessage[],
   ) {}
 
-  async sendHeartbeat(hb: Heartbeat): Promise<void> {
+  async sendHeartbeat(hb: Heartbeat, connectionId?: string): Promise<void> {
     this.sentHeartbeats.push(hb);
   }
 

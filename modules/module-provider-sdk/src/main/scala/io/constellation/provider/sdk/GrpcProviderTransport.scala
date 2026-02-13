@@ -78,9 +78,13 @@ private class GrpcControlPlaneStream(
     requestObserver: StreamObserver[pb.ControlMessage]
 ) extends ControlPlaneStream {
 
-  def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] = IO {
+  def sendHeartbeat(hb: pb.Heartbeat): IO[Unit] = sendHeartbeat(hb, "")
+
+  override def sendHeartbeat(hb: pb.Heartbeat, connectionId: String): IO[Unit] = IO {
     requestObserver.onNext(
       pb.ControlMessage(
+        connectionId = connectionId,
+        protocolVersion = 1,
         payload = pb.ControlMessage.Payload.Heartbeat(hb)
       )
     )

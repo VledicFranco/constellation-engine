@@ -117,8 +117,12 @@ export class GrpcProviderTransport implements ProviderTransport {
 class GrpcControlPlaneStream implements ControlPlaneStream {
   constructor(private readonly call: grpc.ClientDuplexStream<any, any>) {}
 
-  async sendHeartbeat(hb: Heartbeat): Promise<void> {
-    this.call.write({ heartbeat: hb });
+  async sendHeartbeat(hb: Heartbeat, connectionId?: string): Promise<void> {
+    this.call.write({
+      connectionId: connectionId ?? "",
+      protocolVersion: 1,
+      heartbeat: hb,
+    });
   }
 
   async sendDrainAck(ack: DrainAck): Promise<void> {

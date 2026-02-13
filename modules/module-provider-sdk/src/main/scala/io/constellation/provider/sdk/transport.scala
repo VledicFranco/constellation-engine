@@ -32,6 +32,7 @@ trait ControlPlaneHandler {
 /** Client-side control plane stream handle for sending messages. */
 trait ControlPlaneStream {
   def sendHeartbeat(hb: pb.Heartbeat): IO[Unit]
+  def sendHeartbeat(hb: pb.Heartbeat, connectionId: String): IO[Unit] = sendHeartbeat(hb)
   def sendDrainAck(ack: pb.DrainAck): IO[Unit]
   def close: IO[Unit]
 }

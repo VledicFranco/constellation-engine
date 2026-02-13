@@ -1,6 +1,8 @@
 package io.constellation.provider.sdk
 
-import cats.effect.{IO, Ref}
+import scala.concurrent.duration.*
+
+import cats.effect.{Fiber, IO, Ref}
 import cats.implicits.*
 
 import io.constellation.provider.CValueSerializer
@@ -33,6 +35,10 @@ class InstanceConnection(
 
   private val state = Ref.unsafe[IO, InstanceConnectionState](InstanceConnectionState.Disconnected)
   private val connIdRef = Ref.unsafe[IO, Option[String]](None)
+  private val controlPlaneRef =
+    Ref.unsafe[IO, Option[(ControlPlaneStream, IO[Unit])]](None)
+  private val heartbeatFiberRef =
+    Ref.unsafe[IO, Option[Fiber[IO, Throwable, Nothing]]](None)
 
   /** Get the current connection state. */
   def currentState: IO[InstanceConnectionState] = state.get
@@ -67,8 +73,12 @@ class InstanceConnection(
           }
           _ <-
             if response.success then
-              connIdRef.set(Some(response.connectionId)) >>
-                state.set(InstanceConnectionState.Active)
+              for {
+                _ <- connIdRef.set(Some(response.connectionId))
+                // Open control plane stream and start heartbeats
+                _ <- startControlPlane(response.connectionId)
+                _ <- state.set(InstanceConnectionState.Active)
+              } yield ()
             else
               state.set(InstanceConnectionState.Disconnected) >>
                 IO.raiseError(
@@ -88,6 +98,8 @@ class InstanceConnection(
       case InstanceConnectionState.Disconnected => IO.unit
       case _ =>
         for {
+          // Stop heartbeats and close control plane
+          _ <- stopControlPlane
           modules <- modulesRef.get
           connId  <- connIdRef.get
           _ <- connId.traverse_ { cid =>
@@ -114,4 +126,50 @@ class InstanceConnection(
   /** Simulate a drain state transition (for testing). */
   private[sdk] def simulateDrain: IO[Unit] =
     state.set(InstanceConnectionState.Draining)
+
+  // ===== Control Plane =====
+
+  private val heartbeatInterval: FiniteDuration = config.heartbeatInterval
+
+  /** Open the control plane stream and start the heartbeat loop. */
+  private def startControlPlane(connectionId: String): IO[Unit] = {
+    val handler = new ControlPlaneHandler {
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit] = IO.unit
+      def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
+      def onDrainRequest(drain: pb.DrainRequest): IO[Unit] =
+        state.set(InstanceConnectionState.Draining)
+      def onStreamError(error: Throwable): IO[Unit] = IO.unit
+      def onStreamCompleted: IO[Unit] = IO.unit
+    }
+
+    for {
+      allocated <- transport.openControlPlane(handler).allocated
+      (stream, cleanup) = allocated
+      _ <- controlPlaneRef.set(Some((stream, cleanup)))
+      // Send initial heartbeat with connectionId to activate the control plane on server
+      _ <- stream.sendHeartbeat(pb.Heartbeat(timestamp = System.currentTimeMillis()), connectionId)
+      // Start periodic heartbeat loop
+      fiber <- heartbeatLoop(stream, connectionId).start
+      _ <- heartbeatFiberRef.set(Some(fiber))
+    } yield ()
+  }
+
+  /** Stop the heartbeat loop and close the control plane stream. */
+  private def stopControlPlane: IO[Unit] =
+    for {
+      fiberOpt <- heartbeatFiberRef.getAndSet(None)
+      _        <- fiberOpt.traverse_(_.cancel)
+      cpOpt <- controlPlaneRef.getAndSet(None)
+      _ <- cpOpt.traverse_ { case (_, cleanup) => cleanup.handleErrorWith(_ => IO.unit) }
+    } yield ()
+
+  /** Periodically send heartbeats on the control plane stream. */
+  private def heartbeatLoop(
+      stream: ControlPlaneStream,
+      connectionId: String
+  ): IO[Nothing] =
+    (IO.sleep(heartbeatInterval) >>
+      stream
+        .sendHeartbeat(pb.Heartbeat(timestamp = System.currentTimeMillis()), connectionId)
+        .handleErrorWith(_ => IO.unit)).foreverM
 }

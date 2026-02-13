@@ -143,7 +143,7 @@ export interface ControlPlaneHandler {
 
 /** Client-side control plane stream handle for sending messages. */
 export interface ControlPlaneStream {
-  sendHeartbeat(hb: Heartbeat): Promise<void>;
+  sendHeartbeat(hb: Heartbeat, connectionId?: string): Promise<void>;
   sendDrainAck(ack: DrainAck): Promise<void>;
   close(): Promise<void>;
 }

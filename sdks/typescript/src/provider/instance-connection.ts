@@ -9,7 +9,10 @@ import { ConnectionState } from "../types/connection.js";
 import type { ModuleDefinition } from "../types/module-definition.js";
 import { toDeclaration } from "../types/module-definition.js";
 import type { SdkConfig } from "../types/config.js";
-import type { ProviderTransport } from "../transport/transport.js";
+import type {
+  ProviderTransport,
+  ControlPlaneStream,
+} from "../transport/transport.js";
 
 export class InstanceConnection {
   readonly instanceAddress: string;
@@ -21,6 +24,8 @@ export class InstanceConnection {
   private readonly transport: ProviderTransport;
   private readonly config: SdkConfig;
   private readonly executorUrl: string;
+  private _controlPlane: ControlPlaneStream | undefined;
+  private _heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
     instanceAddress: string,
@@ -69,6 +74,8 @@ export class InstanceConnection {
 
       if (response.success) {
         this._connectionId = response.connectionId;
+        // Open control plane stream and start heartbeats
+        await this.startControlPlane(response.connectionId);
         this._state = ConnectionState.Active;
       } else {
         this._state = ConnectionState.Disconnected;
@@ -92,6 +99,9 @@ export class InstanceConnection {
    */
   async disconnect(): Promise<void> {
     if (this._state === ConnectionState.Disconnected) return;
+
+    // Stop heartbeats and close control plane
+    this.stopControlPlane();
 
     if (this._connectionId) {
       try {
@@ -117,5 +127,48 @@ export class InstanceConnection {
   /** Get the current modules. */
   get modules(): ModuleDefinition[] {
     return [...this._modules];
+  }
+
+  // ===== Control Plane =====
+
+  private async startControlPlane(connectionId: string): Promise<void> {
+    const stream = await this.transport.openControlPlane({
+      onHeartbeatAck: async () => {},
+      onActiveModulesReport: async () => {},
+      onDrainRequest: async () => {
+        this._state = ConnectionState.Draining;
+      },
+      onStreamError: async () => {},
+      onStreamCompleted: async () => {},
+    });
+    this._controlPlane = stream;
+
+    // Send initial heartbeat to activate control plane on server
+    await stream.sendHeartbeat(
+      { namespace: this.namespace, timestamp: Date.now() },
+      connectionId,
+    );
+
+    // Start periodic heartbeats
+    const intervalMs = this.config.heartbeatIntervalMs ?? 5000;
+    this._heartbeatTimer = setInterval(() => {
+      stream
+        .sendHeartbeat(
+          { namespace: this.namespace, timestamp: Date.now() },
+          connectionId,
+        )
+        .catch(() => {});
+    }, intervalMs);
+  }
+
+  private stopControlPlane(): void {
+    if (this._heartbeatTimer) {
+      clearInterval(this._heartbeatTimer);
+      this._heartbeatTimer = undefined;
+    }
+    if (this._controlPlane) {
+      this._controlPlane.close().catch(() => {});
+      this._controlPlane = undefined;
+    }
   }
 }
