@@ -5,6 +5,36 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Module Provider Protocol (RFC-024)**: Full implementation of dynamic module registration via gRPC
+  - **Provider SDK** (`module-provider-sdk`): Client library for external module providers with `ConstellationProvider`, `ModuleDefinition`, and transport abstractions
+  - **Provider Server** (`module-provider`): Server-side module management with `ModuleProviderManager`, `ExternalModule`, `ControlPlaneManager`, and `ExecutorPool`
+  - **Schema Validation**: Runtime type-schema validation between provider-declared types and Constellation type system
+  - **Provider Groups**: Horizontal scaling with multiple provider instances per group, connection lifecycle management, and drain support
+  - **Canary Deployments**: `CanaryCoordinator` for gradual rollout of new module versions with traffic splitting
+  - **gRPC Transport**: `GrpcProviderTransport` and `GrpcExecutorServer` for efficient binary communication
+  - **Discovery Strategies**: Pluggable service discovery for provider registration
+  - Proto definition: `constellation/provider/v1/provider.proto`
+- **Claude Code Skills**: Added `/qa`, `/release`, and `/developer` skills for agentic development workflows
+- **RFCs**: Added RFC-025 (Streaming Pipelines), RFC-026 (Testing Framework & Production Replay), RFC-027 (Module HTTP Endpoints)
+
+### Changed
+- **Build Upgrade**: Upgraded to Scala 3.3.4 and sbt-scoverage 2.4.4 (enables coverage exclusions for generated code)
+- **Module Split**: `module-provider` split into `module-provider-sdk` (client library) and `module-provider` (server) for clean dependency separation
+
+### Fixed
+- **Runtime**: Use `ConcurrentHashMap.newKeySet` to avoid scoverage null-unboxing bug in `SuspendableExecution`
+
+### Testing
+- Comprehensive test suites added across lang-lsp (semantic tokens, DAG visualization, diagnostics), lang-cli (HTTP commands), lang-stdlib (runtime integration), http-api (concurrent load, edge cases), lang-ast (validation), and SDK↔Server integration tests
+
+### Documentation
+- Module provider documentation across website, organon, and LLM guide
+- Strategic testing guide synthesizing campaign learnings
+- Organon docs freshness regeneration
+
 ## [0.6.0] - 2026-02-08
 
 ### Added
