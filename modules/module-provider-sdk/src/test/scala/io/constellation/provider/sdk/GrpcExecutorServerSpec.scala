@@ -6,7 +6,6 @@ import cats.effect.unsafe.implicits.global
 import io.constellation.provider.v1.provider as pb
 
 import io.grpc.{ManagedChannel, ManagedChannelBuilder}
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

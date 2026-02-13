@@ -1,7 +1,7 @@
 package io.constellation.provider.sdk
 
-import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
@@ -10,7 +10,6 @@ import io.constellation.provider.v1.provider as pb
 
 import io.grpc.inprocess.{InProcessChannelBuilder, InProcessServerBuilder}
 import io.grpc.stub.StreamObserver
-
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
