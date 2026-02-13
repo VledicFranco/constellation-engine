@@ -15,13 +15,16 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
   private def startServer(
       handler: pb.ExecuteRequest => IO[pb.ExecuteResponse]
   ): (io.grpc.Server, Int) = {
-    val impl       = new GrpcModuleExecutorImpl(handler)
-    val serviceDef = pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
-    val server     = io.grpc.ServerBuilder.forPort(0).addService(serviceDef).build().start()
+    val impl = new GrpcModuleExecutorImpl(handler)
+    val serviceDef =
+      pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
+    val server = io.grpc.ServerBuilder.forPort(0).addService(serviceDef).build().start()
     (server, server.getPort)
   }
 
-  private def mkClient(port: Int): (pb.ModuleExecutorGrpc.ModuleExecutorBlockingStub, ManagedChannel) = {
+  private def mkClient(
+      port: Int
+  ): (pb.ModuleExecutorGrpc.ModuleExecutorBlockingStub, ManagedChannel) = {
     val channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build()
     (pb.ModuleExecutorGrpc.blockingStub(channel), channel)
   }
@@ -40,9 +43,9 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
       )
 
     val (port, releaseIO) = factory.create(handler, 0).allocated.unsafeRunSync()
-    try {
+    try
       port should be > 0
-    } finally releaseIO.unsafeRunSync()
+    finally releaseIO.unsafeRunSync()
   }
 
   // ===== Execute happy path =====
@@ -77,8 +80,8 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
   // ===== Handler error =====
 
   it should "return error response when handler throws" in {
-    val handler: pb.ExecuteRequest => IO[pb.ExecuteResponse] = _ =>
-      IO.raiseError(new RuntimeException("handler boom"))
+    val handler: pb.ExecuteRequest => IO[pb.ExecuteResponse] =
+      _ => IO.raiseError(new RuntimeException("handler boom"))
 
     val (server, port) = startServer(handler)
     try {
@@ -101,9 +104,8 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
   // ===== Resource release =====
 
   it should "shut down server when resource is released" in {
-    val factory = new GrpcExecutorServerFactory
-    val handler: pb.ExecuteRequest => IO[pb.ExecuteResponse] = _ =>
-      IO.pure(pb.ExecuteResponse())
+    val factory                                              = new GrpcExecutorServerFactory
+    val handler: pb.ExecuteRequest => IO[pb.ExecuteResponse] = _ => IO.pure(pb.ExecuteResponse())
 
     val (port, releaseIO) = factory.create(handler, 0).allocated.unsafeRunSync()
     port should be > 0

@@ -5,6 +5,36 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **TypeScript Module Provider SDK** (`sdks/typescript`): Full TypeScript/Node.js SDK for building external module providers
+  - `ConstellationProvider` with auto-reconnect, heartbeat, and graceful drain support
+  - `CValues`/`CTypes` builders for type-safe module I/O definition
+  - JSON-based `CValueSerializer` compatible with Scala SDK
+  - `GrpcProviderTransport` for gRPC communication with Constellation server
+  - `DnsDiscovery` for multi-instance server discovery
+  - `CanaryCoordinator` for gradual module version rollout
+  - Vitest test suite with 78%+ coverage thresholds
+- **gRPC Integration Tests**: Comprehensive test suite covering SDK↔Server gRPC transport
+  - `GrpcExecutorServerSpec`: Executor server lifecycle and dispatch
+  - `GrpcProviderTransportSpec`: Registration, control plane streaming, heartbeats
+  - `ExternalModuleExecutionSpec`: Full gRPC execution path with fake executor
+  - `GrpcRoundtripIntegrationSpec`: End-to-end SDK→Server→SDK roundtrip
+
+### Fixed
+- **Provider SDK**: `InstanceConnection.connect()` now opens the ControlPlane bidirectional stream after registration, preventing auto-deregistration after the 30-second liveness timeout
+- **Provider SDK (TS)**: `GrpcProviderTransport` now includes `connectionId` in heartbeat messages
+- **Provider Server**: `ExternalModule` now correctly uses a single composite output data node (matching DagCompiler behavior) instead of per-field nodes, fixing "Module name X not found in namespace" errors for multi-output external modules
+- **Provider SDK**: Added `executorHost` to `SdkConfig` and `CValue.CProduct` convenience factory
+
+### Changed
+- **Coverage Thresholds**: Raised coverage minimums for `module-provider-sdk` (87% stmt / 90% branch) and `module-provider` (78% stmt / 78% branch)
+
+### Documentation
+- Demo codelab walkthrough findings documented in `dev/demo-codelab-notes.md`
+- Organon docs regenerated after TypeSystem.scala change
+
 ## [0.7.0] - 2026-02-12
 
 ### Added

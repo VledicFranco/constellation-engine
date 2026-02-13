@@ -17,9 +17,9 @@ import org.scalatest.matchers.should.Matchers
 
 class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAndAfterEach {
 
-  private var serverName: String                 = _
-  private var server: io.grpc.Server             = _
-  private var channel: io.grpc.ManagedChannel    = _
+  private var serverName: String                  = _
+  private var server: io.grpc.Server              = _
+  private var channel: io.grpc.ManagedChannel     = _
   private var fakeService: FakeModuleProviderImpl = _
 
   override def beforeEach(): Unit = {
@@ -28,15 +28,17 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
     server = InProcessServerBuilder
       .forName(serverName)
       .directExecutor()
-      .addService(pb.ModuleProviderGrpc.bindService(fakeService, scala.concurrent.ExecutionContext.global))
+      .addService(
+        pb.ModuleProviderGrpc.bindService(fakeService, scala.concurrent.ExecutionContext.global)
+      )
       .build()
       .start()
     channel = InProcessChannelBuilder.forName(serverName).directExecutor().build()
   }
 
   override def afterEach(): Unit = {
-    if (channel != null) channel.shutdownNow()
-    if (server != null) server.shutdownNow()
+    if channel != null then channel.shutdownNow()
+    if server != null then server.shutdownNow()
   }
 
   private def transport = new GrpcProviderTransport(channel)
@@ -94,7 +96,7 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
   // ===== Control plane: heartbeat roundtrip =====
 
   it should "open control plane and send heartbeat" in {
-    val ackLatch = new CountDownLatch(1)
+    val ackLatch    = new CountDownLatch(1)
     val receivedAck = new AtomicReference[pb.HeartbeatAck](null)
 
     val handler = new ControlPlaneHandler {
@@ -103,8 +105,8 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
         ackLatch.countDown()
       }
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
-      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]               = IO.unit
-      def onStreamError(error: Throwable): IO[Unit]                      = IO.unit
+      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]                = IO.unit
+      def onStreamError(error: Throwable): IO[Unit]                       = IO.unit
       def onStreamCompleted: IO[Unit]                                     = IO.unit
     }
 
@@ -121,18 +123,18 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
   // ===== Control plane: drain request =====
 
   it should "receive drain request from server on control plane" in {
-    val drainLatch = new CountDownLatch(1)
+    val drainLatch    = new CountDownLatch(1)
     val receivedDrain = new AtomicReference[pb.DrainRequest](null)
 
     val handler = new ControlPlaneHandler {
-      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                 = IO.unit
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                  = IO.unit
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
       def onDrainRequest(drain: pb.DrainRequest): IO[Unit] = IO {
         receivedDrain.set(drain)
         drainLatch.countDown()
       }
       def onStreamError(error: Throwable): IO[Unit] = IO.unit
-      def onStreamCompleted: IO[Unit]                = IO.unit
+      def onStreamCompleted: IO[Unit]               = IO.unit
     }
 
     val (stream, release) = transport.openControlPlane(handler).allocated.unsafeRunSync()
@@ -154,10 +156,10 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
 
   it should "send drain ack on control plane stream" in {
     val handler = new ControlPlaneHandler {
-      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                 = IO.unit
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                  = IO.unit
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
-      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]               = IO.unit
-      def onStreamError(error: Throwable): IO[Unit]                      = IO.unit
+      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]                = IO.unit
+      def onStreamError(error: Throwable): IO[Unit]                       = IO.unit
       def onStreamCompleted: IO[Unit]                                     = IO.unit
     }
 
@@ -179,10 +181,10 @@ class GrpcProviderTransportSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val completedLatch = new CountDownLatch(1)
 
     val handler = new ControlPlaneHandler {
-      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                 = IO.unit
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                  = IO.unit
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
-      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]               = IO.unit
-      def onStreamError(error: Throwable): IO[Unit]                      = IO.unit
+      def onDrainRequest(drain: pb.DrainRequest): IO[Unit]                = IO.unit
+      def onStreamError(error: Throwable): IO[Unit]                       = IO.unit
       def onStreamCompleted: IO[Unit] = IO {
         completedLatch.countDown()
       }
@@ -219,7 +221,8 @@ private class FakeModuleProviderImpl extends pb.ModuleProviderGrpc.ModuleProvide
   var deregisterError: Option[io.grpc.Status] = None
 
   // Store the server-side response observer for control plane so we can push messages to the client
-  private val controlPlaneResponseObserver = new AtomicReference[StreamObserver[pb.ControlMessage]](null)
+  private val controlPlaneResponseObserver =
+    new AtomicReference[StreamObserver[pb.ControlMessage]](null)
 
   override def register(
       request: pb.RegisterRequest

@@ -99,7 +99,7 @@ class InstanceConnection(
       case _ =>
         for {
           // Stop heartbeats and close control plane
-          _ <- stopControlPlane
+          _       <- stopControlPlane
           modules <- modulesRef.get
           connId  <- connIdRef.get
           _ <- connId.traverse_ { cid =>
@@ -134,12 +134,12 @@ class InstanceConnection(
   /** Open the control plane stream and start the heartbeat loop. */
   private def startControlPlane(connectionId: String): IO[Unit] = {
     val handler = new ControlPlaneHandler {
-      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit] = IO.unit
+      def onHeartbeatAck(ack: pb.HeartbeatAck): IO[Unit]                  = IO.unit
       def onActiveModulesReport(report: pb.ActiveModulesReport): IO[Unit] = IO.unit
       def onDrainRequest(drain: pb.DrainRequest): IO[Unit] =
         state.set(InstanceConnectionState.Draining)
       def onStreamError(error: Throwable): IO[Unit] = IO.unit
-      def onStreamCompleted: IO[Unit] = IO.unit
+      def onStreamCompleted: IO[Unit]               = IO.unit
     }
 
     for {
@@ -150,7 +150,7 @@ class InstanceConnection(
       _ <- stream.sendHeartbeat(pb.Heartbeat(timestamp = System.currentTimeMillis()), connectionId)
       // Start periodic heartbeat loop
       fiber <- heartbeatLoop(stream, connectionId).start
-      _ <- heartbeatFiberRef.set(Some(fiber))
+      _     <- heartbeatFiberRef.set(Some(fiber))
     } yield ()
   }
 
@@ -159,8 +159,8 @@ class InstanceConnection(
     for {
       fiberOpt <- heartbeatFiberRef.getAndSet(None)
       _        <- fiberOpt.traverse_(_.cancel)
-      cpOpt <- controlPlaneRef.getAndSet(None)
-      _ <- cpOpt.traverse_ { case (_, cleanup) => cleanup.handleErrorWith(_ => IO.unit) }
+      cpOpt    <- controlPlaneRef.getAndSet(None)
+      _        <- cpOpt.traverse_ { case (_, cleanup) => cleanup.handleErrorWith(_ => IO.unit) }
     } yield ()
 
   /** Periodically send heartbeats on the control plane stream. */
