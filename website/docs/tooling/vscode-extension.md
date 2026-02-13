@@ -32,13 +32,13 @@ Search for "Constellation Language Support" in the VSCode Extensions view (`Ctrl
    npm run package
    ```
 
-   This creates `constellation-lang-0.4.0.vsix` in the current directory.
+   This creates `constellation-lang-0.7.0.vsix` in the current directory.
 
 4. Install the VSIX file in VSCode:
 
    **Via Command Line:**
    ```bash
-   code --install-extension constellation-lang-0.4.0.vsix
+   code --install-extension constellation-lang-0.7.0.vsix
    ```
 
    **Via VSCode UI:**

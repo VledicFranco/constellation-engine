@@ -112,7 +112,7 @@ MemcachedCacheBackend.resource(MemcachedConfig.single()).use { backend =>
 Add the module artifact to your `build.sbt`:
 
 ```scala
-libraryDependencies += "io.github.vledicfranco" %% "constellation-cache-memcached" % "0.4.0"
+libraryDependencies += "io.github.vledicfranco" %% "constellation-cache-memcached" % "0.7.0"
 ```
 
 ### Step 2: Import and Configure
@@ -221,7 +221,7 @@ lazy val myModule = project
   .settings(
     name := "constellation-my-module",
     libraryDependencies ++= Seq(
-      "io.github.vledicfranco" %% "constellation-runtime" % "0.4.0",
+      "io.github.vledicfranco" %% "constellation-runtime" % "0.7.0",
       // Your module's dependencies
     )
   )

@@ -8,7 +8,7 @@ The Constellation CLI provides a command-line interface for compiling, running, 
 
 ```bash
 # From Maven Central
-cs install io.constellation:constellation-cli_3:0.5.0
+cs install io.constellation:constellation-cli_3:0.7.0
 
 # Or from custom channel
 cs install --channel https://constellation-engine.io/coursier/channel.json constellation
@@ -296,13 +296,13 @@ constellation server health [FLAGS]
 # Check health
 constellation server health
 # ✓ Server healthy
-#   Version: 0.5.0
+#   Version: 0.7.0
 #   Uptime: 3d 14h 22m
 #   Pipelines: 12 loaded
 
 # JSON output for monitoring
 constellation server health --json
-# {"status":"ok","version":"0.5.0","uptime":"3d 14h 22m","pipelineCount":12}
+# {"status":"ok","version":"0.7.0","uptime":"3d 14h 22m","pipelineCount":12}
 ```
 
 **Exit Codes:**
@@ -1073,7 +1073,7 @@ jobs:
 
       - name: Install Constellation CLI
         run: |
-          cs install io.constellation:constellation-cli_3:0.5.0
+          cs install io.constellation:constellation-cli_3:0.7.0
 
       - name: Start Constellation Server
         run: |

@@ -13,7 +13,7 @@ A first-party distributed cache backend backed by [Memcached](https://memcached.
 Add the dependency to your `build.sbt`:
 
 ```scala
-libraryDependencies += "io.github.vledicfranco" %% "constellation-cache-memcached" % "<version>"
+libraryDependencies += "io.github.vledicfranco" %% "constellation-cache-memcached" % "0.7.0"
 ```
 
 This module depends on `constellation-runtime` and brings in `net.spy:spymemcached:2.12.3`.

@@ -66,7 +66,7 @@ Your Application
 Add to your `build.sbt`:
 
 ```scala
-val constellationVersion = "0.3.1"
+val constellationVersion = "0.7.0"
 
 libraryDependencies ++= Seq(
   "io.github.vledicfranco" %% "constellation-core"          % constellationVersion,

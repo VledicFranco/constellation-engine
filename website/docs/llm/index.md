@@ -22,7 +22,7 @@ A **type-safe pipeline orchestration framework** for Scala 3 that lets you:
 
 **GitHub Repository:** [VledicFranco/constellation-engine](https://github.com/VledicFranco/constellation-engine)
 **Documentation Site:** [constellation-engine.dev](https://vledicfranco.github.io/constellation-engine/)
-**Latest Version:** 0.6.1
+**Latest Version:** 0.7.0
 
 ### For LLMs Reading the Landing Pages
 

@@ -43,7 +43,7 @@ Use Module Providers when your module needs its own process, language runtime, o
 Add the SDK dependency to your `build.sbt`:
 
 ```scala
-libraryDependencies += "io.github.vledicfranco" %% "constellation-module-provider-sdk" % "<version>"
+libraryDependencies += "io.github.vledicfranco" %% "constellation-module-provider-sdk" % "0.7.0"
 ```
 
 ### Defining Modules
