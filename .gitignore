@@ -41,6 +41,7 @@ vscode-extension/*.vsix
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.tgz
 
 # MCP Server
 constellation-repo-dev-mcp/dist/
