@@ -248,6 +248,56 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
     req.executorUrl should not be empty
   }
 
+  // ===== Executor URL uses executorHost, not instanceAddress (#214) =====
+
+  it should "use executorHost from config for executorUrl, not instanceAddress" in {
+    val transport = FakeProviderTransport.create.unsafeRunSync()
+    val dockerConfig = config.copy(executorPort = 50052, executorHost = "provider-scala")
+    val conn = mkConnection(transport, cfg = dockerConfig)
+
+    conn.connect.unsafeRunSync()
+
+    import scala.jdk.CollectionConverters.*
+    val req = transport.registerCalls.asScala.toList.head
+    // Should use executorHost:executorPort, NOT instanceAddress:executorPort
+    req.executorUrl shouldBe "provider-scala:50052"
+  }
+
+  it should "not include instanceAddress in executorUrl" in {
+    val transport = FakeProviderTransport.create.unsafeRunSync()
+    // Simulate Docker: instanceAddress has a port (server:9090)
+    // but executorHost is a different hostname
+    val dockerConfig = config.copy(executorPort = 50052, executorHost = "my-provider")
+    val modulesRef   = Ref.of[IO, List[ModuleDefinition]](List(echoModule)).unsafeRunSync()
+    val conn = new InstanceConnection(
+      instanceAddress = "constellation-server:9090",
+      namespace = "test",
+      transport = transport,
+      config = dockerConfig,
+      modulesRef = modulesRef,
+      serializer = serializer
+    )
+
+    conn.connect.unsafeRunSync()
+
+    import scala.jdk.CollectionConverters.*
+    val req = transport.registerCalls.asScala.toList.head
+    req.executorUrl shouldBe "my-provider:50052"
+    req.executorUrl should not include "constellation-server"
+  }
+
+  it should "default executorHost to localhost" in {
+    val transport    = FakeProviderTransport.create.unsafeRunSync()
+    val defaultConfig = SdkConfig(executorPort = 9091)
+    val conn         = mkConnection(transport, cfg = defaultConfig)
+
+    conn.connect.unsafeRunSync()
+
+    import scala.jdk.CollectionConverters.*
+    val req = transport.registerCalls.asScala.toList.head
+    req.executorUrl shouldBe "localhost:9091"
+  }
+
   // ===== Connection ID cleared on disconnect =====
 
   it should "clear connectionId on disconnect" in {

@@ -304,6 +304,54 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     )
   }
 
+  // ===== CValue.CProduct convenience factory (#215) =====
+
+  "CValue.CProduct" should "accept Map[String, CType] as structure (original form)" in {
+    val product = CValue.CProduct(
+      Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30L)),
+      Map("name" -> CType.CString, "age" -> CType.CInt)
+    )
+
+    product.value("name") shouldBe CValue.CString("Alice")
+    product.structure shouldBe Map("name" -> CType.CString, "age" -> CType.CInt)
+    product.ctype shouldBe CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
+  }
+
+  it should "accept CType.CProduct as structure (convenience form)" in {
+    val productType = CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt))
+    val product = CValue.CProduct(
+      Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30L)),
+      productType
+    )
+
+    product.value("name") shouldBe CValue.CString("Alice")
+    product.structure shouldBe Map("name" -> CType.CString, "age" -> CType.CInt)
+    product.ctype shouldBe productType
+  }
+
+  it should "produce identical results with both construction forms" in {
+    val structure = Map("x" -> CType.CFloat, "y" -> CType.CFloat)
+    val values    = Map("x" -> CValue.CFloat(1.0), "y" -> CValue.CFloat(2.0))
+
+    val fromMap  = CValue.CProduct(values, structure)
+    val fromType = CValue.CProduct(values, CType.CProduct(structure))
+
+    fromMap shouldBe fromType
+    fromMap.ctype shouldBe fromType.ctype
+  }
+
+  it should "work with nested products using CType.CProduct form" in {
+    val innerType = CType.CProduct(Map("value" -> CType.CString))
+    val outerType = CType.CProduct(Map("inner" -> innerType, "count" -> CType.CInt))
+
+    val inner = CValue.CProduct(Map("value" -> CValue.CString("hello")), innerType)
+    val outer = CValue.CProduct(Map("inner" -> inner, "count" -> CValue.CInt(1L)), outerType)
+
+    outer.value("inner") shouldBe inner
+    outer.value("count") shouldBe CValue.CInt(1L)
+    outer.ctype shouldBe outerType
+  }
+
   "Roundtrip" should "inject and extract values correctly" in {
     def roundtrip[A](value: A)(using
         injector: CValueInjector[A],

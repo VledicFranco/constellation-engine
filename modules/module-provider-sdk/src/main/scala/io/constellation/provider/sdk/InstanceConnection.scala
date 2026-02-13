@@ -58,7 +58,7 @@ class InstanceConnection(
             namespace = namespace,
             modules = modules.map(_.toDeclaration),
             protocolVersion = 1,
-            executorUrl = s"$instanceAddress:${config.executorPort}",
+            executorUrl = s"${config.executorHost}:${config.executorPort}",
             groupId = config.groupId.getOrElse("")
           )
           response <- transport.register(request).handleErrorWith { error =>

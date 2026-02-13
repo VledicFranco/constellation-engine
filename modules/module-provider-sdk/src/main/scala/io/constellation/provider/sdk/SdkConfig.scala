@@ -6,6 +6,10 @@ import scala.concurrent.duration.*
   *
   * @param executorPort
   *   Port to host the ModuleExecutor gRPC service on
+  * @param executorHost
+  *   Hostname that the Constellation server should use to reach this provider's executor. In Docker
+  *   or Kubernetes, this is typically the service/container name (e.g., "provider-scala"). Defaults
+  *   to "localhost" for local development.
   * @param heartbeatInterval
   *   Interval between heartbeat messages on the control plane
   * @param reconnectBackoff
@@ -23,6 +27,7 @@ import scala.concurrent.duration.*
   */
 final case class SdkConfig(
     executorPort: Int = 9091,
+    executorHost: String = "localhost",
     heartbeatInterval: FiniteDuration = 5.seconds,
     reconnectBackoff: FiniteDuration = 1.second,
     maxReconnectBackoff: FiniteDuration = 60.seconds,

@@ -119,6 +119,17 @@ object CValue {
       extends CValue {
     override def ctype: CType = CType.CProduct(structure)
   }
+
+  object CProduct {
+
+    /** Convenience factory accepting [[CType.CProduct]] directly.
+      *
+      * Extracts the `structure` map from the product type, avoiding the common mistake of passing a
+      * `CType` where `Map[String, CType]` is expected.
+      */
+    def apply(value: Map[String, CValue], productType: CType.CProduct): CProduct =
+      new CProduct(value, productType.structure)
+  }
   final case class CUnion(value: CValue, structure: Map[String, CType], tag: String)
       extends CValue {
     override def ctype: CType = CType.CUnion(structure)
