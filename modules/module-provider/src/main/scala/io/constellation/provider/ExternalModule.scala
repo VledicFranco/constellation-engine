@@ -109,16 +109,14 @@ object ExternalModule {
               deferred <- Deferred[IO, Any]
             } yield (id, deferred, fieldName)
           }
-          // Create deferreds for each output field
-          produceEntries <- producesSpec.keys.toList.traverse { fieldName =>
-            for {
-              id       <- producesNs.nameId(fieldName)
-              deferred <- Deferred[IO, Any]
-            } yield (id, deferred, fieldName)
-          }
+          // The DAG compiler creates a single composite output data node for the module.
+          // Get its ID using the first field name (which the compiler uses as the nickname).
+          outputFieldName = producesSpec.keys.head
+          outputDataId <- producesNs.nameId(outputFieldName)
+          outputDeferred <- Deferred[IO, Any]
 
           dataTable = (consumeEntries.map(t => t._1 -> t._2) ++
-            produceEntries.map(t => t._1 -> t._2)).toMap
+            Map(outputDataId -> outputDeferred)).toMap
 
         } yield Module.Runnable(
           id = moduleId,
@@ -169,33 +167,10 @@ object ExternalModule {
                         .left
                         .map(e => new RuntimeException(s"Deserialization error: $e"))
                     )
-                    // Write outputs to data table
-                    _ <- outputCValue match {
-                      case CValue.CProduct(fields, _) =>
-                        produceEntries.traverse_ { case (dataId, _, fieldName) =>
-                          fields.get(fieldName) match {
-                            case Some(value) =>
-                              runtime.setTableDataCValue(dataId, value) >>
-                                runtime.setStateData(dataId, value)
-                            case None =>
-                              IO.raiseError(
-                                new RuntimeException(
-                                  s"External module '$name' output missing field '$fieldName'"
-                                )
-                              )
-                          }
-                        }
-                      case singleValue if producesSpec.size == 1 =>
-                        val (dataId, _, _) = produceEntries.head
-                        runtime.setTableDataCValue(dataId, singleValue) >>
-                          runtime.setStateData(dataId, singleValue)
-                      case other =>
-                        IO.raiseError(
-                          new RuntimeException(
-                            s"External module '$name' returned unexpected output type: ${other.ctype}"
-                          )
-                        )
-                    }
+                    // Write the composite output to the single output data node.
+                    // Consumers use FieldAccessNode to extract individual fields.
+                    _ <- runtime.setTableDataCValue(outputDataId, outputCValue) >>
+                      runtime.setStateData(outputDataId, outputCValue)
                   } yield ()
 
                 case pb.ExecuteResponse.Result.Error(err) =>

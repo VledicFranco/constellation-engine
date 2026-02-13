@@ -113,20 +113,25 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
         case other                     => Map("output" -> other)
       }
 
-      // Create data node UUIDs for each input/output field
+      // Create data node UUIDs for each input field
       val consumeDataIds = consumesSpec.keys.map(name => name -> UUID.randomUUID()).toMap
-      val produceDataIds = producesSpec.keys.map(name => name -> UUID.randomUUID()).toMap
+      // The DAG compiler creates a single composite output node with the first field name as nickname
+      val outputFieldName = producesSpec.keys.head
+      val outputDataId    = UUID.randomUUID()
+      val produceDataIds  = Map(outputFieldName -> outputDataId)
 
       val dagSpec = DagSpec(
         metadata = ComponentMetadata("test-dag", "test", List.empty, 1, 0),
         modules = Map(moduleId -> module.spec),
         data = consumeDataIds.map { case (name, id) =>
           id -> DataNodeSpec(name, Map(moduleId -> name), consumesSpec(name))
-        } ++ produceDataIds.map { case (name, id) =>
-          id -> DataNodeSpec(name, Map(moduleId -> name), producesSpec(name))
-        },
+        } + (outputDataId -> DataNodeSpec(
+          outputFieldName + "_output",
+          Map(moduleId -> outputFieldName),
+          outputType
+        )),
         inEdges = consumeDataIds.values.map(dataId => (dataId, moduleId)).toSet,
-        outEdges = produceDataIds.values.map(dataId => (moduleId, dataId)).toSet
+        outEdges = Set((moduleId, outputDataId))
       )
 
       for {
@@ -206,7 +211,11 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
 
       result shouldBe a[Right[_, _]]
       val outputs = result.toOption.get
-      outputs("text") shouldBe CValue.CString("echo:hello")
+      // The single output node contains the composite CProduct
+      outputs("text") shouldBe CValue.CProduct(
+        Map("text" -> CValue.CString("echo:hello")),
+        Map("text" -> CType.CString)
+      )
     } finally {
       cache.shutdownAll()
       server.shutdownNow()
@@ -241,6 +250,7 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
 
       result shouldBe a[Right[_, _]]
       val outputs = result.toOption.get
+      // Single-field output: the executor returns a plain CString, stored as-is in the composite node
       outputs("result") shouldBe CValue.CString("single-result")
     } finally {
       cache.shutdownAll()
