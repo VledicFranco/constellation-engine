@@ -3,7 +3,13 @@
   "displayName": "Constellation Language Support",
   "description": "Language support for Constellation orchestration DSL with LSP integration",
   "version": "0.7.0",
-  "publisher": "constellation",
+  "publisher": "vledicfranco",
+  "icon": "icon.png",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VledicFranco/constellation-engine"
+  },
   "engines": {
     "vscode": "^1.75.0"
   },
