@@ -1,0 +1,25 @@
+name: Publish VSCode Extension
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: npm ci
+
+      - name: Publish to VS Code Marketplace
+        working-directory: vscode-extension
+        run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
