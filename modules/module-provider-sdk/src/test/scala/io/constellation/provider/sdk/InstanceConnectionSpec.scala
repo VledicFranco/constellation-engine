@@ -251,9 +251,9 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
   // ===== Executor URL uses executorHost, not instanceAddress (#214) =====
 
   it should "use executorHost from config for executorUrl, not instanceAddress" in {
-    val transport = FakeProviderTransport.create.unsafeRunSync()
+    val transport    = FakeProviderTransport.create.unsafeRunSync()
     val dockerConfig = config.copy(executorPort = 50052, executorHost = "provider-scala")
-    val conn = mkConnection(transport, cfg = dockerConfig)
+    val conn         = mkConnection(transport, cfg = dockerConfig)
 
     conn.connect.unsafeRunSync()
 
@@ -287,9 +287,9 @@ class InstanceConnectionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "default executorHost to localhost" in {
-    val transport    = FakeProviderTransport.create.unsafeRunSync()
+    val transport     = FakeProviderTransport.create.unsafeRunSync()
     val defaultConfig = SdkConfig(executorPort = 9091)
-    val conn         = mkConnection(transport, cfg = defaultConfig)
+    val conn          = mkConnection(transport, cfg = defaultConfig)
 
     conn.connect.unsafeRunSync()
 

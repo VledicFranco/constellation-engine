@@ -309,7 +309,7 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
   "CValue.CProduct" should "accept Map[String, CType] as structure (original form)" in {
     val product = CValue.CProduct(
       Map("name" -> CValue.CString("Alice"), "age" -> CValue.CInt(30L)),
-      Map("name" -> CType.CString, "age" -> CType.CInt)
+      Map("name" -> CType.CString, "age"           -> CType.CInt)
     )
 
     product.value("name") shouldBe CValue.CString("Alice")
