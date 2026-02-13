@@ -112,7 +112,7 @@ object ExternalModule {
           // The DAG compiler creates a single composite output data node for the module.
           // Get its ID using the first field name (which the compiler uses as the nickname).
           outputFieldName = producesSpec.keys.head
-          outputDataId <- producesNs.nameId(outputFieldName)
+          outputDataId   <- producesNs.nameId(outputFieldName)
           outputDeferred <- Deferred[IO, Any]
 
           dataTable = (consumeEntries.map(t => t._1 -> t._2) ++

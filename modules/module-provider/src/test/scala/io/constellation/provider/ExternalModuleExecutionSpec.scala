@@ -34,7 +34,7 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
 
   private def echoExecutor: FakeExecutorService = new FakeExecutorService(req => {
     // Echo: deserialize input, prefix with "echo:", serialize back
-    val input  = serializer.deserialize(req.inputData.toByteArray).toOption.get
+    val input = serializer.deserialize(req.inputData.toByteArray).toOption.get
     val output = input match {
       case CValue.CProduct(fields, spec) =>
         val modified = fields.map { case (k, v) =>
@@ -45,7 +45,7 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
         }
         CValue.CProduct(modified, spec)
       case CValue.CString(s) => CValue.CString(s"echo:$s")
-      case other              => other
+      case other             => other
     }
     val outputBytes = serializer.serialize(output).toOption.get
     pb.ExecuteResponse(
@@ -186,9 +186,11 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
 
         // Read outputs from state
         finalState <- runtimeState.get
-        outputs = produceDataIds.map { case (name, _) =>
-          name -> finalState.data.get(produceDataIds(name)).map(_.value.asInstanceOf[CValue])
-        }.collect { case (name, Some(value)) => name -> value }
+        outputs = produceDataIds
+          .map { case (name, _) =>
+            name -> finalState.data.get(produceDataIds(name)).map(_.value.asInstanceOf[CValue])
+          }
+          .collect { case (name, Some(value)) => name -> value }
 
       } yield result.map(_ => outputs)
     }
@@ -197,16 +199,25 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
   // ===== callExecutor happy path (CProduct) =====
 
   "ExternalModule execution" should "execute via gRPC and return output for CProduct" in {
-    val (server, port)  = startFakeExecutor(echoExecutor)
-    val cache           = new GrpcChannelCache
-    val executorUrl     = s"localhost:$port"
-    val inputType       = CType.CProduct(Map("text" -> CType.CString))
-    val outputType      = CType.CProduct(Map("text" -> CType.CString))
-    val inputValue      = CValue.CProduct(Map("text" -> CValue.CString("hello")), inputType.asInstanceOf[CType.CProduct].structure)
+    val (server, port) = startFakeExecutor(echoExecutor)
+    val cache          = new GrpcChannelCache
+    val executorUrl    = s"localhost:$port"
+    val inputType      = CType.CProduct(Map("text" -> CType.CString))
+    val outputType     = CType.CProduct(Map("text" -> CType.CString))
+    val inputValue = CValue.CProduct(
+      Map("text" -> CValue.CString("hello")),
+      inputType.asInstanceOf[CType.CProduct].structure
+    )
 
     try {
       val result = buildDagAndRun(
-        "EchoModule", "test.ns", inputType, outputType, executorUrl, cache, inputValue
+        "EchoModule",
+        "test.ns",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
       ).unsafeRunSync()
 
       result shouldBe a[Right[_, _]]
@@ -216,6 +227,137 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
         Map("text" -> CValue.CString("echo:hello")),
         Map("text" -> CType.CString)
       )
+    } finally {
+      cache.shutdownAll()
+      server.shutdownNow()
+    }
+  }
+
+  // ===== Multi-field output (e.g., AnalyzeSentiment: { score: Float, label: String }) =====
+
+  it should "execute via gRPC with multi-field output type" in {
+    // Executor returns a CProduct with score + label (like AnalyzeSentiment)
+    val multiFieldExecutor = new FakeExecutorService(req => {
+      val outputCValue = CValue.CProduct(
+        Map("score" -> CValue.CFloat(0.85f), "label" -> CValue.CString("positive")),
+        Map("score" -> CType.CFloat, "label"         -> CType.CString)
+      )
+      val outputBytes = serializer.serialize(outputCValue).toOption.get
+      pb.ExecuteResponse(
+        result = pb.ExecuteResponse.Result.OutputData(
+          com.google.protobuf.ByteString.copyFrom(outputBytes)
+        )
+      )
+    })
+
+    val (server, port) = startFakeExecutor(multiFieldExecutor)
+    val cache          = new GrpcChannelCache
+    val executorUrl    = s"localhost:$port"
+    val inputType      = CType.CProduct(Map("text" -> CType.CString))
+    val outputType     = CType.CProduct(Map("score" -> CType.CFloat, "label" -> CType.CString))
+    val inputValue =
+      CValue.CProduct(Map("text" -> CValue.CString("great movie")), Map("text" -> CType.CString))
+
+    try {
+      val result = buildDagAndRun(
+        "AnalyzeSentiment",
+        "nlp.sentiment",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
+      ).unsafeRunSync()
+
+      result shouldBe a[Right[_, _]]
+      val outputs = result.toOption.get
+      // The composite output node contains the full CProduct with both fields
+      val outputKey = outputType.asInstanceOf[CType.CProduct].structure.keys.head
+      val composite = outputs(outputKey).asInstanceOf[CValue.CProduct]
+      composite.value("score") shouldBe CValue.CFloat(0.85f)
+      composite.value("label") shouldBe CValue.CString("positive")
+    } finally {
+      cache.shutdownAll()
+      server.shutdownNow()
+    }
+  }
+
+  // ===== Multi-field output via protobuf TypeSchemaConverter (simulates real registration) =====
+
+  it should "work when output type comes from TypeSchemaConverter (protobuf path)" in {
+    // Build a TypeSchema via proto → CType (exactly like real gRPC registration)
+    val outputSchema = pb.TypeSchema(
+      pb.TypeSchema.Type.Record(
+        pb.RecordType(
+          fields = Map(
+            "score" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.FLOAT))
+            ),
+            "label" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          )
+        )
+      )
+    )
+    val outputType = TypeSchemaConverter.toCType(outputSchema).toOption.get
+
+    // Verify it's a CProduct with the expected fields
+    outputType shouldBe a[CType.CProduct]
+    val producesMap = outputType.asInstanceOf[CType.CProduct].structure
+    producesMap.keySet should contain allOf ("score", "label")
+
+    // The critical check: keys.head must be consistent across DagCompiler and ExternalModule.init
+    // Both use the SAME Map instance, so this should always be true
+    val firstKey = producesMap.keys.head
+
+    val multiFieldExecutor = new FakeExecutorService(_ => {
+      val outputCValue = CValue.CProduct(
+        Map("score" -> CValue.CFloat(0.85f), "label" -> CValue.CString("positive")),
+        Map("score" -> CType.CFloat, "label"         -> CType.CString)
+      )
+      val outputBytes = serializer.serialize(outputCValue).toOption.get
+      pb.ExecuteResponse(
+        result = pb.ExecuteResponse.Result.OutputData(
+          com.google.protobuf.ByteString.copyFrom(outputBytes)
+        )
+      )
+    })
+
+    val (server, port) = startFakeExecutor(multiFieldExecutor)
+    val cache          = new GrpcChannelCache
+    val executorUrl    = s"localhost:$port"
+    val inputSchema = pb.TypeSchema(
+      pb.TypeSchema.Type.Record(
+        pb.RecordType(
+          fields = Map(
+            "text" -> pb.TypeSchema(
+              pb.TypeSchema.Type.Primitive(pb.PrimitiveType(pb.PrimitiveType.Kind.STRING))
+            )
+          )
+        )
+      )
+    )
+    val inputType = TypeSchemaConverter.toCType(inputSchema).toOption.get
+    val inputValue =
+      CValue.CProduct(Map("text" -> CValue.CString("great movie")), Map("text" -> CType.CString))
+
+    try {
+      val result = buildDagAndRun(
+        "AnalyzeSentiment",
+        "nlp.sentiment",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
+      ).unsafeRunSync()
+
+      result shouldBe a[Right[_, _]]
+      val outputs   = result.toOption.get
+      val composite = outputs(firstKey).asInstanceOf[CValue.CProduct]
+      composite.value("score") shouldBe CValue.CFloat(0.85f)
+      composite.value("label") shouldBe CValue.CString("positive")
     } finally {
       cache.shutdownAll()
       server.shutdownNow()
@@ -241,11 +383,18 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
     val executorUrl    = s"localhost:$port"
     val inputType      = CType.CProduct(Map("text" -> CType.CString))
     val outputType     = CType.CProduct(Map("result" -> CType.CString))
-    val inputValue     = CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
+    val inputValue =
+      CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
 
     try {
       val result = buildDagAndRun(
-        "SingleModule", "test.ns", inputType, outputType, executorUrl, cache, inputValue
+        "SingleModule",
+        "test.ns",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
       ).unsafeRunSync()
 
       result shouldBe a[Right[_, _]]
@@ -266,11 +415,18 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
     val executorUrl    = s"localhost:$port"
     val inputType      = CType.CProduct(Map("text" -> CType.CString))
     val outputType     = CType.CProduct(Map("result" -> CType.CString))
-    val inputValue     = CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
+    val inputValue =
+      CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
 
     try {
       val result = buildDagAndRun(
-        "ErrorModule", "test.ns", inputType, outputType, executorUrl, cache, inputValue
+        "ErrorModule",
+        "test.ns",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
       ).unsafeRunSync()
 
       // The module's run catches errors and sets Failed status, so result is Right
@@ -290,11 +446,18 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
     val executorUrl    = s"localhost:$port"
     val inputType      = CType.CProduct(Map("text" -> CType.CString))
     val outputType     = CType.CProduct(Map("result" -> CType.CString))
-    val inputValue     = CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
+    val inputValue =
+      CValue.CProduct(Map("text" -> CValue.CString("input")), Map("text" -> CType.CString))
 
     try {
       val result = buildDagAndRun(
-        "EmptyModule", "test.ns", inputType, outputType, executorUrl, cache, inputValue
+        "EmptyModule",
+        "test.ns",
+        inputType,
+        outputType,
+        executorUrl,
+        cache,
+        inputValue
       ).unsafeRunSync()
 
       // Module catches the error and sets Failed status

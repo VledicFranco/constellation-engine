@@ -20,11 +20,10 @@ import org.scalatest.matchers.should.Matchers
 
 /** Full SDK-to-Server-to-SDK-Executor roundtrip over real gRPC.
   *
-  * 1. Start a ModuleProviderManager (server gRPC on port 0)
-  * 2. Start a GrpcExecutorServerFactory (SDK executor gRPC on port 0)
-  * 3. SDK registers a module via GrpcProviderTransport
-  * 4. Verify module appears in server's registry
-  * 5. Call the SDK executor directly to verify serialization roundtrip
+  *   1. Start a ModuleProviderManager (server gRPC on port 0) 2. Start a GrpcExecutorServerFactory
+  *      (SDK executor gRPC on port 0) 3. SDK registers a module via GrpcProviderTransport 4. Verify
+  *      module appears in server's registry 5. Call the SDK executor directly to verify
+  *      serialization roundtrip
   */
 class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
 
@@ -40,9 +39,13 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
     val constellation        = ConstellationImpl.init.unsafeRunSync()
 
     val compiler = new LangCompiler {
-      def compile(source: String, dagName: String)     = Left(List(CompileError.UndefinedFunction("test", None)))
-      def compileToIR(source: String, dagName: String)  = Left(List(CompileError.UndefinedFunction("test", None)))
-      def functionRegistry: FunctionRegistry            = testFunctionRegistry
+      def compile(source: String, dagName: String) = Left(
+        List(CompileError.UndefinedFunction("test", None))
+      )
+      def compileToIR(source: String, dagName: String) = Left(
+        List(CompileError.UndefinedFunction("test", None))
+      )
+      def functionRegistry: FunctionRegistry = testFunctionRegistry
     }
 
     val config = ProviderManagerConfig(grpcPort = 0, reservedNamespaces = Set("stdlib"))
@@ -54,8 +57,9 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
 
     // Start gRPC server hosting the ModuleProvider service
     val serviceImpl = new ModuleProviderServiceImplForTest(manager)
-    val serviceDef  = pb.ModuleProviderGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
-    val server      = ServerBuilder.forPort(0).addService(serviceDef).build().start()
+    val serviceDef =
+      pb.ModuleProviderGrpc.bindService(serviceImpl, scala.concurrent.ExecutionContext.global)
+    val server = ServerBuilder.forPort(0).addService(serviceDef).build().start()
 
     (manager, server, server.getPort)
   }
@@ -75,8 +79,9 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
     val modulesRef = cats.effect.Ref.of[IO, List[ModuleDefinition]](List(moduleDef)).unsafeRunSync()
     val execServer = new ModuleExecutorServer(modulesRef, serializer)
     val impl       = new TestModuleExecutorImpl(execServer.toHandler)
-    val serviceDef = pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
-    val server     = ServerBuilder.forPort(0).addService(serviceDef).build().start()
+    val serviceDef =
+      pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
+    val server = ServerBuilder.forPort(0).addService(serviceDef).build().start()
     (server, server.getPort)
   }
 
@@ -93,8 +98,12 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
         modules = List(
           pb.ModuleDeclaration(
             name = "Echo",
-            inputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("text" -> stringSchema))))),
-            outputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("result" -> stringSchema))))),
+            inputSchema = Some(
+              pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("text" -> stringSchema))))
+            ),
+            outputSchema = Some(
+              pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("result" -> stringSchema))))
+            ),
             version = "1.0.0",
             description = "Test echo module"
           )
@@ -132,7 +141,8 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
 
     try {
       // Create a gRPC client to the executor (simulating what the server would do via callExecutor)
-      val channel = ManagedChannelBuilder.forAddress("localhost", executorPort).usePlaintext().build()
+      val channel =
+        ManagedChannelBuilder.forAddress("localhost", executorPort).usePlaintext().build()
       try {
         val stub = pb.ModuleExecutorGrpc.blockingStub(channel)
 
@@ -180,11 +190,13 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
     val modulesRef = cats.effect.Ref.of[IO, List[ModuleDefinition]](List(moduleDef)).unsafeRunSync()
     val execServer = new ModuleExecutorServer(modulesRef, serializer)
     val impl       = new TestModuleExecutorImpl(execServer.toHandler)
-    val serviceDef = pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
-    val server     = ServerBuilder.forPort(0).addService(serviceDef).build().start()
+    val serviceDef =
+      pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
+    val server = ServerBuilder.forPort(0).addService(serviceDef).build().start()
 
     try {
-      val channel = ManagedChannelBuilder.forAddress("localhost", server.getPort).usePlaintext().build()
+      val channel =
+        ManagedChannelBuilder.forAddress("localhost", server.getPort).usePlaintext().build()
       try {
         val stub = pb.ModuleExecutorGrpc.blockingStub(channel)
 
@@ -227,8 +239,12 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
         modules = List(
           pb.ModuleDeclaration(
             name = "TempModule",
-            inputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("x" -> stringSchema))))),
-            outputSchema = Some(pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("y" -> stringSchema))))),
+            inputSchema = Some(
+              pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("x" -> stringSchema))))
+            ),
+            outputSchema = Some(
+              pb.TypeSchema(pb.TypeSchema.Type.Record(pb.RecordType(Map("y" -> stringSchema))))
+            ),
             version = "1.0.0",
             description = "Temp"
           )
@@ -271,7 +287,9 @@ private class ModuleProviderServiceImplForTest(manager: ModuleProviderManager)
 
   import cats.effect.unsafe.implicits.global
 
-  override def register(request: pb.RegisterRequest): scala.concurrent.Future[pb.RegisterResponse] = {
+  override def register(
+      request: pb.RegisterRequest
+  ): scala.concurrent.Future[pb.RegisterResponse] = {
     val connectionId = UUID.randomUUID().toString
     val promise      = scala.concurrent.Promise[pb.RegisterResponse]()
     manager.handleRegister(request, connectionId).unsafeRunAsync {
@@ -281,7 +299,9 @@ private class ModuleProviderServiceImplForTest(manager: ModuleProviderManager)
     promise.future
   }
 
-  override def deregister(request: pb.DeregisterRequest): scala.concurrent.Future[pb.DeregisterResponse] = {
+  override def deregister(
+      request: pb.DeregisterRequest
+  ): scala.concurrent.Future[pb.DeregisterResponse] = {
     val promise = scala.concurrent.Promise[pb.DeregisterResponse]()
     val io =
       if request.connectionId.nonEmpty then manager.handleDeregister(request, request.connectionId)
@@ -299,17 +319,17 @@ private class ModuleProviderServiceImplForTest(manager: ModuleProviderManager)
 
   override def controlPlane(
       responseObserver: io.grpc.stub.StreamObserver[pb.ControlMessage]
-  ): io.grpc.stub.StreamObserver[pb.ControlMessage] = {
+  ): io.grpc.stub.StreamObserver[pb.ControlMessage] =
     // Minimal control plane for integration tests
     new io.grpc.stub.StreamObserver[pb.ControlMessage] {
-      override def onNext(msg: pb.ControlMessage): Unit    = ()
-      override def onError(t: Throwable): Unit             = ()
-      override def onCompleted(): Unit = responseObserver.onCompleted()
+      override def onNext(msg: pb.ControlMessage): Unit = ()
+      override def onError(t: Throwable): Unit          = ()
+      override def onCompleted(): Unit                  = responseObserver.onCompleted()
     }
-  }
 }
 
-/** Test-only ModuleExecutor gRPC implementation (mirrors private GrpcModuleExecutorImpl from SDK). */
+/** Test-only ModuleExecutor gRPC implementation (mirrors private GrpcModuleExecutorImpl from SDK).
+  */
 private class TestModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.ExecuteResponse])
     extends pb.ModuleExecutorGrpc.ModuleExecutor {
 
