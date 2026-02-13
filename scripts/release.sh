@@ -174,6 +174,14 @@ if [ "$DRY_RUN" = false ]; then
 fi
 success "package.json updated"
 
+# Update sdks/typescript/package.json
+step "Updating sdks/typescript/package.json..."
+if [ "$DRY_RUN" = false ]; then
+    sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" sdks/typescript/package.json
+    rm -f sdks/typescript/package.json.bak
+fi
+success "sdks/typescript/package.json updated"
+
 # Update CHANGELOG.md
 step "Updating CHANGELOG.md..."
 TODAY=$(date +%Y-%m-%d)
@@ -189,7 +197,7 @@ if [ "$DRY_RUN" = false ]; then
     if ! sbt test; then
         error "Tests failed! Aborting release."
         # Revert changes
-        git checkout -- build.sbt vscode-extension/package.json CHANGELOG.md
+        git checkout -- build.sbt vscode-extension/package.json sdks/typescript/package.json CHANGELOG.md
         exit 1
     fi
     success "All tests passed"
@@ -200,7 +208,7 @@ fi
 # Git operations
 step "Creating git commit..."
 if [ "$DRY_RUN" = false ]; then
-    git add build.sbt vscode-extension/package.json CHANGELOG.md
+    git add build.sbt vscode-extension/package.json sdks/typescript/package.json CHANGELOG.md
     git commit -m "chore(release): v$NEW_VERSION"
 fi
 success "Commit created"
@@ -247,7 +255,8 @@ echo ""
 echo -e "${GREEN}Release v$NEW_VERSION complete!${NC}"
 echo -e "${GREEN}================================${NC}"
 info "- build.sbt: $NEW_VERSION"
-info "- package.json: $NEW_VERSION"
+info "- vscode-extension/package.json: $NEW_VERSION"
+info "- sdks/typescript/package.json: $NEW_VERSION"
 info "- Tag: v$NEW_VERSION"
 info "- GitHub Release: https://github.com/VledicFranco/constellation-engine/releases/tag/v$NEW_VERSION"
 

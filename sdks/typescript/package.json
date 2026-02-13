@@ -1,0 +1,76 @@
+{
+  "name": "@constellation-engine/provider-sdk",
+  "version": "0.7.0",
+  "description": "TypeScript SDK for the Constellation Engine Module Provider Protocol",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VledicFranco/constellation-engine.git",
+    "directory": "sdks/typescript"
+  },
+  "homepage": "https://github.com/VledicFranco/constellation-engine/tree/master/sdks/typescript",
+  "keywords": [
+    "constellation",
+    "pipeline",
+    "orchestration",
+    "grpc",
+    "module-provider"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "copy-proto": "node scripts/copy-proto.mjs",
+    "proto-gen": "npm run copy-proto && npx grpc_tools_node_protoc --plugin=protoc-gen-ts_proto=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=./src/generated --ts_proto_opt=outputServices=grpc-js,env=node,esModuleInterop=true,exportCommonSymbols=false --proto_path=./proto ./proto/constellation/provider/v1/provider.proto",
+    "build": "npm run proto-gen && tsup",
+    "build:only": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint --fix src/ tests/",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist src/generated proto",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.0",
+    "@grpc/proto-loader": "^0.7.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "grpc-tools": "^1.12.0",
+    "prettier": "^3.3.0",
+    "rimraf": "^5.0.0",
+    "ts-proto": "^1.176.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.0.0"
+  }
+}

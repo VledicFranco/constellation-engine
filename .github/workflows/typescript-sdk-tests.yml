@@ -1,0 +1,58 @@
+name: TypeScript SDK Tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "sdks/typescript/**"
+      - "modules/module-provider-sdk/src/main/protobuf/**"
+  pull_request:
+    branches: [master]
+    paths:
+      - "sdks/typescript/**"
+      - "modules/module-provider-sdk/src/main/protobuf/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: sdks/typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: sdks/typescript
+        run: npm ci
+
+      - name: Copy proto files
+        working-directory: sdks/typescript
+        run: npm run copy-proto
+
+      - name: Type check
+        working-directory: sdks/typescript
+        run: npx tsc --noEmit
+
+      - name: Lint
+        working-directory: sdks/typescript
+        run: npm run lint
+
+      - name: Format check
+        working-directory: sdks/typescript
+        run: npm run format:check
+
+      - name: Run tests with coverage
+        working-directory: sdks/typescript
+        run: npm run test:coverage
+
+      - name: Build
+        working-directory: sdks/typescript
+        run: npm run build:only

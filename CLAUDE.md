@@ -195,6 +195,7 @@ make test-compiler  # Compiler module
 make test-lsp       # LSP module
 make test-dashboard       # Dashboard E2E tests
 make test-dashboard-smoke # Dashboard smoke tests (quick)
+make test-typescript-sdk  # TypeScript SDK tests
 ```
 
 ## File Locations
@@ -231,6 +232,12 @@ make test-dashboard-smoke # Dashboard smoke tests (quick)
 | ModuleProviderManager | `modules/module-provider/.../ModuleProviderManager.scala` |
 | ExternalModule | `modules/module-provider/.../ExternalModule.scala` |
 | SchemaValidator | `modules/module-provider/.../SchemaValidator.scala` |
+| TS SDK (root) | `sdks/typescript/` |
+| TS SDK types | `sdks/typescript/src/types/` |
+| TS SDK serialization | `sdks/typescript/src/serialization/` |
+| TS SDK transport | `sdks/typescript/src/transport/` |
+| TS SDK provider | `sdks/typescript/src/provider/` |
+| TS SDK tests | `sdks/typescript/tests/` |
 
 ## Adding New Functions
 

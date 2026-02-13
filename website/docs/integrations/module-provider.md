@@ -328,6 +328,95 @@ If the provider stops sending heartbeats, the server auto-deregisters its module
 - **Latency overhead:** Cross-process modules add network round-trip latency. Use in-process modules for latency-critical operations.
 - **Serialization cost:** CValues are serialized to JSON bytes for transport. Complex nested types incur serialization overhead.
 
+## TypeScript SDK Quick Start
+
+Install the npm package:
+
+```bash
+npm install @constellation-engine/provider-sdk
+```
+
+Define and start a provider:
+
+```typescript
+import {
+  ConstellationProvider,
+  CTypes,
+  CValues,
+  GrpcProviderTransport,
+  GrpcExecutorServerFactory,
+} from "@constellation-engine/provider-sdk";
+
+const provider = await ConstellationProvider.create({
+  namespace: "ml",
+  instances: ["localhost:9090"],
+  transportFactory: (addr) => {
+    const [host, port] = addr.split(":");
+    return new GrpcProviderTransport(host, parseInt(port));
+  },
+  executorServerFactory: new GrpcExecutorServerFactory(),
+});
+
+provider.register({
+  name: "Analyze",
+  inputType: CTypes.product({ text: CTypes.string() }),
+  outputType: CTypes.product({
+    sentiment: CTypes.float(),
+    confidence: CTypes.float(),
+  }),
+  version: "1.0.0",
+  description: "Sentiment analysis",
+  handler: async (input) => {
+    // Your analysis logic here
+    return CValues.product(
+      {
+        sentiment: CValues.float(0.85),
+        confidence: CValues.float(0.92),
+      },
+      {
+        sentiment: CTypes.float(),
+        confidence: CTypes.float(),
+      },
+    );
+  },
+});
+
+await provider.start();
+console.log("Provider running on port 9091");
+
+process.on("SIGINT", async () => {
+  await provider.stop();
+  process.exit(0);
+});
+```
+
+The module is then available in constellation-lang as `ml.Analyze(text)`.
+
+### TypeScript SDK Configuration
+
+```typescript
+const provider = await ConstellationProvider.create({
+  namespace: "ml",
+  instances: ["host1:9090", "host2:9090"],
+  config: {
+    executorPort: 9091,
+    heartbeatIntervalMs: 5000,
+    reconnectBackoffMs: 1000,
+    maxReconnectBackoffMs: 60000,
+    maxReconnectAttempts: 10,
+    groupId: "ml-pool", // For horizontal scaling
+    canary: {
+      observationWindowMs: 30000,
+      healthThreshold: 0.95,
+      maxLatencyMs: 5000,
+      rollbackOnFailure: true,
+    },
+  },
+  transportFactory: (addr) => { /* ... */ },
+  executorServerFactory: new GrpcExecutorServerFactory(),
+});
+```
+
 ## Related
 
 - [Programmatic API](/docs/api-reference/programmatic-api) — In-process module registration

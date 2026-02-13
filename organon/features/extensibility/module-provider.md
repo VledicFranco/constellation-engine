@@ -141,9 +141,19 @@ The SDK's `CanaryCoordinator` orchestrates safe module upgrades:
 | `controlPlaneRequiredTimeout` | `30s` | `CONSTELLATION_PROVIDER_CONTROL_PLANE_TIMEOUT` | Control plane establishment deadline |
 | `reservedNamespaces` | `stdlib` | `CONSTELLATION_PROVIDER_RESERVED_NS` | Protected namespace prefixes |
 
+## TypeScript SDK
+
+The TypeScript SDK (`@constellation-engine/provider-sdk`) provides a Node.js-native implementation of the Module Provider Protocol. It mirrors the Scala SDK's API but uses Promises instead of IO and explicit lifecycle instead of Resource.
+
+**Package**: `sdks/typescript/`
+**npm**: `@constellation-engine/provider-sdk`
+**Organon**: See [components/typescript-sdk/](../../components/typescript-sdk/)
+
 ## Related
 
 - [ETHOS.md](./ETHOS.md) — SPI constraints (in-process extensibility)
 - [PHILOSOPHY.md](./PHILOSOPHY.md) — Why SPI over inheritance
 - [Component: module-provider](../../components/module-provider/) — Implementation details
+- [Component: typescript-sdk](../../components/typescript-sdk/) — TypeScript SDK details
 - [RFC-024](../../../rfcs/rfc-024-module-provider-protocol-v4.md) — Full protocol specification
+- [RFC-028](../../../rfcs/rfc-028-typescript-module-provider-sdk.md) — TypeScript SDK RFC

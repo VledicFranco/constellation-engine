@@ -137,6 +137,15 @@ if (-not $DryRun) {
 }
 Write-Success "package.json updated"
 
+# Update sdks/typescript/package.json
+Write-Step "Updating sdks/typescript/package.json..."
+$tsSdkPkgJson = Get-Content "$RepoRoot\sdks\typescript\package.json" -Raw
+$newTsSdkPkgJson = $tsSdkPkgJson -replace '"version": "[^"]+"', "`"version`": `"$newVersion`""
+if (-not $DryRun) {
+    $newTsSdkPkgJson | Set-Content "$RepoRoot\sdks\typescript\package.json" -NoNewline
+}
+Write-Success "sdks/typescript/package.json updated"
+
 # Update CHANGELOG.md
 Write-Step "Updating CHANGELOG.md..."
 $changelog = Get-Content "$RepoRoot\CHANGELOG.md" -Raw
@@ -154,7 +163,7 @@ if (-not $DryRun) {
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Tests failed! Aborting release."
         # Revert changes
-        git checkout -- build.sbt vscode-extension/package.json CHANGELOG.md
+        git checkout -- build.sbt vscode-extension/package.json sdks/typescript/package.json CHANGELOG.md
         exit 1
     }
     Write-Success "All tests passed"
@@ -165,7 +174,7 @@ if (-not $DryRun) {
 # Git operations
 Write-Step "Creating git commit..."
 if (-not $DryRun) {
-    git add build.sbt vscode-extension/package.json CHANGELOG.md
+    git add build.sbt vscode-extension/package.json sdks/typescript/package.json CHANGELOG.md
     git commit -m "chore(release): v$newVersion"
 }
 Write-Success "Commit created"
@@ -214,7 +223,8 @@ Write-Host "`n" -NoNewline
 Write-Host "Release v$newVersion complete!" -ForegroundColor Green
 Write-Host "================================" -ForegroundColor Green
 Write-Info "- build.sbt: $newVersion"
-Write-Info "- package.json: $newVersion"
+Write-Info "- vscode-extension/package.json: $newVersion"
+Write-Info "- sdks/typescript/package.json: $newVersion"
 Write-Info "- Tag: v$newVersion"
 Write-Info "- GitHub Release: https://github.com/VledicFranco/constellation-engine/releases/tag/v$newVersion"
 

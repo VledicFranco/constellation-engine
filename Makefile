@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk
 
 # Default target
 help:
@@ -76,6 +76,10 @@ help:
 	@echo "  make generate-docs  - Generate Scala type catalog to organon/generated/"
 	@echo "  make check-docs     - Check if generated docs are stale"
 	@echo "  make verify-ethos   - Verify ethos invariant references"
+	@echo ""
+	@echo "TypeScript SDK:"
+	@echo "  make test-typescript-sdk  - Run TS SDK tests with coverage"
+	@echo "  make build-typescript-sdk - Build TS SDK (ESM + CJS)"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install    - Install all dependencies"
@@ -435,5 +439,19 @@ info:
 	@echo "Scala version: 3.3.4"
 	@echo "SBT version: 1.9.7"
 	@sbt "show version"
+
+# =============================================================================
+# TypeScript SDK
+# =============================================================================
+
+# Run TypeScript SDK tests with coverage
+test-typescript-sdk:
+	@echo "Running TypeScript SDK tests..."
+	cd sdks/typescript && npm run test:coverage
+
+# Build TypeScript SDK
+build-typescript-sdk:
+	@echo "Building TypeScript SDK..."
+	cd sdks/typescript && npm run build
 
 # =============================================================================

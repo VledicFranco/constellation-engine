@@ -197,6 +197,11 @@ Search GitHub for repositories tagged with `constellation-engine`:
 Search Maven Central for packages with `constellation` in the group or artifact ID:
 - [Maven Central: constellation](https://search.maven.org/search?q=constellation)
 
+### npm
+
+The TypeScript Module Provider SDK is published on npm:
+- [`@constellation-engine/provider-sdk`](https://www.npmjs.com/package/@constellation-engine/provider-sdk) — Build module providers in Node.js/TypeScript
+
 ### Community Resources
 
 - **GitHub Discussions**: Ask about community modules in [GitHub Discussions](https://github.com/VledicFranco/constellation-engine/discussions)

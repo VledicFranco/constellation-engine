@@ -66,6 +66,7 @@ val constellation = ConstellationImpl.builder()
 | Protocol | Purpose | Module |
 |----------|---------|--------|
 | Module Provider | External services contribute pipeline modules via gRPC | `module-provider-sdk` (client), `module-provider` (server) |
+| TypeScript SDK | Node.js/TypeScript provider client library | `sdks/typescript/` (`@constellation-engine/provider-sdk`) |
 
 See [module-provider.md](./module-provider.md) for the full protocol documentation.
 

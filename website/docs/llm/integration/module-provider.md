@@ -295,6 +295,10 @@ Rolls out to one instance at a time, waits for observation window, checks health
 | Schema validation | `module-provider` | `io.constellation.provider.SchemaValidator` |
 | Connection lifecycle | `module-provider` | `io.constellation.provider.ControlPlaneManager` |
 | Load balancing | `module-provider` | `io.constellation.provider.ExecutorPool` |
+| **TypeScript SDK** | `sdks/typescript` | `sdks/typescript/src/provider/constellation-provider.ts` |
+| TS CValue serialization | `sdks/typescript` | `sdks/typescript/src/serialization/cvalue-serializer.ts` |
+| TS type conversion | `sdks/typescript` | `sdks/typescript/src/serialization/type-schema-converter.ts` |
+| TS transport | `sdks/typescript` | `sdks/typescript/src/transport/transport.ts` |
 
 ## See Also
 
