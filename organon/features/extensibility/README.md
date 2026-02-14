@@ -24,6 +24,8 @@ Two extensibility mechanisms: **SPIs** for in-process pluggability (cache backen
 | [execution-listener.md](./execution-listener.md) | Execution event hooks (Kafka, audit logs, etc.) |
 | [execution-storage.md](./execution-storage.md) | Pipeline and suspension persistence |
 | [module-provider.md](./module-provider.md) | Cross-process module registration via gRPC |
+| [control-plane.md](./control-plane.md) | Control Plane lifecycle, heartbeat, drain, liveness |
+| [cvalue-wire-format.md](./cvalue-wire-format.md) | CValue/CType JSON serialization contract |
 
 ## Quick Reference
 

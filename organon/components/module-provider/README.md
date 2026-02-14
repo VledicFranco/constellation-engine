@@ -43,4 +43,6 @@ gRPC-based dynamic module registration system. Split into two sbt modules:
 ## Related
 
 - [Feature: extensibility/module-provider](../../features/extensibility/module-provider.md)
+- [Feature: extensibility/control-plane](../../features/extensibility/control-plane.md)
+- [Feature: extensibility/cvalue-wire-format](../../features/extensibility/cvalue-wire-format.md)
 - [RFC-024](../../../rfcs/rfc-024-module-provider-protocol-v4.md)

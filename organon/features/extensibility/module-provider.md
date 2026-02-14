@@ -82,7 +82,7 @@ The Module Provider Protocol extends Constellation's extensibility model across 
 
 ## Provider Groups (Horizontal Scaling)
 
-Multiple provider instances can register under the same namespace with a shared `group_id`. The server maintains an `ExecutorPool` that load-balances across group members.
+Multiple provider instances can register under the same namespace with a shared `group_id`. The server maintains an `ExecutorPool` per namespace that load-balances across group members.
 
 ```
 Provider A (group_id: "ml-pool")  ──┐
@@ -90,11 +90,61 @@ Provider B (group_id: "ml-pool")  ──┼── namespace: "ml" → ExecutorPo
 Provider C (group_id: "ml-pool")  ──┘
 ```
 
-**Rules:**
-- Solo providers (no group_id) have exclusive namespace ownership
-- Group providers share a namespace and must have matching schemas
-- A solo provider cannot join an existing group namespace (and vice versa)
-- When the last group member disconnects, the namespace is released
+### Registration Rules
+
+| Scenario | Result |
+|----------|--------|
+| Solo provider registers on free namespace | Namespace claimed exclusively |
+| Group provider registers on free namespace | Namespace claimed for group |
+| Group member joins existing group namespace | Added to `ExecutorPool` |
+| Solo provider tries to join group namespace | **Rejected** — namespace conflict |
+| Group provider tries to join solo namespace | **Rejected** — namespace conflict |
+| Last group member disconnects | Namespace released |
+
+### ExecutorPool Round-Robin
+
+The `ExecutorPool` trait abstracts endpoint selection. The default `RoundRobinExecutorPool` implementation:
+
+1. Maintains a `Vector[ExecutorEndpoint]` behind an atomic `Ref[IO, ...]`
+2. Tracks a round-robin index that advances on each `next` call and wraps around
+3. Is thread-safe — concurrent pipeline executions can safely call `next` simultaneously
+
+```
+next() call sequence with 3 endpoints [A, B, C]:
+  Call 1 → A (idx 0)
+  Call 2 → B (idx 1)
+  Call 3 → C (idx 2)
+  Call 4 → A (idx 0, wrapped)
+```
+
+**Pool operations:**
+
+| Method | Behavior |
+|--------|----------|
+| `next` | Select next endpoint (round-robin). Raises error if pool is empty. |
+| `add(endpoint)` | Idempotent — same `connectionId` replaces existing entry |
+| `remove(connectionId)` | Returns `true` if pool is now empty (triggers namespace release) |
+| `size` | Current number of healthy endpoints |
+| `endpoints` | List all current endpoints |
+
+**Implementation:** `modules/module-provider/src/main/scala/io/constellation/provider/ExecutorPool.scala`
+
+### Scaling Patterns
+
+**Scale out:** Start a new provider instance with the same `namespace` and `group_id`. It registers, opens a ControlPlane stream, and is added to the pool. The next `Execute` call may be routed to it.
+
+**Scale in:** Stop a provider instance. Its ControlPlane heartbeat lapses, the liveness monitor marks it `Disconnected`, and `remove(connectionId)` is called on the pool. If other group members remain, the namespace stays active.
+
+**Rolling upgrade:** Use `DrainRequest` to gracefully drain one instance at a time, upgrade it, re-register. The pool always has at least N-1 endpoints during the upgrade.
+
+### Group Member Independence
+
+Each group member has its own independent:
+- `connectionId` (unique per registration)
+- ControlPlane stream and heartbeat tracking
+- Executor URL (may differ — different ports, hosts, containers)
+
+Failure of one member does not affect others. The `isLastGroupMember` check ensures namespace cleanup only happens when the final member disconnects.
 
 ## Canary Rollout
 
@@ -151,6 +201,8 @@ The TypeScript SDK (`@constellation-engine/provider-sdk`) provides a Node.js-nat
 
 ## Related
 
+- [control-plane.md](./control-plane.md) — Control Plane operations (heartbeat, drain, liveness)
+- [cvalue-wire-format.md](./cvalue-wire-format.md) — CValue JSON serialization contract
 - [ETHOS.md](./ETHOS.md) — SPI constraints (in-process extensibility)
 - [PHILOSOPHY.md](./PHILOSOPHY.md) — Why SPI over inheritance
 - [Component: module-provider](../../components/module-provider/) — Implementation details
