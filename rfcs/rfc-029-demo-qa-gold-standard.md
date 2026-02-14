@@ -99,15 +99,20 @@ Feature Agent ──(new pipeline)──→ Test Agent ──(writes tests)─�
 ### Dependency Graph
 
 ```
-WP-0: Version Upgrade (prerequisite for all)
+WP-0: Version Upgrade
+  │
   ├── WP-1: Lambda & Higher-Order Pipelines ──┐
-  ├── WP-2: Pattern Matching Pipeline         ├── WP-7: Pipeline Compilation Tests
-  ├── WP-3: Type Definition Pipeline          │   WP-8: Pipeline Execution Tests
-  ├── WP-4: String Interpolation Pipeline     │   WP-9: Error Scenario Tests
-  ├── WP-5: Missing Stdlib Pipelines          ┘   WP-10: Provider Lifecycle Tests
-  ├── WP-6: Advanced Runtime Demos ────────────── WP-11: Runtime Feature Tests
-  ├── WP-12: E2E Docker Compose Test Suite
-  ├── WP-13: CI/CD Pipeline for Demo Repo
+  ├── WP-2: Pattern Matching Pipeline         ├──→ WP-7: Pipeline Compilation Tests
+  ├── WP-3: Type Definition Pipeline          │    WP-8: Pipeline Execution Tests
+  ├── WP-4: String Interpolation Pipeline     │
+  ├── WP-5: Missing Stdlib Pipelines ─────────┘
+  │
+  ├── WP-6: Advanced Runtime Demos ───────────────→ WP-11: Runtime Feature Tests
+  │
+  ├── WP-9: Error Scenario Tests        (depends on WP-0 only)
+  ├── WP-10: Provider Lifecycle Tests    (depends on WP-0 only)
+  │
+  ├── WP-12: E2E Docker Compose Suite ──→ WP-13: CI/CD Pipeline
   ├── WP-14: Performance Benchmarks
   └── WP-15: Documentation & README Updates
 ```
@@ -258,7 +263,7 @@ WP-0: Version Upgrade (prerequisite for all)
 
 ### WP-7: Pipeline Compilation Tests (Test Agent)
 
-**Depends on:** WP-1 through WP-5
+**Depends on:** WP-0 (test harness starts with existing 13 pipelines; expands as WP-1..5 deliver new ones)
 
 **Scope:**
 - Test that every `.cst` file compiles successfully via `POST /compile`
@@ -291,7 +296,7 @@ done
 
 ### WP-8: Pipeline Execution Tests (Test Agent)
 
-**Depends on:** WP-1 through WP-5
+**Depends on:** WP-0 (test harness starts with existing 13 pipelines; expands as WP-1..5 deliver new ones)
 
 **Scope:**
 - Test that every pipeline executes with sample inputs and produces expected outputs
@@ -302,12 +307,16 @@ done
 ```bash
 # Golden output test
 pipeline="pipelines/stdlib-math.cst"
-inputs='{"x": 10, "y": 3}'
+inputs="tests/inputs/stdlib-math.json"
 expected="tests/golden/stdlib-math.json"
+
+# Use jq to safely construct JSON payload (no shell injection)
+payload=$(jq -n --rawfile src "$pipeline" --slurpfile inp "$inputs" \
+  '{source: $src, inputs: $inp[0]}')
 
 actual=$(curl -s -X POST http://localhost:8080/execute \
   -H "Content-Type: application/json" \
-  -d "{\"source\": \"$(cat $pipeline)\", \"inputs\": $inputs}")
+  -d "$payload")
 
 diff <(echo "$actual" | jq -S .outputs) <(jq -S . "$expected")
 ```
@@ -387,18 +396,21 @@ diff <(echo "$actual" | jq -S .outputs) <(jq -S . "$expected")
 - Priority scheduling (submit low + high priority, verify ordering)
 - Retry behavior (flaky module, verify retry count)
 - Timeout enforcement (slow module, verify timeout error)
+- Fallback behavior (failing module with `on-error: "fallback"`, verify fallback value returned)
 
 **Deliverables:**
 - `tests/runtime/test-cache.sh` — Execute twice, check metrics for cache hits
 - `tests/runtime/test-priority.sh` — Submit with different priorities
 - `tests/runtime/test-retry.sh` — Execute with flaky module
 - `tests/runtime/test-timeout.sh` — Execute with slow module
+- `tests/runtime/test-fallback.sh` — Execute with failing module, verify fallback
 
 **Acceptance criteria:**
 - [ ] Cache hit rate > 0.8 for repeated identical executions
 - [ ] Priority ordering is respected under load
 - [ ] Retry count matches configured retry policy
 - [ ] Timeout fires within configured window
+- [ ] Fallback value returned when module fails with on-error configured
 
 ---
 
@@ -465,7 +477,7 @@ diff <(echo "$actual" | jq -S .outputs) <(jq -S . "$expected")
 - `tests/performance/results/baseline.json` — Baseline results
 
 **Acceptance criteria:**
-- [ ] Baseline established for all 13+ pipelines
+- [ ] Baseline established for all pipelines (existing + new)
 - [ ] Cache hit rate measured and documented
 - [ ] Concurrent throughput measured (requests/second)
 - [ ] Results stored in JSON for trend tracking
@@ -490,6 +502,8 @@ diff <(echo "$actual" | jq -S .outputs) <(jq -S . "$expected")
 - [ ] README includes "Running Tests" section
 - [ ] Each codelab references its automated tests
 - [ ] TESTING.md covers local dev, CI, and debugging failed tests
+
+---
 
 ## Bug Discovery Protocol
 
@@ -562,20 +576,20 @@ The effort described in this RFC is complete when:
 ## Parallel Execution Timeline
 
 ```
-Day 1:  WP-0 (Infra) ─────────────────────────────────────────
-Day 2:  WP-1,2,3 (Feature) │ WP-13 (Infra) │ WP-7 (Test)
-Day 3:  WP-4,5 (Feature)   │ WP-12 (Infra) │ WP-8 (Test)
-Day 4:  WP-6 (Feature)     │ WP-9,10 (Test) │ Bug fixes
-Day 5:  WP-11,14 (Test)    │ Bug fixes      │ WP-15 (Docs)
-Day 6:  Integration testing │ Final bug fixes │ Polish
+Day 1:  WP-0 (Infra)
+Day 2:  WP-1,2,3 (Feature) │ WP-7,8 (Test, existing pipelines) │ WP-9,10 (Test)
+Day 3:  WP-4,5 (Feature)   │ WP-7,8 (Test, expand to new)      │ WP-12 (Infra)
+Day 4:  WP-6 (Feature)     │ WP-11 (Test)                      │ Bug fixes
+Day 5:  WP-14 (Test)       │ WP-13 (Infra)                     │ WP-15 (Docs)
+Day 6:  Integration testing │ Final bug fixes                   │ Polish
 ```
 
-**Critical path:** WP-0 → WP-1..5 → WP-7,8 → WP-12 → WP-13
+**Critical path:** WP-0 → WP-1..5 (new pipelines) → WP-7,8 (full coverage) → WP-12 → WP-13
 
 **Parallelizable from Day 2:**
 - Feature Agent works on WP-1..5 independently
-- Test Agent writes WP-7,8 test harness while pipelines are being created (can test existing 13 pipelines immediately)
-- Infra Agent sets up WP-13 CI scaffolding while tests are being written
+- Test Agent starts WP-7,8 immediately with existing 13 pipelines (WP-0 dependency only), expanding coverage as new pipelines land from WP-1..5
+- Test Agent works on WP-9,10 in parallel (WP-0 dependency only)
 - Bug Hunter Agent is on standby, activated when test failures reveal engine bugs
 
 ## Risks and Mitigations
@@ -587,6 +601,34 @@ Day 6:  Integration testing │ Final bug fixes │ Polish
 | Shell test scripts become hard to maintain | Long-term maintenance burden | Keep scripts small and focused; shared assertion library |
 | Docker Compose flaky in CI | False failures | Retry logic; health check polling with timeout |
 | Performance benchmarks vary across environments | Unreliable baselines | Establish per-environment baselines; focus on relative regressions |
+
+## Out of Scope
+
+The following are explicitly **not** part of this effort:
+
+- **Dashboard visual testing** — Playwright screenshot-based dashboard testing is optional (WP-12 notes it). Full dashboard E2E is covered by RFC-012 in the main repo.
+- **Multi-cluster / distributed testing** — Tests run against a single Docker Compose deployment, not across clusters.
+- **Load/stress testing** — WP-14 measures baseline latency and throughput, but does not attempt to find breaking points or saturation limits.
+- **Upstream engine test coverage** — This effort tests the demo app against the engine's HTTP API. Increasing unit test coverage within `constellation-engine` itself is a separate concern.
+- **Provider SDK API changes** — If tests reveal SDK ergonomic issues, those are filed as follow-up issues, not fixed inline.
+
+## Alternatives Considered
+
+### 1. Integration Tests Inside `constellation-engine` Repo
+
+**Rejected.** The engine repo already has unit and integration tests. The demo app tests something different: a realistic multi-service deployment with Docker Compose, external providers, and the HTTP API as the sole interface. Putting these tests in the engine repo would couple the demo's deployment topology to the engine's CI.
+
+### 2. Python/pytest Test Framework
+
+**Rejected.** Adds a Python dependency to a project that otherwise has none. The `requests` library would be more ergonomic than `curl`, but the demo already demonstrates usage via curl commands. Shell scripts maintain consistency with existing documentation and require no additional runtime.
+
+### 3. Node.js/Jest Test Framework
+
+**Considered.** Would provide better assertion libraries and structured test output (JUnit XML natively). However, the demo's TypeScript provider already requires Node.js, so this wouldn't add a new dependency. **Decision:** Start with shell scripts for simplicity; migrate to Jest if maintenance becomes burdensome (follow-up issue).
+
+### 4. Single Agent Instead of Four
+
+**Rejected.** A single agent working sequentially would take ~4x longer. The work packages have clear boundaries (feature creation vs. test writing vs. bug fixing vs. infrastructure) that map naturally to parallel agents. The Bug Hunter Agent specifically needs to work in the `constellation-engine` repo while the other three work in `constellation-demo`.
 
 ## Related
 
