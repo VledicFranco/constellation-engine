@@ -1,9 +1,9 @@
 package io.constellation.invariants
 
-import io.github.vledicfranco.organon.testing.adapters.OrganonFlatSpec
-import io.github.vledicfranco.organon.testing.*
-
 import java.nio.file.Path
+
+import io.github.vledicfranco.organon.testing.*
+import io.github.vledicfranco.organon.testing.adapters.OrganonFlatSpec
 
 class NamingConventionSpec extends OrganonFlatSpec:
 
