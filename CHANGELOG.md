@@ -5,6 +5,16 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Coursier channel**: `cs channel --add https://vledicfranco.github.io/constellation-engine/channel && cs install constellation` for easy CLI installation
+
+## [0.8.1] - 2026-02-15
+
+### Fixed
+- **CLI**: Enabled Maven Central publishing for `constellation-lang-cli` (was skipped) and added `Compile / mainClass` for coursier launcher support
+
 ## [0.8.0] - 2026-02-13
 
 ### Added
