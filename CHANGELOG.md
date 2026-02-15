@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Coursier channel**: `cs channel --add https://vledicfranco.github.io/constellation-engine/channel && cs install constellation` for easy CLI installation
+- **Structural invariant tests**: 12 tests across 4 specs using `organon-testing` v0.4.0 — verifies core purity, organon file structure, naming conventions, and module purity constraints (`make test-invariants`)
 
 ## [0.8.1] - 2026-02-15
 
