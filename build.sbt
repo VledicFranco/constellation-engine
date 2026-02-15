@@ -300,6 +300,17 @@ lazy val docGenerator = (project in file("modules/doc-generator"))
     )
   )
 
+// Invariant Tests - structural verification using organon-testing
+lazy val invariantTests = (project in file("invariant-tests"))
+  .settings(
+    name := "constellation-invariant-tests",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "io.github.vledicfranco" %% "organon-testing" % "0.4.0" % Test,
+      "org.scalatest"          %% "scalatest"       % "3.2.17"         % Test,
+    ),
+  )
+
 // Root project aggregates all modules
 lazy val root = (project in file("."))
   .aggregate(
@@ -316,7 +327,8 @@ lazy val root = (project in file("."))
     moduleProvider,
     exampleApp,
     langCli,
-    docGenerator
+    docGenerator,
+    invariantTests
   )
   .settings(
     name := "constellation-engine",

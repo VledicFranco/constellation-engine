@@ -196,7 +196,27 @@ make test-lsp       # LSP module
 make test-dashboard       # Dashboard E2E tests
 make test-dashboard-smoke # Dashboard smoke tests (quick)
 make test-typescript-sdk  # TypeScript SDK tests
+make test-invariants      # Structural invariant tests
 ```
+
+## Invariant Testing
+
+Structural invariant tests verify organon-defined constraints at the filesystem level using [organon-testing](https://github.com/VledicFranco/organon). They check file existence, naming conventions, forbidden imports, and export presence without compiling production code.
+
+```bash
+make test-invariants
+```
+
+**Test files:** `invariant-tests/src/test/scala/io/constellation/invariants/`
+
+| Spec | What it checks |
+|------|---------------|
+| `CoreInvariantsSpec` | Core module has no side-effect imports; TypeSystem/Error exports present |
+| `StructuralInvariantsSpec` | Every organon component/feature has required files (ETHOS.md, README.md) |
+| `NamingConventionSpec` | Source files follow PascalCase naming |
+| `PurityInvariantsSpec` | Stdlib has no mutable collections; core has no cats.effect.unsafe; AST has no side-effect imports |
+
+**Adding invariant tests:** Create a new spec extending `OrganonFlatSpec`, use `testInvariant("INV-ID", "desc")` to link to invariant IDs. See `invariant-tests/README.md`.
 
 ## File Locations
 

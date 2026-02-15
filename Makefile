@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk test-invariants
 
 # Default target
 help:
@@ -211,6 +211,10 @@ test-provider-sdk:
 
 test-provider:
 	sbt "moduleProvider/test"
+
+test-invariants:
+	@echo "Running invariant tests..."
+	sbt "invariantTests/test"
 
 # =============================================================================
 # Dashboard E2E Tests
