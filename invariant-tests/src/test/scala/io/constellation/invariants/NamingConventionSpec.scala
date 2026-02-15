@@ -14,23 +14,27 @@ class NamingConventionSpec extends OrganonFlatSpec:
   // ---------------------------------------------------------------------------
 
   testInvariant("INV-NAMING-1", "Core source files are PascalCase"):
-    Assertions.assertNamingConvention(NamingConventionOptions(
-      mode = NamingMode.Filenames,
-      files = Seq("modules/core/src/main/scala/**/*.scala"),
-      convention = Convention.PascalCase,
-      exceptions = Set("package"),
-      cwd = Some(projectRoot)
-    ))
+    Assertions.assertNamingConvention(
+      NamingConventionOptions(
+        mode = NamingMode.Filenames,
+        files = Seq("modules/core/src/main/scala/**/*.scala"),
+        convention = Convention.PascalCase,
+        exceptions = Set("package"),
+        cwd = Some(projectRoot)
+      )
+    )
 
   // ---------------------------------------------------------------------------
   // INV-NAMING-2: Runtime source files are PascalCase
   // ---------------------------------------------------------------------------
 
   testInvariant("INV-NAMING-2", "Runtime source files are PascalCase"):
-    Assertions.assertNamingConvention(NamingConventionOptions(
-      mode = NamingMode.Filenames,
-      files = Seq("modules/runtime/src/main/scala/**/*.scala"),
-      convention = Convention.PascalCase,
-      exceptions = Set("package"),
-      cwd = Some(projectRoot)
-    ))
+    Assertions.assertNamingConvention(
+      NamingConventionOptions(
+        mode = NamingMode.Filenames,
+        files = Seq("modules/runtime/src/main/scala/**/*.scala"),
+        convention = Convention.PascalCase,
+        exceptions = Set("package"),
+        cwd = Some(projectRoot)
+      )
+    )
