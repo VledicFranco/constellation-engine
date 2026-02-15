@@ -103,7 +103,8 @@ done
 
 :::tip Quick Install
 ```bash
-cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
+cs channel --add https://vledicfranco.github.io/constellation-engine/channel
+cs install constellation
 constellation --version
 ```
 :::

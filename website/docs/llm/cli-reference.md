@@ -7,14 +7,24 @@ The Constellation CLI provides a command-line interface for compiling, running, 
 ### Using Coursier (Recommended)
 
 ```bash
-# From Maven Central
-cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
+# Add the Constellation channel (once)
+cs channel --add https://vledicfranco.github.io/constellation-engine/channel
+
+# Install the CLI
+cs install constellation
+
+# Verify installation
+constellation --version
+
+# Update to latest
+cs update constellation
 ```
 
-### Using Install Script
+### CI / Non-Interactive (Bootstrap)
 
 ```bash
-curl -sSL https://constellation-engine.io/install.sh | bash
+# Create a standalone launcher directly from Maven Central
+cs bootstrap io.github.vledicfranco:constellation-lang-cli_3:latest.release -o /usr/local/bin/constellation --force
 ```
 
 ### Building from Source
@@ -1069,8 +1079,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install Constellation CLI
-        run: |
-          cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
+        run: cs bootstrap io.github.vledicfranco:constellation-lang-cli_3:latest.release -o /usr/local/bin/constellation --force
 
       - name: Start Constellation Server
         run: |

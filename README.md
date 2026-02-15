@@ -106,10 +106,12 @@ The Constellation CLI brings compile, run, and deploy operations to your termina
 
 ```bash
 # Via Coursier (recommended)
-cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
+cs channel --add https://vledicfranco.github.io/constellation-engine/channel
+cs install constellation
 
 # Or download fat JAR from GitHub Releases
 curl -sSL https://github.com/VledicFranco/constellation-engine/releases/download/v0.8.1/constellation-cli.jar -o constellation-cli.jar
+java -jar constellation-cli.jar --version
 ```
 
 ### Usage
@@ -141,9 +143,10 @@ constellation deploy promote my-pipeline
 
 ```yaml
 # GitHub Actions example
+- name: Install Constellation CLI
+  run: cs bootstrap io.github.vledicfranco:constellation-lang-cli_3:latest.release -o /usr/local/bin/constellation --force
 - name: Validate pipelines
   run: |
-    cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
     for f in pipelines/*.cst; do
       constellation compile "$f" --json || exit 1
     done

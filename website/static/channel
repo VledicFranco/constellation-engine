@@ -1,0 +1,7 @@
+{
+  "constellation": {
+    "repositories": ["central"],
+    "dependencies": ["io.github.vledicfranco:constellation-lang-cli_3:latest.release"],
+    "mainClass": "io.constellation.cli.Main"
+  }
+}
