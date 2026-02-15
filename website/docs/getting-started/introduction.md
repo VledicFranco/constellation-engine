@@ -103,7 +103,7 @@ done
 
 :::tip Quick Install
 ```bash
-cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
+cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.1
 constellation --version
 ```
 :::
