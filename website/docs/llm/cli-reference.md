@@ -8,10 +8,7 @@ The Constellation CLI provides a command-line interface for compiling, running, 
 
 ```bash
 # From Maven Central
-cs install io.constellation:constellation-cli_3:0.8.0
-
-# Or from custom channel
-cs install --channel https://constellation-engine.io/coursier/channel.json constellation
+cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
 ```
 
 ### Using Install Script
@@ -1073,7 +1070,7 @@ jobs:
 
       - name: Install Constellation CLI
         run: |
-          cs install io.constellation:constellation-cli_3:0.8.0
+          cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
 
       - name: Start Constellation Server
         run: |

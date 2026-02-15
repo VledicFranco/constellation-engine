@@ -249,11 +249,10 @@ lazy val exampleApp = (project in file("modules/example-app"))
     }
   )
 
-// CLI - command-line interface for Constellation Engine (not published to Maven Central)
+// CLI - command-line interface for Constellation Engine
 lazy val langCli = (project in file("modules/lang-cli"))
   .settings(
     name := "constellation-lang-cli",
-    publish / skip := true,
     coverageMinimumStmtTotal := 28,
     coverageMinimumBranchTotal := 31,
     libraryDependencies ++= Seq(
@@ -274,6 +273,7 @@ lazy val langCli = (project in file("modules/lang-cli"))
       IO.write(file, version.value)
       Seq(file)
     }.taskValue,
+    Compile / mainClass := Some("io.constellation.cli.Main"),
     assembly / mainClass := Some("io.constellation.cli.Main"),
     assembly / assemblyJarName := "constellation-cli.jar",
     assembly / assemblyMergeStrategy := {

@@ -15,7 +15,7 @@ The Constellation CLI provides command-line access to compile, execute, and visu
 
 ```bash
 # Install from Maven Central
-cs install io.constellation:constellation-cli_3:0.8.0
+cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
 
 # Verify installation
 constellation --version
@@ -436,7 +436,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CLI
-        run: cs install io.constellation:constellation-cli_3:0.8.0
+        run: cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
       - name: Validate pipelines
         run: |
           for f in pipelines/*.cst; do

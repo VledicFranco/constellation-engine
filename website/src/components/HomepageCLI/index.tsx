@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Constellation CLI
-        run: cs install io.constellation:constellation-cli_3:0.8.0
+        run: cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0
       - name: Validate pipelines
         run: |
           for f in pipelines/*.cst; do
@@ -119,7 +119,7 @@ jobs:
         {/* Install CTA */}
         <div className={styles.cta}>
           <div className={styles.installCommand}>
-            <code>cs install io.constellation:constellation-cli_3:0.8.0</code>
+            <code>cs install io.github.vledicfranco:constellation-lang-cli_3:0.8.0</code>
           </div>
           <p>
             Install via Coursier, or download the fat JAR from <a href="https://github.com/VledicFranco/constellation-engine/releases">GitHub Releases</a>.
