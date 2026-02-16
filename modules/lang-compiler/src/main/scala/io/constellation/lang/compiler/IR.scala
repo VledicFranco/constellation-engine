@@ -226,6 +226,11 @@ object IRNode {
 
   /** Higher-order function operation (filter, map, all, any, etc.) Applies a lambda expression to
     * each element of a collection.
+    *
+    * @param capturedInputs
+    *   Maps captured variable names to their node UUIDs in the **outer** context. These are the data
+    *   dependencies that must be resolved before the HOF executes, so the captured values can be
+    *   passed into the lambda body at runtime.
     */
   final case class HigherOrderNode(
       id: UUID,
@@ -233,6 +238,7 @@ object IRNode {
       source: UUID,        // Source collection node ID
       lambda: TypedLambda, // The lambda to apply
       outputType: SemanticType,
+      capturedInputs: Map[String, UUID] = Map.empty, // varName -> outer context node UUID
       debugSpan: Option[Span] = None
   ) extends IRNode
 
@@ -306,13 +312,18 @@ enum HigherOrderOp:
 
 /** Typed lambda representation for IR (independent of TypedExpression) Contains IR nodes
   * representing the lambda body that can be evaluated per element during collection operations.
+  *
+  * @param capturedBindings
+  *   Maps captured variable names to the IRNode.Input UUIDs created inside bodyNodes for them.
+  *   Empty for lambdas that don't reference outer-scope variables.
   */
 final case class TypedLambda(
     paramNames: List[String],
     paramTypes: List[SemanticType],
     bodyNodes: Map[UUID, IRNode], // IR nodes for lambda body
     bodyOutputId: UUID,           // Output node ID of the body
-    returnType: SemanticType
+    returnType: SemanticType,
+    capturedBindings: Map[String, UUID] = Map.empty // varName -> Input node UUID in bodyNodes
 )
 
 /** The complete IR representation of a constellation-lang pipeline */
@@ -342,8 +353,8 @@ final case class IRPipeline(
       cases.flatMap { case (cond, expr) => Set(cond, expr) }.toSet + otherwise
     case Some(IRNode.StringInterpolationNode(_, _, expressions, _)) =>
       expressions.toSet
-    case Some(IRNode.HigherOrderNode(_, _, source, _, _, _)) =>
-      Set(source) // Lambda body nodes are evaluated separately per element
+    case Some(IRNode.HigherOrderNode(_, _, source, _, _, capturedInputs, _)) =>
+      Set(source) ++ capturedInputs.values.toSet // Source + captured outer nodes
     case Some(IRNode.ListLiteralNode(_, elements, _, _)) => elements.toSet
     case Some(IRNode.RecordLitNode(_, fields, _, _))     => fields.map(_._2).toSet
     case Some(IRNode.MatchNode(_, scrutinee, cases, _, _)) =>

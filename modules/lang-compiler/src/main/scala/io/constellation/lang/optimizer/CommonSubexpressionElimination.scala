@@ -113,7 +113,7 @@ object CommonSubexpressionElimination extends OptimizationPass {
       s"interp:${parts.mkString("|")}:$exprSig"
 
     // Higher-order nodes - don't deduplicate (lambda bodies are complex)
-    case IRNode.HigherOrderNode(_, _, _, _, _, _) => ""
+    case IRNode.HigherOrderNode(_, _, _, _, _, _, _) => ""
 
     // List literals
     case IRNode.ListLiteralNode(_, elements, elementType, _) =>

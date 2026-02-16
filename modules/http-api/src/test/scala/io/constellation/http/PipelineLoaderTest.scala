@@ -285,11 +285,10 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     result.failed shouldBe 0
   }
 
-  // --- Closure crash resilience (RFC-030) ---
+  // --- Closure support (RFC-030) ---
 
-  // Source that triggers IllegalStateException in IRGenerator.generateLambdaIR:
-  // the lambda captures `threshold` from outer scope, which is not resolvable
-  // in the lambda's isolated GenContext.
+  // Source with lambda closure: captures `threshold` from outer scope.
+  // Previously crashed with IllegalStateException; now compiles successfully.
   private val closureSource =
     """use stdlib.collection
       |use stdlib.compare
@@ -308,7 +307,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     (constellation, StdLib.compiler)
   }
 
-  it should "gracefully handle closure crash instead of crashing (failOnError=false)" in
+  it should "compile and load closure pipeline successfully (failOnError=false)" in
     withTempDir(
       Map("closure.cst" -> closureSource, "good.cst" -> validSource1)
     ) { dir =>
@@ -316,27 +315,23 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
       val config = PipelineLoaderConfig(directory = dir, failOnError = false)
       val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
-      // The closure file should fail gracefully, the passthrough file should load
-      result.loaded shouldBe 1
-      result.failed shouldBe 1
-      result.errors should have size 1
-      result.errors.head should include("IllegalStateException")
+      // Both files should load successfully now that closures are supported
+      result.loaded shouldBe 2
+      result.failed shouldBe 0
+      result.errors shouldBe empty
     }
 
-  it should "gracefully handle closure crash instead of crashing (failOnError=true)" in
+  it should "compile and load closure pipeline successfully (failOnError=true)" in
     withTempDir(
       Map("closure.cst" -> closureSource)
     ) { dir =>
       val (constellation, compiler) = freshInstancesWithStdLib
       val config = PipelineLoaderConfig(directory = dir, failOnError = true)
 
-      // Should raise RuntimeException with compilation failure info, not crash with
-      // raw IllegalStateException
-      val error = intercept[RuntimeException] {
-        PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
-      }
-      error.getMessage should include("failed to compile")
-      error.getMessage should include("IllegalStateException")
+      // Should succeed now — no exception expected
+      val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
+      result.loaded shouldBe 1
+      result.failed shouldBe 0
     }
 
   it should "handle compiler throwing unexpected exception as failure" in withTempDir(

@@ -61,7 +61,7 @@ object DeadCodeElimination extends OptimizationPass {
         ir.dependencies(id).foreach(visit)
         // Also visit lambda body nodes for higher-order nodes
         ir.nodes.get(id).foreach {
-          case IRNode.HigherOrderNode(_, _, _, lambda, _, _) =>
+          case IRNode.HigherOrderNode(_, _, _, lambda, _, _, _) =>
             lambda.bodyNodes.keys.foreach { lambdaNodeId =>
               // Only mark the lambda nodes themselves as reachable
               // (they're stored separately but we should track them)

@@ -164,8 +164,8 @@ object DagCompiler {
       case IRNode.StringInterpolationNode(id, parts, expressions, _) =>
         processStringInterpolationNode(id, parts, expressions)
 
-      case IRNode.HigherOrderNode(id, operation, source, lambda, outputType, _) =>
-        processHigherOrderNode(id, operation, source, lambda, outputType)
+      case IRNode.HigherOrderNode(id, operation, source, lambda, outputType, capturedInputs, _) =>
+        processHigherOrderNode(id, operation, source, lambda, outputType, capturedInputs)
 
       case IRNode.ListLiteralNode(id, elements, elementType, _) =>
         processListLiteralNode(id, elements, elementType)
@@ -902,15 +902,25 @@ object DagCompiler {
         operation: HigherOrderOp,
         source: UUID,
         lambda: TypedLambda,
-        outputType: SemanticType
+        outputType: SemanticType,
+        capturedInputs: Map[String, UUID]
     ): Either[DagCompilerError, Unit] = {
       val outputDataId = UUID.randomUUID()
 
+      // Resolve captured variable outer node UUIDs to data node UUIDs
+      val capturedDataIdsResult = capturedInputs.toList.traverse { case (name, outerNodeId) =>
+        getNodeOutput(outerNodeId, s"captured variable '$name' in lambda").map(name -> _)
+      }
+
       for {
-        sourceDataId <- getNodeOutput(source, s"source of ${operation.toString.toLowerCase}")
-        transform    <- createHigherOrderTransform(operation, lambda)
+        sourceDataId    <- getNodeOutput(source, s"source of ${operation.toString.toLowerCase}")
+        capturedDataIds <- capturedDataIdsResult
+        transform       <- createHigherOrderTransform(operation, lambda)
       } yield {
         val outputCType = SemanticType.toCType(outputType)
+
+        // Build transformInputs: source + captured variable data nodes
+        val transformInputs = Map("source" -> sourceDataId) ++ capturedDataIds.toMap
 
         // Create data node with inline transform
         dataNodes = dataNodes + (outputDataId -> DataNodeSpec(
@@ -918,7 +928,7 @@ object DagCompiler {
           nicknames = Map.empty,
           cType = outputCType,
           inlineTransform = Some(transform),
-          transformInputs = Map("source" -> sourceDataId)
+          transformInputs = transformInputs
         ))
         nodeOutputs = nodeOutputs + (id -> outputDataId)
       }
@@ -983,29 +993,59 @@ object DagCompiler {
       }
     }
 
-    /** Create the appropriate inline transform for a higher-order operation */
+    /** Create the appropriate inline transform for a higher-order operation. Dispatches to
+      * closure-aware variants when the lambda captures outer-scope variables.
+      */
     private def createHigherOrderTransform(
         operation: HigherOrderOp,
         lambda: TypedLambda
     ): Either[DagCompilerError, InlineTransform] =
-      // Create the lambda evaluator function - this can fail
-      createLambdaEvaluator(lambda).flatMap { lambdaEvaluator =>
-        operation match {
-          case HigherOrderOp.Filter =>
-            Right(InlineTransform.FilterTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
-          case HigherOrderOp.Map =>
-            Right(InlineTransform.MapTransform(lambdaEvaluator))
-          case HigherOrderOp.All =>
-            Right(InlineTransform.AllTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
-          case HigherOrderOp.Any =>
-            Right(InlineTransform.AnyTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
-          case HigherOrderOp.SortBy =>
-            Left(DagCompilerError.UnsupportedOperation("SortBy"))
+      if lambda.capturedBindings.nonEmpty then {
+        // Closure path: evaluator takes (element, capturedValues)
+        val capturedKeys = lambda.capturedBindings.keys.toList
+        createClosureEvaluator(lambda).flatMap { closureEvaluator =>
+          operation match {
+            case HigherOrderOp.Filter =>
+              Right(InlineTransform.ClosureFilterTransform(
+                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                capturedKeys
+              ))
+            case HigherOrderOp.Map =>
+              Right(InlineTransform.ClosureMapTransform(closureEvaluator, capturedKeys))
+            case HigherOrderOp.All =>
+              Right(InlineTransform.ClosureAllTransform(
+                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                capturedKeys
+              ))
+            case HigherOrderOp.Any =>
+              Right(InlineTransform.ClosureAnyTransform(
+                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                capturedKeys
+              ))
+            case HigherOrderOp.SortBy =>
+              Left(DagCompilerError.UnsupportedOperation("SortBy"))
+          }
+        }
+      } else {
+        // Non-closure path: evaluator takes element only (backwards compatible)
+        createLambdaEvaluator(lambda).flatMap { lambdaEvaluator =>
+          operation match {
+            case HigherOrderOp.Filter =>
+              Right(InlineTransform.FilterTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+            case HigherOrderOp.Map =>
+              Right(InlineTransform.MapTransform(lambdaEvaluator))
+            case HigherOrderOp.All =>
+              Right(InlineTransform.AllTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+            case HigherOrderOp.Any =>
+              Right(InlineTransform.AnyTransform(lambdaEvaluator.asInstanceOf[Any => Boolean]))
+            case HigherOrderOp.SortBy =>
+              Left(DagCompilerError.UnsupportedOperation("SortBy"))
+          }
         }
       }
 
-    /** Create a lambda evaluator function from a TypedLambda. Returns Either to handle potential
-      * errors in lambda body structure.
+    /** Create a lambda evaluator function from a TypedLambda (non-closure). Returns Either to
+      * handle potential errors in lambda body structure.
       */
     private def createLambdaEvaluator(lambda: TypedLambda): Either[DagCompilerError, Any => Any] =
       // Validate the lambda body structure upfront
@@ -1018,6 +1058,26 @@ object DagCompiler {
           // since the structure was validated at compile time
           evaluateLambdaBodyUnsafe(lambda.bodyNodes, lambda.bodyOutputId, paramBindings)
         }
+      }
+
+    /** Create a closure-aware lambda evaluator that receives both the element and captured values.
+      * The captured variable names are mapped to the Input node UUIDs inside the lambda body via
+      * capturedBindings, so the evaluator resolves them alongside the lambda parameter.
+      */
+    private def createClosureEvaluator(
+        lambda: TypedLambda
+    ): Either[DagCompilerError, (Any, Map[String, Any]) => Any] =
+      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map { _ =>
+        (element: Any, capturedValues: Map[String, Any]) =>
+          {
+            // Bind lambda parameter to element value
+            val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap
+
+            // Bind captured variables — these resolve to Input nodes in the lambda body
+            val allBindings = paramBindings ++ capturedValues
+
+            evaluateLambdaBodyUnsafe(lambda.bodyNodes, lambda.bodyOutputId, allBindings)
+          }
       }
 
     /** Validate lambda body structure at compile time */

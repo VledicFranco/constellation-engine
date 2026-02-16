@@ -1,6 +1,6 @@
 # RFC-030: Lambda Closure Support
 
-- **Status:** Accepted
+- **Status:** Implemented
 - **Created:** 2026-02-15
 - **Author:** Claude (discovered during RFC-029 demo QA)
 
