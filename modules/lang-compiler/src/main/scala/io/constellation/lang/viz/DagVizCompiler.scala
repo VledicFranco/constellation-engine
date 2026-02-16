@@ -185,7 +185,7 @@ object DagVizCompiler:
           typeSignature = "String"
         )
 
-      case IRNode.HigherOrderNode(_, operation, _, _, outputType, _) =>
+      case IRNode.HigherOrderNode(_, operation, _, _, outputType, _, _) =>
         val opName = operation match {
           case HigherOrderOp.Filter => "filter"
           case HigherOrderOp.Map    => "map"
@@ -244,7 +244,7 @@ object DagVizCompiler:
       case IRNode.CoalesceNode(_, _, _, resultType, _)       => resultType
       case IRNode.BranchNode(_, _, _, resultType, _)         => resultType
       case IRNode.StringInterpolationNode(_, _, _, _)        => SemanticType.SString
-      case IRNode.HigherOrderNode(_, _, _, _, outputType, _) => outputType
+      case IRNode.HigherOrderNode(_, _, _, _, outputType, _, _) => outputType
       case IRNode.ListLiteralNode(_, _, elementType, _)      => SemanticType.SList(elementType)
       case IRNode.RecordLitNode(_, _, outputType, _)         => outputType
       case IRNode.MatchNode(_, _, _, resultType, _)          => resultType
@@ -384,10 +384,24 @@ object DagVizCompiler:
             )
           }
 
-        case IRNode.HigherOrderNode(_, _, source, _, _, _) =>
-          List(
-            VizEdge(nextEdgeId(), source.toString, targetId.toString, Some("source"), EdgeKind.Data)
+        case IRNode.HigherOrderNode(_, _, source, _, _, capturedInputs, _) =>
+          val sourceEdge = VizEdge(
+            nextEdgeId(),
+            source.toString,
+            targetId.toString,
+            Some("source"),
+            EdgeKind.Data
           )
+          val capturedEdges = capturedInputs.map { case (name, outerNodeId) =>
+            VizEdge(
+              nextEdgeId(),
+              outerNodeId.toString,
+              targetId.toString,
+              Some(name),
+              EdgeKind.Data
+            )
+          }.toList
+          sourceEdge :: capturedEdges
 
         case IRNode.ListLiteralNode(_, elements, _, _) =>
           elements.zipWithIndex.map { case (elemId, idx) =>

@@ -328,6 +328,75 @@ object InlineTransform {
     }
   }
 
+  // ===== Closure-aware HOF transforms =====
+  // These variants receive captured values from the enclosing scope alongside each element.
+  // The evaluator takes (element, capturedValues) instead of just element.
+
+  /** Closure filter transform - filters using a predicate that captures outer-scope variables.
+    *
+    * @param predicateEvaluator
+    *   Takes (element, capturedValues) and returns Boolean
+    * @param capturedKeys
+    *   Names of captured variables to extract from inputs
+    */
+  final case class ClosureFilterTransform(
+      predicateEvaluator: (Any, Map[String, Any]) => Boolean,
+      capturedKeys: List[String]
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source   = inputs("source").asInstanceOf[List[?]]
+      val captured = capturedKeys.map(k => k -> inputs(k)).toMap
+      source.filter(elem => predicateEvaluator(elem, captured))
+    }
+  }
+
+  /** Closure map transform - transforms elements using a function that captures outer-scope
+    * variables.
+    *
+    * @param mapEvaluator
+    *   Takes (element, capturedValues) and returns transformed value
+    * @param capturedKeys
+    *   Names of captured variables to extract from inputs
+    */
+  final case class ClosureMapTransform(
+      mapEvaluator: (Any, Map[String, Any]) => Any,
+      capturedKeys: List[String]
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source   = inputs("source").asInstanceOf[List[?]]
+      val captured = capturedKeys.map(k => k -> inputs(k)).toMap
+      source.map(elem => mapEvaluator(elem, captured))
+    }
+  }
+
+  /** Closure all transform - checks if all elements satisfy a predicate that captures outer-scope
+    * variables.
+    */
+  final case class ClosureAllTransform(
+      predicateEvaluator: (Any, Map[String, Any]) => Boolean,
+      capturedKeys: List[String]
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source   = inputs("source").asInstanceOf[List[?]]
+      val captured = capturedKeys.map(k => k -> inputs(k)).toMap
+      source.forall(elem => predicateEvaluator(elem, captured))
+    }
+  }
+
+  /** Closure any transform - checks if any element satisfies a predicate that captures outer-scope
+    * variables.
+    */
+  final case class ClosureAnyTransform(
+      predicateEvaluator: (Any, Map[String, Any]) => Boolean,
+      capturedKeys: List[String]
+  ) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source   = inputs("source").asInstanceOf[List[?]]
+      val captured = capturedKeys.map(k => k -> inputs(k)).toMap
+      source.exists(elem => predicateEvaluator(elem, captured))
+    }
+  }
+
   /** List literal transform - assembles multiple values into a list. Input names are "elem0",
     * "elem1", etc.
     */

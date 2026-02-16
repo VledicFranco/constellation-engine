@@ -323,9 +323,8 @@ object IRGenerator {
     // Extract the lambda argument
     val lambdaArg = args(lambdaArgIndex).asInstanceOf[TypedExpression.Lambda]
 
-    // Generate IR for the lambda body in a fresh context
-    // The lambda parameters will be bound to input nodes in the body context
-    val lambdaIR = generateLambdaIR(lambdaArg)
+    // Generate IR for the lambda body, passing outer context for closure capture
+    val (lambdaIR, capturedInputs) = generateLambdaIR(lambdaArg, sourceCtx)
 
     val id = UUID.randomUUID()
     val node = IRNode.HigherOrderNode(
@@ -334,13 +333,31 @@ object IRGenerator {
       source = sourceId,
       lambda = lambdaIR,
       outputType = signature.returns,
+      capturedInputs = capturedInputs,
       debugSpan = Some(span)
     )
     (sourceCtx.addNode(node), id)
   }
 
-  /** Generate IR representation of a lambda (body nodes + output) */
-  private def generateLambdaIR(lambda: TypedExpression.Lambda): TypedLambda = {
+  /** Generate IR representation of a lambda (body nodes + output).
+    *
+    * Supports closures: when the lambda body references variables from the enclosing scope, those
+    * variables are captured as additional `IRNode.Input` nodes in the lambda's body, making the
+    * sub-DAG self-contained. The returned `capturedInputs` maps captured variable names to their
+    * node UUIDs in the outer context, so the DagCompiler can wire the data dependencies.
+    *
+    * @return
+    *   (TypedLambda with capturedBindings, Map of varName -> outer node UUID)
+    */
+  private def generateLambdaIR(
+      lambda: TypedExpression.Lambda,
+      outerCtx: GenContext
+  ): (TypedLambda, Map[String, UUID]) = {
+    val paramNameSet = lambda.params.map(_._1).toSet
+
+    // Find free variables in the lambda body (referenced but not bound as lambda params)
+    val freeVarNames = collectFreeVars(lambda.body, paramNameSet)
+
     // Create input nodes for lambda parameters
     val paramInputs = lambda.params.map { case (name, paramType) =>
       val paramId   = UUID.randomUUID()
@@ -348,21 +365,103 @@ object IRGenerator {
       (name, paramId, inputNode)
     }
 
-    // Create context with parameter bindings
-    val lambdaCtx = paramInputs.foldLeft(GenContext.empty) { case (ctx, (name, paramId, node)) =>
-      ctx.addNode(node).bind(name, paramId)
+    // Create captured variable input nodes for free variables found in outer context
+    var capturedBindings = Map.empty[String, UUID] // varName -> inner Input node UUID
+    var capturedInputs   = Map.empty[String, UUID] // varName -> outer context node UUID
+
+    val capturedInputNodes = freeVarNames.toList.flatMap { varName =>
+      outerCtx.lookup(varName).flatMap { outerNodeId =>
+        outerCtx.nodes.get(outerNodeId).map { outerNode =>
+          val captureId   = UUID.randomUUID()
+          val captureNode = IRNode.Input(captureId, varName, outerNode.outputType, None)
+          capturedBindings = capturedBindings + (varName -> captureId)
+          capturedInputs = capturedInputs + (varName -> outerNodeId)
+          (varName, captureId, captureNode)
+        }
+      }
     }
+
+    // Create context with parameter bindings + captured variable bindings
+    val lambdaCtx =
+      (paramInputs ++ capturedInputNodes).foldLeft(GenContext.empty) {
+        case (ctx, (name, nodeId, node)) =>
+          ctx.addNode(node).bind(name, nodeId)
+      }
 
     // Generate IR for the lambda body
     val (bodyCtx, bodyOutputId) = generateExpression(lambda.body, lambdaCtx)
 
-    TypedLambda(
+    val typedLambda = TypedLambda(
       paramNames = lambda.params.map(_._1),
       paramTypes = lambda.params.map(_._2),
       bodyNodes = bodyCtx.nodes,
       bodyOutputId = bodyOutputId,
-      returnType = lambda.semanticType.returnType
+      returnType = lambda.semanticType.returnType,
+      capturedBindings = capturedBindings
     )
+
+    (typedLambda, capturedInputs)
+  }
+
+  /** Collect free variable names in a typed expression (names not in the bound set). Used to
+    * determine which outer-scope variables a lambda body captures.
+    */
+  private def collectFreeVars(expr: TypedExpression, bound: Set[String]): Set[String] = expr match {
+    case TypedExpression.VarRef(name, _, _) =>
+      if bound.contains(name) then Set.empty else Set(name)
+
+    case TypedExpression.Literal(_, _, _) => Set.empty
+
+    case TypedExpression.FunctionCall(_, _, args, _, typedFallback, _) =>
+      args.flatMap(collectFreeVars(_, bound)).toSet ++
+        typedFallback.map(collectFreeVars(_, bound)).getOrElse(Set.empty)
+
+    case TypedExpression.Lambda(params, body, _, _) =>
+      collectFreeVars(body, bound ++ params.map(_._1))
+
+    case TypedExpression.Merge(l, r, _, _) =>
+      collectFreeVars(l, bound) ++ collectFreeVars(r, bound)
+
+    case TypedExpression.Projection(source, _, _, _) =>
+      collectFreeVars(source, bound)
+
+    case TypedExpression.FieldAccess(source, _, _, _) =>
+      collectFreeVars(source, bound)
+
+    case TypedExpression.Conditional(cond, thenBr, elseBr, _, _) =>
+      collectFreeVars(cond, bound) ++ collectFreeVars(thenBr, bound) ++
+        collectFreeVars(elseBr, bound)
+
+    case TypedExpression.BoolBinary(l, _, r, _) =>
+      collectFreeVars(l, bound) ++ collectFreeVars(r, bound)
+
+    case TypedExpression.Not(operand, _) =>
+      collectFreeVars(operand, bound)
+
+    case TypedExpression.Guard(expr, cond, _) =>
+      collectFreeVars(expr, bound) ++ collectFreeVars(cond, bound)
+
+    case TypedExpression.Coalesce(l, r, _, _) =>
+      collectFreeVars(l, bound) ++ collectFreeVars(r, bound)
+
+    case TypedExpression.Branch(cases, otherwise, _, _) =>
+      cases.flatMap { case (cond, expr) =>
+        collectFreeVars(cond, bound) ++ collectFreeVars(expr, bound)
+      }.toSet ++ collectFreeVars(otherwise, bound)
+
+    case TypedExpression.StringInterpolation(_, exprs, _) =>
+      exprs.flatMap(collectFreeVars(_, bound)).toSet
+
+    case TypedExpression.ListLiteral(elems, _, _) =>
+      elems.flatMap(collectFreeVars(_, bound)).toSet
+
+    case TypedExpression.RecordLiteral(fields, _, _) =>
+      fields.flatMap { case (_, expr) => collectFreeVars(expr, bound) }.toSet
+
+    case TypedExpression.Match(scrutinee, cases, _, _) =>
+      collectFreeVars(scrutinee, bound) ++ cases.flatMap { c =>
+        collectFreeVars(c.body, bound ++ c.bindings.keys)
+      }.toSet
   }
 
   /** Convert AST ModuleCallOptions to IR options, generating IR nodes for fallback if present.
