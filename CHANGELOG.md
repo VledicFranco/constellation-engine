@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Coursier channel**: `cs channel --add https://vledicfranco.github.io/constellation-engine/channel && cs install constellation` for easy CLI installation
 - **Structural invariant tests**: 12 tests across 4 specs using `organon-testing` v0.4.0 — verifies core purity, organon file structure, naming conventions, and module purity constraints (`make test-invariants`)
 
+### Fixed
+- **CLI**: `run` command now displays outputs when API returns both outputs and `status: "suspended"` (previously showed "Execution suspended" even with results)
+- **CLI**: Empty/whitespace auth tokens no longer create invalid `Bearer ` headers
+- **CLI**: `config set` rejects paths with empty segments (e.g., `.foo`, `a..b`, `foo.`)
+- **CLI**: `deploy canary --percent` validates range 1–100 before sending request
+- **CLI**: DAG visualization escapes special characters in node labels (quotes, backslashes, brackets) for valid DOT/Mermaid output
+- **CLI**: Error messages now redact credentials embedded in URLs (`://user:pass@host`)
+
 ## [0.8.1] - 2026-02-15
 
 ### Fixed

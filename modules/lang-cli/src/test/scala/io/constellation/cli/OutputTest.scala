@@ -146,29 +146,29 @@ class OutputTest extends AnyFunSuite with Matchers:
   // ============= DAG Label Escaping Tests =============
 
   test("dagDot: escapes quotes in labels"):
-    val nodes = List(("n1", """say "hello"""", Nil))
-    val edges = List.empty[(String, String)]
+    val nodes  = List(("n1", """say "hello"""", Nil))
+    val edges  = List.empty[(String, String)]
     val result = Output.dagDot(nodes, edges)
     result should include("""label="say \"hello\""""")
     result should not include """label="say "hello""""
 
   test("dagDot: escapes backslashes in labels"):
-    val nodes = List(("n1", """path\to\file""", Nil))
-    val edges = List.empty[(String, String)]
+    val nodes  = List(("n1", """path\to\file""", Nil))
+    val edges  = List.empty[(String, String)]
     val result = Output.dagDot(nodes, edges)
     result should include("""path\\to\\file""")
 
   test("dagMermaid: escapes brackets in labels"):
-    val nodes = List(("n1", "List[Int]", Nil))
-    val edges = List.empty[(String, String)]
+    val nodes  = List(("n1", "List[Int]", Nil))
+    val edges  = List.empty[(String, String)]
     val result = Output.dagMermaid(nodes, edges)
     // Brackets should be replaced to avoid breaking Mermaid syntax
     result should not include "n1[List[Int]]"
     result should include("n1[List(Int)]")
 
   test("dagMermaid: escapes quotes in labels"):
-    val nodes = List(("n1", """say "hi"""", Nil))
-    val edges = List.empty[(String, String)]
+    val nodes  = List(("n1", """say "hi"""", Nil))
+    val edges  = List.empty[(String, String)]
     val result = Output.dagMermaid(nodes, edges)
     result should include("say 'hi'")
 
