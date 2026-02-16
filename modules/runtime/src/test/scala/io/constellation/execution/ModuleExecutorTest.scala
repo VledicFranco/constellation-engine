@@ -267,7 +267,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
     val operation = IO {
       val attempt = counter.incrementAndGet()
       if attempt < 2 then {
-        Thread.sleep(200) // First attempt times out
+        Thread.sleep(2000) // First attempt times out (generous margin for parallel load)
         "slow"
       } else {
         "fast"
@@ -279,7 +279,7 @@ class ModuleExecutorTest extends AnyFlatSpec with Matchers with RetrySupport {
         operation,
         ExecutionOptions(
           retry = Some(2),
-          timeout = Some(100.millis)
+          timeout = Some(500.millis)
         )
       )
       .unsafeRunSync()

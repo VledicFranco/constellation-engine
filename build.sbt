@@ -305,6 +305,8 @@ lazy val invariantTests = (project in file("invariant-tests"))
   .settings(
     name := "constellation-invariant-tests",
     publish / skip := true,
+    // Run invariant tests sequentially to avoid filesystem I/O contention timeouts
+    Test / parallelExecution := false,
     libraryDependencies ++= Seq(
       "io.github.vledicfranco" %% "organon-testing" % "0.4.0" % Test,
       "org.scalatest"          %% "scalatest"       % "3.2.17"         % Test,
@@ -312,6 +314,8 @@ lazy val invariantTests = (project in file("invariant-tests"))
   )
 
 // Root project aggregates all modules
+// Note: invariantTests excluded — organon-testing has a hardcoded 30s Await that times out
+// under parallel module execution. Run separately via: make test-invariants
 lazy val root = (project in file("."))
   .aggregate(
     core,
@@ -327,8 +331,7 @@ lazy val root = (project in file("."))
     moduleProvider,
     exampleApp,
     langCli,
-    docGenerator,
-    invariantTests
+    docGenerator
   )
   .settings(
     name := "constellation-engine",

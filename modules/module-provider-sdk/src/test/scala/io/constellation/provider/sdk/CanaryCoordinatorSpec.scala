@@ -210,7 +210,7 @@ class CanaryCoordinatorSpec extends AnyFlatSpec with Matchers {
   // ===== Observation window is respected =====
 
   it should "wait for observation window before checking health" in {
-    val longConfig = canaryConfig.copy(observationWindow = 50.milliseconds)
+    val longConfig = canaryConfig.copy(observationWindow = 100.milliseconds)
     val transport  = FakeProviderTransport.create.unsafeRunSync()
     val conn       = mkConnection(transport)
 
@@ -223,7 +223,8 @@ class CanaryCoordinatorSpec extends AnyFlatSpec with Matchers {
     coordinator.rollout(List(oldModule), List(newModule)).unsafeRunSync()
     val elapsed = System.currentTimeMillis() - start
 
-    elapsed should be >= 50L
+    // Use 80ms threshold (80% of 100ms window) to avoid timer-resolution flakiness
+    elapsed should be >= 80L
   }
 
   // ===== RolledBack includes reason =====

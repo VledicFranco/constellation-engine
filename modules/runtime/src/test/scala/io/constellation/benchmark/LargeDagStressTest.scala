@@ -69,7 +69,8 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
       } else {
         Map(moduleIds.last -> "result")
       }
-      id -> DataNodeSpec(s"data$idx", portMap, CType.CString)
+      val name = if idx == 0 then "input" else s"data$idx"
+      id -> DataNodeSpec(name, portMap, CType.CString)
     }.toMap
 
     val inEdges = dataIds.init.zipWithIndex.map { case (dataId, idx) =>
@@ -185,7 +186,7 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
   // 5.1: 100-node DAG
   // -------------------------------------------------------------------------
 
-  "Runtime" should "execute a 100-node chain DAG within 5 seconds" in {
+  "Runtime" should "execute a 100-node chain DAG within 10 seconds" in {
     val (dag, modules) = createChainDag(100)
     val inputs         = Map("input" -> CValue.CString("stress test"))
 
@@ -194,7 +195,8 @@ class LargeDagStressTest extends AnyFlatSpec with Matchers {
     val elapsed = (System.nanoTime() - start) / 1e6
 
     println(f"100-node chain DAG: $elapsed%.1f ms")
-    elapsed should be < 5000.0
+    // 10s generous margin for parallel test execution on CI
+    elapsed should be < 10000.0
     state.latency.isDefined shouldBe true
   }
 

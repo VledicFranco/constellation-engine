@@ -27,7 +27,7 @@ class SuspendableExecutionConcurrencyTest extends AnyFlatSpec with Matchers with
     // Create a user input data node with proper nickname
     val inputUuid = UUID.randomUUID()
     val inputDataNode = DataNodeSpec(
-      name = "input1_data",
+      name = "input1",
       cType = CType.CString,
       nicknames =
         Map(UUID.randomUUID() -> "input1"), // Map some module UUID to the nickname "input1"

@@ -260,7 +260,7 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val (manager, cp, _) = createTestSetup(
       controlPlaneTimeout = 5.seconds,
       heartbeatTimeout = 5.seconds,
-      reportInterval = 100.millis
+      reportInterval = 200.millis
     )
     val observer = new RecordingObserver
 
@@ -268,11 +268,11 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     manager.handleRegister(mkRequest("ml", Seq(mkDecl("analyze"))), "conn1").unsafeRunSync()
     cp.activateControlPlane("conn1", observer).unsafeRunSync()
 
-    // Start reporter for a short time
-    val fiber = cp.startActiveModulesReporter.use(_ => IO.sleep(350.millis)).start.unsafeRunSync()
+    // Start reporter for a generous time (200ms interval, wait 1.5s for at least 2 reports)
+    val fiber = cp.startActiveModulesReporter.use(_ => IO.sleep(1500.millis)).start.unsafeRunSync()
     fiber.joinWithNever.unsafeRunSync()
 
-    // Should have received at least 2 reports
+    // Should have received at least 2 reports (200ms interval over 1500ms)
     val reports = observer.messages.filter(_.payload.isActiveModulesReport)
     reports.size should be >= 2
 

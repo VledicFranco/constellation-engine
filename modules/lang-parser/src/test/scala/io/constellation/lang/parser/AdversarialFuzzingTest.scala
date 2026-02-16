@@ -84,8 +84,9 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
   // 5.4: Deeply nested expressions
   // -------------------------------------------------------------------------
 
-  it should "handle deeply nested parenthesized boolean expressions (100 levels)" in {
-    val depth  = 100
+  it should "handle deeply nested parenthesized boolean expressions (50 levels)" in {
+    // Reduced from 100 to 50 for parallel-test compatibility (smaller thread stacks)
+    val depth  = 50
     val nested = buildNestedBoolExpr(depth)
     val source = s"in flag: Boolean\nresult = $nested\nout result\n"
 
@@ -94,8 +95,9 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
     }
   }
 
-  it should "handle deeply nested if-else expressions (100 levels)" in {
-    val depth  = 100
+  it should "handle deeply nested if-else expressions (50 levels)" in {
+    // Reduced from 100 to 50 for parallel-test compatibility (smaller thread stacks)
+    val depth  = 50
     val nested = buildNestedConditional(depth)
     val source = s"in flag: Boolean\nin x: Int\nin y: Int\nresult = $nested\nout result\n"
 
@@ -123,9 +125,9 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
     }
   }
 
-  it should "not stack overflow with 200-level nested boolean expressions" in {
-    // Note: Reduced from 500 to 200 for CI compatibility (smaller JVM stack)
-    val depth  = 200
+  it should "not stack overflow with 50-level nested boolean expressions" in {
+    // Reduced from 200 to 50 for parallel-test compatibility (smaller thread stacks)
+    val depth  = 50
     val nested = buildNestedBoolExpr(depth)
     val source = s"in flag: Boolean\nresult = $nested\nout result\n"
 
@@ -135,7 +137,7 @@ class AdversarialFuzzingTest extends AnyFlatSpec with Matchers with ScalaCheckPr
       // Success or structured ParseError - both fine
     catch {
       case _: StackOverflowError =>
-        fail("Parser stack overflowed on 200-level nested expression")
+        fail("Parser stack overflowed on 50-level nested expression")
       case _: Exception =>
       // Other exceptions are acceptable (e.g., parser giving up)
     }

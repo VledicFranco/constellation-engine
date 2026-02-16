@@ -207,7 +207,7 @@ class TokenBucketRateLimiterCoverageTest extends AnyFlatSpec with Matchers with 
       _       <- limiter.acquire
       _       <- limiter.acquire
       before  <- limiter.availableTokens
-      _       <- IO.sleep(50.millis)
+      _       <- IO.sleep(200.millis) // Generous margin for CI load
       after   <- limiter.availableTokens
     } yield (before, after)).unsafeRunSync()
 

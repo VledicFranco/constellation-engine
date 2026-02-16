@@ -18,7 +18,7 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
 
       _           <- debouncer.debounce("key")(counter.update(_ + 1))
       beforeDelay <- counter.get
-      _           <- IO.sleep(300.millis)
+      _           <- IO.sleep(500.millis) // Generous margin for CI load
       afterDelay  <- counter.get
     } yield {
       beforeDelay shouldBe 0 // Not executed yet
@@ -28,22 +28,24 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
 
   it should "only execute once for rapid calls with the same key" in {
     val result = (for {
-        debouncer <- Debouncer.create[String](100.millis)
+        debouncer <- Debouncer.create[String](500.millis)
         counter   <- Ref.of[IO, Int](0)
 
-        // Rapid calls - each should cancel the previous
+        // Rapid calls - each should cancel the previous.
+        // Use 10ms gaps (total ~40ms) well within the 500ms debounce window
+        // so the first fiber cannot fire before the last call cancels it.
         _ <- debouncer.debounce("key")(counter.update(_ + 1))
-        _ <- IO.sleep(30.millis)
+        _ <- IO.sleep(10.millis)
         _ <- debouncer.debounce("key")(counter.update(_ + 1))
-        _ <- IO.sleep(30.millis)
+        _ <- IO.sleep(10.millis)
         _ <- debouncer.debounce("key")(counter.update(_ + 1))
-        _ <- IO.sleep(30.millis)
+        _ <- IO.sleep(10.millis)
         _ <- debouncer.debounce("key")(counter.update(_ + 1))
-        _ <- IO.sleep(30.millis)
+        _ <- IO.sleep(10.millis)
         _ <- debouncer.debounce("key")(counter.update(_ + 1))
 
         // Wait for final execution
-        _     <- IO.sleep(300.millis)
+        _     <- IO.sleep(800.millis)
         count <- counter.get
       } yield count shouldBe 1 // Only the last call should have executed
     ).unsafeRunSync()
@@ -133,7 +135,7 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
 
   it should "cancel all pending actions with cancelAll()" in {
     val result = (for {
-        debouncer <- Debouncer.create[String](500.millis)
+        debouncer <- Debouncer.create[String](2.seconds)
         counter   <- Ref.of[IO, Int](0)
 
         // Schedule multiple debounced actions
@@ -141,11 +143,14 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
         _ <- debouncer.debounce("key2")(counter.update(_ + 10))
         _ <- debouncer.debounce("key3")(counter.update(_ + 100))
 
-        // Cancel all before any execute (500ms debounce gives plenty of margin)
+        // Yield to ensure fibers are scheduled and sleeping
+        _ <- IO.cede
+
+        // Cancel all before any execute (2s debounce gives plenty of margin)
         _ <- debouncer.cancelAll
 
         // Wait past when they would have executed
-        _     <- IO.sleep(700.millis)
+        _     <- IO.sleep(3.seconds)
         count <- counter.get
       } yield count shouldBe 0 // No actions should have executed
     ).unsafeRunSync()
@@ -233,7 +238,8 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
 
   it should "handle many rapid calls efficiently" in {
     val result = (for {
-      debouncer <- Debouncer.create[String](100.millis)
+      // Debounce window must exceed total call sequence (100 * 5ms = 500ms)
+      debouncer <- Debouncer.create[String](1.second)
       counter   <- Ref.of[IO, Int](0)
 
       // Simulate 100 rapid calls (like fast typing)
@@ -241,8 +247,8 @@ class DebouncerTest extends AnyFlatSpec with Matchers {
         debouncer.debounce("key")(counter.update(_ + 1)) *> IO.sleep(5.millis)
       }
 
-      // Wait for the final debounced action
-      _     <- IO.sleep(300.millis)
+      // Wait for the final debounced action (1s debounce + margin)
+      _     <- IO.sleep(1500.millis)
       count <- counter.get
     } yield
     // Should only execute once despite 100 calls

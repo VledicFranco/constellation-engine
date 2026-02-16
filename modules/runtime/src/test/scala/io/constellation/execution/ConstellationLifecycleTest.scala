@@ -158,15 +158,15 @@ class ConstellationLifecycleTest extends AnyFlatSpec with Matchers with RetrySup
   // Shutdown - Cancel on Timeout
   // -------------------------------------------------------------------------
 
-  it should "cancel remaining executions after drain timeout" in {
+  it should "cancel remaining executions after drain timeout" taggedAs Retryable in {
     val lc = ConstellationLifecycle.create.unsafeRunSync()
 
     // Register an execution that won't complete on its own
     val (exec, _) = mockExecution().unsafeRunSync()
     lc.registerExecution(exec.executionId, exec).unsafeRunSync()
 
-    // Shutdown with short timeout
-    lc.shutdown(200.millis).timeout(3.seconds).unsafeRunSync()
+    // Shutdown with short timeout (generous outer timeout for parallel test load)
+    lc.shutdown(500.millis).timeout(10.seconds).unsafeRunSync()
 
     // Cancel should have been called, and we should be Stopped
     lc.state.unsafeRunSync() shouldBe LifecycleState.Stopped
