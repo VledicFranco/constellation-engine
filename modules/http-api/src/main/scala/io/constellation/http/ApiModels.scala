@@ -212,6 +212,59 @@ object ApiModels {
   }
 
   // ---------------------------------------------------------------------------
+  // Module HTTP endpoint models (RFC-027)
+  // ---------------------------------------------------------------------------
+
+  /** Response from invoking a published module directly via HTTP.
+    *
+    * @param success
+    *   Whether the invocation succeeded
+    * @param outputs
+    *   Module output values as JSON (keyed by output field name)
+    * @param error
+    *   Error message if invocation failed
+    * @param module
+    *   Name of the invoked module
+    */
+  case class ModuleInvokeResponse(
+      success: Boolean,
+      outputs: Map[String, Json] = Map.empty,
+      error: Option[String] = None,
+      module: Option[String] = None
+  )
+
+  object ModuleInvokeResponse {
+    given Encoder[ModuleInvokeResponse] = deriveEncoder
+    given Decoder[ModuleInvokeResponse] = deriveDecoder
+  }
+
+  /** Information about a published module endpoint for discovery. */
+  case class PublishedModuleInfo(
+      name: String,
+      description: String,
+      version: String,
+      tags: List[String],
+      endpoint: String,
+      inputs: Map[String, String],
+      outputs: Map[String, String]
+  )
+
+  object PublishedModuleInfo {
+    given Encoder[PublishedModuleInfo] = deriveEncoder
+    given Decoder[PublishedModuleInfo] = deriveDecoder
+  }
+
+  /** Response listing all published module endpoints. */
+  case class PublishedModulesResponse(
+      modules: List[PublishedModuleInfo]
+  )
+
+  object PublishedModulesResponse {
+    given Encoder[PublishedModulesResponse] = deriveEncoder
+    given Decoder[PublishedModulesResponse] = deriveDecoder
+  }
+
+  // ---------------------------------------------------------------------------
   // Pipeline management models (Phase 5)
   // ---------------------------------------------------------------------------
 

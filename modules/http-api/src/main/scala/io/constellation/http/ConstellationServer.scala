@@ -366,6 +366,9 @@ object ConstellationServer {
           canaryRouter = Some(canaryRouter)
         ).routes
 
+        // Module HTTP endpoint routes (RFC-027)
+        moduleHttpRoutes = new ModuleHttpRoutes(effectiveConstellation).routes
+
         server <- EmberServerBuilder
           .default[IO]
           .withHost(host)
@@ -377,7 +380,7 @@ object ConstellationServer {
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
             // Note: executionWs routes MUST come FIRST because both httpRoutes and dashboardRoutes have
             // catch-all patterns `GET /api/v1/executions/:id` that would match "events" as an ID
-            val coreRoutes = httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
+            val coreRoutes = moduleHttpRoutes <+> httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
               case Some(dashboardRoutes) =>
                 executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes

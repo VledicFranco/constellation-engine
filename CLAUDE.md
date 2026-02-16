@@ -233,6 +233,7 @@ make test-invariants
 | CORS Middleware | `modules/http-api/.../CorsMiddleware.scala` |
 | Rate Limit Middleware | `modules/http-api/.../RateLimitMiddleware.scala` |
 | Health Check Routes | `modules/http-api/.../HealthCheckRoutes.scala` |
+| Module HTTP Routes | `modules/http-api/.../ModuleHttpRoutes.scala` |
 | LSP Server | `modules/lang-lsp/.../ConstellationLanguageServer.scala` |
 | CLI Entry Point | `modules/lang-cli/.../Main.scala` |
 | CLI App | `modules/lang-cli/.../CliApp.scala` |

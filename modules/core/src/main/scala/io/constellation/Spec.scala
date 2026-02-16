@@ -116,13 +116,16 @@ final case class DataNodeSpec(
   *   Timeout configuration for inputs and module execution
   * @param definitionContext
   *   Optional JSON metadata from module definition
+  * @param httpConfig
+  *   Optional HTTP endpoint configuration; when present the module is published at `/modules/{name}/invoke`
   */
 case class ModuleNodeSpec(
     metadata: ComponentMetadata,
     consumes: Map[String, CType] = Map.empty,
     produces: Map[String, CType] = Map.empty,
     config: ModuleConfig = ModuleConfig.default,
-    definitionContext: Option[Map[String, Json]] = None
+    definitionContext: Option[Map[String, Json]] = None,
+    httpConfig: Option[ModuleHttpConfig] = None
 ) {
 
   def name: String = metadata.name
@@ -167,6 +170,20 @@ object ModuleConfig {
       inputsTimeout = FiniteDuration(6, "seconds"),
       moduleTimeout = FiniteDuration(3, "seconds")
     )
+}
+
+/** Configuration for publishing a module as an HTTP endpoint.
+  *
+  * When attached to a [[ModuleNodeSpec]], the module becomes callable via `POST
+  * /modules/{name}/invoke` without writing a pipeline.
+  *
+  * @param published
+  *   Whether the endpoint is active (default true)
+  */
+final case class ModuleHttpConfig(published: Boolean = true)
+
+object ModuleHttpConfig {
+  val default: ModuleHttpConfig = ModuleHttpConfig()
 }
 
 /** Shared metadata for components (modules and DAGs).

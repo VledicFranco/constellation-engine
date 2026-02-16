@@ -96,6 +96,13 @@ ConstellationServer
 | `/pipelines/{name}/canary/rollback` | POST | Rollback canary deployment | Yes |
 | `/pipelines/{name}/canary` | DELETE | Abort canary deployment | Yes |
 
+### Module HTTP Endpoints
+
+| Endpoint | Method | Description | Auth Required |
+|----------|--------|-------------|---------------|
+| `/modules/published` | GET | List modules published as HTTP endpoints | Yes |
+| `/modules/{name}/invoke` | POST | Invoke a published module directly | Yes |
+
 ### WebSocket
 
 | Endpoint | Protocol | Description | Auth Required |
@@ -722,6 +729,136 @@ curl http://localhost:8080/metrics
 # Prometheus format
 curl http://localhost:8080/metrics \
   -H "Accept: text/plain"
+```
+
+---
+
+## Module HTTP Endpoints
+
+### GET /modules/published
+
+List all modules that have been published as HTTP endpoints via `ModuleBuilder.httpEndpoint()`.
+
+#### Response
+
+**Success (200 OK):**
+
+```json
+{
+  "modules": [
+    {
+      "name": "Uppercase",
+      "description": "Convert text to uppercase",
+      "version": "1.0",
+      "tags": ["text"],
+      "endpoint": "/modules/Uppercase/invoke",
+      "inputs": {
+        "text": "CString"
+      },
+      "outputs": {
+        "result": "CString"
+      }
+    }
+  ]
+}
+```
+
+**Fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | String | Module name |
+| `description` | String | Module description |
+| `version` | String | Module version (major.minor) |
+| `tags` | Array[String] | Module tags |
+| `endpoint` | String | Invocation endpoint path |
+| `inputs` | Object | Input field names and their CType |
+| `outputs` | Object | Output field names and their CType |
+
+#### Example
+
+```bash
+curl http://localhost:8080/modules/published \
+  -H "Authorization: Bearer your-api-key"
+```
+
+---
+
+### POST /modules/{name}/invoke
+
+Invoke a published module directly with JSON inputs. Builds a synthetic single-node DAG and delegates to `Runtime.run()`, reusing all existing execution infrastructure.
+
+#### Request
+
+**Content-Type:** `application/json`
+
+```json
+{
+  "text": "hello world"
+}
+```
+
+The request body is a flat JSON object where keys match the module's `consumes` fields.
+
+#### Response
+
+**Success (200 OK):**
+
+```json
+{
+  "success": true,
+  "outputs": {
+    "result": "HELLO WORLD"
+  },
+  "module": "Uppercase"
+}
+```
+
+**Module Not Found (404 Not Found):**
+
+```json
+{
+  "error": "NotFound",
+  "message": "Module 'Unknown' not found"
+}
+```
+
+**Module Not Published (404 Not Found):**
+
+```json
+{
+  "error": "NotFound",
+  "message": "Module 'Secret' is not published as an HTTP endpoint"
+}
+```
+
+**Input Error (400 Bad Request):**
+
+```json
+{
+  "success": false,
+  "error": "Missing required input: 'text'",
+  "module": "Uppercase"
+}
+```
+
+**Execution Error (500 Internal Server Error):**
+
+```json
+{
+  "success": false,
+  "error": "Module execution failed",
+  "module": "Uppercase"
+}
+```
+
+#### Example
+
+```bash
+curl -X POST http://localhost:8080/modules/Uppercase/invoke \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-api-key" \
+  -d '{"text": "hello world"}'
 ```
 
 ---

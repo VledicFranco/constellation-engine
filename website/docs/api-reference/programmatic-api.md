@@ -221,6 +221,28 @@ val module = ModuleBuilder
   .build
 ```
 
+### HTTP Endpoint Publishing
+
+Mark a module as callable via `POST /modules/{name}/invoke` without writing a `.cst` pipeline:
+
+```scala
+val module = ModuleBuilder
+  .metadata("Uppercase", "Convert text to uppercase", 1, 0)
+  .httpEndpoint()  // Published at /modules/Uppercase/invoke
+  .implementationPure[TextInput, TextOutput] { input =>
+    TextOutput(input.text.toUpperCase)
+  }
+  .build
+```
+
+Discover published modules via `GET /modules/published`. Optionally pass a custom config:
+
+```scala
+.httpEndpoint(ModuleHttpConfig(published = false))  // Registered but not published
+```
+
+See the [HTTP API Overview](./http-api-overview) for endpoint details.
+
 ### Configuration
 
 ```scala
