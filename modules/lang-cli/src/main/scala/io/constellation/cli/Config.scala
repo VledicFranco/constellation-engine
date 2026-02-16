@@ -187,11 +187,17 @@ object CliConfig:
     *   if path exceeds maximum depth
     */
   def setValue(path: String, value: String): IO[Unit] =
-    val segments = path.split("\\.").toList
+    val segments = path.split("\\.", -1).toList
     if segments.length > MaxPathDepth then
       IO.raiseError(
         new IllegalArgumentException(
           s"Config path too deep (max $MaxPathDepth levels): $path"
+        )
+      )
+    else if segments.exists(_.trim.isEmpty) then
+      IO.raiseError(
+        new IllegalArgumentException(
+          s"Config path contains empty segments: $path"
         )
       )
     else

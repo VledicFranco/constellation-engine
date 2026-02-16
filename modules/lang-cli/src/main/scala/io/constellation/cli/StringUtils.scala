@@ -77,3 +77,4 @@ object StringUtils:
       .replaceAll("(?i)Authorization:\\s*[^\\s,;]+", "Authorization: [REDACTED]")
       .replaceAll("(?i)password[\"']?\\s*[=:]\\s*[\"']?[^\\s,;\"']+", "password=[REDACTED]")
       .replaceAll("(?i)token[\"']?\\s*[=:]\\s*[\"']?[^\\s,;\"']+", "token=[REDACTED]")
+      .replaceAll("://[^/@\\s]+:[^/@\\s]+@", "://[REDACTED]@")

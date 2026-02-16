@@ -147,6 +147,14 @@ object Output:
           )
           .noSpaces
 
+  /** Escape a string for use in DOT label attributes. */
+  private def escapeDotLabel(s: String): String =
+    s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+
+  /** Escape a string for use in Mermaid node labels. */
+  private def escapeMermaidLabel(s: String): String =
+    s.replace("[", "(").replace("]", ")").replace("\"", "'")
+
   /** Format pipeline modules for viz output. */
   def dagDot(
       nodes: List[(String, String, List[String])],
@@ -160,13 +168,13 @@ object Output:
 
     // Add nodes
     nodes.foreach { case (id, label, _) =>
-      sb.append(s"""  "$id" [label="$label"];\n""")
+      sb.append(s"""  "${escapeDotLabel(id)}" [label="${escapeDotLabel(label)}"];\n""")
     }
     sb.append("\n")
 
     // Add edges
     edges.foreach { case (from, to) =>
-      sb.append(s"""  "$from" -> "$to";\n""")
+      sb.append(s"""  "${escapeDotLabel(from)}" -> "${escapeDotLabel(to)}";\n""")
     }
 
     sb.append("}\n")
@@ -182,7 +190,7 @@ object Output:
 
     // Add nodes
     nodes.foreach { case (id, label, _) =>
-      sb.append(s"  $id[$label]\n")
+      sb.append(s"  $id[${escapeMermaidLabel(label)}]\n")
     }
 
     // Add edges

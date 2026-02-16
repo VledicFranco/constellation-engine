@@ -186,6 +186,57 @@ class RunCommandTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     merged("text") shouldBe Json.fromString("from-cli")
     merged("count") shouldBe Json.fromInt(10)
 
+  // ============= Input Parsing Edge Cases =============
+
+  test("parseValue: empty string"):
+    val result = parseValue("")
+    result shouldBe Json.fromString("")
+
+  test("parseValue: whitespace-only string"):
+    val result = parseValue("   ")
+    result shouldBe Json.fromString("   ")
+
+  test("parseValue: string with equals sign"):
+    val result = parseValue("a=b")
+    result shouldBe Json.fromString("a=b")
+
+  test("parseValue: scientific notation"):
+    val result = parseValue("1e10")
+    // Should parse as number (JSON valid via parse)
+    result.isNumber shouldBe true
+
+  test("parseValue: very large integer string"):
+    val result = parseValue("99999999999999999999")
+    // Should parse as a number or string - not crash
+    (result.isNumber || result.isString) shouldBe true
+
+  test("parseValue: negative number"):
+    val result = parseValue("-42")
+    result.isNumber shouldBe true
+
+  test("parseValue: negative float"):
+    val result = parseValue("-3.14")
+    result.isNumber shouldBe true
+
+  test("parseValue: case-insensitive booleans"):
+    // parseValue uses .toLowerCase so all cases map to boolean
+    parseValue("True") shouldBe Json.True
+    parseValue("TRUE") shouldBe Json.True
+    parseValue("False") shouldBe Json.False
+    parseValue("FALSE") shouldBe Json.False
+
+  test("parseValue: string that looks like number but isn't"):
+    val result = parseValue("12abc")
+    result shouldBe Json.fromString("12abc")
+
+  test("parseValue: zero"):
+    val result = parseValue("0")
+    result shouldBe Json.fromLong(0)
+
+  test("parseValue: zero float"):
+    val result = parseValue("0.0")
+    result.isNumber shouldBe true
+
   // ============= Helper Methods =============
 
   private def parseValue(s: String): Json =

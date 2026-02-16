@@ -243,7 +243,10 @@ object DeployCommand:
         executePush(file, name, baseUri, token, format, quiet)
 
       case DeployCanary(file, name, percent) =>
-        executeCanary(file, name, percent, baseUri, token, format, quiet)
+        if percent < 1 || percent > 100 then
+          IO.println(Output.error(s"Canary percent must be between 1 and 100 (got $percent)", format))
+            .as(CliApp.ExitCodes.UsageError)
+        else executeCanary(file, name, percent, baseUri, token, format, quiet)
 
       case DeployPromote(pipeline) =>
         executePromote(pipeline, baseUri, token, format)

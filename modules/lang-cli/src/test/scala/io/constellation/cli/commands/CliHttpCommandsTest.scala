@@ -16,6 +16,7 @@ import org.http4s.implicits.*
 import org.http4s.{EntityDecoder, EntityEncoder, HttpApp, Response, Status, Uri}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.typelevel.ci.CIString
 
 /** Integration tests for CLI commands with mocked HTTP server.
   *
@@ -432,6 +433,107 @@ class CliHttpCommandsTest extends AnyFlatSpec with Matchers {
       .unsafeRunSync()
 
     result shouldBe CliApp.ExitCodes.AuthError
+  }
+
+  // ===== DeployCommand Validation Tests =====
+
+  "DeployCommand canary" should "reject percent below 1" in {
+    val mockApp = HttpApp[IO] { case _ => Ok() }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in x: Int\nout x")
+    val cmd        = DeployCommand.DeployCanary(sourceFile, None, percent = 0)
+
+    val result = DeployCommand
+      .execute(cmd, uri"http://localhost:8080", None, OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.UsageError
+  }
+
+  it should "reject percent above 100" in {
+    val mockApp = HttpApp[IO] { case _ => Ok() }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in x: Int\nout x")
+    val cmd        = DeployCommand.DeployCanary(sourceFile, None, percent = 200)
+
+    val result = DeployCommand
+      .execute(cmd, uri"http://localhost:8080", None, OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.UsageError
+  }
+
+  it should "reject negative percent" in {
+    val mockApp = HttpApp[IO] { case _ => Ok() }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in x: Int\nout x")
+    val cmd        = DeployCommand.DeployCanary(sourceFile, None, percent = -10)
+
+    val result = DeployCommand
+      .execute(cmd, uri"http://localhost:8080", None, OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.UsageError
+  }
+
+  // ===== HttpClient Token Handling =====
+
+  "RunCommand with empty token" should "not send Authorization header" in {
+    // Empty/whitespace tokens should be treated as no token
+    val mockApp = HttpApp[IO] { case req @ POST -> Root / "run" =>
+      val hasAuth = req.headers.get(CIString("Authorization")).isDefined
+      Ok(
+        Json.obj(
+          "success" -> Json.True,
+          "outputs" -> Json.obj(
+            "hasAuth" -> Json.fromBoolean(hasAuth)
+          )
+        )
+      )
+    }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in x: Int\nout x")
+    val cmd        = RunCommand(sourceFile, List("x" -> "1"))
+
+    // Empty string token should be treated as None
+    val result = RunCommand
+      .execute(cmd, uri"http://localhost:8080", Some(""), OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.Success
+  }
+
+  "RunCommand with whitespace-only token" should "not send Authorization header" in {
+    val mockApp = HttpApp[IO] { case req @ POST -> Root / "run" =>
+      val hasAuth = req.headers.get(CIString("Authorization")).isDefined
+      Ok(
+        Json.obj(
+          "success" -> Json.True,
+          "outputs" -> Json.obj(
+            "hasAuth" -> Json.fromBoolean(hasAuth)
+          )
+        )
+      )
+    }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in x: Int\nout x")
+    val cmd        = RunCommand(sourceFile, List("x" -> "1"))
+
+    val result = RunCommand
+      .execute(cmd, uri"http://localhost:8080", Some("   "), OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.Success
   }
 
   // ===== Edge Cases =====

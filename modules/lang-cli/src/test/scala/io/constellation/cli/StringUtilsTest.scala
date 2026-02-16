@@ -142,6 +142,30 @@ class StringUtilsTest extends AnyFunSuite with Matchers:
     result should include("[REDACTED]")
     result should not include "some-token-here"
 
+  // ============= URL Credential Sanitization =============
+
+  test("sanitizeError: redacts credentials in URLs"):
+    val msg    = "Failed to connect: http://admin:secret123@db.example.com:5432/mydb"
+    val result = StringUtils.sanitizeError(msg)
+    result should include("[REDACTED]@db.example.com")
+    result should not include "admin:secret123"
+
+  test("sanitizeError: redacts credentials in https URLs"):
+    val msg    = "Error: https://user:pass@api.example.com/v1/data"
+    val result = StringUtils.sanitizeError(msg)
+    result should include("[REDACTED]@api.example.com")
+    result should not include "user:pass"
+
+  test("sanitizeError: preserves URLs without credentials"):
+    val msg = "Connected to http://localhost:8080/api"
+    StringUtils.sanitizeError(msg) shouldBe msg
+
+  test("sanitizeError: redacts database connection strings"):
+    val msg    = "Connection failed: postgresql://dbuser:dbpass@pghost:5432/production"
+    val result = StringUtils.sanitizeError(msg)
+    result should include("[REDACTED]@pghost")
+    result should not include "dbuser:dbpass"
+
   // ============= Display constants =============
 
   test("Display constants have expected values"):

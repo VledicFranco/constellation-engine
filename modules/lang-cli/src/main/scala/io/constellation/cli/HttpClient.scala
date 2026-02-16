@@ -31,14 +31,22 @@ object HttpClient:
       .withIdleConnectionTime(30.seconds)
       .build
 
+  /** Normalize token: treat empty/whitespace-only tokens as None. */
+  private def normalizeToken(token: Option[String]): Option[String] =
+    token.map(_.trim).filter(_.nonEmpty)
+
+  /** Build Authorization headers from an optional token. */
+  private def authHeaders(token: Option[String]): Headers =
+    normalizeToken(token)
+      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
+      .getOrElse(Headers.empty)
+
   /** Make a GET request. */
   def get[A: Decoder](
       uri: Uri,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token
-      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
-      .getOrElse(Headers.empty)
+    val headers = authHeaders(token)
     val request = Request[IO](Method.GET, uri, headers = headers)
 
     client
@@ -58,9 +66,7 @@ object HttpClient:
       body: Json,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token
-      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
-      .getOrElse(Headers.empty)
+    val headers = authHeaders(token)
     val request = Request[IO](Method.POST, uri, headers = headers).withEntity(body)
 
     client
@@ -79,9 +85,7 @@ object HttpClient:
       uri: Uri,
       token: Option[String] = None
   )(using client: Client[IO]): IO[ApiResponse[A]] =
-    val headers = token
-      .map(t => Headers(Header.Raw(CIString("Authorization"), s"Bearer $t")))
-      .getOrElse(Headers.empty)
+    val headers = authHeaders(token)
     val request = Request[IO](Method.DELETE, uri, headers = headers)
 
     client

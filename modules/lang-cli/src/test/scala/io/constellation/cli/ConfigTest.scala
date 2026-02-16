@@ -131,6 +131,28 @@ class ConfigTest extends AnyFunSuite with Matchers with BeforeAndAfterEach:
     val result = updatePath(json, List("key"), "new")
     result.hcursor.downField("key").as[String] shouldBe Right("new")
 
+  // ============= Empty Key Validation Tests =============
+
+  test("CliConfig.setValue: rejects empty path"):
+    val result = CliConfig.setValue("", "value").attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.swap.toOption.get.getMessage should include("empty segments")
+
+  test("CliConfig.setValue: rejects path with empty segment"):
+    val result = CliConfig.setValue("server..url", "value").attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.swap.toOption.get.getMessage should include("empty segments")
+
+  test("CliConfig.setValue: rejects path starting with dot"):
+    val result = CliConfig.setValue(".server.url", "value").attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.swap.toOption.get.getMessage should include("empty segments")
+
+  test("CliConfig.setValue: rejects path ending with dot"):
+    val result = CliConfig.setValue("server.url.", "value").attempt.unsafeRunSync()
+    result.isLeft shouldBe true
+    result.swap.toOption.get.getMessage should include("empty segments")
+
   // ============= Helper Methods =============
 
   private def resolvePath(json: io.circe.Json, path: List[String]): Option[String] =
