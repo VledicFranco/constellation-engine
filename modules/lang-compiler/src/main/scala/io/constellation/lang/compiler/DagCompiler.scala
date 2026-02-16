@@ -1006,22 +1006,28 @@ object DagCompiler {
         createClosureEvaluator(lambda).flatMap { closureEvaluator =>
           operation match {
             case HigherOrderOp.Filter =>
-              Right(InlineTransform.ClosureFilterTransform(
-                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
-                capturedKeys
-              ))
+              Right(
+                InlineTransform.ClosureFilterTransform(
+                  closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                  capturedKeys
+                )
+              )
             case HigherOrderOp.Map =>
               Right(InlineTransform.ClosureMapTransform(closureEvaluator, capturedKeys))
             case HigherOrderOp.All =>
-              Right(InlineTransform.ClosureAllTransform(
-                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
-                capturedKeys
-              ))
+              Right(
+                InlineTransform.ClosureAllTransform(
+                  closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                  capturedKeys
+                )
+              )
             case HigherOrderOp.Any =>
-              Right(InlineTransform.ClosureAnyTransform(
-                closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
-                capturedKeys
-              ))
+              Right(
+                InlineTransform.ClosureAnyTransform(
+                  closureEvaluator.asInstanceOf[(Any, Map[String, Any]) => Boolean],
+                  capturedKeys
+                )
+              )
             case HigherOrderOp.SortBy =>
               Left(DagCompilerError.UnsupportedOperation("SortBy"))
           }
@@ -1067,8 +1073,8 @@ object DagCompiler {
     private def createClosureEvaluator(
         lambda: TypedLambda
     ): Either[DagCompilerError, (Any, Map[String, Any]) => Any] =
-      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map { _ =>
-        (element: Any, capturedValues: Map[String, Any]) =>
+      validateLambdaBody(lambda.bodyNodes, lambda.bodyOutputId).map {
+        _ => (element: Any, capturedValues: Map[String, Any]) =>
           {
             // Bind lambda parameter to element value
             val paramBindings: Map[String, Any] = lambda.paramNames.zip(List(element)).toMap

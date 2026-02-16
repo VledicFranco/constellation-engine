@@ -81,7 +81,9 @@ class ModuleHttpRoutes(constellation: Constellation) {
               cvalues    <- convertInputs(jsonInputs, module.spec)
               state      <- runSyntheticDag(module.spec, module, cvalues)
               outputs    <- extractOutputs(state)
-              resp       <- Ok(ModuleInvokeResponse(success = true, outputs = outputs, module = Some(name)))
+              resp <- Ok(
+                ModuleInvokeResponse(success = true, outputs = outputs, module = Some(name))
+              )
             } yield resp
         }
       } yield result).handleErrorWith { err =>

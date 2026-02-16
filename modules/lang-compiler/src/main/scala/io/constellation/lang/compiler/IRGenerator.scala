@@ -375,7 +375,7 @@ object IRGenerator {
           val captureId   = UUID.randomUUID()
           val captureNode = IRNode.Input(captureId, varName, outerNode.outputType, None)
           capturedBindings = capturedBindings + (varName -> captureId)
-          capturedInputs = capturedInputs + (varName -> outerNodeId)
+          capturedInputs = capturedInputs + (varName     -> outerNodeId)
           (varName, captureId, captureNode)
         }
       }

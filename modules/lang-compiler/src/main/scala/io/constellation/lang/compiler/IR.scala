@@ -228,9 +228,9 @@ object IRNode {
     * each element of a collection.
     *
     * @param capturedInputs
-    *   Maps captured variable names to their node UUIDs in the **outer** context. These are the data
-    *   dependencies that must be resolved before the HOF executes, so the captured values can be
-    *   passed into the lambda body at runtime.
+    *   Maps captured variable names to their node UUIDs in the **outer** context. These are the
+    *   data dependencies that must be resolved before the HOF executes, so the captured values can
+    *   be passed into the lambda body at runtime.
     */
   final case class HigherOrderNode(
       id: UUID,

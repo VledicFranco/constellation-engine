@@ -230,24 +230,24 @@ object DagVizCompiler:
   /** Extract the output type from an IR node */
   private def getNodeOutputType(node: IRNode): SemanticType =
     node match {
-      case IRNode.Input(_, _, outputType, _)                 => outputType
-      case IRNode.ModuleCall(_, _, _, _, outputType, _, _)   => outputType
-      case IRNode.MergeNode(_, _, _, outputType, _)          => outputType
-      case IRNode.ProjectNode(_, _, _, outputType, _)        => outputType
-      case IRNode.FieldAccessNode(_, _, _, outputType, _)    => outputType
-      case IRNode.ConditionalNode(_, _, _, _, outputType, _) => outputType
-      case IRNode.LiteralNode(_, _, outputType, _)           => outputType
-      case IRNode.AndNode(_, _, _, _)                        => SemanticType.SBoolean
-      case IRNode.OrNode(_, _, _, _)                         => SemanticType.SBoolean
-      case IRNode.NotNode(_, _, _)                           => SemanticType.SBoolean
-      case IRNode.GuardNode(_, _, _, innerType, _)           => SemanticType.SOptional(innerType)
-      case IRNode.CoalesceNode(_, _, _, resultType, _)       => resultType
-      case IRNode.BranchNode(_, _, _, resultType, _)         => resultType
-      case IRNode.StringInterpolationNode(_, _, _, _)        => SemanticType.SString
+      case IRNode.Input(_, _, outputType, _)                    => outputType
+      case IRNode.ModuleCall(_, _, _, _, outputType, _, _)      => outputType
+      case IRNode.MergeNode(_, _, _, outputType, _)             => outputType
+      case IRNode.ProjectNode(_, _, _, outputType, _)           => outputType
+      case IRNode.FieldAccessNode(_, _, _, outputType, _)       => outputType
+      case IRNode.ConditionalNode(_, _, _, _, outputType, _)    => outputType
+      case IRNode.LiteralNode(_, _, outputType, _)              => outputType
+      case IRNode.AndNode(_, _, _, _)                           => SemanticType.SBoolean
+      case IRNode.OrNode(_, _, _, _)                            => SemanticType.SBoolean
+      case IRNode.NotNode(_, _, _)                              => SemanticType.SBoolean
+      case IRNode.GuardNode(_, _, _, innerType, _)              => SemanticType.SOptional(innerType)
+      case IRNode.CoalesceNode(_, _, _, resultType, _)          => resultType
+      case IRNode.BranchNode(_, _, _, resultType, _)            => resultType
+      case IRNode.StringInterpolationNode(_, _, _, _)           => SemanticType.SString
       case IRNode.HigherOrderNode(_, _, _, _, outputType, _, _) => outputType
-      case IRNode.ListLiteralNode(_, _, elementType, _)      => SemanticType.SList(elementType)
-      case IRNode.RecordLitNode(_, _, outputType, _)         => outputType
-      case IRNode.MatchNode(_, _, _, resultType, _)          => resultType
+      case IRNode.ListLiteralNode(_, _, elementType, _)         => SemanticType.SList(elementType)
+      case IRNode.RecordLitNode(_, _, outputType, _)            => outputType
+      case IRNode.MatchNode(_, _, _, resultType, _)             => resultType
     }
 
   /** Build edges from IR dependencies */

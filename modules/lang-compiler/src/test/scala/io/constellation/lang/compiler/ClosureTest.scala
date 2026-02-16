@@ -349,7 +349,7 @@ class ClosureTest extends AnyFlatSpec with Matchers {
     val irResult = compiler.compileToIR(source, "no-closure-ir-test")
     irResult.isRight shouldBe true
 
-    val ir = irResult.toOption.get
+    val ir      = irResult.toOption.get
     val hofNode = ir.nodes.values.collectFirst { case h: IRNode.HigherOrderNode => h }
     hofNode shouldBe defined
 

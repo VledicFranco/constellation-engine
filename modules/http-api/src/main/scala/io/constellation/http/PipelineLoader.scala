@@ -28,13 +28,12 @@ object PipelineLoader {
   /** Read a file as UTF-8, raising a descriptive error for non-UTF-8 content. */
   private def readFileUtf8(file: Path): IO[String] =
     IO(Files.readString(file, StandardCharsets.UTF_8))
-      .handleErrorWith {
-        case _: java.nio.charset.MalformedInputException =>
-          IO.raiseError(
-            new IllegalArgumentException(
-              s"File ${file.getFileName} contains invalid UTF-8 characters. Please save the file as UTF-8."
-            )
+      .handleErrorWith { case _: java.nio.charset.MalformedInputException =>
+        IO.raiseError(
+          new IllegalArgumentException(
+            s"File ${file.getFileName} contains invalid UTF-8 characters. Please save the file as UTF-8."
           )
+        )
       }
 
   /** Result of a pipeline loading operation.
@@ -166,25 +165,25 @@ object PipelineLoader {
                   .as(FileResult.Failed(msg))
               }
               .map {
-              case FileResult.Loaded =>
-                acc.copy(
-                  loaded = acc.loaded + 1,
-                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
-                  filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
-                )
-              case FileResult.Skipped =>
-                acc.copy(
-                  skipped = acc.skipped + 1,
-                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
-                  filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
-                )
-              case FileResult.Failed(msg) =>
-                acc.copy(
-                  failed = acc.failed + 1,
-                  errors = acc.errors :+ msg,
-                  seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _)
-                )
-            }
+                case FileResult.Loaded =>
+                  acc.copy(
+                    loaded = acc.loaded + 1,
+                    seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
+                    filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
+                  )
+                case FileResult.Skipped =>
+                  acc.copy(
+                    skipped = acc.skipped + 1,
+                    seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _),
+                    filePaths = aliasName.fold(acc.filePaths)(n => acc.filePaths + (n -> file))
+                  )
+                case FileResult.Failed(msg) =>
+                  acc.copy(
+                    failed = acc.failed + 1,
+                    errors = acc.errors :+ msg,
+                    seenAliases = aliasName.fold(acc.seenAliases)(acc.seenAliases + _)
+                  )
+              }
         }
       }
       .map(acc => LoadResult(acc.loaded, acc.failed, acc.skipped, acc.errors, acc.filePaths))

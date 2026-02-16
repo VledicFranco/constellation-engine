@@ -117,7 +117,8 @@ final case class DataNodeSpec(
   * @param definitionContext
   *   Optional JSON metadata from module definition
   * @param httpConfig
-  *   Optional HTTP endpoint configuration; when present the module is published at `/modules/{name}/invoke`
+  *   Optional HTTP endpoint configuration; when present the module is published at
+  *   `/modules/{name}/invoke`
   */
 case class ModuleNodeSpec(
     metadata: ComponentMetadata,

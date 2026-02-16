@@ -312,7 +312,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
       Map("closure.cst" -> closureSource, "good.cst" -> validSource1)
     ) { dir =>
       val (constellation, compiler) = freshInstancesWithStdLib
-      val config = PipelineLoaderConfig(directory = dir, failOnError = false)
+      val config                    = PipelineLoaderConfig(directory = dir, failOnError = false)
       val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
       // Both files should load successfully now that closures are supported
@@ -326,7 +326,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
       Map("closure.cst" -> closureSource)
     ) { dir =>
       val (constellation, compiler) = freshInstancesWithStdLib
-      val config = PipelineLoaderConfig(directory = dir, failOnError = true)
+      val config                    = PipelineLoaderConfig(directory = dir, failOnError = true)
 
       // Should succeed now — no exception expected
       val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
@@ -352,7 +352,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
       def functionRegistry = LangCompiler.empty.functionRegistry
     }
     val (constellation, _) = freshInstances
-    val config = PipelineLoaderConfig(directory = dir, failOnError = false)
+    val config             = PipelineLoaderConfig(directory = dir, failOnError = false)
     val result = PipelineLoader.load(config, constellation, throwingCompiler).unsafeRunSync()
 
     result.loaded shouldBe 0
@@ -372,7 +372,7 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
       Files.write(badFile, Array[Byte](0x69, 0x6e, 0x20, 0xfe.toByte, 0xff.toByte, 0x3a, 0x20))
 
       val (constellation, compiler) = freshInstances
-      val config = PipelineLoaderConfig(directory = tmpDir, failOnError = false)
+      val config                    = PipelineLoaderConfig(directory = tmpDir, failOnError = false)
       val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
 
       result.failed shouldBe 1

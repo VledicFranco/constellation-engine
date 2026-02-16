@@ -97,8 +97,8 @@ class TokenBucketRateLimiterTest extends AnyFlatSpec with Matchers with RetrySup
       _       <- limiter.acquire
       _       <- limiter.acquire
       before  <- limiter.availableTokens
-      _       <- IO.sleep(200.millis) // Should replenish tokens (generous margin for CI load)
-      after   <- limiter.availableTokens
+      _     <- IO.sleep(200.millis) // Should replenish tokens (generous margin for CI load)
+      after <- limiter.availableTokens
     } yield (before, after)).unsafeRunSync()
 
     result._1 shouldBe 7.0 +- 0.5
