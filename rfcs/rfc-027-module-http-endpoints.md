@@ -1,6 +1,6 @@
 # RFC-027: Module HTTP Endpoints
 
-**Status:** Draft
+**Status:** Implemented
 **Priority:** P2 (Developer Experience / Integration)
 **Author:** Human + Claude
 **Created:** 2026-02-10
