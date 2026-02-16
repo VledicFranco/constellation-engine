@@ -251,6 +251,34 @@ class CliHttpCommandsTest extends AnyFlatSpec with Matchers {
     result shouldBe CliApp.ExitCodes.Success
   }
 
+  it should "prioritize outputs over suspended status" in {
+    // Bug fix: when API returns both outputs AND status="suspended",
+    // the CLI should display outputs (not show "suspended" message)
+    val mockApp = HttpApp[IO] { case req @ POST -> Root / "run" =>
+      Ok(
+        Json.obj(
+          "success"     -> Json.True,
+          "status"      -> Json.fromString("suspended"),
+          "executionId" -> Json.fromString("exec-789"),
+          "outputs" -> Json.obj(
+            "result" -> Json.fromString("HELLO WORLD")
+          )
+        )
+      )
+    }
+
+    given Client[IO] = mockClient(mockApp)
+
+    val sourceFile = tempFile("in text: String\nout result")
+    val cmd        = RunCommand(sourceFile, List("text" -> "hello world"))
+
+    val result = RunCommand
+      .execute(cmd, uri"http://localhost:8080", None, OutputFormat.Json, quiet = true)
+      .unsafeRunSync()
+
+    result shouldBe CliApp.ExitCodes.Success
+  }
+
   it should "handle 401 authentication errors" in {
     val mockApp = HttpApp[IO] { case POST -> Root / "run" =>
       Response[IO](Status.Unauthorized).pure[IO]

@@ -238,13 +238,17 @@ object RunCommand:
         else if resp.error.isDefined then
           IO.println(Output.error(resp.error.get, format))
             .as(CliApp.ExitCodes.RuntimeError)
-        // Handle suspended execution
+        // Handle successful execution (outputs present)
+        else if resp.outputs.nonEmpty then
+          IO.println(Output.outputs(resp.outputs, format))
+            .as(CliApp.ExitCodes.Success)
+        // Handle suspended execution (no outputs yet)
         else if resp.status.contains("suspended") then
           val execId        = resp.executionId.getOrElse("unknown")
           val missingInputs = resp.missingInputs.getOrElse(Map.empty)
           IO.println(Output.suspended(execId, missingInputs, format))
             .as(CliApp.ExitCodes.Success)
-        // Handle successful execution
+        // Fallback
         else
           IO.println(Output.outputs(resp.outputs, format))
             .as(CliApp.ExitCodes.Success)
