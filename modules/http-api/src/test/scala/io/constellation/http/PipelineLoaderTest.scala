@@ -4,9 +4,11 @@ import java.nio.file.{Files, Path}
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import cats.implicits.*
 
 import io.constellation.impl.ConstellationImpl
 import io.constellation.lang.LangCompiler
+import io.constellation.stdlib.StdLib
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -281,5 +283,87 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
 
     result.loaded shouldBe 1
     result.failed shouldBe 0
+  }
+
+  // --- Closure crash resilience (RFC-030) ---
+
+  // Source that triggers IllegalStateException in IRGenerator.generateLambdaIR:
+  // the lambda captures `threshold` from outer scope, which is not resolvable
+  // in the lambda's isolated GenContext.
+  private val closureSource =
+    """use stdlib.collection
+      |use stdlib.compare
+      |
+      |in numbers: List<Int>
+      |in threshold: Int
+      |
+      |above = filter(numbers, (x) => gt(x, threshold))
+      |out above""".stripMargin
+
+  private def freshInstancesWithStdLib: (ConstellationImpl, LangCompiler) = {
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    StdLib.allModules.values.toList
+      .traverse(constellation.setModule)
+      .unsafeRunSync()
+    (constellation, StdLib.compiler)
+  }
+
+  it should "gracefully handle closure crash instead of crashing (failOnError=false)" in
+    withTempDir(
+      Map("closure.cst" -> closureSource, "good.cst" -> validSource1)
+    ) { dir =>
+      val (constellation, compiler) = freshInstancesWithStdLib
+      val config = PipelineLoaderConfig(directory = dir, failOnError = false)
+      val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
+
+      // The closure file should fail gracefully, the passthrough file should load
+      result.loaded shouldBe 1
+      result.failed shouldBe 1
+      result.errors should have size 1
+      result.errors.head should include("IllegalStateException")
+    }
+
+  it should "gracefully handle closure crash instead of crashing (failOnError=true)" in
+    withTempDir(
+      Map("closure.cst" -> closureSource)
+    ) { dir =>
+      val (constellation, compiler) = freshInstancesWithStdLib
+      val config = PipelineLoaderConfig(directory = dir, failOnError = true)
+
+      // Should raise RuntimeException with compilation failure info, not crash with
+      // raw IllegalStateException
+      val error = intercept[RuntimeException] {
+        PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
+      }
+      error.getMessage should include("failed to compile")
+      error.getMessage should include("IllegalStateException")
+    }
+
+  it should "handle compiler throwing unexpected exception as failure" in withTempDir(
+    Map("crash.cst" -> validSource1)
+  ) { dir =>
+    // Create a compiler that throws on compileIO
+    val throwingCompiler = new LangCompiler {
+      def compile(
+          source: String,
+          dagName: String
+      ) = throw new IllegalStateException("simulated crash")
+
+      def compileToIR(
+          source: String,
+          dagName: String
+      ) = throw new IllegalStateException("simulated crash")
+
+      def functionRegistry = LangCompiler.empty.functionRegistry
+    }
+    val (constellation, _) = freshInstances
+    val config = PipelineLoaderConfig(directory = dir, failOnError = false)
+    val result = PipelineLoader.load(config, constellation, throwingCompiler).unsafeRunSync()
+
+    result.loaded shouldBe 0
+    result.failed shouldBe 1
+    result.errors should have size 1
+    result.errors.head should include("IllegalStateException")
+    result.errors.head should include("simulated crash")
   }
 }

@@ -217,13 +217,24 @@ object PipelineLoader {
               result <- existing match {
                 case Some(_) => IO.pure(CompileResult(aliasName, file, Right(None))) // skip
                 case None =>
-                  compiler.compileIO(source, dagName).map {
-                    case Right(compiled) =>
-                      CompileResult(aliasName, file, Right(Some(compiled.pipeline.image)))
-                    case Left(errors) =>
-                      val msg = s"$file: ${errors.map(_.message).mkString("; ")}"
-                      CompileResult(aliasName, file, Left(msg))
-                  }
+                  compiler
+                    .compileIO(source, dagName)
+                    .map {
+                      case Right(compiled) =>
+                        CompileResult(aliasName, file, Right(Some(compiled.pipeline.image)))
+                      case Left(errors) =>
+                        val msg = s"$file: ${errors.map(_.message).mkString("; ")}"
+                        CompileResult(aliasName, file, Left(msg))
+                    }
+                    .handleErrorWith { ex =>
+                      val msg =
+                        s"$file: ${ex.getClass.getSimpleName}: ${ex.getMessage}"
+                      logger
+                        .warn(
+                          s"PipelineLoader: compilation threw unexpected exception: $msg"
+                        )
+                        .as(CompileResult(aliasName, file, Left(msg)))
+                    }
               }
             } yield result
         }
@@ -320,25 +331,33 @@ object PipelineLoader {
       sourceHash: String,
       registryHash: String
   ): IO[FileResult] =
-    compiler.compileIO(source, dagName).flatMap {
-      case Right(compiled) =>
-        val image = compiled.pipeline.image
-        for {
-          _ <- constellation.PipelineStore.store(image)
-          _ <- constellation.PipelineStore
-            .indexSyntactic(sourceHash, registryHash, image.structuralHash)
-          _ <- aliasName
-            .traverse_(name => constellation.PipelineStore.alias(name, image.structuralHash))
-          _ <- logger.info(
-            s"PipelineLoader: loaded $file -> hash=${image.structuralHash.take(12)}..." +
-              aliasName.fold("")(n => s", alias='$n'")
-          )
-        } yield FileResult.Loaded
+    compiler
+      .compileIO(source, dagName)
+      .flatMap {
+        case Right(compiled) =>
+          val image = compiled.pipeline.image
+          for {
+            _ <- constellation.PipelineStore.store(image)
+            _ <- constellation.PipelineStore
+              .indexSyntactic(sourceHash, registryHash, image.structuralHash)
+            _ <- aliasName
+              .traverse_(name => constellation.PipelineStore.alias(name, image.structuralHash))
+            _ <- logger.info(
+              s"PipelineLoader: loaded $file -> hash=${image.structuralHash.take(12)}..." +
+                aliasName.fold("")(n => s", alias='$n'")
+            )
+          } yield FileResult.Loaded
 
-      case Left(errors) =>
-        val msg = s"$file: ${errors.map(_.message).mkString("; ")}"
-        logger.warn(s"PipelineLoader: failed to compile $msg").as(FileResult.Failed(msg))
-    }
+        case Left(errors) =>
+          val msg = s"$file: ${errors.map(_.message).mkString("; ")}"
+          logger.warn(s"PipelineLoader: failed to compile $msg").as(FileResult.Failed(msg))
+      }
+      .handleErrorWith { ex =>
+        val msg = s"$file: ${ex.getClass.getSimpleName}: ${ex.getMessage}"
+        logger
+          .warn(s"PipelineLoader: compilation threw unexpected exception: $msg")
+          .as(FileResult.Failed(msg))
+      }
 
   /** Derive the alias name from a file path based on the alias strategy. */
   private def deriveAlias(
