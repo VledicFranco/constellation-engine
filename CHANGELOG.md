@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Module HTTP Endpoints** (RFC-027): Opt-in HTTP endpoint publishing for individual modules via `ModuleBuilder.httpEndpoint()`. Adds `GET /modules/published` for discovery and `POST /modules/{name}/invoke` for direct module invocation without writing a `.cst` pipeline
 - **Coursier channel**: `cs channel --add https://vledicfranco.github.io/constellation-engine/channel && cs install constellation` for easy CLI installation
 - **Structural invariant tests**: 12 tests across 4 specs using `organon-testing` v0.4.0 — verifies core purity, organon file structure, naming conventions, and module purity constraints (`make test-invariants`)
 

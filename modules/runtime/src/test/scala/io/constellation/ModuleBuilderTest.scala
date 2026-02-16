@@ -160,6 +160,50 @@ class ModuleBuilderTest extends AnyFlatSpec with Matchers {
     )
   }
 
+  // ===== HTTP endpoint configuration =====
+
+  it should "support httpEndpoint on init builder" in {
+    val module = ModuleBuilder
+      .metadata("Published", "A published module", 1, 0)
+      .httpEndpoint()
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x + in.y))
+      .build
+
+    module.spec.httpConfig shouldBe Some(ModuleHttpConfig())
+    module.spec.httpConfig.get.published shouldBe true
+  }
+
+  it should "support httpEndpoint with custom config on init builder" in {
+    val config = ModuleHttpConfig(published = false)
+    val module = ModuleBuilder
+      .metadata("CustomHttp", "Custom HTTP config", 1, 0)
+      .httpEndpoint(config)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .build
+
+    module.spec.httpConfig shouldBe Some(config)
+    module.spec.httpConfig.get.published shouldBe false
+  }
+
+  it should "have no httpConfig by default" in {
+    val module = ModuleBuilder
+      .metadata("NoHttp", "No HTTP config", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .build
+
+    module.spec.httpConfig shouldBe None
+  }
+
+  it should "support httpEndpoint after implementation" in {
+    val module = ModuleBuilder
+      .metadata("PostImpl", "HTTP after impl", 1, 0)
+      .implementationPure[TestInput, TestOutput](in => TestOutput(in.x))
+      .httpEndpoint()
+      .build
+
+    module.spec.httpConfig shouldBe Some(ModuleHttpConfig())
+  }
+
   // ===== Post-implementation builder methods (ModuleBuilder[I, O]) =====
 
   "ModuleBuilder[I, O]" should "support name after implementation" in {

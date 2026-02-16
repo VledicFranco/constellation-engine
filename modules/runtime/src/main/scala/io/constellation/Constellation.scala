@@ -55,6 +55,13 @@ trait Constellation {
     */
   def removeModule(name: String): IO[Unit] = IO.unit
 
+  /** List modules that have been published as HTTP endpoints.
+    *
+    * Returns only modules whose `httpConfig` is defined and `published` is true.
+    */
+  def publishedModules: IO[List[ModuleNodeSpec]] =
+    getModules.map(_.filter(_.httpConfig.exists(_.published)))
+
   // ---------------------------------------------------------------------------
   // New API (Phase 1)
   // ---------------------------------------------------------------------------

@@ -72,6 +72,7 @@
 | `ModuleNodeSpec` | Specification for a single module node (consumes/produces) |
 | `DataNodeSpec` | Specification for a data node with type and inline transform |
 | `InlineTransform` | Lightweight operation executed directly on data nodes |
+| `ModuleHttpConfig` | Configuration for publishing a module as an HTTP endpoint |
 
 For complete type signatures, see:
 - [io.constellation](/organon/generated/io.constellation.md)

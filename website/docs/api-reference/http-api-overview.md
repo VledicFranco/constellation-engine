@@ -73,6 +73,13 @@ All endpoints except `/health`, `/health/live`, `/health/ready`, and `/metrics` 
 | `/pipelines/{name}/canary/rollback` | POST | Rollback canary deployment |
 | `/pipelines/{name}/canary` | DELETE | Abort canary deployment |
 
+### Module HTTP Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/modules/published` | GET | List modules published as HTTP endpoints |
+| `/modules/{name}/invoke` | POST | Invoke a published module directly with JSON inputs |
+
 ---
 
 ## Common Workflows
@@ -111,6 +118,20 @@ PIPELINE_ID=$(curl -s -X POST http://localhost:8080/compile \
 curl -X POST "http://localhost:8080/execute/${PIPELINE_ID}" \
   -H "Content-Type: application/json" \
   -d '{"x": 42}'
+```
+
+### Invoke a Module Directly (No Pipeline)
+
+Use `/modules/{name}/invoke` to call a published module without writing a `.cst` pipeline. First, mark the module with `.httpEndpoint()` in your Scala code.
+
+```bash
+# Discover published modules
+curl http://localhost:8080/modules/published
+
+# Invoke a module directly
+curl -X POST http://localhost:8080/modules/Uppercase/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"text": "hello world"}'
 ```
 
 ### Check Server Health

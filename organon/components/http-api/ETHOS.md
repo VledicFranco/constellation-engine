@@ -30,6 +30,7 @@
 | `PipelineVersionStore` | Version history tracking for pipeline hot-reload |
 | `FileSystemPipelineStore` | Persistent pipeline storage surviving server restarts |
 | `CanaryRouter` | Traffic splitting for canary releases between pipeline versions |
+| `ModuleHttpRoutes` | Direct module invocation and discovery: `/modules/published`, `/modules/:name/invoke` |
 | `ApiModels` | Request/response types: CompileRequest, ExecuteRequest, RunRequest, etc. |
 | `HashedApiKey` | SHA-256 hashed API key with constant-time verification |
 | `ApiRole` | Authorization level: Admin (all), Execute (GET+POST), ReadOnly (GET) |
@@ -124,7 +125,16 @@ When `/execute` or `/run` receives incomplete inputs, the response is 200 OK wit
 | Implementation | `modules/http-api/src/main/scala/io/constellation/http/ConstellationRoutes.scala#buildSuspendedSignature` |
 | Test | `modules/http-api/src/test/scala/io/constellation/http/ConstellationRoutesTest.scala#return 200 with suspended status for missing input` |
 
-### 10. LSP WebSocket uses JSON-RPC 2.0 protocol
+### 10. Published module invoke uses synthetic DAG, not raw function extraction
+
+Module invocation via `POST /modules/:name/invoke` builds a minimal single-node DAG and delegates to `Runtime.run()`. This reuses all existing execution infrastructure (deferred tables, timeout handling, namespace resolution) rather than extracting and calling the raw implementation function.
+
+| Aspect | Reference |
+|--------|-----------|
+| Implementation | `modules/http-api/src/main/scala/io/constellation/http/ModuleHttpRoutes.scala#runSyntheticDag` |
+| Test | `modules/http-api/src/test/scala/io/constellation/http/ModuleHttpRoutesTest.scala#invoke a published module with correct inputs` |
+
+### 11. LSP WebSocket uses JSON-RPC 2.0 protocol
 
 WebSocket messages at `/lsp` follow JSON-RPC 2.0 with `jsonrpc`, `method`, `params`, `id` (for requests), `result`/`error` (for responses). Standard error codes (ParseError, MethodNotFound, etc.) apply.
 
@@ -146,6 +156,7 @@ WebSocket messages at `/lsp` follow JSON-RPC 2.0 with `jsonrpc`, `method`, `para
 
 ## Decision Heuristics
 
+- When adding module-level HTTP features (per-module middleware, OpenAPI, etc.), use `ModuleHttpRoutes`
 - When adding a new endpoint, use `ConstellationRoutes` for core API functionality, `DashboardRoutes` for UI-related features
 - When implementing authentication features, store only hashes and use constant-time comparison
 - When adding middleware, maintain the inner-to-outer composition order and preserve public path exemptions

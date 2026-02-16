@@ -13,7 +13,7 @@ Feature-driven documentation organized by what Constellation does, not how it's 
 | [resilience/](./resilience/) | Retry, timeout, fallback, cache, throttle, and error handling | compiler, runtime |
 | [parallelization/](./parallelization/) | Automatic concurrent execution of independent modules | runtime |
 | [execution/](./execution/) | Hot, cold, and suspended execution modes | runtime, http-api |
-| [extensibility/](./extensibility/) | SPI for cache, metrics, listeners; module provider protocol for cross-process modules | runtime, module-provider-sdk, module-provider |
+| [extensibility/](./extensibility/) | SPI for cache, metrics, listeners; module provider protocol for cross-process modules; module HTTP endpoints for direct invocation | runtime, module-provider-sdk, module-provider, http-api |
 | [tooling/](./tooling/) | Dashboard, LSP, VSCode extension | http-api, lang-lsp |
 
 ## Structure

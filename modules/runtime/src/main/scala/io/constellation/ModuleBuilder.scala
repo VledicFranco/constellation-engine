@@ -123,7 +123,8 @@ object ModuleBuilder {
 final case class ModuleBuilderInit(
     _metadata: ComponentMetadata,
     _config: ModuleConfig = ModuleConfig.default,
-    _context: Option[Map[String, Json]] = None
+    _context: Option[Map[String, Json]] = None,
+    _httpConfig: Option[ModuleHttpConfig] = None
 ) {
 
   def name(newName: String): ModuleBuilderInit =
@@ -147,6 +148,14 @@ final case class ModuleBuilderInit(
   def definitionContext(newContext: Map[String, Json]): ModuleBuilderInit =
     copy(_context = Some(newContext))
 
+  /** Mark this module for HTTP endpoint publishing with default configuration. */
+  def httpEndpoint(): ModuleBuilderInit =
+    copy(_httpConfig = Some(ModuleHttpConfig.default))
+
+  /** Mark this module for HTTP endpoint publishing with custom configuration. */
+  def httpEndpoint(config: ModuleHttpConfig): ModuleBuilderInit =
+    copy(_httpConfig = Some(config))
+
   /** Set an effectful (IO-based) implementation function.
     *
     * Use this for operations with side effects such as HTTP calls, database queries, or file I/O.
@@ -163,6 +172,7 @@ final case class ModuleBuilderInit(
       _metadata = _metadata,
       _config = _config,
       _context = _context,
+      _httpConfig = _httpConfig,
       _run = (input: I) => newRun(input).map(Module.Produces(_, Eval.later(Map.empty)))
     )
 
@@ -196,6 +206,7 @@ final case class ModuleBuilderInit(
       _metadata = _metadata,
       _config = _config,
       _context = _context,
+      _httpConfig = _httpConfig,
       _run = newRun
     )
 }
@@ -214,6 +225,7 @@ final case class ModuleBuilder[I <: Product, O <: Product](
     _metadata: ComponentMetadata,
     _config: ModuleConfig = ModuleConfig.default,
     _context: Option[Map[String, Json]] = None,
+    _httpConfig: Option[ModuleHttpConfig] = None,
     _run: I => IO[Module.Produces[O]]
 ) {
 
@@ -250,6 +262,14 @@ final case class ModuleBuilder[I <: Product, O <: Product](
   def definitionContext(newContext: Map[String, Json]): ModuleBuilder[I, O] =
     copy(_context = Some(newContext))
 
+  /** Mark this module for HTTP endpoint publishing with default configuration. */
+  def httpEndpoint(): ModuleBuilder[I, O] =
+    copy(_httpConfig = Some(ModuleHttpConfig.default))
+
+  /** Mark this module for HTTP endpoint publishing with custom configuration. */
+  def httpEndpoint(config: ModuleHttpConfig): ModuleBuilder[I, O] =
+    copy(_httpConfig = Some(config))
+
   /** Finalize the builder and produce an uninitialized module.
     *
     * Input/output type signatures are derived at compile time from the case class mirrors.
@@ -258,7 +278,12 @@ final case class ModuleBuilder[I <: Product, O <: Product](
     *   An uninitialized module ready for registration via [[Constellation.setModule]]
     */
   inline def build(using mi: Mirror.ProductOf[I], mo: Mirror.ProductOf[O]): Module.Uninitialized = {
-    val spec = ModuleNodeSpec(metadata = _metadata, config = _config, definitionContext = _context)
+    val spec = ModuleNodeSpec(
+      metadata = _metadata,
+      config = _config,
+      definitionContext = _context,
+      httpConfig = _httpConfig
+    )
     Module.uninitialized[I, O](spec, _run)
   }
 
