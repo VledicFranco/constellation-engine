@@ -1,6 +1,6 @@
 # RFC-029: Multi-Agent Demo App QA — Gold Standard Test Suite
 
-- **Status:** Draft
+- **Status:** Accepted
 - **Created:** 2026-02-14
 - **Author:** Claude (AI-assisted)
 
@@ -66,7 +66,7 @@ Turning the demo into an automatically-tested reference implementation creates:
 | Execution suspension and resumption | Full | None |
 | Stepped debugging | Full | None |
 | Pipeline versioning and rollback | Full | None |
-| Canary deployment | Full (via SDK) | None |
+| Canary deployment | Full | None |
 | Auth / rate limiting / CORS | Full | Configured but not demo'd |
 
 ## Agent Roles
@@ -124,8 +124,8 @@ WP-0: Version Upgrade
 **Blocks:** All other WPs
 
 **Scope:**
-- Update `server/build.sbt` to v0.8.0 for all constellation dependencies
-- Update `provider-scala/build.sbt` to v0.8.0 for SDK
+- Update `server/build.sbt` to latest engine version for all constellation dependencies
+- Update `provider-scala/build.sbt` to latest engine version for SDK
 - Verify Docker Compose builds and all services start
 - Verify all 13 existing pipelines still execute correctly via manual curl
 
