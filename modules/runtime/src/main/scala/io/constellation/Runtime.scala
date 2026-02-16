@@ -796,7 +796,7 @@ object Runtime {
     val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
-      val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
+      val isExpectedName = topLevelSpecs.find(_.name == name) match {
         case Some(spec) => Validated.validNel(spec)
         case None =>
           Validated.invalidNel(s"Input $name was unexpected, input name might be misspelled.")
@@ -828,7 +828,7 @@ object Runtime {
     val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
-      val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
+      val isExpectedName = topLevelSpecs.find(_.name == name) match {
         case Some(spec) => Validated.validNel(spec)
         case None =>
           Validated.invalidNel(s"Input $name was unexpected, input name might be misspelled.")
@@ -907,10 +907,7 @@ object Runtime {
       runtime: Runtime
   ): IO[Unit] =
     dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
-      val nicknames = spec.nicknames.values.toList
-      val optCValue = initData.collectFirst {
-        case (name, cValue) if nicknames.contains(name) => cValue
-      }
+      val optCValue = initData.get(spec.name)
       for {
         cValue <- IO.fromOption(optCValue)(
           new RuntimeException(
@@ -931,10 +928,7 @@ object Runtime {
       runtime: Runtime
   ): IO[Unit] =
     dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
-      val nicknames = spec.nicknames.values.toList
-      val optRawValue = initData.collectFirst {
-        case (name, rawValue) if nicknames.contains(name) => (name, rawValue)
-      }
+      val optRawValue = initData.get(spec.name).map(rv => (spec.name, rv))
       for {
         nameAndRaw <- IO.fromOption(optRawValue)(
           new RuntimeException(

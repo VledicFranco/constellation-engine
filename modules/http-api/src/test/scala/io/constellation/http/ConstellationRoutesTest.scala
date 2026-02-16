@@ -702,4 +702,20 @@ class ConstellationRoutesTest extends AnyFlatSpec with Matchers {
 
     count2 should be > count1
   }
+
+  // ===== /compile Content-Type error handling (issue #222) =====
+
+  it should "return 400 with descriptive error when /compile receives wrong Content-Type" in {
+    val request = Request[IO](Method.POST, uri"/compile")
+      .withEntity("in x: Int\nout x")
+      .withContentType(org.http4s.headers.`Content-Type`(MediaType.text.plain))
+
+    val response = routes.orNotFound.run(request).unsafeRunSync()
+
+    response.status shouldBe Status.BadRequest
+    val body = response.as[CompileResponse].unsafeRunSync()
+    body.success shouldBe false
+    body.errors should not be empty
+    body.errors.head should include("expected JSON body")
+  }
 }

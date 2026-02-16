@@ -1,5 +1,6 @@
 package io.constellation.http
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 
 import scala.jdk.CollectionConverters.*
@@ -23,6 +24,18 @@ object PipelineLoader {
 
   private val logger: Logger[IO] =
     Slf4jLogger.getLoggerFromName[IO]("io.constellation.http.PipelineLoader")
+
+  /** Read a file as UTF-8, raising a descriptive error for non-UTF-8 content. */
+  private def readFileUtf8(file: Path): IO[String] =
+    IO(Files.readString(file, StandardCharsets.UTF_8))
+      .handleErrorWith {
+        case _: java.nio.charset.MalformedInputException =>
+          IO.raiseError(
+            new IllegalArgumentException(
+              s"File ${file.getFileName} contains invalid UTF-8 characters. Please save the file as UTF-8."
+            )
+          )
+      }
 
   /** Result of a pipeline loading operation.
     *
@@ -145,7 +158,14 @@ object PipelineLoader {
               )
 
           case _ =>
-            processFile(file, aliasName, constellation, compiler, registryHash).map {
+            processFile(file, aliasName, constellation, compiler, registryHash)
+              .handleErrorWith { ex =>
+                val msg = s"$file: ${ex.getClass.getSimpleName}: ${ex.getMessage}"
+                logger
+                  .warn(s"PipelineLoader: file processing failed: $msg")
+                  .as(FileResult.Failed(msg))
+              }
+              .map {
               case FileResult.Loaded =>
                 acc.copy(
                   loaded = acc.loaded + 1,
@@ -211,7 +231,7 @@ object PipelineLoader {
           case _ =>
             aliasName.foreach(seenAliases.add)
             for {
-              source     <- IO(Files.readString(file))
+              source     <- readFileUtf8(file)
               sourceHash <- IO(ContentHash.computeSHA256(source.getBytes("UTF-8")))
               existing   <- constellation.PipelineStore.lookupSyntactic(sourceHash, registryHash)
               result <- existing match {
@@ -253,8 +273,9 @@ object PipelineLoader {
           }
           compiled
             .traverse_ { case (aliasName, file, image) =>
-              val sourceHash = ContentHash.computeSHA256(Files.readString(file).getBytes("UTF-8"))
               for {
+                fileContent <- readFileUtf8(file)
+                sourceHash = ContentHash.computeSHA256(fileContent.getBytes("UTF-8"))
                 _ <- constellation.PipelineStore.store(image)
                 _ <- constellation.PipelineStore.indexSyntactic(
                   sourceHash,
@@ -296,7 +317,7 @@ object PipelineLoader {
     val dagName = aliasName.getOrElse(file.getFileName.toString.stripSuffix(".cst"))
 
     for {
-      source     <- IO(Files.readString(file))
+      source     <- readFileUtf8(file)
       sourceHash <- IO(ContentHash.computeSHA256(source.getBytes("UTF-8")))
 
       // Check syntactic cache for dedup

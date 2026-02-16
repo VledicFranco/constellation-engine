@@ -153,8 +153,7 @@ class AdvancedIntegrationTest extends AnyFlatSpec with Matchers {
           .run(Request[IO](method = Method.POST, uri = baseUri / "compile"))
           .use { response =>
             IO {
-              // Currently returns 500, could be improved to return 400/415
-              response.status shouldBe Status.InternalServerError
+              response.status shouldBe Status.BadRequest
             }
           }
       }

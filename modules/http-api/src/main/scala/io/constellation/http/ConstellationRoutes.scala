@@ -137,7 +137,7 @@ class ConstellationRoutes(
       checkBodySize(req) match {
         case Some(tooLarge) => tooLarge
         case None =>
-          for {
+          (for {
             compileReq <- req.as[CompileRequest]
             effectiveName = compileReq.effectiveName
             result <- (effectiveName match {
@@ -183,7 +183,24 @@ class ConstellationRoutes(
                   )
                 )
             }
-          } yield response
+          } yield response).handleErrorWith {
+            case _: org.http4s.InvalidMessageBodyFailure |
+                _: org.http4s.MalformedMessageBodyFailure =>
+              BadRequest(
+                CompileResponse(
+                  success = false,
+                  errors = List("Invalid request: expected JSON body with 'source' field")
+                )
+              )
+            case error =>
+              logger.error(error)("Unexpected error in /compile") *>
+                InternalServerError(
+                  CompileResponse(
+                    success = false,
+                    errors = List(s"Unexpected error: ${safeMessage(error)}")
+                  )
+                )
+          }
       }
 
     // Execute a pipeline by reference (name, structural hash, or legacy dagName)

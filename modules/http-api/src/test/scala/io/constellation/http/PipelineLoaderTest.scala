@@ -366,4 +366,24 @@ class PipelineLoaderTest extends AnyFlatSpec with Matchers {
     result.errors.head should include("IllegalStateException")
     result.errors.head should include("simulated crash")
   }
+
+  // --- Non-UTF-8 file handling (issue #221) ---
+
+  it should "report descriptive error for non-UTF-8 file" in {
+    val tmpDir = Files.createTempDirectory("pipeline-loader-utf8-test")
+    try {
+      // Write a file with invalid UTF-8 bytes (0xFE 0xFF are never valid in UTF-8)
+      val badFile = tmpDir.resolve("bad-encoding.cst")
+      Files.write(badFile, Array[Byte](0x69, 0x6e, 0x20, 0xfe.toByte, 0xff.toByte, 0x3a, 0x20))
+
+      val (constellation, compiler) = freshInstances
+      val config = PipelineLoaderConfig(directory = tmpDir, failOnError = false)
+      val result = PipelineLoader.load(config, constellation, compiler).unsafeRunSync()
+
+      result.failed shouldBe 1
+      result.errors should have size 1
+      result.errors.head should include("invalid UTF-8")
+    } finally
+      Files.walk(tmpDir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete(_))
+  }
 }

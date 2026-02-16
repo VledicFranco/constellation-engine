@@ -336,10 +336,7 @@ object SteppedExecution {
       rt: Runtime
   ): IO[Unit] =
     dag.userInputDataNodes.toList.traverse { case (uuid, spec) =>
-      val nicknames = spec.nicknames.values.toList
-      val optCValue = initData.collectFirst {
-        case (name, cValue) if nicknames.contains(name) => cValue
-      }
+      val optCValue = initData.get(spec.name)
       for {
         cValue <- IO.fromOption(optCValue)(
           new RuntimeException(
@@ -355,7 +352,7 @@ object SteppedExecution {
     val topLevelSpecs = dag.userInputDataNodes.values
 
     def validateInput(name: String, ctype: CType): ValidatedNel[String, Unit] = {
-      val isExpectedName = topLevelSpecs.find(_.nicknames.values.toSet.contains(name)) match {
+      val isExpectedName = topLevelSpecs.find(_.name == name) match {
         case Some(spec) => Validated.validNel(spec)
         case None =>
           Validated.invalidNel(s"Input $name was unexpected, input name might be misspelled.")

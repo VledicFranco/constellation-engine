@@ -1212,4 +1212,38 @@ class RuntimeIntegrationTest extends AnyFlatSpec with Matchers {
     state.data(outputId).value shouldBe CValue.CString("TEST")
     state.data(literalId).value shouldBe CValue.CString("constant")
   }
+
+  // ===== Parameter naming collision (issue #219) =====
+
+  "Runtime.run" should "not confuse pipeline input with formal parameter of same name" in {
+    val someModuleId = UUID.randomUUID()
+    val inputAId     = UUID.randomUUID()
+    val inputBId     = UUID.randomUUID()
+
+    // Two top-level data nodes:
+    //   inputAId: name="a", type=CInt (the pipeline input)
+    //   inputBId: name="b", type=CString, but nicknames contain "a" (formal param)
+    // Without the fix, providing input "a" with CInt would match inputBId (CString)
+    // via nicknames and fail with a type mismatch.
+    val dag = DagSpec(
+      metadata = ComponentMetadata.empty("CollisionDag"),
+      modules = Map.empty,
+      data = Map(
+        inputAId -> DataNodeSpec("a", Map.empty, CType.CInt),
+        inputBId -> DataNodeSpec("b", Map(someModuleId -> "a"), CType.CString)
+      ),
+      inEdges = Set.empty,
+      outEdges = Set.empty
+    )
+
+    val modules  = Map.empty[UUID, Module.Uninitialized]
+    val initData = Map("a" -> CValue.CInt(7L), "b" -> CValue.CString("hello"))
+
+    // Before fix: "a" matched inputBId (CString) via nicknames → type mismatch.
+    // After fix: "a" matches inputAId (CInt) via spec.name → passes.
+    val result = Runtime.run(dag, initData, modules).attempt.unsafeRunSync()
+    withClue(result.left.map(_.getMessage).merge) {
+      result.isRight shouldBe true
+    }
+  }
 }
