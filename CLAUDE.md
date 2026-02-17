@@ -290,7 +290,83 @@ When adding a module to example-app:
 - Contributing guide: See `CONTRIBUTING.md`
 - **Issue tracking: Use GitHub Issues**
 - Language documentation: See `website/docs/language/`
-- Organon (LLM constraints): See `organon/`
+- Organon methodology: See section below
+
+---
+
+## Organon Methodology
+
+Organon is a three-layer constraint documentation system optimized for LLM context loading. It bridges code, auto-generated catalogs, and domain meaning so that both LLMs and humans can navigate the codebase with precision.
+
+### Two Organon Resources
+
+| Resource | What it is | When to reference |
+|----------|-----------|-------------------|
+| **`organon/` directory** (local) | This project's constraint docs: ETHOS files, PHILOSOPHY files, semantic mappings, feature/component docs | Understanding design intent, invariants, or domain meaning of any component or feature |
+| **[organon-testing](https://github.com/VledicFranco/organon)** (external repo) | ScalaTest library providing `OrganonFlatSpec`, `testInvariant()`, filesystem assertions | Writing or modifying invariant tests in `invariant-tests/` |
+
+### Three-Layer Model
+
+```
+┌─────────────────────────────────────────────────┐
+│  ORGANON (Manual)        organon/               │
+│  Constraints, invariants, semantic meaning      │
+├─────────────────────────────────────────────────┤
+│  GENERATED (Auto)        organon/generated/     │
+│  TASTy-extracted Scala signatures (read-only)   │
+├─────────────────────────────────────────────────┤
+│  CODE (Source)           modules/*/src/          │
+│  The source of truth                            │
+└─────────────────────────────────────────────────┘
+```
+
+### Key Artifacts
+
+Each component and feature scope has:
+
+| File | Purpose | Content |
+|------|---------|---------|
+| `ETHOS.md` | **What must be true** | Identity, invariants, semantic mapping, decision heuristics |
+| `PHILOSOPHY.md` | **Why it's designed this way** | Design rationale, trade-offs, influences |
+| `README.md` | **Navigation router** | Contents table, links to children |
+
+### Directory Structure
+
+```
+organon/
+  ├── components/    ← Implementation-oriented (core, runtime, compiler, etc.)
+  ├── features/      ← Capability-oriented (type-safety, resilience, execution, etc.)
+  ├── protocols/     ← Step-by-step procedures (semantic-mapping, add-component-docs)
+  └── generated/     ← Auto-generated Scala catalogs (NEVER edit manually)
+```
+
+### When to Consult Organon
+
+| Situation | What to read |
+|-----------|-------------|
+| Working on a module (core, runtime, etc.) | `organon/components/<name>/ETHOS.md` |
+| Working on a capability (caching, parallelism, etc.) | `organon/features/<name>/ETHOS.md` |
+| Need to understand "what does this type mean?" | Component ETHOS → Semantic Mapping table |
+| Adding organon documentation | `organon/protocols/add-component-docs.md` |
+| Regenerating generated docs | `organon/protocols/regenerate-docs.md` |
+| Updating user-facing docs | Check both `organon/` (LLM surface) and `website/docs/` (human surface) |
+
+### Core Invariants
+
+1. **Code is the source of truth.** When organon conflicts with code, fix one or the other.
+2. **Feature-driven organization.** Primary navigation is by capability, not by module.
+3. **No duplication.** Link, don't copy. One source of truth per fact.
+4. **Generated catalogs are read-only.** Never edit `organon/generated/*.md` manually.
+5. **Semantic mapping bridges layers.** Component ETHOS files map generated types to domain meaning.
+
+### CI Automation
+
+| Tool | Command | Purpose |
+|------|---------|---------|
+| Freshness Checker | `sbt "docGenerator/runMain io.constellation.docgen.FreshnessChecker"` | Verifies generated docs match current source |
+| Ethos Verifier | `sbt "docGenerator/runMain io.constellation.docgen.EthosVerifier"` | Validates ETHOS invariant references exist |
+
+Both run in CI (`.github/workflows/ci.yml`) and block PRs if docs are stale or references are broken.
 
 ---
 
@@ -754,5 +830,5 @@ modules.traverse(constellation.setModule)  // requires cats.implicits._
 **References:**
 - Full architecture details: `website/docs/architecture/technical-architecture.md`
 - Language documentation: `website/docs/language/`
-- Organon: `organon/` (LLM constraints and design philosophy)
+- Organon methodology: See [Organon Methodology](#organon-methodology) section above
 - Issue tracking: GitHub Issues
