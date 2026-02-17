@@ -1,8 +1,10 @@
 # RFC-017: v1.0 Readiness Gap Analysis
 
-- **Status:** Draft
+- **Status:** Rejected
 - **Author:** Project Team
 - **Created:** 2026-02-04
+- **Rejected:** 2026-02-17
+- **Rejection Reason:** Premature — v1.0 planning requires real user data to prioritize correctly. Will revisit after gathering adoption feedback.
 
 ## Summary
 
