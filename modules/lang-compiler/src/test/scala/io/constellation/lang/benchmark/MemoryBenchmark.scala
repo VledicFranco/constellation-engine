@@ -187,7 +187,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
 
     val result = measureMemory("irgen_small", "irgen", "small") {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
     allResults += result
     result.heapDeltaMB should be < 150.0
@@ -199,7 +199,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
 
     val result = measureMemory("irgen_medium", "irgen", "medium") {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
     allResults += result
     result.heapDeltaMB should be < 150.0
@@ -211,7 +211,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
 
     val result = measureMemory("irgen_large", "irgen", "large") {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
     allResults += result
     result.heapDeltaMB should be < 150.0
@@ -225,7 +225,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     val source = TestFixtures.largeProgram
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir     = IRGenerator.generate(typed)
+    val ir     = IRGenerator.generate(typed).toOption.get
 
     val result = measureMemory("optimize_large", "optimize", "large") {
       IROptimizer.optimizeIR(ir, OptimizationConfig.default)
@@ -242,7 +242,7 @@ class MemoryBenchmark extends AnyFlatSpec with Matchers {
     val source    = TestFixtures.largeProgram
     val parsed    = ConstellationParser.parse(source).toOption.get
     val typed     = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir        = IRGenerator.generate(typed)
+    val ir        = IRGenerator.generate(typed).toOption.get
     val optimized = IROptimizer.optimizeIR(ir, OptimizationConfig.none)
 
     val result = measureMemory("dagcompile_large", "dagcompile", "large") {

@@ -169,7 +169,7 @@ private class LangCompilerImpl(
       typedPipeline <- TypeChecker.check(program, registry)
 
       // Phase 3: Generate IR
-      irPipeline = IRGenerator.generate(typedPipeline)
+      irPipeline <- IRGenerator.generate(typedPipeline)
 
       // Phase 4: Optimize IR
       optimizedIR = IROptimizer.optimizeIR(irPipeline, optimizationConfig)
@@ -208,7 +208,7 @@ private class LangCompilerImpl(
       typedPipeline <- TypeChecker.check(program, registry)
 
       // Phase 3: Generate IR
-      irPipeline = IRGenerator.generate(typedPipeline)
+      irPipeline <- IRGenerator.generate(typedPipeline)
 
       // Phase 4: Optimize IR
       optimizedIR = IROptimizer.optimizeIR(irPipeline, optimizationConfig)

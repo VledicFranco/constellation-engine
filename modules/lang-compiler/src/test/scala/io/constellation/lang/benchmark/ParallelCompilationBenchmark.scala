@@ -27,7 +27,8 @@ class ParallelCompilationBenchmark extends AnyFlatSpec with Matchers {
     for {
       program <- ConstellationParser.parse(source).left.map(List(_))
       typed   <- TypeChecker.check(program, io.constellation.lang.semantic.FunctionRegistry.empty)
-    } yield IRGenerator.generate(typed)
+      ir      <- IRGenerator.generate(typed)
+    } yield ir
 
   "Topological layers" should "be computed efficiently" in {
     // First compile to IR

@@ -609,6 +609,19 @@ object CompileError {
   ) extends CompileError {
     def message: String = s"Invalid pattern: $details"
   }
+
+  /** Lambda expression used outside a higher-order function argument */
+  final case class InvalidLambdaContext(span: Option[Span]) extends CompileError {
+    def message: String =
+      "Lambda expression cannot be used in this context. " +
+        "Lambdas can only be used as arguments to higher-order functions like filter, map, etc."
+  }
+
+  /** Unknown higher-order function in IR generation */
+  final case class UnknownHigherOrderFunction(name: String, span: Option[Span])
+      extends CompileError {
+    def message: String = s"Unknown higher-order function: $name"
+  }
 }
 
 /** Compile warnings - non-fatal diagnostics */
