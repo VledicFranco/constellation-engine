@@ -169,7 +169,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
       phase = "irgen",
       inputSize = "small"
     ) {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
 
     println(result.toConsoleString)
@@ -190,7 +190,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
       phase = "irgen",
       inputSize = "medium"
     ) {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
 
     println(result.toConsoleString)
@@ -211,7 +211,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
       phase = "irgen",
       inputSize = "large"
     ) {
-      IRGenerator.generate(typed)
+      IRGenerator.generate(typed).toOption.get
     }
 
     println(result.toConsoleString)
@@ -228,7 +228,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source = TestFixtures.smallProgram
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir     = IRGenerator.generate(typed)
+    val ir     = IRGenerator.generate(typed).toOption.get
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "optimize_small",
@@ -250,7 +250,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source = TestFixtures.mediumProgram
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir     = IRGenerator.generate(typed)
+    val ir     = IRGenerator.generate(typed).toOption.get
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "optimize_medium",
@@ -272,7 +272,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source = TestFixtures.largeProgram
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir     = IRGenerator.generate(typed)
+    val ir     = IRGenerator.generate(typed).toOption.get
 
     val result = BenchmarkHarness.measureWithWarmup(
       name = "optimize_large",
@@ -298,7 +298,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source    = TestFixtures.smallProgram
     val parsed    = ConstellationParser.parse(source).toOption.get
     val typed     = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir        = IRGenerator.generate(typed)
+    val ir        = IRGenerator.generate(typed).toOption.get
     val optimized = IROptimizer.optimizeIR(ir, OptimizationConfig.none)
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -321,7 +321,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source    = TestFixtures.mediumProgram
     val parsed    = ConstellationParser.parse(source).toOption.get
     val typed     = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir        = IRGenerator.generate(typed)
+    val ir        = IRGenerator.generate(typed).toOption.get
     val optimized = IROptimizer.optimizeIR(ir, OptimizationConfig.none)
 
     val result = BenchmarkHarness.measureWithWarmup(
@@ -344,7 +344,7 @@ class CompilerPipelineBenchmark extends AnyFlatSpec with Matchers {
     val source    = TestFixtures.largeProgram
     val parsed    = ConstellationParser.parse(source).toOption.get
     val typed     = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    val ir        = IRGenerator.generate(typed)
+    val ir        = IRGenerator.generate(typed).toOption.get
     val optimized = IROptimizer.optimizeIR(ir, OptimizationConfig.none)
 
     val result = BenchmarkHarness.measureWithWarmup(

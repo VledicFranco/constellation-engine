@@ -44,7 +44,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
   private def compileToIR(source: String): IRPipeline = {
     val parsed = ConstellationParser.parse(source).toOption.get
     val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-    IRGenerator.generate(typed)
+    IRGenerator.generate(typed).toOption.get
   }
 
   // -----------------------------------------------------------------
@@ -337,7 +337,7 @@ class VisualizationBenchmark extends AnyFlatSpec with Matchers {
       // Full pipeline: parse -> typecheck -> IR -> vizIR -> layout
       val parsed = ConstellationParser.parse(source).toOption.get
       val typed  = TypeChecker.check(parsed, emptyRegistry).toOption.get
-      val ir     = IRGenerator.generate(typed)
+      val ir     = IRGenerator.generate(typed).toOption.get
       val vizIR  = DagVizCompiler.compile(ir, Some("benchmark"))
       SugiyamaLayout.layout(vizIR, config)
     }

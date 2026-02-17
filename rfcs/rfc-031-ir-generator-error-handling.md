@@ -1,6 +1,6 @@
 # RFC-031: IRGenerator Error Handling Refactor
 
-- **Status:** Draft
+- **Status:** Implemented
 - **Created:** 2026-02-16
 - **Author:** Claude (discovered during RFC-030 review)
 
