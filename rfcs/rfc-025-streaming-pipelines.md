@@ -16,7 +16,9 @@ The key design insight is the introduction of **`Seq<T>`** — an abstract order
 - **Single mode:** `Seq<T>` → `Vector[T]` (finite, synchronous, in-memory)
 - **Streaming mode:** `Seq<T>` → `Stream[IO, T]` (unbounded, asynchronous, backpressured)
 
-Every operation on `Seq<T>` (map, filter, concat, fold, batch) has a well-defined mapping in both modes. The existing `List<T>` is retained as an **always-materialized** collection — `Seq<List<T>>` is unambiguous: a sequence of finite chunks. A **connector registry** provides pluggable sources and sinks (Kafka, WebSockets, HTTP SSE, files) for streaming mode.
+Every operation on `Seq<T>` (map, filter, concat, fold, batch) has a well-defined mapping in both modes. The existing `List<T>` is retained as an **always-materialized** collection — `Seq<List<T>>` is unambiguous: a sequence of finite chunks. `Seq<T>` subsumes the legacy `Candidates<T>` alias — all instances of `Candidates` are renamed to `Seq` (clean refactor, no migration needed).
+
+Existing language constructs lift naturally into streaming semantics: **union types** (`A | B`) become event routing via `match`, **guards** (`when`) become element-wise filters, **merge** (`+`) becomes type-driven enrichment, and **structural dot syntax** (`items.field`) acts as an implicit element-wise lambda. A **connector registry** provides pluggable sources and sinks (Kafka, WebSockets, HTTP SSE, files) for streaming mode.
 
 **Core principle:** One pipeline definition, one DAG IR, two interpreters. The DAG is the shared structure; the execution strategy is the functor.
 
@@ -64,6 +66,8 @@ A developer can:
 | **`List<T>` as materialization boundary** | `List<T>` is always a finite, in-memory collection in both modes. `Seq<List<T>>` = a stream of finite chunks. |
 | **Scalars are events** | In streaming mode, scalar inputs (`in x: T`) are events pulled from sources. The DAG fires when inputs are available — same suspension semantics as single mode. |
 | **Transparent module lifting** | Modules written as `I => IO[O]` are automatically lifted: `vector.map(f)` in single mode, `stream.evalMap(f)` in streaming mode. No module changes required. |
+| **Existing constructs lift naturally** | Guards become filters, merge becomes enrichment, match becomes routing, structural dot syntax becomes element-wise mapping. No new streaming-specific syntax for common patterns. |
+| **Union types are event routing** | `match` on a union-typed input becomes a stream router in streaming mode. `Optional<T>` (conceptually `T \| None`) gives guards natural event semantics: `None` = no emission. |
 | **Connectors are deployment config** | `in`/`out` declarations remain type-only by default. Connector bindings (Kafka topic, WebSocket path) are a deployment concern, not a language concern. |
 | **Fail per-element, not per-stream** | A single failing element must never crash the stream. Error handling is per-element with configurable strategies. |
 | **Backpressure by default** | fs2's pull-based model provides backpressure without configuration. |
@@ -81,14 +85,18 @@ The current `CType.CList` is refactored into two distinct types:
 | `Seq<T>` | `CSeq(elementType)` | `Vector[T]` | `Stream[IO, T]` | Abstract sequence — interpreter chooses representation |
 | `List<T>` | `CList(elementType)` | `Vector[T]` | `Vector[T]` | Materialized collection — always finite, in-memory |
 
+**Migration:** `Seq<T>` subsumes the legacy `Candidates<T>` alias. All existing uses of `Candidates` in the codebase and `.cst` files are renamed to `Seq`. This is a clean refactor — no migration path or backward compatibility shims needed. The parser accepts both `Seq<T>` and `Candidates<T>` during a transition period, resolving both to `CSeq`.
+
 Composites:
 
 | Composite | Single Mode | Streaming Mode | Use Case |
 |-----------|-------------|----------------|----------|
 | `Seq<List<T>>` | `Vector[Vector[T]]` | `Stream[IO, Vector[T]]` | Windowed/batched data |
 | `T` (scalar) | Value | Event (pulled from source) | Individual data points |
-| `List<Seq<T>>` | **Disallowed** | — | Can't materialize unbounded |
-| `Seq<Seq<T>>` | **Disallowed** | — | Ambiguous — use `Seq<List<T>>` |
+| `List<Seq<T>>` | **Compiler error** | — | Can't materialize unbounded |
+| `Seq<Seq<T>>` | **Compiler error** | — | See below |
+
+**Nested Seq:** `Seq<Seq<T>>` is a compiler error. The `flatMap` operation is defined as `map + flatten`, producing `Seq<U>` directly (never `Seq<Seq<U>>`). If nested structure is needed, use `Seq<List<T>>` (stream of finite chunks). This keeps the type system clean and avoids ambiguous runtime representations.
 
 ### The Interpreter Functor
 
@@ -124,6 +132,168 @@ total = Sum(values) with window: tumbling(5min)
 ```
 
 If no `window` is specified in streaming mode, the runtime uses a default window from `StreamOptions.defaultFoldWindow`. The compiler emits an info diagnostic: "fold on Seq<T> in streaming mode uses windowed aggregation."
+
+### Element-Wise Operations & Structural Syntax
+
+Existing element-wise operations on collections lift naturally to Seq. These are already implemented for `List<Record>` in the TypeChecker and extend unchanged to `Seq<Record>`:
+
+| Operation | Expression | Type | Meaning |
+|-----------|-----------|------|---------|
+| Field access | `items.name` | `Seq<Record> → Seq<T>` | Extract field from each element |
+| Projection | `items[name, age]` | `Seq<Record> → Seq<Record>` | Project fields from each element |
+| Merge | `items + context` | `Seq<Record> + Record → Seq<Record>` | Merge scalar into each element |
+| Comparison | `items.score > 10` | `Seq<Int> → Seq<Boolean>` | Element-wise comparison (scalar broadcast) |
+
+**Structural dot syntax as implicit lambda:** The expression `items.field` is semantically equivalent to `map(items, (x) => x.field)`, but requires no explicit lambda. This point-free style covers the vast majority of element-wise operations. Explicit `Lambda` remains in the AST for complex cases, but structural syntax handles field access, projection, comparison, and composition without it.
+
+**Example — filtering without lambdas:**
+
+```constellation
+in items: Seq<{ score: Int, name: String }>
+
+# Structural syntax — no lambda
+high_scores = items when items.score > 10
+
+# Equivalent explicit form (still valid)
+high_scores = filter(items, (x) => x.score > 10)
+```
+
+How the structural version works mechanically:
+
+1. `items: Seq<{score: Int, name: String}>`
+2. `items.score` → `Seq<Int>` (element-wise field access)
+3. `items.score > 10` → `Seq<Boolean>` (element-wise comparison, scalar broadcast)
+4. `items when Seq<Boolean>` → `Seq<{score: Int, name: String}>` (element-wise filter)
+
+### Guard (`when`) on Seq — Element-Wise Filter
+
+The `when` operator has dual semantics depending on operand type:
+
+| Expression | Type | Single Mode | Streaming Mode |
+|-----------|------|-------------|----------------|
+| `x when cond` (scalar) | `T × Boolean → Optional<T>` | `CSome(x)` or `CNone` | Event filter — emit or swallow |
+| `seq when cond` (Seq + scalar Boolean) | `Seq<T> × Boolean → Seq<T>` | All or nothing | All or nothing |
+| `seq when seq_cond` (Seq + Seq Boolean) | `Seq<T> × Seq<Boolean> → Seq<T>` | Element-wise filter | `stream.filter(p)` |
+
+For **scalar guards**: `Optional<T>` is conceptually `T | None` (a union type). In streaming mode, `None` means "no event emitted this tick" — the element is silently dropped. `Some(v)` means the event passes through. This gives guards natural filter semantics without any special streaming syntax.
+
+**Coalesce (`??`) as default/fallback:**
+
+```constellation
+result = risky_event when is_valid ?? fallback_value
+```
+
+- **Single mode:** If guard produces None, use fallback
+- **Streaming mode:** If event is filtered out, substitute with fallback value (stream always emits)
+
+---
+
+## Union Types as Event Routing
+
+### Match as Stream Router
+
+The existing `match` expression on union types gains natural streaming semantics:
+
+```constellation
+in event: Seq<Success | Failure>
+
+result = match event {
+  Success { value } -> ProcessValue(value)
+  Failure { error } -> HandleError(error)
+}
+```
+
+| Mode | Behavior |
+|------|----------|
+| **Single** | Standard pattern match — one branch executes based on value tag |
+| **Streaming** | Stream partition — events tagged `Success` flow to `ProcessValue`, events tagged `Failure` flow to `HandleError` |
+
+The `match` expression compiles to a **stream router** in streaming mode. Each arm becomes a separate stream continuation. No special fan-out syntax needed — the type system determines the routing.
+
+### Branch as Predicate Router
+
+The existing `branch` expression routes by predicate (not by type tag):
+
+```constellation
+result = branch {
+  score > 90 -> HighPriority(item)
+  score > 50 -> MediumPriority(item)
+  otherwise  -> LowPriority(item)
+}
+```
+
+| Mode | Behavior |
+|------|----------|
+| **Single** | First matching condition wins |
+| **Streaming** | Route each event to a processing path based on its condition |
+
+### Interpreter Functor Mapping — Control Flow
+
+| Pipeline Construct | Single Mode | Streaming Mode |
+|-------------------|-------------|----------------|
+| `match` on `T` (union scalar) | Branch, one executes | Partition stream by tag |
+| `match` on `Seq<T>` (union elements) | Element-wise branch | Element-wise stream partition |
+| `branch` on scalar | First match wins | Route each event by predicate |
+| `when` (guard, scalar) | `Optional<T>` | Event filter (emit/swallow) |
+| `when` (guard, Seq) | Element-wise `Optional<T>` | `stream.filter(p)` |
+| `??` (coalesce) | Fallback on None | Default on filtered event |
+
+### Optional<T> as Union Semantics
+
+`Optional<T>` is conceptually equivalent to `T | None`. Although `COptional`/`SOptional` remain as distinct types in the implementation (for ergonomics and optimization), the **streaming interpreter treats them with union event semantics**:
+
+- `Some(v)` → event emits `v`
+- `None` → no emission (element dropped from stream)
+
+This means every construct that produces `Optional<T>` — guards, coalesce, conditional lookups — automatically works in streaming mode as an element filter.
+
+---
+
+## Merge Operator — Type-Driven Enrichment
+
+### Merge Semantics by Operand Type
+
+The existing `+` (merge) operator already implements four strategies in `MergeTransform`. When extended to `Seq`, the operand types **naturally determine** the streaming join strategy:
+
+| Left | Right | Single Mode | Streaming Mode |
+|------|-------|-------------|----------------|
+| `Record + Record` | → | Field merge | Same (both events, fire when both arrive) |
+| `Seq<Record> + Seq<Record>` | → | Element-wise merge (zip, same length) | `stream.zip(stream).map(merge)` |
+| `Seq<Record> + Record` | → | Broadcast scalar to every element | `combineLatest` — each Seq element gets latest scalar merged |
+| `Record + Seq<Record>` | → | Broadcast (reversed) | Same as above |
+
+### The Enrichment Pattern
+
+The `Seq<Record> + Record` case is the **streaming enrichment pattern**. In streaming mode, the scalar Record acts as a slowly-changing lookup value (via `combineLatest` join):
+
+```constellation
+in events: Seq<UserEvent>
+in config: AppConfig        # scalar — changes rarely
+
+# Each event gets the latest config merged in
+enriched = events + config
+```
+
+- **Single mode:** Every element in the vector gets `config` merged in (broadcast)
+- **Streaming mode:** Each new event gets the most recent `config` value merged in. When `config` changes, subsequent events use the new value.
+
+No special enrichment syntax needed — the `+` operator and the type system handle it.
+
+### Key-Based Joins — Module Concern
+
+For matching records by key (e.g., join events with profiles by `userId`), this is a **module-level concern**, not a language operator. Key-based joins require maintaining a stateful lookup table, especially in streaming mode.
+
+```constellation
+# Key-based join via module — not the + operator
+enriched = JoinByKey(events, profiles, "userId")
+```
+
+Rationale:
+- Key-based join is inherently stateful (lookup table maintenance)
+- The `+` operator is a pure structural merge — adding key semantics would overload its meaning
+- A `JoinByKey` module can have richer options (join type, window for temporal joins, default for missing keys)
+
+Key-based joins are a Phase 5 feature (stateful streaming).
 
 ---
 
@@ -225,8 +395,10 @@ The `DagSpec` is the shared intermediate representation. Both interpreters read 
 | Data node | `Deferred[IO, Any]` (resolve once) | `Stream[IO, CValue]` (continuous) |
 | Module execution | `deferred.get` → run → `deferred.complete` | `stream.evalMap(run)` or `parEvalMap(n)(run)` |
 | Seq transforms | Compute once on full Vector | `stream.map/filter/...` per element |
-| Fan-out | Implicit via DAG deps | `stream.broadcastThrough(...)` |
-| Fan-in | Record merge (single value) | Configurable: `concat` / `interleave` / `zip` |
+| Fan-out (by type) | `match` — one branch executes | `match` — stream partition by tag |
+| Fan-out (broadcast) | Implicit via DAG deps | `stream.broadcastThrough(...)` |
+| Fan-in | Record merge (single value) | `concat` / `Interleave` / `Zip` pseudo-modules |
+| Merge (`+`) | Structural field merge | Type-driven: zip (Seq+Seq) or combineLatest (Seq+scalar) |
 | Partial inputs | `SuspendedExecution` (return snapshot) | Join strategy (await at sync point) |
 | Completion | All deferreds resolved | Stream terminates or runs indefinitely |
 
@@ -467,26 +639,28 @@ Both produce `Seq<List<T>>` but serve different purposes:
 
 The compiler rejects `window` and `batch` on the same module call.
 
-#### Fan-In — Seq Combination Operators
+#### Fan-In — Seq Combination via Pseudo-Modules
 
-Fan-in operations are `Seq<T> × Seq<T> → Seq<T>` operations:
+Fan-in operations are `Seq<T> × Seq<T> → Seq<T>` operations. The `++` operator remains for concat, while `Interleave` and `Zip` are built-in **pseudo-modules** that use existing function call syntax (no parser changes needed):
 
 ```constellation
-# Sequential append (default for ++)
+# Sequential append (language-level operator)
 combined = eventsA ++ eventsB
 
-# Non-deterministic interleave
-combined = Merge(eventsA, eventsB) with merge: interleave
+# Non-deterministic interleave (pseudo-module)
+combined = Interleave(eventsA, eventsB)
 
-# Strict 1:1 pairing
+# Strict 1:1 pairing (pseudo-module)
 paired = Zip(eventsA, eventsB)
 ```
 
 | Operator | Single | Streaming |
 |----------|--------|-----------|
 | `++` (concat) | `v1 ++ v2` | `s1 ++ s2` (drain first, then second) |
-| `interleave` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
-| `zip` | `v1.zip(v2)` | `s1.zip(s2)` (backpressure faster) |
+| `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
+| `Zip(a, b)` | `v1.zip(v2)` | `s1.zip(s2)` (backpressure faster) |
+
+Pseudo-modules are compiler-inlined (like `filter`/`map`/`all`/`any` today) — they produce `InlineTransform` nodes in the DAG, not actual module invocations.
 
 #### Checkpointing
 
@@ -636,18 +810,41 @@ case class ModuleMetricsSnapshot(
    - If source node → use bound `Stream[IO, CValue]`
    - If inline Seq transform → `stream.map/filter/flatMap(transform)`
    - If module output → `stream.evalMap(module.run)` (or `parEvalMap` if `concurrency` set)
-5. **Apply Seq options:**
-   - `window` → `stream.groupWithin(n, d)` → `Stream[IO, Vector[T]]`
-   - `batch` → `stream.chunkN(n)` with timeout → `Stream[IO, Vector[T]]`
-   - `throttle` → `stream.metered(rate)`
-   - `retry` → per-element retry with backoff
-   - `timeout` → per-element timeout
-   - `fallback` → per-element fallback value
-   - `checkpoint` → periodic offset commit via `Stream.fixedDelay`
+   - If `match` on union → partition stream by tag, wire each arm
+   - If `+` merge → type-driven: zip (Seq+Seq) or combineLatest (Seq+scalar)
+5. **Apply with-clause options** (see dual-mode mapping below)
 6. **Wrap each module step in error handler**
 7. **Wire join points** — multi-input nodes use configured join strategy (`combineLatest` default)
 8. **Connect sink nodes** → pipe to sinks
 9. **Compose** — all streams merged into `Stream[IO, Unit]` with resource management
+
+### With-Clause Dual-Mode Mapping
+
+All 12 existing `with`-clause options have per-element semantics in streaming mode. No new streaming-specific options are needed for the existing set — only additive options (`window`, `batch`, `checkpoint`, `join`) are new.
+
+| Option | Single Mode (current) | Streaming Mode | Notes |
+|--------|----------------------|----------------|-------|
+| `retry: N` | Retry module on failure | Retry **per element** | Same semantics, continuous |
+| `timeout: 5s` | Fail module if >5s | Fail **element** if >5s | Per-element, not stream-wide |
+| `delay: 100ms` | Delay before execution | Per-element delay = rate limiting | `stream.metered(100.millis)` |
+| `backoff: exponential` | Backoff between retries | Same, per-element retries | Works naturally |
+| `fallback: { ... }` | Fallback value on failure | Emit **fallback per failed element** | Stream continues |
+| `cache: 30s` | Memoize by input hash | **Deduplication** — same input within TTL returns cached result | See below |
+| `cache_backend: "memcached"` | External cache store | Same, survives stream restarts | Cross-restart dedup |
+| `throttle: 100/1s` | Rate limiting | `stream.metered(rate)` / token bucket | Same intent |
+| `concurrency: 8` | Parallel execution | `parEvalMap(8)` | 8 elements concurrently |
+| `on_error: dlq` | Wrap error + log | Route to DLQ, continue | Already specified |
+| `lazy: true` | Defer computation | **Ignored** (fs2 is pull-based, inherently lazy) | Compiler info diagnostic |
+| `priority: high` | Scheduler priority | **Ignored** (no stream-level priority) | Compiler info diagnostic |
+
+**Cache as stream deduplication:** The `cache` option keys by input CValue hash. In streaming mode, if an element with the same input hash arrives within the TTL, the cached output is emitted without re-invoking the module. This gives automatic deduplication:
+
+```constellation
+# Same event within 30s → cached result, module not re-invoked
+processed = ExpensiveModel(events) with cache: 30s
+```
+
+With `cache_backend: "memcached"`, the dedup cache survives stream restarts — at-least-once reprocessing after restart skips already-processed elements within the TTL window.
 
 ### Fan-Out
 
@@ -659,6 +856,8 @@ source ──┬──▶ ModuleA ──▶ ...
 
 Source stream is broadcast via `stream.broadcastThrough(...)`. Each consumer runs in its own fiber.
 
+**Type-driven fan-out via `match`:** When a union-typed stream is matched, the fan-out is by type tag — each arm receives only its matching elements. This is more efficient than broadcast (no wasted processing).
+
 **Backpressure:** Slowest consumer governs source pace (fs2 default, only safe choice). If a branch is consistently slow:
 
 1. **Increase concurrency** — `result = SlowModule(x) with concurrency: 8`
@@ -668,11 +867,11 @@ Source stream is broadcast via `stream.broadcastThrough(...)`. Each consumer run
 
 ```
 streamA ──┐
-           ├──▶ concat/interleave/zip ──▶ Module ──▶ ...
+           ├──▶ concat / Interleave / Zip ──▶ Module ──▶ ...
 streamB ──┘
 ```
 
-Combination strategy is determined by the Seq operator used (`++`, `interleave`, `zip`).
+Combination strategy is determined by the operator or pseudo-module used (`++`, `Interleave(a,b)`, `Zip(a,b)`).
 
 ---
 
@@ -894,13 +1093,19 @@ GET /streams/{streamId}/metrics
 **Scope:** `StreamCompiler` + `Seq<T>` type + memory connectors + error handling + testing
 
 - [ ] `CType.CSeq` — new abstract sequence type in core
+- [ ] Rename `Candidates` → `Seq` throughout codebase and parser
 - [ ] Redefine `CType.CList` as always-materialized collection
+- [ ] Type checker: reject `Seq<Seq<T>>` and `List<Seq<T>>` composites
 - [ ] `StreamCompiler.wire()` — converts DagSpec to fs2 Stream graph
 - [ ] Module lifting — `evalMap` wrapper for existing modules
 - [ ] Seq transform streaming — `stream.map/filter/flatMap` per element
+- [ ] Element-wise operations on Seq — field access, projection, merge (lift from List)
+- [ ] Guard on Seq — element-wise filter interpretation
+- [ ] Merge type-driven join — Seq+Seq=zip, Seq+scalar=combineLatest
 - [ ] Join point wiring — `combineLatest` default for multi-input nodes
 - [ ] Per-element error handling — all `on_error` strategies including `dlq`
 - [ ] Circuit breaker — `maxConsecutiveErrors` with pause/resume
+- [ ] Existing with-clause options — per-element streaming semantics (cache as dedup)
 - [ ] Memory source/sink connectors
 - [ ] `StreamGraph` lifecycle — start, graceful shutdown
 - [ ] `StreamMetrics` — atomic counters, per-module breakdown, snapshot API
@@ -922,7 +1127,7 @@ GET /streams/{streamId}/metrics
 
 ### Phase 3: Language Extensions
 
-**Scope:** New `with`-clause options + Seq operators + annotations
+**Scope:** New `with`-clause options + Seq operators + annotations + union routing
 
 - [ ] Parser: `window`, `batch`, `batch_timeout`, `checkpoint` options
 - [ ] Parser: `@source` / `@sink` annotation syntax
@@ -930,10 +1135,12 @@ GET /streams/{streamId}/metrics
 - [ ] AST: `Annotation.Source`, `Annotation.Sink` (extend existing sealed trait)
 - [ ] AST: `OutputDecl.annotations` field
 - [ ] AST: Extend `ModuleCallOptions` with streaming fields
+- [ ] `Interleave` and `Zip` pseudo-modules (compiler-inlined, like existing HOFs)
 - [ ] Type checker: Validate `Seq<T> → Seq<List<T>>` for windowed/batched modules
 - [ ] Type checker: Enforce `window` / `batch` mutual exclusivity
-- [ ] Type checker: Disallow `List<Seq<T>>` and `Seq<Seq<T>>` composites
-- [ ] Compiler: Streaming option validation (info in single mode, error if invalid in streaming)
+- [ ] Compiler: `match` on union Seq → stream partition IR node
+- [ ] Compiler: `branch` on Seq → predicate routing IR node
+- [ ] Compiler: streaming option validation (info in single mode for `lazy`/`priority`)
 - [ ] Fold default window handling — compiler info diagnostic
 
 ### Phase 4: HTTP API + Dashboard + Hot-Reload
@@ -950,13 +1157,14 @@ GET /streams/{streamId}/metrics
 
 ### Phase 5: External Connectors + Stateful Streaming + Exactly-Once
 
-**Scope:** Kafka, file, gRPC + stateful modules + transactional delivery
+**Scope:** Kafka, file, gRPC + stateful modules + transactional delivery + key-based joins
 
 - [ ] `constellation-connector-kafka` (fs2-kafka)
 - [ ] `constellation-connector-file` (fs2-io)
 - [ ] `constellation-connector-grpc` (fs2-grpc)
 - [ ] Exactly-once delivery for Kafka → Kafka
 - [ ] `StreamModule[S]` trait for stateful streaming (separate RFC)
+- [ ] `JoinByKey` stateful module for key-based stream joins
 - [ ] `checkpoint_backend: "rocksdb"` for durable state
 
 ---
@@ -968,23 +1176,36 @@ GET /streams/{streamId}/metrics
 ```constellation
 type UserEvent = { userId: String, action: String, timestamp: Int }
 type UserProfile = { userId: String, name: String, tier: String }
+type ProcessedEvent = { userId: String, action: String, tier: String, score: Int }
 
 in events: Seq<UserEvent>
 in profiles: Seq<UserProfile>
 
-# Processing — identical in both modes
+# Enrichment via merge — type-driven join (Seq + Seq = zip in single, combineLatest if configured)
 enriched = Enrich(events, profiles)
 scored = ScoreEvent(enriched) with retry: 2, timeout: 5s, on_error: dlq
 
-# Fan-out
+# Fan-out via structural guard — no lambda needed
 premium = scored when scored.tier == "premium"
 alert = AlertTeam(premium) with fallback: { alerted: false }
+
+# Union-based routing
+type Result = Success | Failure
+validated = Validate(scored)
+routed = match validated {
+  Success { event } -> Archive(event)
+  Failure { error } -> NotifyAdmin(error)
+}
 
 # Windowed aggregation
 stats = ComputeStats(events) with window: tumbling(5min)
 
+# Cache as dedup — same event within 30s returns cached result
+deduped = ExpensiveEnrich(events) with cache: 30s
+
 out scored
 out alert
+out routed
 out stats
 ```
 
@@ -992,11 +1213,13 @@ out stats
 
 ```scala
 val result = runtime.run(compiledPipeline, Map(
-  "events"   -> CValue.CList(Vector(event1, event2, event3)),
-  "profiles" -> CValue.CList(Vector(profile1, profile2))
+  "events"   -> CValue.CSeq(Vector(event1, event2, event3)),
+  "profiles" -> CValue.CSeq(Vector(profile1, profile2))
 ))
-// Returns: DataSignature with scored, alert, stats outputs
-// stats = ComputeStats over the full list (window ignored in single mode)
+// Returns: DataSignature with scored, alert, routed, stats outputs
+// stats = ComputeStats over the full Seq (window ignored in single mode)
+// match on validated: one branch per element based on tag
+// premium: elements where tier == "premium" wrapped in Optional
 ```
 
 ### Streaming Mode
@@ -1008,6 +1231,7 @@ val config = StreamPipelineConfig(
     "profiles" -> SourceBinding("kafka", Map("topic" -> "user-profiles")),
     "scored"   -> SinkBinding("kafka", Map("topic" -> "scored-events")),
     "alert"    -> SinkBinding("webhook", Map("url" -> "https://alerts.example.com")),
+    "routed"   -> SinkBinding("kafka", Map("topic" -> "routed-results")),
     "stats"    -> SinkBinding("kafka", Map("topic" -> "event-stats"))
   ),
   dlq = Some(SinkBinding("kafka", Map("topic" -> "enrichment-dlq")))
@@ -1015,6 +1239,10 @@ val config = StreamPipelineConfig(
 
 val graph = StreamRuntime.deploy(compiledPipeline, config, registry)
 graph.stream.compile.drain  // Runs continuously
+// match on validated: stream partition — Success events to Archive, Failure events to NotifyAdmin
+// premium: element-wise filter — non-premium events dropped from stream
+// stats: windowed aggregation — one stats event emitted per 5min window
+// deduped: cache deduplication — repeated events within 30s return cached result
 ```
 
 ### Testing
@@ -1036,6 +1264,19 @@ class UserEnrichmentTest extends AnyFlatSpec with Matchers {
     }
   }
 
+  "union routing" should "partition by type" in {
+    val testKit = StreamTestKit.fromPipeline(compiledPipeline)
+
+    testKit.run {
+      testKit.source("events").emit(validEvent)
+      testKit.source("events").emit(invalidEvent)
+
+      val routed = testKit.sink("routed").take(2, timeout = 5.seconds)
+      // One goes through Archive, one through NotifyAdmin
+      routed should have size 2
+    }
+  }
+
   "windowed stats" should "aggregate per window" in {
     val testKit = StreamTestKit.fromPipeline(compiledPipeline)
 
@@ -1054,32 +1295,13 @@ class UserEnrichmentTest extends AnyFlatSpec with Matchers {
 
 ## Open Questions
 
-### 1. Key-based joins
+### 1. Window algebra syntax
 
-When joining `Seq<UserEvent>` with `Seq<UserProfile>`, should the pipeline language support key-based matching (`join events and profiles on userId`)? Or is this a module concern (a `Join` module that takes two inputs and matches by key)?
+What syntax should `window` options use? Current proposal is `tumbling(5min)`, `sliding(10min, slide: 1min)`, `count(100)`. Should these be string literals, function-call syntax, or structured expressions? The window DSL needs to be expressive enough for common patterns without requiring a full sub-language.
 
-### 2. Seq operators as built-in modules vs. language-level syntax
+### 2. Backpressure strategy configuration
 
-Should `interleave`, `zip`, `concat` be:
-- **(A)** Language-level operators with parser support (new syntax)
-- **(B)** Built-in pseudo-modules (`Merge(a, b)`, `Zip(a, b)`) that use existing function call syntax
-- **(C)** `with`-clause options on input declarations
-
-### 3. `Seq<T>` backward compatibility migration path
-
-Although backward compatibility is not required, what is the migration path for existing `.cst` files using `List<T>`? Options:
-- **(A)** `List<T>` keeps current semantics (always materialized), `Seq<T>` is additive
-- **(B)** Existing `List<T>` syntax is automatically interpreted as `Seq<T>`, and `List<T>` requires an explicit `@materialized` annotation or new syntax like `[T]`
-
-### 4. Guard (`when`) streaming semantics
-
-In single mode, `x when condition` returns `Optional<T>`. In streaming mode, should it:
-- **(A)** Filter (drop non-matching elements from the Seq) — more natural for streams
-- **(B)** Wrap in Optional (consistent with single mode) — preserves element count
-
-### 5. Nested Seq validation
-
-Should `Seq<Seq<T>>` be a compiler error or silently flattened to `Seq<T>`? The RFC currently disallows it, but `flatMap` naturally produces nested sequences.
+When a slow consumer in a fan-out causes source-level backpressure, should there be explicit configuration for buffering or dropping on specific branches? Currently the only options are (1) increase concurrency or (2) decouple via connector. A `with backpressure: drop_oldest(1000)` option on specific branches could be useful but adds complexity.
 
 ---
 
@@ -1088,6 +1310,38 @@ Should `Seq<Seq<T>>` be a compiler error or silently flattened to `Seq<T>`? The 
 ### Streaming is NOT a type system concern
 
 The type system does not introduce `Stream<T>`. Instead, `Seq<T>` is the abstract container, and the execution strategy determines its runtime representation.
+
+### Seq<T> subsumes Candidates<T>
+
+Clean rename throughout codebase. No backward compatibility shims. Parser accepts both during transition.
+
+### Guard on Seq is element-wise filter
+
+`seq when condition` filters elements (drops non-matching) rather than wrapping in Optional. For scalar guards, Optional semantics are retained, but `None` means "no emission" in streaming mode.
+
+### Union types are event routing
+
+`match` on a union-typed Seq becomes a stream partition. `Optional<T>` is conceptually `T | None` and follows union event semantics. `branch` is predicate-based routing.
+
+### Merge operator is type-driven enrichment
+
+`Seq<Record> + Record` uses combineLatest in streaming (enrichment pattern). `Seq<Record> + Seq<Record>` uses zip (element-wise merge). No special enrichment syntax needed.
+
+### Key-based joins are a module concern
+
+`JoinByKey` is a stateful module, not a language operator. Deferred to Phase 5.
+
+### Fan-in operators are pseudo-modules
+
+`Interleave(a, b)` and `Zip(a, b)` use existing function call syntax. `++` remains the language-level concat operator. Pseudo-modules are compiler-inlined like existing HOFs.
+
+### Existing with-clause options work per-element in streaming
+
+No new streaming-specific options needed for the existing 12. `cache` becomes deduplication, `delay` becomes rate limiting, `lazy` and `priority` are ignored with compiler info diagnostics.
+
+### Nested Seq<Seq<T>> is a compiler error
+
+`flatMap` is defined as `map + flatten`, never producing nested Seq. Use `Seq<List<T>>` for nested structure.
 
 ### Delivery guarantees are connector-dependent
 
@@ -1129,6 +1383,18 @@ Masks backpressure problems. Explicit backpressure is safer.
 
 Ambiguous semantics. Mutually exclusive is simpler.
 
+### Key-based joins as language-level syntax
+
+Key-based joins are inherently stateful (lookup table maintenance). Overloading `+` with key semantics would conflate structural merge with stateful matching. Better as a module.
+
+### Optional<T> refactored to CUnion sugar
+
+Considered unifying `COptional`/`SOptional` into `CUnion(T, None)` at the type level. Kept as separate types for ergonomics and optimization — the streaming interpreter applies union event semantics to Optional without requiring a type system change.
+
+### Lambda-only element-wise operations
+
+The structural dot syntax (`items.field`, `items.score > 10`) covers the common case without lambdas. Explicit lambdas remain for complex cases but are rarely needed.
+
 ---
 
 ## References
@@ -1140,3 +1406,8 @@ Ambiguous semantics. Mutually exclusive is simpler.
 - **fs2-kafka:** https://fd4s.github.io/fs2-kafka/
 - **Existing streaming infra:** `modules/http-api/.../ExecutionWebSocket.scala` (fs2 already used)
 - **Existing suspension:** `modules/runtime/.../SuspendedExecution.scala`, `SuspendableExecution.scala`
+- **Existing element-wise ops:** `modules/lang-compiler/.../TypeChecker.scala` (lines 536-586) — List<Record> field access, projection, merge
+- **Existing union types:** `modules/core/.../TypeSystem.scala` — CUnion, COptional; `modules/lang-compiler/.../SemanticType.scala` — SUnion, SOptional
+- **Existing match/pattern:** `modules/lang-ast/.../AST.scala` — Match, MatchCase, Pattern.Record, Pattern.TypeTest, Pattern.Wildcard
+- **Existing merge transform:** `modules/core/.../InlineTransform.scala` — MergeTransform (4 strategies by type)
+- **Existing HOF inlining:** `modules/lang-compiler/.../DagCompiler.scala` — processHigherOrderNode, FilterTransform, MapTransform
