@@ -16,7 +16,7 @@ The key design insight is the introduction of **`Seq<T>`** — an abstract order
 - **Single mode:** `Seq<T>` → `Vector[T]` (finite, synchronous, in-memory)
 - **Streaming mode:** `Seq<T>` → `Stream[IO, T]` (unbounded, asynchronous, backpressured)
 
-Every operation on `Seq<T>` (map, filter, concat, fold, batch) has a well-defined mapping in both modes. The existing `List<T>` is retained as an **always-materialized** collection — `Seq<List<T>>` is unambiguous: a sequence of finite chunks. `Seq<T>` subsumes the legacy `Candidates<T>` alias — all instances of `Candidates` are renamed to `Seq` (clean refactor, no migration needed).
+Every operation on `Seq<T>` (map, filter, concat, fold, collect) has a well-defined mapping in both modes. The existing `List<T>` is retained as an **always-materialized** collection — `Seq<List<T>>` is unambiguous: a sequence of finite chunks. The `collect` stdlib function is the **materialization boundary** — it converts `Seq<T>` to `Seq<List<T>>` (identity-ish in single mode, windowed grouping in streaming mode), and the compiler auto-inserts it when a module expecting `List<T>` receives `Seq<T>`. `Seq<T>` subsumes the legacy `Candidates<T>` alias — all instances of `Candidates` are renamed to `Seq` (clean refactor, no migration needed).
 
 Existing language constructs lift naturally into streaming semantics: **union types** (`A | B`) become event routing via `match`, **guards** (`when`) become element-wise filters, **merge** (`+`) becomes type-driven enrichment, and **structural dot syntax** (`items.field`) acts as an implicit element-wise lambda. A **connector registry** provides pluggable sources and sinks (Kafka, WebSockets, HTTP SSE, files) for streaming mode.
 
@@ -85,6 +85,8 @@ The current `CType.CList` is refactored into two distinct types:
 | `Seq<T>` | `CSeq(elementType)` | `Vector[T]` | `Stream[IO, T]` | Abstract sequence — interpreter chooses representation |
 | `List<T>` | `CList(elementType)` | `Vector[T]` | `Vector[T]` | Materialized collection — always finite, in-memory |
 
+**Runtime value representation:** `CValue.CSeq(value: Vector[CValue])` wraps a `Vector[CValue]` in single mode — structurally identical to `CValue.CList`. The distinction is at the **type level** (`CType.CSeq` vs `CType.CList`), which the interpreter uses to choose execution strategy. In streaming mode, `CSeq` never materializes as a `CValue` — it exists only as a `Stream[IO, CValue]` edge in the stream graph. Pattern matching in module code sees `Vector[CValue]` in both cases; the type tag determines whether the interpreter treats it as a finite collection or an abstract sequence.
+
 **Migration:** `Seq<T>` subsumes the legacy `Candidates<T>` alias. All existing uses of `Candidates` in the codebase and `.cst` files are renamed to `Seq`. This is a clean refactor — no migration path or backward compatibility shims needed. The parser accepts both `Seq<T>` and `Candidates<T>` during a transition period, resolving both to `CSeq`.
 
 Composites:
@@ -108,12 +110,13 @@ The interpreter is a functor from the category of pipeline operations to the cat
 | `filter(p)` | `vector.filter(p)` | `stream.filter(p)` |
 | `flatMap(f)` | `vector.flatMap(f)` | `stream.flatMap(f)` |
 | `concat (++)` | `v1 ++ v2` | `s1 ++ s2` (sequential append) |
-| `interleave` | `v1.zip(v2).flatMap(t => Vector(t._1, t._2))` | `s1.merge(s2)` (non-deterministic) |
-| `zip` | `v1.zip(v2)` | `s1.zip(s2)` |
+| `interleave` | Round-robin alternating (truncates to shorter) | `s1.merge(s2)` (non-deterministic) |
+| `zip` | `v1.zip(v2)` (truncates to shorter) | `s1.zip(s2)` (terminates on shorter) |
 | `fold(z)(f)` | `vector.foldLeft(z)(f)` → scalar `T` | windowed: `stream.fold(z)(f)` per window → scalar events |
 | `take(n)` | `vector.take(n)` | `stream.take(n)` |
 | `batch(n)` | `vector.grouped(n)` → `Seq<List<T>>` | `stream.chunkN(n)` → `Stream[IO, Vector[T]]` |
 | `window(d)` | Identity / compiler info | `stream.groupWithin(n, d)` → `Stream[IO, Vector[T]]` |
+| `collect` | `Vector(vector)` — wraps full vector as single List | Windowed grouping → `Stream[IO, Vector[T]]` |
 | Module apply | `vector.map(module.run)` | `stream.evalMap(module.run)` |
 
 **Operations excluded from Seq** (no streaming counterpart): `size`, `reverse`, `sort`, `indexOf`, random access. These are module-level concerns or `List`-only operations.
@@ -131,7 +134,93 @@ total = Sum(values)
 total = Sum(values) with window: tumbling(5min)
 ```
 
-If no `window` is specified in streaming mode, the runtime uses a default window from `StreamOptions.defaultFoldWindow`. The compiler emits an info diagnostic: "fold on Seq<T> in streaming mode uses windowed aggregation."
+If no `window` is specified in streaming mode, the runtime uses a default window from `StreamOptions.defaultMaterializationWindow` (the same default used by implicit `collect` boundaries). The compiler emits an info diagnostic: "fold on Seq<T> in streaming mode uses windowed aggregation."
+
+**DAG IR type:** Fold always produces scalar `T` in the DAG IR — the type system sees `Seq<Int> → Int`, not `Seq<Int> → Seq<Int>`. In single mode, this is literally one value. In streaming mode, the interpreter emits one `T` event per window close — the "scalar" fires repeatedly, once per window. Downstream nodes see individual `T` events, not a collection. This preserves type compatibility: a downstream module expecting `Int` works identically in both modes. The difference is *cardinality* (one value vs. one-per-window), not *type*.
+
+### Materialization Boundaries — `collect`
+
+The `collect` function is the **materialization boundary** between `Seq<T>` (abstract, potentially unbounded) and `List<T>` (finite, in-memory). It lives in `stdlib.collection` alongside `filter`, `map`, `all`, `any` — same namespace, same calling convention. Unlike the HOFs (which take lambdas), `collect` is a **pseudo-module** — compiler-inlined via `InlineTransform` but without lambda extraction, same pattern as `Interleave` and `Zip`.
+
+```constellation
+use stdlib.collection
+
+in events: Seq<UserEvent>
+
+# Explicit materialization with window spec
+batched = collect(events, tumbling(5min))       # Seq<T> → Seq<List<T>>
+rolling = collect(events, sliding(10min, 1min)) # Seq<T> → Seq<List<T>>
+chunks = collect(events, count(100))            # Seq<T> → Seq<List<T>>
+
+# Default materialization (uses deployment-level defaultMaterializationWindow)
+batched = collect(events)                       # Seq<T> → Seq<List<T>>
+```
+
+**Dual-mode semantics:**
+
+| Expression | Single Mode | Streaming Mode |
+|---|---|---|
+| `collect(seq)` | `Vector(vector)` — wraps full vector as single-element `Seq<List<T>>` | Groups by `StreamOptions.defaultMaterializationWindow` → `Stream[IO, Vector[T]]` |
+| `collect(seq, tumbling(5min))` | Same — one chunk (no time dimension) | `stream.groupWithin(_, 5.min)` → `Stream[IO, Vector[T]]` |
+| `collect(seq, count(100))` | `vector.grouped(100)` → multiple chunks | `stream.chunkN(100)` → `Stream[IO, Vector[T]]` |
+
+#### Reusable Materialization Points
+
+`collect` is especially useful when multiple downstream modules need the same materialized chunks — one materialization, shared window boundaries:
+
+```constellation
+# One materialization, multiple consumers
+batch = collect(events, tumbling(5min))
+stats = ComputeStats(batch)       # receives List<UserEvent> per window
+summary = Summarize(batch)         # same windows, same boundaries
+archive = ArchiveBatch(batch)      # same chunks
+```
+
+Without `collect`, each `with window:` on a module call creates its own independent window with potentially different boundaries.
+
+#### Auto-Desugaring Rule
+
+The compiler statically detects **materialization mismatches**: when a module parameter expects `List<T>` (or any non-Seq collection) but receives `Seq<T>`.
+
+**Rule:** When the compiler detects `Module(seq_arg)` where the module's `FunctionSignature` declares the parameter as `CList(T)` but the expression type is `CSeq(T)`:
+
+1. The compiler auto-inserts `collect(seq_arg)` before the module call
+2. If `with window:` is specified on the module call → uses that window spec
+3. If no window → uses `StreamOptions.defaultMaterializationWindow` and emits an **info diagnostic**: *"Module ComputeStats expects List\<Int\> but receives Seq\<Int\>. Implicit materialization boundary inserted (default window)."*
+4. In single mode, the materialization is effectively identity — the module receives the full collection as one chunk
+
+This means existing pipelines "just work" without the user needing to think about materialization. The diagnostic tells them exactly what happened, and they can take explicit control with `collect()` or `with window:` when they need to.
+
+**Example of auto-desugaring:**
+
+```constellation
+# User writes:
+stats = ComputeStats(events)
+# ComputeStats.consumes = Map("values" -> CList(CInt))
+# events: Seq<Int>
+
+# Compiler desugars to:
+__events_collected = collect(events)     # implicit, uses default window
+stats = ComputeStats(__events_collected) # module receives List<Int> per chunk
+```
+
+#### Module Lifting Strategy — Summary
+
+The module's input signature determines how the compiler handles a `Seq<T>` argument:
+
+| Module expects | Receives `Seq<T>` | Compiler action | Streaming behavior |
+|---|---|---|---|
+| Scalar `T` | `Seq<T>` | **Element-wise lift** | `stream.evalMap(module.run)` — one call per element |
+| `List<T>` | `Seq<T>` | **Auto-insert `collect`** | `stream.groupWithin(...)` then `evalMap` — one call per chunk |
+| `Seq<T>` | `Seq<T>` | **Compiler error in streaming mode** | Modules are `I => IO[O]`, not stream processors (Phase 5: `StreamModule[S]`) |
+
+#### Implementation Details
+
+- **Namespace:** `stdlib.collection` (alongside `filter`, `map`, `all`, `any`)
+- **Module name:** `stdlib.builtin.collect` (pseudo-module, not HOF — no lambda argument)
+- **IR:** Detected by DagCompiler via module name prefix `stdlib.builtin.*` (separate from `stdlib.hof.*` HOF path). Optional `WindowSpec` argument parsed in Phase 3.
+- **DagCompiler:** Produces `InlineTransform.CollectTransform(windowSpec: Option[WindowSpec])` — direct generation, no lambda compilation
+- **StreamOptions:** New field `defaultMaterializationWindow: FiniteDuration = 5.minutes`
 
 ### Element-Wise Operations & Structural Syntax
 
@@ -257,10 +346,12 @@ The existing `+` (merge) operator already implements four strategies in `MergeTr
 
 | Left | Right | Single Mode | Streaming Mode |
 |------|-------|-------------|----------------|
-| `Record + Record` | → | Field merge | Same (both events, fire when both arrive) |
+| `Record + Record` | → | Field merge (`lMap ++ rMap`) | Field merge — both are scalar events, join fires per configured strategy (`combineLatest` default) |
 | `Seq<Record> + Seq<Record>` | → | Element-wise merge (zip, same length) | `stream.zip(stream).map(merge)` |
 | `Seq<Record> + Record` | → | Broadcast scalar to every element | `combineLatest` — each Seq element gets latest scalar merged |
 | `Record + Seq<Record>` | → | Broadcast (reversed) | Same as above |
+
+**Zip length divergence:** In single mode, `Seq<Record> + Seq<Record>` throws `IllegalArgumentException` if the vectors have different lengths (existing `MergeTransform` behavior). In streaming mode, `stream.zip` terminates when the shorter stream ends — remaining elements from the longer stream are silently dropped. This is an intentional behavioral divergence: single mode enforces strictness (fail-fast on mismatched data), while streaming mode follows fs2 zip semantics (graceful termination). The `StreamMetrics` counter `elementsDroppedZip` tracks how many elements were discarded due to one side completing early, and the stream emits a `StreamEvent.ZipExhausted(side: "left" | "right")` event for monitoring.
 
 ### The Enrichment Pattern
 
@@ -364,6 +455,12 @@ in profiles: Seq<UserProfile> with join: zip   # strict 1:1 pairing
 | `buffer(timeout)` | Wait up to timeout for all inputs | Loose synchronization |
 
 **Streaming-only.** In single mode, `join` is ignored (all inputs are provided upfront).
+
+**Choosing the right join strategy:**
+
+- **`combineLatest` (default)** — best when one input changes rarely relative to the other (e.g., events enriched with slowly-changing config). Be aware that if both inputs are high-throughput event streams, `combineLatest` produces `O(N * M)` outputs (every new event from either side triggers a computation with the latest from the other). If this is not desired, use `zip`.
+- **`zip`** — best when inputs have a 1:1 correspondence (e.g., request-response pairs, correlated sensor readings). The faster stream waits for the slower one. Elements are never duplicated or reused.
+- **`buffer(timeout)`** — best when inputs arrive in loose batches (e.g., data from multiple APIs with different latencies). Waits up to `timeout` for all inputs to have at least one value, then fires.
 
 ---
 
@@ -527,7 +624,7 @@ val streamConfig = StreamPipelineConfig(
   options = StreamOptions(
     checkpointInterval = 1.minute,
     maxConcurrency = 16,
-    defaultFoldWindow = 5.minutes
+    defaultMaterializationWindow = 5.minutes
   ),
   dlq = Some(SinkBinding("kafka", Map("topic" -> "pipeline-dlq")))
 )
@@ -606,7 +703,7 @@ processed = HeavyModel(events) with
 | Single | `vector.grouped(50).toVector` → `Vector[Vector[T]]` |
 | Streaming | `stream.groupWithin(50, 2.seconds)` → `Stream[IO, Vector[T]]` |
 
-Module receives `List<T>` (finite chunk) in both modes.
+Module receives `List<T>` (finite chunk) in both modes. In single mode, the Runtime applies `grouped(n)` before invoking the module — the module is called once per chunk. The `batch_timeout` option is ignored in single mode (no time dimension). This means batching is implemented by **both** interpreters, not just the `StreamCompiler`.
 
 #### Windowing — `Seq<T> → Seq<List<T>>`
 
@@ -627,6 +724,19 @@ batch_result = ProcessBatch(items) with window: count(100)
 | Streaming | `stream.groupWithin(n, d)` or custom windowing → `Stream[IO, Vector[T]]` |
 
 Module receives `List<T>` (the window contents).
+
+**Relationship to `collect`:** `with window:` on a module call is syntactic sugar for inserting a `collect` before the module. These two are equivalent:
+
+```constellation
+# with window: sugar
+stats = ComputeStats(events) with window: tumbling(5min)
+
+# Explicit collect
+windowed = collect(events, tumbling(5min))
+stats = ComputeStats(windowed)
+```
+
+Use `with window:` for one-off windowing on a single module call. Use explicit `collect` when the same materialized chunks feed multiple downstream modules.
 
 #### Window vs. Batch: Mutually Exclusive
 
@@ -657,10 +767,12 @@ paired = Zip(eventsA, eventsB)
 | Operator | Single | Streaming |
 |----------|--------|-----------|
 | `++` (concat) | `v1 ++ v2` | `s1 ++ s2` (drain first, then second) |
-| `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
-| `Zip(a, b)` | `v1.zip(v2)` | `s1.zip(s2)` (backpressure faster) |
+| `Interleave(a, b)` | Round-robin alternating (truncates to shorter) | `s1.merge(s2)` (non-deterministic) |
+| `Zip(a, b)` | `v1.zip(v2)` → `Seq<(A, B)>` (truncates to shorter) | `s1.zip(s2)` (backpressure faster, terminates on shorter) |
 
-Pseudo-modules are compiler-inlined (like `filter`/`map`/`all`/`any` today) — they produce `InlineTransform` nodes in the DAG, not actual module invocations.
+**Length mismatch:** Both `Interleave` and `Zip` truncate to the shorter input in single mode (matching Scala's `zip` behavior). In streaming mode, the stream terminates when either side completes. Use `++` (concat) when all elements from both inputs must be preserved.
+
+Pseudo-modules (`Interleave`, `Zip`, `collect`) are compiler-inlined via the `stdlib.builtin.*` module name prefix — they produce `InlineTransform` nodes in the DAG, not actual module invocations. This is a separate code path from HOFs (`stdlib.hof.*`), which require lambda extraction. Pseudo-modules have no lambdas.
 
 #### Checkpointing
 
@@ -686,9 +798,12 @@ out enriched
 
 ```
 Annotation     = '@' Identifier '(' AnnotationArgs ')'
-AnnotationArgs = Identifier ( ',' KeyValueArg )*
+AnnotationArgs = ConnectorName ( ',' KeyValueArg )*
+ConnectorName  = Identifier | StringLiteral
 KeyValueArg    = Identifier ':' Literal
 ```
+
+**Connector name resolution:** The first argument is the connector name. It can be a bare identifier (`kafka`, `websocket`) or a string literal (`"http-sse"`) for names that aren't valid identifiers (e.g., names containing hyphens). The compiler resolves the name against the `ConnectorRegistry` at deployment time — unrecognized names produce a deployment error, not a compile error (since the registry is a runtime concern).
 
 #### AST Impact
 
@@ -739,16 +854,21 @@ object StreamCompiler {
 ### StreamMetrics
 
 ```scala
-case class StreamMetrics(
-  elementsIn: Ref[IO, Long],
-  elementsOut: Ref[IO, Long],
-  elementsFailed: Ref[IO, Long],
-  elementsDlq: Ref[IO, Long],
-  startedAt: Instant,
-  perModule: Map[UUID, ModuleStreamMetrics],
-  def throughputPerSecond: IO[Double],
+trait StreamMetrics {
+  def elementsIn: Ref[IO, Long]
+  def elementsOut: Ref[IO, Long]
+  def elementsFailed: Ref[IO, Long]
+  def elementsDlq: Ref[IO, Long]
+  def elementsDroppedZip: Ref[IO, Long]
+  def startedAt: Instant
+  def perModule: Map[UUID, ModuleStreamMetrics]
+  def throughputPerSecond: IO[Double]
   def snapshot: IO[StreamMetricsSnapshot]
-)
+}
+
+object StreamMetrics {
+  def create(modules: Map[UUID, String]): IO[StreamMetrics]
+}
 
 case class ModuleStreamMetrics(
   moduleName: String,
@@ -808,6 +928,7 @@ case class ModuleMetricsSnapshot(
 3. **Topological sort** — same as single mode, determines wiring order
 4. **For each data node:**
    - If source node → use bound `Stream[IO, CValue]`
+   - If `collect` transform → `stream.groupWithin(n, d)` (or `chunkN` for count-based)
    - If inline Seq transform → `stream.map/filter/flatMap(transform)`
    - If module output → `stream.evalMap(module.run)` (or `parEvalMap` if `concurrency` set)
    - If `match` on union → partition stream by tag, wire each arm
@@ -926,7 +1047,7 @@ case class StreamOptions(
   checkpointInterval: Option[FiniteDuration] = None,
   maxConcurrency: Int = 16,
   maxConsecutiveErrors: Int = 100,
-  defaultFoldWindow: FiniteDuration = 5.minutes
+  defaultMaterializationWindow: FiniteDuration = 5.minutes
 )
 ```
 
@@ -1106,6 +1227,9 @@ GET /streams/{streamId}/metrics
 - [ ] Per-element error handling — all `on_error` strategies including `dlq`
 - [ ] Circuit breaker — `maxConsecutiveErrors` with pause/resume
 - [ ] Existing with-clause options — per-element streaming semantics (cache as dedup)
+- [ ] `collect` pseudo-module — `stdlib.builtin.collect`, `InlineTransform.CollectTransform` (no-arg form only; WindowSpec form in Phase 3)
+- [ ] Auto-desugaring — compiler inserts implicit `collect` when module expects `List<T>` but receives `Seq<T>`
+- [ ] `StreamOptions.defaultMaterializationWindow` — configurable default for implicit collect and fold
 - [ ] Memory source/sink connectors
 - [ ] `StreamGraph` lifecycle — start, graceful shutdown
 - [ ] `StreamMetrics` — atomic counters, per-module breakdown, snapshot API
@@ -1136,7 +1260,8 @@ GET /streams/{streamId}/metrics
 - [ ] AST: `Annotation.Source`, `Annotation.Sink` (extend existing sealed trait)
 - [ ] AST: `OutputDecl.annotations` field
 - [ ] AST: Extend `ModuleCallOptions` with streaming fields
-- [ ] `Interleave` and `Zip` pseudo-modules (compiler-inlined, like existing HOFs)
+- [ ] `Interleave` and `Zip` pseudo-modules (compiler-inlined via `stdlib.builtin.*` path)
+- [ ] `collect` WindowSpec argument form — `collect(seq, tumbling(5min))` (requires WindowSpec parser from above)
 - [ ] Type checker: Validate `Seq<T> → Seq<List<T>>` for windowed/batched modules
 - [ ] Type checker: Enforce `window` / `batch` mutual exclusivity
 - [ ] Compiler: `match` on union Seq → stream partition IR node
@@ -1160,13 +1285,18 @@ GET /streams/{streamId}/metrics
 
 **Scope:** Kafka, file, gRPC + stateful modules + transactional delivery + key-based joins
 
+> **Note:** Phase 5 items are non-trivial and will require their own RFCs before implementation. Specifically:
+> - **Stateful streaming** (`StreamModule[S]`, `JoinByKey`, durable state) — needs its own RFC covering state serialization, checkpointing, recovery semantics, and state migration on pipeline updates.
+> - **Exactly-once delivery** — needs its own RFC covering transactional protocols, connector requirements, and failure semantics.
+> - **External connectors** (Kafka, gRPC) — may be covered by individual connector RFCs or a single connector SPI RFC depending on scope.
+
 - [ ] `constellation-connector-kafka` (fs2-kafka)
 - [ ] `constellation-connector-file` (fs2-io)
 - [ ] `constellation-connector-grpc` (fs2-grpc)
-- [ ] Exactly-once delivery for Kafka → Kafka
+- [ ] Exactly-once delivery for Kafka → Kafka (separate RFC)
 - [ ] `StreamModule[S]` trait for stateful streaming (separate RFC)
-- [ ] `JoinByKey` stateful module for key-based stream joins
-- [ ] `checkpoint_backend: "rocksdb"` for durable state
+- [ ] `JoinByKey` stateful module for key-based stream joins (separate RFC)
+- [ ] `checkpoint_backend: "rocksdb"` for durable state (separate RFC)
 
 ---
 
@@ -1175,6 +1305,8 @@ GET /streams/{streamId}/metrics
 ### Pipeline Definition (`user-enrichment.cst`)
 
 ```constellation
+use stdlib.collection
+
 type UserEvent = { userId: String, action: String, timestamp: Int }
 type UserProfile = { userId: String, name: String, tier: String }
 type ProcessedEvent = { userId: String, action: String, tier: String, score: Int }
@@ -1182,7 +1314,7 @@ type ProcessedEvent = { userId: String, action: String, tier: String, score: Int
 in events: Seq<UserEvent>
 in profiles: Seq<UserProfile>
 
-# Enrichment via merge — type-driven join (Seq + Seq = zip in single, combineLatest if configured)
+# Enrichment — module handles joining by key or strategy
 enriched = Enrich(events, profiles)
 scored = ScoreEvent(enriched) with retry: 2, timeout: 5s, on_error: dlq
 
@@ -1198,8 +1330,10 @@ routed = match validated {
   Failure { error } -> NotifyAdmin(error)
 }
 
-# Windowed aggregation
-stats = ComputeStats(events) with window: tumbling(5min)
+# Explicit materialization — shared window for multiple consumers
+batch = collect(events, tumbling(5min))
+stats = ComputeStats(batch)
+summary = Summarize(batch)
 
 # Cache as dedup — same event within 30s returns cached result
 deduped = ExpensiveEnrich(events) with cache: 30s
@@ -1208,6 +1342,8 @@ out scored
 out alert
 out routed
 out stats
+out summary
+out deduped
 ```
 
 ### Single Mode
@@ -1217,8 +1353,9 @@ val result = runtime.run(compiledPipeline, Map(
   "events"   -> CValue.CSeq(Vector(event1, event2, event3)),
   "profiles" -> CValue.CSeq(Vector(profile1, profile2))
 ))
-// Returns: DataSignature with scored, alert, routed, stats outputs
-// stats = ComputeStats over the full Seq (window ignored in single mode)
+// Returns: DataSignature with scored, alert, routed, stats, summary, deduped outputs
+// batch = collect wraps full vector as single List (identity in single mode)
+// stats + summary both receive the same full List<UserEvent>
 // match on validated: one branch per element based on tag
 // premium: elements where tier == "premium" wrapped in Optional
 ```
@@ -1233,7 +1370,9 @@ val config = StreamPipelineConfig(
     "scored"   -> SinkBinding("kafka", Map("topic" -> "scored-events")),
     "alert"    -> SinkBinding("webhook", Map("url" -> "https://alerts.example.com")),
     "routed"   -> SinkBinding("kafka", Map("topic" -> "routed-results")),
-    "stats"    -> SinkBinding("kafka", Map("topic" -> "event-stats"))
+    "stats"    -> SinkBinding("kafka", Map("topic" -> "event-stats")),
+    "summary"  -> SinkBinding("kafka", Map("topic" -> "event-summary")),
+    "deduped"  -> SinkBinding("kafka", Map("topic" -> "deduped-events"))
   ),
   dlq = Some(SinkBinding("kafka", Map("topic" -> "enrichment-dlq")))
 )
@@ -1242,7 +1381,8 @@ val graph = StreamRuntime.deploy(compiledPipeline, config, registry)
 graph.stream.compile.drain  // Runs continuously
 // match on validated: stream partition — Success events to Archive, Failure events to NotifyAdmin
 // premium: element-wise filter — non-premium events dropped from stream
-// stats: windowed aggregation — one stats event emitted per 5min window
+// batch = collect: materializes stream into 5min tumbling windows → Seq<List<UserEvent>>
+// stats + summary: both receive the same windowed chunks, shared boundaries
 // deduped: cache deduplication — repeated events within 30s return cached result
 ```
 
@@ -1278,15 +1418,18 @@ class UserEnrichmentTest extends AnyFlatSpec with Matchers {
     }
   }
 
-  "windowed stats" should "aggregate per window" in {
+  "collect" should "materialize shared window for multiple consumers" in {
     val testKit = StreamTestKit.fromPipeline(compiledPipeline)
 
     testKit.run {
       testKit.source("events").emitAll(List(e1, e2, e3))
       testKit.advanceTime(5.minutes)
 
+      // Both stats and summary receive the same windowed batch
       val stats = testKit.sink("stats").take(1, timeout = 1.second)
+      val summary = testKit.sink("summary").take(1, timeout = 1.second)
       stats should have size 1
+      summary should have size 1
     }
   }
 }
@@ -1319,14 +1462,17 @@ This section compiles all dual-mode mappings by category — the complete specif
 | Filter | `seq when seq_cond` | `vector.filter(p)` | `stream.filter(p)` |
 | FlatMap | (internal) | `vector.flatMap(f)` | `stream.flatMap(f)` |
 | Concat | `seqA ++ seqB` | `v1 ++ v2` | `s1 ++ s2` (sequential) |
-| Interleave | `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
+| Interleave | `Interleave(a, b)` | Round-robin alternating (truncates to shorter) | `s1.merge(s2)` (non-deterministic) |
 | Zip | `Zip(a, b)` | `v1.zip(v2)` | `s1.zip(s2)` (backpressure) |
 | Fold | `Reduce(seq)` | `vector.foldLeft(z)(f)` → scalar | Windowed aggregation → scalar events |
 | Take | `take(seq, n)` | `vector.take(n)` | `stream.take(n)` |
 | Batch | `with batch: N` | `vector.grouped(n)` → `Seq<List<T>>` | `stream.chunkN(n)` → `Stream[IO, Vector[T]]` |
 | Window | `with window: tumbling(d)` | Identity / compiler info | `stream.groupWithin(n, d)` → `Stream[IO, Vector[T]]` |
+| Collect | `collect(seq)` / `collect(seq, windowSpec)` | `Vector(vector)` — wraps as single List | Windowed grouping → `Stream[IO, Vector[T]]` |
 
 **Excluded** (no streaming counterpart — `List`-only): `size`, `reverse`, `sort`, `indexOf`, random access.
+
+**Auto-desugaring:** When a module expects `List<T>` but receives `Seq<T>`, the compiler auto-inserts `collect` with the default materialization window. See [Materialization Boundaries](#materialization-boundaries--collect).
 
 ### Element-Wise Operations (Structural Syntax)
 
@@ -1359,8 +1505,8 @@ All element-wise operations are mode-agnostic — the interpreter handles `Vecto
 
 | Left | Right | Single Mode | Streaming Mode |
 |------|-------|-------------|----------------|
-| `Record` | `Record` | Field merge (`lMap ++ rMap`) | Same (fire when both events arrive) |
-| `Seq<Record>` | `Seq<Record>` | Element-wise merge (zip, same length) | `stream.zip(stream).map(merge)` |
+| `Record` | `Record` | Field merge (`lMap ++ rMap`) | Field merge — both scalar events, fires per join strategy (`combineLatest` default) |
+| `Seq<Record>` | `Seq<Record>` | Element-wise merge (zip, same length — throws on mismatch) | `stream.zip(stream).map(merge)` — terminates on shorter side (see zip length divergence) |
 | `Seq<Record>` | `Record` | Broadcast scalar to every element | `combineLatest` — latest scalar merged into each element |
 | `Record` | `Seq<Record>` | Broadcast (reversed) | Same as above |
 
@@ -1380,9 +1526,9 @@ Join strategies are **streaming-only**. In single mode, all inputs are provided 
 
 | Operator | Syntax | Single Mode | Streaming Mode |
 |----------|--------|-------------|----------------|
-| Concat | `seqA ++ seqB` | `v1 ++ v2` | `s1 ++ s2` (drain first, then second) |
-| Interleave | `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
-| Zip | `Zip(a, b)` | `v1.zip(v2)` → `Seq<(A, B)>` | `s1.zip(s2)` (backpressure faster) |
+| Concat | `seqA ++ seqB` | `v1 ++ v2` (preserves all elements) | `s1 ++ s2` (drain first, then second) |
+| Interleave | `Interleave(a, b)` | Round-robin alternating (truncates to shorter) | `s1.merge(s2)` (non-deterministic) |
+| Zip | `Zip(a, b)` | `v1.zip(v2)` → `Seq<(A, B)>` (truncates to shorter) | `s1.zip(s2)` (terminates on shorter) |
 
 **Fan-out:**
 
@@ -1502,7 +1648,7 @@ Clean rename throughout codebase. No backward compatibility shims. Parser accept
 
 ### Fan-in operators are pseudo-modules
 
-`Interleave(a, b)` and `Zip(a, b)` use existing function call syntax. `++` remains the language-level concat operator. Pseudo-modules are compiler-inlined like existing HOFs.
+`Interleave(a, b)`, `Zip(a, b)`, and `collect(seq)` use existing function call syntax. `++` remains the language-level concat operator. Pseudo-modules are compiler-inlined via the `stdlib.builtin.*` path — separate from the `stdlib.hof.*` HOF path (which requires lambda extraction). This keeps the HOF path uniform while giving pseudo-modules a clean, lambda-free compilation path.
 
 ### Existing with-clause options work per-element in streaming
 
@@ -1530,6 +1676,10 @@ Slowest consumer governs source pace (fs2 pull-based default). This is the only 
 ### Nested Seq<Seq<T>> is a compiler error
 
 `flatMap` is defined as `map + flatten`, never producing nested Seq. Use `Seq<List<T>>` for nested structure.
+
+### `collect` is the materialization boundary, auto-desugared by the compiler
+
+`collect` is a **pseudo-module** in `stdlib.collection` (same namespace as `filter`, `map`, `all`, `any`, but compiled via the `stdlib.builtin.*` path — no lambda extraction needed). It converts `Seq<T>` to `Seq<List<T>>` — identity-ish in single mode, windowed grouping in streaming mode. The compiler auto-inserts `collect` when a module expects `List<T>` but receives `Seq<T>`, with an info diagnostic. `with window:` on a module call is sugar for inserting `collect` before the call. The default materialization window is configurable at deployment level via `StreamOptions.defaultMaterializationWindow`.
 
 ### Delivery guarantees are connector-dependent
 
@@ -1579,6 +1729,10 @@ Key-based joins are inherently stateful (lookup table maintenance). Overloading 
 
 Considered unifying `COptional`/`SOptional` into `CUnion(T, None)` at the type level. Kept as separate types for ergonomics and optimization — the streaming interpreter applies union event semantics to Optional without requiring a type system change.
 
+### `collect` as new syntax or `with`-clause on bare expression
+
+Considered expressing materialization as `events with window: tumbling(5min)` (bare expression `with`-clause), `events.collect(5min)` (method syntax), `events as List<T>` (type cast), or `events |> collect(...)` (pipe operator). All would require parser changes and break existing language patterns. The stdlib function-call pattern (`collect(events, tumbling(5min))`) requires zero parser changes and matches the existing `filter`/`map` calling convention. Also considered making `collect` an HOF (via `stdlib.hof.*` path), but since it takes no lambda, it's a better fit as a pseudo-module (`stdlib.builtin.*`) — same pattern as `Interleave` and `Zip`, keeping the HOF path uniform.
+
 ### Lambda-only element-wise operations
 
 The structural dot syntax (`items.field`, `items.score > 10`) covers the common case without lambdas. Explicit lambdas remain for complex cases but are rarely needed.
@@ -1599,3 +1753,6 @@ The structural dot syntax (`items.field`, `items.score > 10`) covers the common 
 - **Existing match/pattern:** `modules/lang-ast/.../AST.scala` — Match, MatchCase, Pattern.Record, Pattern.TypeTest, Pattern.Wildcard
 - **Existing merge transform:** `modules/core/.../InlineTransform.scala` — MergeTransform (4 strategies by type)
 - **Existing HOF inlining:** `modules/lang-compiler/.../DagCompiler.scala` — processHigherOrderNode, FilterTransform, MapTransform
+- **Existing HOF signatures:** `modules/lang-stdlib/.../categories/HigherOrderFunctions.scala` — filter, map, all, any (HOFs with lambdas)
+- **Existing HOF detection:** `modules/lang-compiler/.../IRGenerator.scala` — `isHigherOrderFunction`, `getHigherOrderOp`, `HigherOrderOp` enum
+- **Pseudo-module pattern:** `collect`, `Interleave`, `Zip` use `stdlib.builtin.*` prefix — compiler-inlined without lambda extraction, separate from `stdlib.hof.*` path
