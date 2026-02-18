@@ -1129,6 +1129,7 @@ GET /streams/{streamId}/metrics
 
 **Scope:** New `with`-clause options + Seq operators + annotations + union routing
 
+- [ ] AST: `WindowSpec` sealed trait (`Tumbling`, `Sliding`, `Count`)
 - [ ] Parser: `window`, `batch`, `batch_timeout`, `checkpoint` options
 - [ ] Parser: `@source` / `@sink` annotation syntax
 - [ ] Parser: `join` option for input declarations
@@ -1469,13 +1470,7 @@ Join strategies are **streaming-only**. In single mode, all inputs are provided 
 
 ## Open Questions
 
-### 1. Window algebra syntax
-
-What syntax should `window` options use? Current proposal is `tumbling(5min)`, `sliding(10min, slide: 1min)`, `count(100)`. Should these be string literals, function-call syntax, or structured expressions? The window DSL needs to be expressive enough for common patterns without requiring a full sub-language.
-
-### 2. Backpressure strategy configuration
-
-When a slow consumer in a fan-out causes source-level backpressure, should there be explicit configuration for buffering or dropping on specific branches? Currently the only options are (1) increase concurrency or (2) decouple via connector. A `with backpressure: drop_oldest(1000)` option on specific branches could be useful but adds complexity.
+No open questions remain. All design decisions have been resolved.
 
 ---
 
@@ -1512,6 +1507,25 @@ Clean rename throughout codebase. No backward compatibility shims. Parser accept
 ### Existing with-clause options work per-element in streaming
 
 No new streaming-specific options needed for the existing 12. `cache` becomes deduplication, `delay` becomes rate limiting, `lazy` and `priority` are ignored with compiler info diagnostics.
+
+### Window syntax uses identifier + parenthesized arguments
+
+`window: tumbling(5min)`, `window: sliding(10min, slide: 1min)`, `window: count(100)`. This follows the same parsing patterns as existing with-clause values (`Duration`, `Rate`, `BackoffStrategy`). AST representation:
+
+```scala
+sealed trait WindowSpec
+object WindowSpec {
+  case class Tumbling(size: Duration) extends WindowSpec
+  case class Sliding(size: Duration, slide: Duration) extends WindowSpec
+  case class Count(n: Int) extends WindowSpec
+}
+```
+
+Parser grammar: `WindowSpec = 'tumbling' '(' Duration ')' | 'sliding' '(' Duration ',' 'slide' ':' Duration ')' | 'count' '(' Int ')'`. No new parsing primitives needed — reuses existing `Duration` and integer parsers.
+
+### Backpressure uses fs2 default — no per-branch configuration
+
+Slowest consumer governs source pace (fs2 pull-based default). This is the only safe choice — per-branch buffering/dropping would mask real problems and risk silent data loss. The two escape hatches are: (1) `with concurrency: N` to parallelize a slow branch, (2) decouple via connector (route through a persistent queue for independent consumption). A `with buffer: N` option may be added in Phase 5 if demand warrants it, but as opt-in with a compiler warning.
 
 ### Nested Seq<Seq<T>> is a compiler error
 
