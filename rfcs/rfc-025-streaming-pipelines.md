@@ -1293,6 +1293,180 @@ class UserEnrichmentTest extends AnyFlatSpec with Matchers {
 
 ---
 
+## Interpreter Functor Reference
+
+This section compiles all dual-mode mappings by category — the complete specification of how every pipeline construct is interpreted in single and streaming mode.
+
+### Types
+
+| Pipeline Type | CType | Single Mode | Streaming Mode |
+|---------------|-------|-------------|----------------|
+| `T` (scalar) | `CString`, `CInt`, etc. | Value | Event (pulled from source) |
+| `Seq<T>` | `CSeq(elementType)` | `Vector[T]` | `Stream[IO, T]` |
+| `List<T>` | `CList(elementType)` | `Vector[T]` | `Vector[T]` |
+| `Optional<T>` | `COptional(innerType)` | `CSome(v)` or `CNone` | `Some` = emit, `None` = no emission |
+| `A \| B` (union) | `CUnion(structure)` | Tagged value | Tagged event |
+| `Seq<List<T>>` | `CSeq(CList(...))` | `Vector[Vector[T]]` | `Stream[IO, Vector[T]]` |
+| `List<Seq<T>>` | — | **Compiler error** | — |
+| `Seq<Seq<T>>` | — | **Compiler error** | — |
+
+### Seq Operations (Interpreter Functor)
+
+| Operation | Pipeline Syntax | Single (`Vector`) | Streaming (`Stream[IO, _]`) |
+|-----------|----------------|-------------------|-----------------------------|
+| Map | `Module(seq)` | `vector.map(module.run)` | `stream.evalMap(module.run)` |
+| Filter | `seq when seq_cond` | `vector.filter(p)` | `stream.filter(p)` |
+| FlatMap | (internal) | `vector.flatMap(f)` | `stream.flatMap(f)` |
+| Concat | `seqA ++ seqB` | `v1 ++ v2` | `s1 ++ s2` (sequential) |
+| Interleave | `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
+| Zip | `Zip(a, b)` | `v1.zip(v2)` | `s1.zip(s2)` (backpressure) |
+| Fold | `Reduce(seq)` | `vector.foldLeft(z)(f)` → scalar | Windowed aggregation → scalar events |
+| Take | `take(seq, n)` | `vector.take(n)` | `stream.take(n)` |
+| Batch | `with batch: N` | `vector.grouped(n)` → `Seq<List<T>>` | `stream.chunkN(n)` → `Stream[IO, Vector[T]]` |
+| Window | `with window: tumbling(d)` | Identity / compiler info | `stream.groupWithin(n, d)` → `Stream[IO, Vector[T]]` |
+
+**Excluded** (no streaming counterpart — `List`-only): `size`, `reverse`, `sort`, `indexOf`, random access.
+
+### Element-Wise Operations (Structural Syntax)
+
+| Operation | Expression | Input Type | Output Type | Lambda Equivalent |
+|-----------|-----------|------------|-------------|-------------------|
+| Field access | `items.name` | `Seq<{name: T, ...}>` | `Seq<T>` | `map(items, (x) => x.name)` |
+| Projection | `items[name, age]` | `Seq<Record>` | `Seq<Record>` | `map(items, (x) => x[name, age])` |
+| Broadcast merge | `items + scalar` | `Seq<Record> + Record` | `Seq<Record>` | `map(items, (x) => x + scalar)` |
+| Comparison | `items.score > 10` | `Seq<Int>` | `Seq<Boolean>` | `map(items, (x) => x.score > 10)` |
+| Filter | `items when items.score > 10` | `Seq<T> × Seq<Boolean>` | `Seq<T>` | `filter(items, (x) => x.score > 10)` |
+
+All element-wise operations are mode-agnostic — the interpreter handles `Vector.map` vs `Stream.map` transparently.
+
+### Control Flow
+
+| Construct | Expression | Single Mode | Streaming Mode |
+|-----------|-----------|-------------|----------------|
+| Guard (scalar) | `x when cond` | `Optional<T>` (`CSome` / `CNone`) | Event filter (emit / swallow) |
+| Guard (Seq, scalar cond) | `seq when cond` | All or nothing | All or nothing |
+| Guard (Seq, Seq cond) | `seq when seq_cond` | Element-wise filter | `stream.filter(p)` |
+| Coalesce | `opt ?? fallback` | Fallback on `None` | Default on filtered event |
+| Match (scalar union) | `match x { A -> ..., B -> ... }` | Branch, one executes | Partition stream by tag |
+| Match (Seq union) | `match seq { A -> ..., B -> ... }` | Element-wise branch | Element-wise stream partition |
+| Branch (scalar) | `branch { cond -> expr, ... }` | First match wins | Route event by predicate |
+| Conditional | `if cond then a else b` | Evaluate one branch | Evaluate per event |
+
+### Merge & Join
+
+**Merge operator (`+`):**
+
+| Left | Right | Single Mode | Streaming Mode |
+|------|-------|-------------|----------------|
+| `Record` | `Record` | Field merge (`lMap ++ rMap`) | Same (fire when both events arrive) |
+| `Seq<Record>` | `Seq<Record>` | Element-wise merge (zip, same length) | `stream.zip(stream).map(merge)` |
+| `Seq<Record>` | `Record` | Broadcast scalar to every element | `combineLatest` — latest scalar merged into each element |
+| `Record` | `Seq<Record>` | Broadcast (reversed) | Same as above |
+
+**Join strategies (multi-input synchronization):**
+
+| Strategy | Syntax | Behavior | Use Case |
+|----------|--------|----------|----------|
+| `combineLatest` | default | Fire on any input, use latest from others | Event + slowly-changing context |
+| `zip` | `with join: zip` | Pair 1:1 — wait for one from each | Correlated inputs |
+| `buffer(timeout)` | `with join: buffer(5s)` | Wait up to timeout for all inputs | Loose synchronization |
+
+Join strategies are **streaming-only**. In single mode, all inputs are provided upfront.
+
+### Fan-In & Fan-Out
+
+**Fan-in:**
+
+| Operator | Syntax | Single Mode | Streaming Mode |
+|----------|--------|-------------|----------------|
+| Concat | `seqA ++ seqB` | `v1 ++ v2` | `s1 ++ s2` (drain first, then second) |
+| Interleave | `Interleave(a, b)` | Alternating elements | `s1.merge(s2)` (non-deterministic) |
+| Zip | `Zip(a, b)` | `v1.zip(v2)` → `Seq<(A, B)>` | `s1.zip(s2)` (backpressure faster) |
+
+**Fan-out:**
+
+| Mechanism | Trigger | Single Mode | Streaming Mode |
+|-----------|---------|-------------|----------------|
+| DAG dependency | Multiple nodes read same data | Computed once, shared | `broadcastThrough(...)` — each branch in own fiber |
+| Union `match` | `match` on `A \| B` typed data | One branch per value | Stream partition by tag (efficient, no waste) |
+| Predicate `branch` | `branch { cond -> ... }` | First match per value | Route each event by predicate |
+
+### With-Clause Options (Existing — Dual Mode)
+
+| Option | Single Mode | Streaming Mode | Emergent Behavior |
+|--------|------------|----------------|-------------------|
+| `retry: N` | Retry module on failure | Retry per element | — |
+| `timeout: 5s` | Fail module if >5s | Fail element if >5s | — |
+| `delay: 100ms` | Delay before execution | Per-element delay | Rate limiting (`stream.metered`) |
+| `backoff: exponential` | Backoff between retries | Same, per element | — |
+| `fallback: { ... }` | Fallback value on failure | Fallback per failed element | Stream never drops on error |
+| `cache: 30s` | Memoize by input hash | Same input → cached result | **Stream deduplication** |
+| `cache_backend: "memcached"` | External cache | Same, survives restarts | **Cross-restart dedup** |
+| `throttle: 100/1s` | Token-bucket rate limit | Token-bucket rate limit | Bursty rate control |
+| `concurrency: 8` | Parallel module execution | `parEvalMap(8)` | N elements concurrently |
+| `on_error: dlq` | Wrap error + log | Route to DLQ, continue | Per-element error isolation |
+| `lazy: true` | Defer computation | **Ignored** | fs2 is pull-based (inherently lazy) |
+| `priority: high` | Scheduler priority | **Ignored** | No stream-level priority |
+
+### With-Clause Options (New — Streaming Additive)
+
+| Option | Single Mode | Streaming Mode | Type Change |
+|--------|------------|----------------|-------------|
+| `batch: N` | `vector.grouped(n)` | `stream.chunkN(n)` | `Seq<T> → Seq<List<T>>` |
+| `batch_timeout: 2s` | Ignored | Flush after timeout | — |
+| `window: tumbling(5min)` | Compiler info, identity | `groupWithin(n, d)` | `Seq<T> → Seq<List<T>>` |
+| `window: sliding(10min, 1min)` | Compiler info, identity | Sliding window | `Seq<T> → Seq<List<T>>` |
+| `window: count(100)` | Same as `batch: 100` | Count-based window | `Seq<T> → Seq<List<T>>` |
+| `checkpoint: 30s` | Ignored | Periodic offset commit | — |
+| `join: zip` | Ignored | Strict 1:1 input pairing | — |
+| `join: buffer(5s)` | Ignored | Wait up to timeout | — |
+
+`window` and `batch` are **mutually exclusive** — compiler rejects both on the same module call.
+
+### Error Handling
+
+| Strategy | Syntax | Single Mode | Streaming Mode |
+|----------|--------|------------|----------------|
+| Propagate | `on_error: propagate` | Re-throw, fail pipeline | Re-throw, terminate stream (or branch) |
+| Skip | `on_error: skip` | Return zero value | Drop element, continue |
+| Log | `on_error: log` | Log + zero value | Log + drop element, continue |
+| Wrap | `on_error: wrap` | Wrap in ErrorResult | Emit ErrorResult downstream |
+| DLQ | `on_error: dlq` | Same as wrap | Route `CMap` to DLQ sink |
+
+**Circuit breaker** (streaming only): After `maxConsecutiveErrors` failures, stream pauses → cooldown → half-open retry → resume or double cooldown.
+
+### Delivery & Lifecycle
+
+**Delivery guarantees:**
+
+| Level | Guarantee | Default For |
+|-------|-----------|-------------|
+| At-most-once | Elements may be lost | `memory` connector |
+| At-least-once | Elements may replay; none lost | Persistent connectors |
+| Exactly-once | Each element exactly once | Phase 5, connector-specific |
+
+**Checkpoint frequency:**
+
+| Setting | Behavior | Trade-off |
+|---------|----------|-----------|
+| `checkpoint: 1s` | Commit every second | Low replay, high overhead |
+| `checkpoint: 1min` | Commit every minute | Up to 1 min replay |
+| No checkpoint | Commit per-element | Safest, highest overhead |
+
+**Hot-reload compatibility:**
+
+| Schema Change | Allowed? | Rationale |
+|---------------|----------|-----------|
+| Input unchanged | Yes | Safe |
+| Input widened (new optional fields) | Yes | Backwards-compatible |
+| Input narrowed (fields removed) | **No** | Connector data may not match |
+| Input changed (different fields) | **No** | Deploy as new stream |
+| Output changed | Yes (warning) | Downstream may need updating |
+| New inputs added | **No** | No connector binding |
+| Inputs removed | Yes | Connector disconnected |
+
+---
+
 ## Open Questions
 
 ### 1. Window algebra syntax
