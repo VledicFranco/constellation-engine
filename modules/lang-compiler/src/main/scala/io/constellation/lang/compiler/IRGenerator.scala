@@ -2,7 +2,7 @@ package io.constellation.lang.compiler
 
 import java.util.UUID
 
-import io.constellation.lang.ast.{BoolOp, CompileError, ModuleCallOptions, PriorityLevel, Span}
+import io.constellation.lang.ast.{BoolOp, CompileError, JoinStrategySpec, ModuleCallOptions, PriorityLevel, Span, WindowSpec}
 import io.constellation.lang.semantic.*
 
 /** Generates IR from a typed AST */
@@ -554,6 +554,20 @@ object IRGenerator {
           case Right(custom) => custom.value
         }
 
+        // Convert WindowSpec to serialized string
+        val windowValue: Option[String] = options.window.map {
+          case WindowSpec.Tumbling(size)        => s"tumbling:${size.toMillis}"
+          case WindowSpec.Sliding(size, slide)  => s"sliding:${size.toMillis}:${slide.toMillis}"
+          case WindowSpec.Count(n)              => s"count:$n"
+        }
+
+        // Convert JoinStrategySpec to serialized string
+        val joinValue: Option[String] = options.join.map {
+          case JoinStrategySpec.CombineLatest    => "combine-latest"
+          case JoinStrategySpec.Zip              => "zip"
+          case JoinStrategySpec.Buffer(timeout)  => s"buffer:${timeout.toMillis}"
+        }
+
         val irOptions = IRModuleCallOptions(
           retry = options.retry,
           timeoutMs = options.timeout.map(_.toMillis),
@@ -567,7 +581,12 @@ object IRGenerator {
           concurrency = options.concurrency,
           onError = options.onError,
           lazyEval = options.lazyEval,
-          priority = priorityValue
+          priority = priorityValue,
+          batchSize = options.batch,
+          batchTimeoutMs = options.batchTimeout.map(_.toMillis),
+          window = windowValue,
+          checkpointMs = options.checkpoint.map(_.toMillis),
+          joinStrategy = joinValue
         )
 
         (finalCtx, irOptions)

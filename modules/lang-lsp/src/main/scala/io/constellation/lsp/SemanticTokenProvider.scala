@@ -91,8 +91,13 @@ class SemanticTokenProvider {
         )
         tokens ++= extractTypeExprTokens(typeExpr.value)
         // Process annotations
-        annotations.foreach { case Annotation.Example(expr) =>
-          tokens ++= extractExpressionTokens(expr)
+        annotations.foreach {
+          case Annotation.Example(expr) =>
+            tokens ++= extractExpressionTokens(expr)
+          case Annotation.Source(_, props) =>
+            props.values.foreach(expr => tokens ++= extractExpressionTokens(expr))
+          case Annotation.Sink(_, props) =>
+            props.values.foreach(expr => tokens ++= extractExpressionTokens(expr))
         }
 
       case Declaration.Assignment(target, value) =>
@@ -105,7 +110,7 @@ class SemanticTokenProvider {
         )
         tokens ++= extractExpressionTokens(value)
 
-      case Declaration.OutputDecl(name) =>
+      case Declaration.OutputDecl(name, _) =>
         // Output is a variable reference
         tokens += RawToken(
           name.span.start,

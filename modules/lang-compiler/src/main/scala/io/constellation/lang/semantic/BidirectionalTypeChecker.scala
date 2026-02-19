@@ -119,6 +119,9 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
                     )
                     .invalidNel
             }
+          // @source/@sink annotations are non-binding connector hints — no type validation needed
+          case Annotation.Source(_, _) => ().validNel
+          case Annotation.Sink(_, _)   => ().validNel
         }.void
 
         annotationValidation.map { _ =>
@@ -136,7 +139,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         (newEnv, TypedDeclaration.Assignment(target.value, typedExpr, span))
       }
 
-    case Declaration.OutputDecl(name) =>
+    case Declaration.OutputDecl(name, _) =>
       env.lookupVariable(name.value) match {
         case Some(semanticType) =>
           (env, TypedDeclaration.OutputDecl(name.value, semanticType, name.span)).validNel
@@ -892,6 +895,49 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       if retryCount > 10 then {
         addWarning(CompileWarning.HighRetryCount(retryCount, Some(span)))
       }
+    }
+
+    // 4. Validate streaming options (RFC-025 Phase 3)
+    options.batch.foreach { value =>
+      if value <= 0 then {
+        errors += CompileError.InvalidOptionValue(
+          "batch",
+          value.toString,
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.batchTimeout.foreach { duration =>
+      if duration.value <= 0 then {
+        errors += CompileError.InvalidOptionValue(
+          "batch_timeout",
+          s"${duration.value}${durationUnitString(duration.unit)}",
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    options.checkpoint.foreach { duration =>
+      if duration.value <= 0 then {
+        errors += CompileError.InvalidOptionValue(
+          "checkpoint",
+          s"${duration.value}${durationUnitString(duration.unit)}",
+          "must be > 0",
+          Some(span)
+        )
+      }
+    }
+
+    // Streaming option dependency warnings
+    if options.batchTimeout.isDefined && options.batch.isEmpty then {
+      addWarning(CompileWarning.OptionDependency("batch_timeout", "batch", Some(span)))
+    }
+
+    if options.window.isDefined && options.batch.isDefined then {
+      addWarning(CompileWarning.ConflictingOptions("window", "batch", Some(span)))
     }
 
     // Return errors or typed fallback

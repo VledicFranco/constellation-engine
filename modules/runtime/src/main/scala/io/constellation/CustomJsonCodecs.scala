@@ -201,35 +201,45 @@ trait CustomJsonCodecs {
   // ModuleCallOptions codec
   given moduleCallOptionsEncoder: Encoder[ModuleCallOptions] = Encoder.instance { opts =>
     Json.obj(
-      "retry"         -> opts.retry.asJson,
-      "timeoutMs"     -> opts.timeoutMs.asJson,
-      "delayMs"       -> opts.delayMs.asJson,
-      "backoff"       -> opts.backoff.asJson,
-      "cacheMs"       -> opts.cacheMs.asJson,
-      "cacheBackend"  -> opts.cacheBackend.asJson,
-      "throttleCount" -> opts.throttleCount.asJson,
-      "throttlePerMs" -> opts.throttlePerMs.asJson,
-      "concurrency"   -> opts.concurrency.asJson,
-      "onError"       -> opts.onError.asJson,
-      "lazyEval"      -> opts.lazyEval.asJson,
-      "priority"      -> opts.priority.asJson
+      "retry"          -> opts.retry.asJson,
+      "timeoutMs"      -> opts.timeoutMs.asJson,
+      "delayMs"        -> opts.delayMs.asJson,
+      "backoff"        -> opts.backoff.asJson,
+      "cacheMs"        -> opts.cacheMs.asJson,
+      "cacheBackend"   -> opts.cacheBackend.asJson,
+      "throttleCount"  -> opts.throttleCount.asJson,
+      "throttlePerMs"  -> opts.throttlePerMs.asJson,
+      "concurrency"    -> opts.concurrency.asJson,
+      "onError"        -> opts.onError.asJson,
+      "lazyEval"       -> opts.lazyEval.asJson,
+      "priority"       -> opts.priority.asJson,
+      "batchSize"      -> opts.batchSize.asJson,
+      "batchTimeoutMs" -> opts.batchTimeoutMs.asJson,
+      "window"         -> opts.window.asJson,
+      "checkpointMs"   -> opts.checkpointMs.asJson,
+      "joinStrategy"   -> opts.joinStrategy.asJson
     )
   }
 
   given moduleCallOptionsDecoder: Decoder[ModuleCallOptions] = Decoder.instance { c =>
     for {
-      retry         <- c.downField("retry").as[Option[Int]]
-      timeoutMs     <- c.downField("timeoutMs").as[Option[Long]]
-      delayMs       <- c.downField("delayMs").as[Option[Long]]
-      backoff       <- c.downField("backoff").as[Option[String]]
-      cacheMs       <- c.downField("cacheMs").as[Option[Long]]
-      cacheBackend  <- c.downField("cacheBackend").as[Option[String]]
-      throttleCount <- c.downField("throttleCount").as[Option[Int]]
-      throttlePerMs <- c.downField("throttlePerMs").as[Option[Long]]
-      concurrency   <- c.downField("concurrency").as[Option[Int]]
-      onError       <- c.downField("onError").as[Option[String]]
-      lazyEval      <- c.downField("lazyEval").as[Option[Boolean]]
-      priority      <- c.downField("priority").as[Option[Int]]
+      retry          <- c.downField("retry").as[Option[Int]]
+      timeoutMs      <- c.downField("timeoutMs").as[Option[Long]]
+      delayMs        <- c.downField("delayMs").as[Option[Long]]
+      backoff        <- c.downField("backoff").as[Option[String]]
+      cacheMs        <- c.downField("cacheMs").as[Option[Long]]
+      cacheBackend   <- c.downField("cacheBackend").as[Option[String]]
+      throttleCount  <- c.downField("throttleCount").as[Option[Int]]
+      throttlePerMs  <- c.downField("throttlePerMs").as[Option[Long]]
+      concurrency    <- c.downField("concurrency").as[Option[Int]]
+      onError        <- c.downField("onError").as[Option[String]]
+      lazyEval       <- c.downField("lazyEval").as[Option[Boolean]]
+      priority       <- c.downField("priority").as[Option[Int]]
+      batchSize      <- c.downField("batchSize").as[Option[Int]]
+      batchTimeoutMs <- c.downField("batchTimeoutMs").as[Option[Long]]
+      window         <- c.downField("window").as[Option[String]]
+      checkpointMs   <- c.downField("checkpointMs").as[Option[Long]]
+      joinStrategy   <- c.downField("joinStrategy").as[Option[String]]
     } yield ModuleCallOptions(
       retry,
       timeoutMs,
@@ -242,7 +252,12 @@ trait CustomJsonCodecs {
       concurrency,
       onError,
       lazyEval,
-      priority
+      priority,
+      batchSize,
+      batchTimeoutMs,
+      window,
+      checkpointMs,
+      joinStrategy
     )
   }
 

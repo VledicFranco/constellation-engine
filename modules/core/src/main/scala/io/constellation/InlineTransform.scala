@@ -503,4 +503,30 @@ object InlineTransform {
       }
     }
   }
+
+  /** Interleave transform - non-deterministic merge of two sequences.
+    *
+    * Single mode: round-robin alternating, truncates to shorter.
+    * Streaming mode: fs2 merge (concurrent, non-deterministic).
+    */
+  case object InterleaveTransform extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val left  = inputs("left").asInstanceOf[List[Any]]
+      val right = inputs("right").asInstanceOf[List[Any]]
+      left.zip(right).flatMap { case (l, r) => List(l, r) }
+    }
+  }
+
+  /** Zip transform - strict 1:1 pairing of two sequences.
+    *
+    * Single mode: zip, truncates to shorter.
+    * Streaming mode: fs2 zip (backpressure, terminates on shorter).
+    */
+  case object ZipTransform extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val left  = inputs("left").asInstanceOf[List[Any]]
+      val right = inputs("right").asInstanceOf[List[Any]]
+      left.zip(right)
+    }
+  }
 }

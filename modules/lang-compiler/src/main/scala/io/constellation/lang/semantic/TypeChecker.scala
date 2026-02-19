@@ -301,6 +301,9 @@ object TypeChecker {
                   )
                   .invalidNel
             }
+          // @source/@sink annotations are non-binding connector hints — no type validation needed
+          case Annotation.Source(_, _) => ().validNel
+          case Annotation.Sink(_, _)   => ().validNel
         }.void
 
         annotationValidation.map { _ =>
@@ -317,7 +320,7 @@ object TypeChecker {
         (newEnv, TypedDeclaration.Assignment(target.value, typedExpr, span))
       }
 
-    case Declaration.OutputDecl(name) =>
+    case Declaration.OutputDecl(name, _) =>
       // Check that the output variable exists in scope
       env.lookupVariable(name.value) match {
         case Some(semanticType) =>

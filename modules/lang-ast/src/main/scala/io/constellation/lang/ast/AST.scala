@@ -140,9 +140,10 @@ object Declaration {
       value: Located[Expression]
   ) extends Declaration
 
-  /** Output declaration: out varName */
+  /** Output declaration: out varName (optionally with @sink annotation) */
   final case class OutputDecl(
-      name: Located[String]
+      name: Located[String],
+      annotations: List[Annotation] = Nil
   ) extends Declaration
 
   /** Use declaration: use stdlib.math or use stdlib.math as m */
@@ -162,6 +163,24 @@ object Annotation {
     *   to pre-populate run widgets. Does not affect compilation or runtime behavior.
     */
   final case class Example(value: Located[Expression]) extends Annotation
+
+  /** @source(connector, key: "value", ...)
+    *   \- hints that an input should be bound to a specific connector type. Non-binding — deployment
+    *   config overrides. Connector name is resolved against ConnectorRegistry at deployment time.
+    */
+  final case class Source(
+      connector: String,
+      properties: Map[String, Located[Expression]] = Map.empty
+  ) extends Annotation
+
+  /** @sink(connector, key: "value", ...)
+    *   \- hints that an output should be bound to a specific connector type. Non-binding — deployment
+    *   config overrides.
+    */
+  final case class Sink(
+      connector: String,
+      properties: Map[String, Located[Expression]] = Map.empty
+  ) extends Annotation
 }
 
 /** Type expressions */
@@ -210,7 +229,41 @@ enum BoolOp:
   case Or  // or
 
 // ============================================================================
-// Module Call Options (RFC-001 through RFC-011)
+// Streaming Extensions (RFC-025)
+// ============================================================================
+
+/** Window specification for materialization boundaries (Seq<T> -> Seq<List<T>>). */
+sealed trait WindowSpec
+
+object WindowSpec {
+
+  /** Tumbling window: non-overlapping fixed-size time windows. */
+  final case class Tumbling(size: Duration) extends WindowSpec
+
+  /** Sliding window: overlapping windows with a slide period. */
+  final case class Sliding(size: Duration, slide: Duration) extends WindowSpec
+
+  /** Count-based window: emit after N elements collected. */
+  final case class Count(n: Int) extends WindowSpec
+}
+
+/** Join strategy specification for multi-input merge points. */
+sealed trait JoinStrategySpec
+
+object JoinStrategySpec {
+
+  /** Fire on any input, use latest from others (default). */
+  case object CombineLatest extends JoinStrategySpec
+
+  /** Strict 1:1 pairing, wait for one from each side. */
+  case object Zip extends JoinStrategySpec
+
+  /** Buffer with timeout — wait up to timeout for all inputs. */
+  final case class Buffer(timeout: Duration) extends JoinStrategySpec
+}
+
+// ============================================================================
+// Module Call Options (RFC-001 through RFC-011, RFC-025)
 // ============================================================================
 
 /** Duration unit for timeout, delay, cache options */
@@ -286,13 +339,21 @@ final case class ModuleCallOptions(
     concurrency: Option[Int] = None,
     onError: Option[ErrorStrategy] = None,
     lazyEval: Option[Boolean] = None,
-    priority: Option[Either[PriorityLevel, CustomPriority]] = None
+    priority: Option[Either[PriorityLevel, CustomPriority]] = None,
+    // Streaming options (RFC-025 Phase 3)
+    batch: Option[Int] = None,
+    batchTimeout: Option[Duration] = None,
+    window: Option[WindowSpec] = None,
+    checkpoint: Option[Duration] = None,
+    join: Option[JoinStrategySpec] = None
 ) {
   def isEmpty: Boolean =
     retry.isEmpty && timeout.isEmpty && delay.isEmpty && backoff.isEmpty &&
       fallback.isEmpty && cache.isEmpty && cacheBackend.isEmpty &&
       throttle.isEmpty && concurrency.isEmpty && onError.isEmpty &&
-      lazyEval.isEmpty && priority.isEmpty
+      lazyEval.isEmpty && priority.isEmpty &&
+      batch.isEmpty && batchTimeout.isEmpty && window.isEmpty &&
+      checkpoint.isEmpty && join.isEmpty
 }
 
 object ModuleCallOptions {
@@ -653,5 +714,14 @@ object CompileWarning {
   ) extends CompileWarning {
     def message: String =
       s"High retry count ($count) - consider using a lower value with exponential backoff"
+  }
+
+  /** Conflicting options warning */
+  final case class ConflictingOptions(
+      option1: String,
+      option2: String,
+      span: Option[Span]
+  ) extends CompileWarning {
+    def message: String = s"'$option1' and '$option2' are mutually exclusive; '$option2' will be ignored"
   }
 }
