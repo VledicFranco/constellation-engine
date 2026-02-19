@@ -941,11 +941,13 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
 
     case TypeExpr.Parameterized(name, params) =>
       name match {
-        // "Candidates" is a legacy alias for "List"
+        // "Candidates" is a legacy alias for "Seq" (streaming sequence)
         case "Candidates" if params.size == 1 =>
-          resolveTypeExpr(params.head, span, env).map(SList(_))
+          resolveTypeExpr(params.head, span, env).map(SSeq(_))
         case "List" if params.size == 1 =>
           resolveTypeExpr(params.head, span, env).map(SList(_))
+        case "Seq" if params.size == 1 =>
+          resolveTypeExpr(params.head, span, env).map(SSeq(_))
         case "Map" if params.size == 2 =>
           (resolveTypeExpr(params(0), span, env), resolveTypeExpr(params(1), span, env))
             .mapN(SMap(_, _))
@@ -988,6 +990,15 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       // Record + List<Record> = add fields to each element
       case (lRec: SRecord, SList(rElem)) =>
         mergeTypes(lRec, rElem, span).map(SList(_))
+      // Seq<Record> + Seq<Record> = merge records element-wise
+      case (SSeq(SRecord(lFields)), SSeq(SRecord(rFields))) =>
+        SSeq(SRecord(lFields ++ rFields)).validNel
+      // Seq<Record> + Record = add fields to each element (broadcast)
+      case (SSeq(lElem), rRec: SRecord) =>
+        mergeTypes(lElem, rRec, span).map(SSeq(_))
+      // Record + Seq<Record> = add fields to each element (broadcast)
+      case (lRec: SRecord, SSeq(rElem)) =>
+        mergeTypes(lRec, rElem, span).map(SSeq(_))
       case _ =>
         CompileError.IncompatibleMerge(left.prettyPrint, right.prettyPrint, Some(span)).invalidNel
     }
@@ -1006,6 +1017,11 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
       case SList(SRecord(availableFields)) =>
         validateProjection(fields, availableFields, span).map { projectedFields =>
           TypedExpression.Projection(typedSource, fields, SList(SRecord(projectedFields)), span)
+        }
+      // Seq<Record> projection: select fields from each element
+      case SSeq(SRecord(availableFields)) =>
+        validateProjection(fields, availableFields, span).map { projectedFields =>
+          TypedExpression.Projection(typedSource, fields, SSeq(SRecord(projectedFields)), span)
         }
       case other =>
         CompileError
@@ -1051,6 +1067,16 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
         availableFields.get(field) match {
           case Some(fieldType) =>
             TypedExpression.FieldAccess(typedSource, field, SList(fieldType), span).validNel
+          case None =>
+            CompileError
+              .InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan))
+              .invalidNel
+        }
+      // Seq<Record> field access: extract field from each element
+      case SSeq(SRecord(availableFields)) =>
+        availableFields.get(field) match {
+          case Some(fieldType) =>
+            TypedExpression.FieldAccess(typedSource, field, SSeq(fieldType), span).validNel
           case None =>
             CompileError
               .InvalidFieldAccess(field, availableFields.keys.toList, Some(fieldSpan))
@@ -1363,6 +1389,7 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     def isMergeable(t: SemanticType): Boolean = t match {
       case _: SRecord        => true
       case SList(_: SRecord) => true
+      case SSeq(_: SRecord)  => true
       case _                 => false
     }
 

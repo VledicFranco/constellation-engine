@@ -11,6 +11,7 @@ object TypeFormatter {
     case CType.CFloat           => "Float"
     case CType.CBoolean         => "Boolean"
     case CType.CList(elem)      => s"List<${formatCType(elem)}>"
+    case CType.CSeq(elem)       => s"Seq<${formatCType(elem)}>"
     case CType.CMap(key, value) => s"Map<${formatCType(key)}, ${formatCType(value)}>"
     case CType.CProduct(fields) =>
       val fieldStrs = fields.toList.sortBy(_._1).map { case (name, typ) =>

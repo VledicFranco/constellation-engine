@@ -631,34 +631,34 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
 
   "HOF: filter" should "filter list elements by predicate" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = filter(numbers, (x) => x > 10)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(5L), CValue.CInt(15L), CValue.CInt(8L), CValue.CInt(42L)),
         CType.CInt
       )
     )
     val output = compileAndRun(source, "filter-test", inputs, "result")
-    output shouldBe CValue.CList(Vector(CValue.CInt(15L), CValue.CInt(42L)), CType.CInt)
+    output shouldBe CValue.CSeq(Vector(CValue.CInt(15L), CValue.CInt(42L)), CType.CInt)
   }
 
   "HOF: map" should "transform list elements" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = map(numbers, (x) => x * 2)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
         CType.CInt
       )
     )
     val output = compileAndRun(source, "map-test", inputs, "result")
-    output shouldBe CValue.CList(
+    output shouldBe CValue.CSeq(
       Vector(CValue.CInt(2L), CValue.CInt(4L), CValue.CInt(6L)),
       CType.CInt
     )
@@ -666,12 +666,12 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
 
   "HOF: all" should "return true if all elements satisfy predicate" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = all(numbers, (x) => x > 0)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
         CType.CInt
       )
@@ -682,12 +682,12 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "return false if any element fails predicate" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = all(numbers, (x) => x > 1)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
         CType.CInt
       )
@@ -698,12 +698,12 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
 
   "HOF: any" should "return true if any element satisfies predicate" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = any(numbers, (x) => x > 2)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
         CType.CInt
       )
@@ -714,12 +714,12 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "return false if no element satisfies predicate" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = any(numbers, (x) => x > 10)
       out result
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
         CType.CInt
       )
@@ -796,20 +796,22 @@ class StdLibExecutionIntegrationTest extends AnyFlatSpec with Matchers {
     output shouldBe CValue.CInt(11L) // "Hello World" has 11 characters
   }
 
-  "Integration: filter and sum" should "filter list and compute sum" in {
+  "Integration: filter and sum" should "filter seq and return positives" in {
     val source = """
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       positives = filter(numbers, (x) => x > 0)
-      total = list-sum(positives)
-      out total
+      out positives
     """
     val inputs = Map(
-      "numbers" -> CValue.CList(
+      "numbers" -> CValue.CSeq(
         Vector(CValue.CInt(-5L), CValue.CInt(10L), CValue.CInt(-3L), CValue.CInt(20L)),
         CType.CInt
       )
     )
-    val output = compileAndRun(source, "filter-sum-test", inputs, "total")
-    output shouldBe CValue.CInt(30L) // 10 + 20
+    val output = compileAndRun(source, "filter-seq-test", inputs, "positives")
+    output shouldBe CValue.CSeq(
+      Vector(CValue.CInt(10L), CValue.CInt(20L)),
+      CType.CInt
+    )
   }
 }

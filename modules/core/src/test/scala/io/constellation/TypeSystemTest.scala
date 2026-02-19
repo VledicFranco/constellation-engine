@@ -352,6 +352,38 @@ class TypeSystemTest extends AnyFlatSpec with Matchers {
     outer.ctype shouldBe outerType
   }
 
+  // ===== CType.CSeq and CValue.CSeq =====
+
+  "CType.CSeq" should "construct correctly with element type" in {
+    val seqType = CType.CSeq(CType.CString)
+    seqType.valuesType shouldBe CType.CString
+  }
+
+  it should "support nested element types" in {
+    val seqType = CType.CSeq(CType.CProduct(Map("name" -> CType.CString)))
+    seqType.valuesType shouldBe CType.CProduct(Map("name" -> CType.CString))
+  }
+
+  "CValue.CSeq" should "report correct ctype" in {
+    val seq = CValue.CSeq(Vector(CValue.CString("a"), CValue.CString("b")), CType.CString)
+    seq.ctype shouldBe CType.CSeq(CType.CString)
+  }
+
+  it should "support empty sequences" in {
+    val seq = CValue.CSeq(Vector.empty, CType.CInt)
+    seq.value shouldBe empty
+    seq.ctype shouldBe CType.CSeq(CType.CInt)
+  }
+
+  it should "hold elements with matching subtype" in {
+    val seq = CValue.CSeq(
+      Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
+      CType.CInt
+    )
+    seq.value should have size 3
+    seq.subtype shouldBe CType.CInt
+  }
+
   "Roundtrip" should "inject and extract values correctly" in {
     def roundtrip[A](value: A)(using
         injector: CValueInjector[A],

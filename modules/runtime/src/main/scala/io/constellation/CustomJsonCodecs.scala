@@ -58,6 +58,8 @@ trait CustomJsonCodecs {
       Json.obj("tag" -> "CUnion".asJson, "structure" -> structure.asJson)
     case CType.COptional(innerType) =>
       Json.obj("tag" -> "COptional".asJson, "innerType" -> innerType.asJson)
+    case CType.CSeq(valuesType) =>
+      Json.obj("tag" -> "CSeq".asJson, "valuesType" -> valuesType.asJson)
   }
 
   given ctypeDecoder: Decoder[CType] = Decoder.instance { c =>
@@ -75,6 +77,7 @@ trait CustomJsonCodecs {
       case "CProduct"  => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
       case "CUnion"    => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
       case "COptional" => c.downField("innerType").as[CType].map(CType.COptional.apply)
+      case "CSeq"      => c.downField("valuesType").as[CType].map(CType.CSeq.apply)
       case other       => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
     }
   }
@@ -136,6 +139,8 @@ trait CustomJsonCodecs {
         "structure" -> structure.asJson,
         "unionTag"  -> tag.asJson
       )
+    case CValue.CSeq(value, subtype) =>
+      Json.obj("tag" -> "CSeq".asJson, "value" -> value.asJson, "subtype" -> subtype.asJson)
     case CValue.CSome(value, innerType) =>
       Json.obj("tag" -> "CSome".asJson, "value" -> value.asJson, "innerType" -> innerType.asJson)
     case CValue.CNone(innerType) =>
@@ -177,6 +182,11 @@ trait CustomJsonCodecs {
           structure <- c.downField("structure").as[Map[String, CType]]
           tag       <- c.downField("unionTag").as[String]
         } yield CValue.CUnion(value, structure, tag)
+      case "CSeq" =>
+        for {
+          value   <- c.downField("value").as[Vector[CValue]]
+          subtype <- c.downField("subtype").as[CType]
+        } yield CValue.CSeq(value, subtype)
       case "CSome" =>
         for {
           value     <- c.downField("value").as[CValue]

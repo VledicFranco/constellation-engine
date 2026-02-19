@@ -33,10 +33,10 @@ trait HigherOrderFunctions {
   val filterIntSignature: FunctionSignature = FunctionSignature(
     name = "filter",
     params = List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
-    returns = SemanticType.SList(SemanticType.SInt),
+    returns = SemanticType.SSeq(SemanticType.SInt),
     moduleName = "stdlib.hof.filter-int",
     namespace = Some("stdlib.collection")
   )
@@ -47,10 +47,10 @@ trait HigherOrderFunctions {
   val mapIntIntSignature: FunctionSignature = FunctionSignature(
     name = "map",
     params = List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
     ),
-    returns = SemanticType.SList(SemanticType.SInt),
+    returns = SemanticType.SSeq(SemanticType.SInt),
     moduleName = "stdlib.hof.map-int-int",
     namespace = Some("stdlib.collection")
   )
@@ -61,7 +61,7 @@ trait HigherOrderFunctions {
   val allIntSignature: FunctionSignature = FunctionSignature(
     name = "all",
     params = List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
     returns = SemanticType.SBoolean,
@@ -75,7 +75,7 @@ trait HigherOrderFunctions {
   val anyIntSignature: FunctionSignature = FunctionSignature(
     name = "any",
     params = List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     ),
     returns = SemanticType.SBoolean,

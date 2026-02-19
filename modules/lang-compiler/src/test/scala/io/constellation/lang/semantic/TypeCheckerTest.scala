@@ -57,7 +57,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe a[SemanticType.SList]
+    getOutputType(result.toOption.get) shouldBe a[SemanticType.SSeq]
   }
 
   it should "type check List types" in {
@@ -122,7 +122,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields("x") shouldBe SemanticType.SInt
     elementType.fields("y") shouldBe SemanticType.SString
@@ -153,7 +153,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
   }
@@ -197,7 +197,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
     elementType.fields.keys should contain allOf ("id", "name")
@@ -340,7 +340,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     registry.register(
       FunctionSignature(
         name = "ide-ranker-v2-candidate-embed",
-        params = List("input" -> SemanticType.SList(communicationType)),
+        params = List("input" -> SemanticType.SSeq(communicationType)),
         returns = embeddingsType,
         moduleName = "ide-ranker-v2-candidate-embed"
       )
@@ -764,7 +764,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields("x") shouldBe SemanticType.SInt
     elementType.fields("y") shouldBe SemanticType.SString
@@ -781,7 +781,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
   }
@@ -992,7 +992,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    getOutputType(result.toOption.get) shouldBe SemanticType.SList(SemanticType.SFloat)
+    getOutputType(result.toOption.get) shouldBe SemanticType.SSeq(SemanticType.SFloat)
   }
 
   it should "report invalid field access error for non-existent field" in {
@@ -1443,7 +1443,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1459,7 +1459,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1475,7 +1475,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields shouldBe empty
   }
@@ -1490,7 +1490,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
@@ -1509,7 +1509,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1529,7 +1529,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 2
     elementType.fields("id") shouldBe SemanticType.SInt
@@ -1546,7 +1546,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 1
     elementType.fields("userId") shouldBe SemanticType.SInt
@@ -1562,7 +1562,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
@@ -1580,7 +1580,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("id") shouldBe SemanticType.SInt
@@ -1599,7 +1599,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1618,7 +1618,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
 
-    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType  = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     val elementType = outputType.element.asInstanceOf[SemanticType.SRecord]
     elementType.fields should have size 3
     elementType.fields("x") shouldBe SemanticType.SInt
@@ -1739,7 +1739,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
     val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SOptional]
-    outputType.inner shouldBe a[SemanticType.SList]
+    outputType.inner shouldBe a[SemanticType.SSeq]
   }
 
   it should "report error for guard expression with non-boolean condition" in {
@@ -1960,7 +1960,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     """
     val result = check(source)
     result.isRight shouldBe true
-    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SList]
+    val outputType = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SSeq]
     outputType.element shouldBe a[SemanticType.SRecord]
   }
 
@@ -2885,7 +2885,7 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val union = getOutputType(result.toOption.get).asInstanceOf[SemanticType.SUnion]
     union.members should have size 2
     union.members should contain(SemanticType.SString)
-    union.members.exists(_.isInstanceOf[SemanticType.SList]) shouldBe true
+    union.members.exists(_.isInstanceOf[SemanticType.SSeq]) shouldBe true
   }
 
   it should "preserve union type through assignment" in {
@@ -3665,9 +3665,9 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) match {
-      case SemanticType.SList(SemanticType.SRecord(fields)) =>
+      case SemanticType.SSeq(SemanticType.SRecord(fields)) =>
         fields should contain key "id"
-      case other => fail(s"Expected SList(SRecord), got $other")
+      case other => fail(s"Expected SSeq(SRecord), got $other")
     }
   }
 
@@ -3682,10 +3682,10 @@ class TypeCheckerTest extends AnyFlatSpec with Matchers {
     val result = check(source)
     result.isRight shouldBe true
     getOutputType(result.toOption.get) match {
-      case SemanticType.SList(SemanticType.SRecord(fields)) =>
+      case SemanticType.SSeq(SemanticType.SRecord(fields)) =>
         fields should contain key "id"
         fields should contain key "score"
-      case other => fail(s"Expected SList(SRecord), got $other")
+      case other => fail(s"Expected SSeq(SRecord), got $other")
     }
   }
 

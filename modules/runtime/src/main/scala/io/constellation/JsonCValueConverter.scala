@@ -220,6 +220,22 @@ object JsonCValueConverter {
             )
         }
 
+      case CType.CSeq(valuesType) =>
+        json.asArray match {
+          case Some(arr) =>
+            val converted = arr.zipWithIndex.map { case (elem, idx) =>
+              jsonToCValue(elem, valuesType, fieldPath(path, s"[$idx]"))
+            }
+            val errors = converted.collect { case Left(err) => err }
+            if errors.nonEmpty then {
+              Left(errors.mkString("; "))
+            } else {
+              val values = converted.collect { case Right(v) => v }.toVector
+              Right(CValue.CSeq(values, valuesType))
+            }
+          case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
+        }
+
       case CType.COptional(innerType) =>
         // null or missing field is None, otherwise convert inner value
         if json.isNull then {
@@ -307,6 +323,9 @@ object JsonCValueConverter {
     case CValue.CBoolean(value) => Json.fromBoolean(value)
 
     case CValue.CList(values, _) =>
+      Json.fromValues(values.map(cValueToJson))
+
+    case CValue.CSeq(values, _) =>
       Json.fromValues(values.map(cValueToJson))
 
     case CValue.CMap(pairs, keysType, _) =>
@@ -623,6 +642,22 @@ object JsonCValueConverter {
             )
         }
 
+      case CType.CSeq(elemType) =>
+        // CSeq uses same RawValue representation as CList
+        json.asArray match {
+          case Some(arr) =>
+            val results = arr.zipWithIndex.map { case (elem, idx) =>
+              jsonToRawValue(elem, elemType, fieldPath(path, s"[$idx]"))
+            }
+            val errors = results.collect { case Left(err) => err }
+            if errors.nonEmpty then {
+              Left(errors.mkString("; "))
+            } else {
+              Right(RawValue.RList(results.collect { case Right(v) => v }.toArray))
+            }
+          case None => Left(fieldError(path, s"expected Array, got ${jsonTypeName(json)}"))
+        }
+
       case CType.COptional(innerType) =>
         if json.isNull then {
           Right(RawValue.RNone)
@@ -664,6 +699,9 @@ object JsonCValueConverter {
       Json.fromValues(values.map(Json.fromBoolean))
 
     case (RawValue.RList(values), CType.CList(elemType)) =>
+      Json.fromValues(values.map(v => rawValueToJson(v, elemType)))
+
+    case (RawValue.RList(values), CType.CSeq(elemType)) =>
       Json.fromValues(values.map(v => rawValueToJson(v, elemType)))
 
     case (RawValue.RMap(entries), CType.CMap(keyType, valueType)) =>

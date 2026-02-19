@@ -793,4 +793,136 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
 
     result shouldBe MatchBindingMissing
   }
+
+  // ========== CSeq Merge Tests ==========
+
+  "MergeTransform with CSeq" should "merge Seq + Seq element-wise" in {
+    val transform = MergeTransform(
+      CType.CSeq(CType.CProduct(Map("a" -> CType.CInt))),
+      CType.CSeq(CType.CProduct(Map("b" -> CType.CString)))
+    )
+
+    val result = transform(
+      Map(
+        "left"  -> List(Map("a" -> 1), Map("a" -> 2)),
+        "right" -> List(Map("b" -> "x"), Map("b" -> "y"))
+      )
+    )
+
+    result shouldBe List(Map("a" -> 1, "b" -> "x"), Map("a" -> 2, "b" -> "y"))
+  }
+
+  it should "throw on Seq + Seq length mismatch" in {
+    val transform = MergeTransform(
+      CType.CSeq(CType.CProduct(Map("a" -> CType.CInt))),
+      CType.CSeq(CType.CProduct(Map("b" -> CType.CInt)))
+    )
+
+    an[IllegalArgumentException] should be thrownBy {
+      transform(
+        Map(
+          "left"  -> List(Map("a" -> 1)),
+          "right" -> List(Map("b" -> 1), Map("b" -> 2))
+        )
+      )
+    }
+  }
+
+  it should "broadcast Seq + Record (left is CSeq)" in {
+    val transform = MergeTransform(
+      CType.CSeq(CType.CProduct(Map("a" -> CType.CInt))),
+      CType.CProduct(Map("b" -> CType.CString))
+    )
+
+    val result = transform(
+      Map(
+        "left"  -> List(Map("a" -> 1), Map("a" -> 2)),
+        "right" -> Map("b" -> "shared")
+      )
+    )
+
+    result shouldBe List(Map("a" -> 1, "b" -> "shared"), Map("a" -> 2, "b" -> "shared"))
+  }
+
+  it should "broadcast Record + Seq (right is CSeq)" in {
+    val transform = MergeTransform(
+      CType.CProduct(Map("b" -> CType.CString)),
+      CType.CSeq(CType.CProduct(Map("a" -> CType.CInt)))
+    )
+
+    val result = transform(
+      Map(
+        "left"  -> Map("b" -> "shared"),
+        "right" -> List(Map("a" -> 1), Map("a" -> 2))
+      )
+    )
+
+    result shouldBe List(Map("b" -> "shared", "a" -> 1), Map("b" -> "shared", "a" -> 2))
+  }
+
+  // ========== CSeq Project Tests ==========
+
+  "ProjectTransform with CSeq" should "project fields from Seq elements" in {
+    val transform = ProjectTransform(
+      List("name"),
+      CType.CSeq(CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt)))
+    )
+
+    val result = transform(
+      Map(
+        "source" -> List(
+          Map("name" -> "Alice", "age" -> 30),
+          Map("name" -> "Bob", "age" -> 25)
+        )
+      )
+    )
+
+    result shouldBe List(Map("name" -> "Alice"), Map("name" -> "Bob"))
+  }
+
+  // ========== CSeq FieldAccess Tests ==========
+
+  "FieldAccessTransform with CSeq" should "access field from Seq elements" in {
+    val transform = FieldAccessTransform(
+      "name",
+      CType.CSeq(CType.CProduct(Map("name" -> CType.CString, "age" -> CType.CInt)))
+    )
+
+    val result = transform(
+      Map(
+        "source" -> List(
+          Map("name" -> "Alice", "age" -> 30),
+          Map("name" -> "Bob", "age" -> 25)
+        )
+      )
+    )
+
+    result shouldBe List("Alice", "Bob")
+  }
+
+  // ========== CollectTransform Tests ==========
+
+  "CollectTransform" should "pass through lists unchanged" in {
+    val transform = CollectTransform()
+
+    val result = transform(Map("source" -> List(1, 2, 3)))
+
+    result shouldBe List(1, 2, 3)
+  }
+
+  it should "wrap non-list values in a single-element list" in {
+    val transform = CollectTransform()
+
+    val result = transform(Map("source" -> 42))
+
+    result shouldBe List(42)
+  }
+
+  it should "pass through empty lists" in {
+    val transform = CollectTransform()
+
+    val result = transform(Map("source" -> List.empty))
+
+    result shouldBe List.empty
+  }
 }

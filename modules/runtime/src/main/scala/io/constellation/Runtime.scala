@@ -101,6 +101,7 @@ final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.Mutable
     case CValue.CBoolean(value)  => IO.pure(value)
     case CValue.CFloat(value)    => IO.pure(value)
     case CValue.CList(values, _) => values.toList.traverse(cValueToAny)
+    case CValue.CSeq(values, _)  => values.toList.traverse(cValueToAny)
     case CValue.CMap(pairs, _, _) =>
       pairs.toList.traverse { case (k, v) =>
         for {
@@ -1068,6 +1069,15 @@ object Runtime {
       }
       val cValues = list.map(elem => anyToCValue(elem, elemType)).toVector
       CValue.CList(cValues, elemType)
+
+    case CType.CSeq(elemType) =>
+      val list = value match {
+        case l: List[?]   => l
+        case v: Vector[?] => v.toList
+        case _            => List(value)
+      }
+      val cValues = list.map(elem => anyToCValue(elem, elemType)).toVector
+      CValue.CSeq(cValues, elemType)
 
     case CType.CProduct(fieldTypes) =>
       val stringMap = value.asInstanceOf[Map[String, Any]]

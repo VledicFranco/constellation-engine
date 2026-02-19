@@ -147,6 +147,9 @@ object ErrorStrategyExecutor {
     case CType.CList(elemType) =>
       CValue.CList(Vector.empty, elemType)
 
+    case CType.CSeq(elemType) =>
+      CValue.CSeq(Vector.empty, elemType)
+
     case CType.CMap(keyType, valueType) =>
       CValue.CMap(Vector.empty, keyType, valueType)
 
@@ -171,7 +174,7 @@ object ErrorStrategyExecutor {
     */
   def hasZeroValue(ctype: CType): Boolean = ctype match {
     case CType.CString | CType.CInt | CType.CFloat | CType.CBoolean => true
-    case CType.CList(_) | CType.CMap(_, _) | CType.COptional(_)     => true
+    case CType.CList(_) | CType.CSeq(_) | CType.CMap(_, _) | CType.COptional(_) => true
     case CType.CProduct(structure) => structure.values.forall(hasZeroValue)
     case CType.CUnion(variants)    => variants.values.exists(hasZeroValue)
   }

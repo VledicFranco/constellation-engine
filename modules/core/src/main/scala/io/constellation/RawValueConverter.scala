@@ -106,6 +106,78 @@ object RawValueConverter {
     case CValue.CList(values, _) =>
       RawValue.RList(values.map(fromCValue).toArray)
 
+    // Seq - serializes identically to CList as RawValue
+    case CValue.CSeq(values, CType.CInt) =>
+      val arr = new Array[Long](values.length)
+      var i   = 0
+      while i < values.length do {
+        values(i) match {
+          case CValue.CInt(v) => arr(i) = v
+          case other =>
+            throw TypeMismatchError(
+              expected = "CInt",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "seq element")
+            )
+        }
+        i += 1
+      }
+      RawValue.RIntList(arr)
+
+    case CValue.CSeq(values, CType.CFloat) =>
+      val arr = new Array[Double](values.length)
+      var i   = 0
+      while i < values.length do {
+        values(i) match {
+          case CValue.CFloat(v) => arr(i) = v
+          case other =>
+            throw TypeMismatchError(
+              expected = "CFloat",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "seq element")
+            )
+        }
+        i += 1
+      }
+      RawValue.RFloatList(arr)
+
+    case CValue.CSeq(values, CType.CString) =>
+      val arr = new Array[String](values.length)
+      var i   = 0
+      while i < values.length do {
+        values(i) match {
+          case CValue.CString(v) => arr(i) = v
+          case other =>
+            throw TypeMismatchError(
+              expected = "CString",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "seq element")
+            )
+        }
+        i += 1
+      }
+      RawValue.RStringList(arr)
+
+    case CValue.CSeq(values, CType.CBoolean) =>
+      val arr = new Array[Boolean](values.length)
+      var i   = 0
+      while i < values.length do {
+        values(i) match {
+          case CValue.CBoolean(v) => arr(i) = v
+          case other =>
+            throw TypeMismatchError(
+              expected = "CBoolean",
+              actual = other.getClass.getSimpleName,
+              context = Map("location" -> "seq element")
+            )
+        }
+        i += 1
+      }
+      RawValue.RBoolList(arr)
+
+    case CValue.CSeq(values, _) =>
+      RawValue.RList(values.map(fromCValue).toArray)
+
     // Map
     case CValue.CMap(entries, _, _) =>
       RawValue.RMap(entries.map { case (k, v) => (fromCValue(k), fromCValue(v)) }.toArray)

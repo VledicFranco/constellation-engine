@@ -598,12 +598,12 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
   }
 
   // ==========================================================================
-  // Candidates Type Inputs (Candidates is a legacy alias for List)
+  // Candidates Type Inputs (Candidates is a legacy alias for Seq)
   // ==========================================================================
 
   it should "accept function call for Candidates type input" in {
     val itemType = SemanticType.SRecord(Map("id" -> SemanticType.SString))
-    val listType = SemanticType.SList(itemType)
+    val listType = SemanticType.SSeq(itemType)
 
     val registry = FunctionRegistry.empty
     registry.register(
@@ -627,7 +627,7 @@ class ExampleTypeCheckSpec extends AnyFlatSpec with Matchers {
 
   it should "reject function returning wrong Candidates element type" in {
     val wrongItemType = SemanticType.SRecord(Map("wrong" -> SemanticType.SInt))
-    val wrongListType = SemanticType.SList(wrongItemType)
+    val wrongListType = SemanticType.SSeq(wrongItemType)
 
     val registry = FunctionRegistry.empty
     registry.register(

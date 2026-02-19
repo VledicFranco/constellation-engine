@@ -49,7 +49,8 @@ object ConstellationGenerators {
             )
           } yield CType.CProduct(fields.toMap)
         ),
-        (1, genCType(maxDepth - 1).map(CType.COptional.apply))
+        (1, genCType(maxDepth - 1).map(CType.COptional.apply)),
+        (1, genCType(maxDepth - 1).map(CType.CSeq.apply))
       )
 
   /** Generate a valid field/variable name */
@@ -136,6 +137,14 @@ object ConstellationGenerators {
         Gen.const(CValue.CNone(innerType)),
         genCValueForType(innerType, maxDepth - 1).map(v => CValue.CSome(v, innerType))
       )
+
+    case CType.CSeq(elemType) =>
+      if maxDepth <= 0 then Gen.const(CValue.CSeq(Vector.empty, elemType))
+      else
+        for {
+          size  <- Gen.choose(0, 5)
+          elems <- Gen.listOfN(size, genCValueForType(elemType, maxDepth - 1))
+        } yield CValue.CSeq(elems.toVector, elemType)
   }
 
   /** Default value for any CType (used as fallback) */
@@ -151,6 +160,7 @@ object ConstellationGenerators {
       val (tag, t) = s.head
       CValue.CUnion(defaultCValue(t), s, tag)
     case CType.COptional(t) => CValue.CNone(t)
+    case CType.CSeq(et)     => CValue.CSeq(Vector.empty, et)
   }
 
   /** Generate a random CType and matching CValue pair */

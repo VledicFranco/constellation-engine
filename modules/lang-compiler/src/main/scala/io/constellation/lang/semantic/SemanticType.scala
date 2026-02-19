@@ -50,6 +50,18 @@ object SemanticType {
     def prettyPrint: String = s"List<${element.prettyPrint}>"
   }
 
+  /** Seq<T> - streaming sequence type for continuous data flow.
+    *
+    * In single-mode execution, Seq behaves like List. In streaming mode, Seq represents an
+    * unbounded stream of elements processed one at a time.
+    *
+    * Supports the same element-wise operations as List (merge, projection, field access). The
+    * `collect` pseudo-module materializes a Seq into a List.
+    */
+  final case class SSeq(element: SemanticType) extends SemanticType {
+    def prettyPrint: String = s"Seq<${element.prettyPrint}>"
+  }
+
   /** Map<K, V> */
   final case class SMap(key: SemanticType, value: SemanticType) extends SemanticType {
     def prettyPrint: String = s"Map<${key.prettyPrint}, ${value.prettyPrint}>"
@@ -109,6 +121,7 @@ object SemanticType {
     case SNothing         => CType.CString // Bottom type - use String as default for runtime
     case SRecord(fields)  => CType.CProduct(fields.view.mapValues(toCType).toMap)
     case SList(elem)      => CType.CList(toCType(elem))
+    case SSeq(elem)       => CType.CSeq(toCType(elem))
     case SMap(k, v)       => CType.CMap(toCType(k), toCType(v))
     case SOptional(inner) => CType.COptional(toCType(inner))
     case SFunction(_, _) =>
@@ -135,6 +148,7 @@ object SemanticType {
     case CType.CFloat           => SFloat
     case CType.CBoolean         => SBoolean
     case CType.CList(elem)      => SList(fromCType(elem))
+    case CType.CSeq(elem)       => SSeq(fromCType(elem))
     case CType.CMap(k, v)       => SMap(fromCType(k), fromCType(v))
     case CType.CProduct(fields) => SRecord(fields.view.mapValues(fromCType).toMap)
     case CType.CUnion(fields)   => SUnion(fields.values.map(fromCType).toSet)
@@ -195,6 +209,8 @@ final case class FunctionSignature(
         SRecord(fields.view.mapValues(substituteRowVars(_, mapping)).toMap)
       case SList(elem) =>
         SList(substituteRowVars(elem, mapping))
+      case SSeq(elem) =>
+        SSeq(substituteRowVars(elem, mapping))
       case SOptional(inner) =>
         SOptional(substituteRowVars(inner, mapping))
       // Note: SCandidates was removed - "Candidates" is now a legacy alias for List

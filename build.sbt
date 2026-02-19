@@ -213,6 +213,21 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     ) ++ loggingDeps
   )
 
+// Stream - fs2-based streaming pipeline execution engine
+lazy val stream = project
+  .in(file("modules/stream"))
+  .dependsOn(runtime)
+  .settings(
+    name := "constellation-stream",
+    coverageMinimumStmtTotal := 0,
+    coverageMinimumBranchTotal := 0,
+    libraryDependencies ++= Seq(
+      "co.fs2"            %% "fs2-core"    % "3.9.4",
+      "org.typelevel"     %% "cats-effect" % "3.5.2",
+      "org.scalatest"     %% "scalatest"   % "3.2.17" % Test,
+    ) ++ loggingDeps
+  )
+
 // Cache Memcached - optional Memcached-backed distributed cache backend
 lazy val cacheMemcached = (project in file("modules/cache-memcached"))
   .dependsOn(runtime)
@@ -320,6 +335,7 @@ lazy val root = (project in file("."))
   .aggregate(
     core,
     runtime,
+    stream,
     langAst,
     langParser,
     langCompiler,

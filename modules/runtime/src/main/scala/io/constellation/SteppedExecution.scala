@@ -294,6 +294,7 @@ object SteppedExecution {
       case CValue.CFloat(v)           => v.toString
       case CValue.CBoolean(v)         => v.toString
       case CValue.CList(values, _)    => s"[${values.size} items]"
+      case CValue.CSeq(values, _)     => s"Seq[${values.size} items]"
       case CValue.CMap(pairs, _, _)   => s"{${pairs.size} entries}"
       case CValue.CProduct(fields, _) => s"{${fields.keys.mkString(", ")}}"
       case CValue.CUnion(_, _, tag)   => s"$tag(...)"

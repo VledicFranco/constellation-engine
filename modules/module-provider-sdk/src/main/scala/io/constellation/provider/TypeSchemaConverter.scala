@@ -74,6 +74,10 @@ object TypeSchemaConverter {
     case CType.CList(elemType) =>
       pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(Some(toTypeSchema(elemType)))))
 
+    case CType.CSeq(elemType) =>
+      // CSeq serializes as ListType on the wire (external modules receive materialized data)
+      pb.TypeSchema(pb.TypeSchema.Type.List(pb.ListType(Some(toTypeSchema(elemType)))))
+
     case CType.CMap(keyType, valType) =>
       pb.TypeSchema(
         pb.TypeSchema.Type.Map(
