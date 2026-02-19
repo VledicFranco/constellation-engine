@@ -222,9 +222,12 @@ lazy val stream = project
     coverageMinimumStmtTotal := 0,
     coverageMinimumBranchTotal := 0,
     libraryDependencies ++= Seq(
-      "co.fs2"            %% "fs2-core"    % "3.9.4",
-      "org.typelevel"     %% "cats-effect" % "3.5.2",
-      "org.scalatest"     %% "scalatest"   % "3.2.17" % Test,
+      "co.fs2"            %% "fs2-core"           % "3.9.4",
+      "org.typelevel"     %% "cats-effect"        % "3.5.2",
+      "io.circe"          %% "circe-core"         % "0.14.6",
+      "io.circe"          %% "circe-parser"       % "0.14.6",
+      "org.http4s"        %% "http4s-ember-client" % "0.23.25",
+      "org.scalatest"     %% "scalatest"          % "3.2.17" % Test,
     ) ++ loggingDeps
   )
 

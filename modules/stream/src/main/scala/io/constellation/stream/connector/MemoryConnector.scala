@@ -23,8 +23,10 @@ object MemoryConnector {
       queue: Queue[IO, Option[CValue]]
   ): SourceConnector =
     new SourceConnector {
-      override def name: String              = sourceName
-      override def stream: Stream[IO, CValue] = Stream.fromQueueNoneTerminated(queue)
+      override def name: String     = sourceName
+      override def typeName: String = "memory"
+      override def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] =
+        Stream.fromQueueNoneTerminated(queue)
     }
 
   /** Create a memory sink backed by a bounded queue.
@@ -36,8 +38,10 @@ object MemoryConnector {
       queue: Queue[IO, CValue]
   ): SinkConnector =
     new SinkConnector {
-      override def name: String                = sinkName
-      override def pipe: Pipe[IO, CValue, Unit] = _.evalMap(queue.offer)
+      override def name: String     = sinkName
+      override def typeName: String = "memory"
+      override def pipe(config: ValidatedConnectorConfig): Pipe[IO, CValue, Unit] =
+        _.evalMap(queue.offer)
     }
 
   /** Create a source/sink pair for testing round-trips. Returns (sourceQueue, sinkQueue,

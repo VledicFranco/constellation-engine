@@ -1,5 +1,8 @@
 package io.constellation.stream.connector
 
+import cats.effect.IO
+import cats.implicits.*
+
 /** Registry for source and sink connectors, used by StreamCompiler to bind DAG nodes to external
   * I/O.
   *
@@ -16,11 +19,36 @@ final class ConnectorRegistry private (
   /** Look up a sink connector by name. */
   def getSink(name: String): Option[SinkConnector] = sinks.get(name)
 
+  /** Get the configuration schema for a named source connector. */
+  def getSourceSchema(name: String): Option[ConnectorSchema] =
+    sources.get(name).map(_.configSchema)
+
+  /** Get the configuration schema for a named sink connector. */
+  def getSinkSchema(name: String): Option[ConnectorSchema] =
+    sinks.get(name).map(_.configSchema)
+
   /** All registered source names. */
   def sourceNames: Set[String] = sources.keySet
 
   /** All registered sink names. */
   def sinkNames: Set[String] = sinks.keySet
+
+  /** All registered sources. */
+  def allSources: Map[String, SourceConnector] = sources
+
+  /** All registered sinks. */
+  def allSinks: Map[String, SinkConnector] = sinks
+
+  /** Run health checks on all registered connectors and return aggregated reports. */
+  def healthCheck: IO[Map[String, ConnectorHealthReport]] =
+    for {
+      sourceReports <- sources.toList.traverse { case (name, src) =>
+        src.healthReport.map(name -> _)
+      }
+      sinkReports <- sinks.toList.traverse { case (name, snk) =>
+        snk.healthReport.map(name -> _)
+      }
+    } yield (sourceReports ++ sinkReports).toMap
 }
 
 object ConnectorRegistry {

@@ -104,7 +104,7 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
       _     <- srcQ.offer(Some(CValue.CInt(42L)))
       _     <- srcQ.offer(None)
       // Pipe source through sink
-      _     <- src.stream.through(snk.pipe).compile.drain
+      _     <- src.stream(connector.ValidatedConnectorConfig.empty).through(snk.pipe(connector.ValidatedConnectorConfig.empty)).compile.drain
       // Collect results
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()
@@ -371,7 +371,7 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
       (srcQ, snkQ, src, snk) = pairResult
       _ <- srcQ.offer(Some(CValue.CInt(99L)))
       _ <- srcQ.offer(None)
-      _ <- src.stream.through(snk.pipe).compile.drain
+      _ <- src.stream(connector.ValidatedConnectorConfig.empty).through(snk.pipe(connector.ValidatedConnectorConfig.empty)).compile.drain
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()
 

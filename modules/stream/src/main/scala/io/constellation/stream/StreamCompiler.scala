@@ -9,6 +9,7 @@ import cats.implicits.*
 import fs2.Stream
 
 import io.constellation.*
+import io.constellation.stream.config.*
 import io.constellation.stream.connector.*
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
@@ -56,6 +57,59 @@ object StreamCompiler {
       graph    <- buildGraph(dagSpec, registry, modules, options, errorStrategy, joinStrategy, metrics, shutdown)
     } yield graph
 
+  /** Wire a DagSpec into a StreamGraph using a pipeline configuration.
+    *
+    * Validates the config against the DAG and registry, resolves all connector bindings,
+    * then delegates to the core wiring logic.
+    */
+  def wireWithConfig(
+      dagSpec: DagSpec,
+      config: StreamPipelineConfig,
+      registry: ConnectorRegistry,
+      modules: Map[UUID, CValue => IO[CValue]],
+      errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
+      joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
+  ): IO[StreamGraph] = {
+    // Identify source and sink names from the DAG
+    val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
+    val sourceDataIds       = dagSpec.data.keySet -- moduleOutputDataIds
+    val sourceNames = sourceDataIds.flatMap { dataId =>
+      dagSpec.data.get(dataId).map { dns =>
+        dns.nicknames.values.headOption.getOrElse(dns.name)
+      }
+    }
+    val sinkNames = dagSpec.outputBindings.keys.toSet
+
+    PipelineConfigValidator.validate(config, sourceNames, sinkNames, registry) match {
+      case Left(errors) =>
+        IO.raiseError(new IllegalArgumentException(
+          s"Pipeline config validation failed: ${errors.map(_.message).mkString("; ")}"
+        ))
+      case Right(validated) =>
+        // Build a temporary registry with resolved connectors
+        val resolvedBuilder = validated.resolvedSources.foldLeft(ConnectorRegistry.builder) {
+          case (b, (srcName, resolvedStream)) =>
+            val src = new SourceConnector {
+              def name: String     = srcName
+              def typeName: String = "resolved"
+              def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = resolvedStream
+            }
+            b.source(srcName, src)
+        }
+        val resolvedRegistry = validated.resolvedSinks.foldLeft(resolvedBuilder) {
+          case (b, (snkName, resolvedPipe)) =>
+            val snk = new SinkConnector {
+              def name: String     = snkName
+              def typeName: String = "resolved"
+              def pipe(config: ValidatedConnectorConfig): fs2.Pipe[IO, CValue, Unit] = resolvedPipe
+            }
+            b.sink(snkName, snk)
+        }.build
+
+        wire(dagSpec, resolvedRegistry, modules, StreamOptions(), errorStrategy, joinStrategy)
+    }
+  }
+
   private def buildGraph(
       dagSpec: DagSpec,
       registry: ConnectorRegistry,
@@ -81,7 +135,7 @@ object StreamCompiler {
       dagSpec.data.get(dataId).map { dataNodeSpec =>
         val sourceName = dataNodeSpec.nicknames.values.headOption.getOrElse(dataNodeSpec.name)
         val source     = registry.getSource(sourceName)
-        dataId -> source.map(_.stream).getOrElse(Stream.empty)
+        dataId -> source.map(_.stream(ValidatedConnectorConfig.empty)).getOrElse(Stream.empty)
       }
     }.toMap
 
@@ -149,7 +203,7 @@ object StreamCompiler {
         val sink = registry.getSink(sinkName)
         moduleStreams.get(dataId).map { stream =>
           sink match {
-            case Some(s) => stream.through(s.pipe).drain
+            case Some(s) => stream.through(s.pipe(ValidatedConnectorConfig.empty)).drain
             case None    => stream.drain
           }
         }
