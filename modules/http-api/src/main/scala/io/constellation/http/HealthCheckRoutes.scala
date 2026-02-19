@@ -54,7 +54,8 @@ object HealthCheckRoutes {
       config: HealthCheckConfig,
       lifecycle: Option[ConstellationLifecycle] = None,
       compiler: Option[LangCompiler] = None,
-      scheduler: Option[GlobalScheduler] = None
+      scheduler: Option[GlobalScheduler] = None,
+      streamManager: Option[StreamLifecycleManager] = None
   ): HttpRoutes[IO] = HttpRoutes.of[IO] {
 
     // Liveness probe — always returns 200
@@ -72,10 +73,20 @@ object HealthCheckRoutes {
         if config.customReadinessChecks.isEmpty then IO.pure(true)
         else config.customReadinessChecks.traverse(_.check).map(_.forall(identity))
 
+      // Check that no streams are in failed state
+      val streamsReady: IO[Boolean] = streamManager match {
+        case Some(mgr) =>
+          mgr.list.map { streams =>
+            !streams.exists(_.status.isInstanceOf[StreamStatus.Failed])
+          }
+        case None => IO.pure(true)
+      }
+
       for {
         lcReady <- lifecycleReady
         crReady <- customReady
-        ready = lcReady && crReady
+        stReady <- streamsReady
+        ready = lcReady && crReady && stReady
         resp <-
           if ready then Ok(Json.obj("status" -> Json.fromString("ready")))
           else ServiceUnavailable(Json.obj("status" -> Json.fromString("not_ready")))
@@ -120,6 +131,22 @@ object HealthCheckRoutes {
         case None => IO.pure(Json.Null)
       }
 
+      val streamsJson: IO[Json] = streamManager match {
+        case Some(mgr) =>
+          mgr.list.map { streams =>
+            val running = streams.count(_.status == StreamStatus.Running)
+            val failed  = streams.count(_.status.isInstanceOf[StreamStatus.Failed])
+            val stopped = streams.count(_.status == StreamStatus.Stopped)
+            Json.obj(
+              "running" -> Json.fromInt(running),
+              "failed"  -> Json.fromInt(failed),
+              "stopped" -> Json.fromInt(stopped),
+              "total"   -> Json.fromInt(streams.size)
+            )
+          }
+        case None => IO.pure(Json.Null)
+      }
+
       val customChecksJson: IO[Json] =
         if config.customReadinessChecks.isEmpty then IO.pure(Json.Null)
         else {
@@ -134,6 +161,7 @@ object HealthCheckRoutes {
         lc      <- lifecycleJson
         cache   <- cacheJson
         sched   <- schedulerJson
+        strms   <- streamsJson
         customs <- customChecksJson
         resp <- Ok(
           Json.obj(
@@ -141,6 +169,7 @@ object HealthCheckRoutes {
             "lifecycle"       -> lc,
             "cache"           -> cache,
             "scheduler"       -> sched,
+            "streams"         -> strms,
             "readinessChecks" -> customs
           )
         )

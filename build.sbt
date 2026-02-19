@@ -161,7 +161,7 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
 
 // HTTP API - REST API server for compiler and runtime with WebSocket LSP support
 lazy val httpApi = (project in file("modules/http-api"))
-  .dependsOn(runtime, langCompiler, langStdlib, langLsp)
+  .dependsOn(runtime, langCompiler, langStdlib, langLsp, stream)
   .settings(
     name := "constellation-http-api",
     coverageMinimumStmtTotal := 32,

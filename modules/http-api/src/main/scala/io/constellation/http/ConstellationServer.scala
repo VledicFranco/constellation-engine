@@ -10,6 +10,7 @@ import cats.implicits.*
 import io.constellation.execution.{GlobalScheduler, TokenBucketRateLimiter}
 import io.constellation.lang.LangCompiler
 import io.constellation.lang.semantic.FunctionRegistry
+import io.constellation.stream.connector.ConnectorRegistry
 import io.constellation.{
   CValue,
   Constellation,
@@ -137,7 +138,8 @@ object ConstellationServer {
       healthCheckConfig: HealthCheckConfig = HealthCheckConfig.default,
       pipelineLoaderConfig: Option[PipelineLoaderConfig] = None,
       persistentStorePath: Option[Path] = None,
-      executionWs: Option[ExecutionWebSocket] = None
+      executionWs: Option[ExecutionWebSocket] = None,
+      streamRegistry: Option[ConnectorRegistry] = None
   )
 
   /** Builder for creating a Constellation HTTP server */
@@ -258,6 +260,19 @@ object ConstellationServer {
         config.copy(executionWs = Some(executionWs))
       )
 
+    /** Enable streaming pipeline support with the given connector registry.
+      *
+      * When provided, the server exposes stream lifecycle endpoints at `/api/v1/streams` and
+      * WebSocket event streaming at `/api/v1/streams/events`.
+      */
+    def withStreaming(registry: ConnectorRegistry): ServerBuilder =
+      new ServerBuilder(
+        constellation,
+        compiler,
+        functionRegistry,
+        config.copy(streamRegistry = Some(registry))
+      )
+
     /** Build the HTTP server resource.
       *
       * Validates all configuration at startup. Fails fast with clear errors if any config is
@@ -276,8 +291,8 @@ object ConstellationServer {
         return Resource.eval(IO.raiseError(new IllegalArgumentException(msg)))
       }
 
-      val healthRoutes =
-        HealthCheckRoutes.routes(config.healthCheckConfig, compiler = Some(compiler))
+      // healthRoutes will be built later in the for-comprehension after streamManager is available
+      val healthCheckConfig = config.healthCheckConfig
       val lspHandler = LspWebSocketHandler(constellation, compiler)
 
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
@@ -354,6 +369,27 @@ object ConstellationServer {
           }
         )
 
+        // Create streaming components if configured
+        streamManagerOpt <- Resource.eval(
+          config.streamRegistry match {
+            case Some(_) => StreamLifecycleManager.create.map(Some(_))
+            case None    => IO.pure(None)
+          }
+        )
+        streamWsOpt = config.streamRegistry.map(_ => StreamWebSocket())
+        streamRoutesOpt = for {
+          reg     <- config.streamRegistry
+          mgr     <- streamManagerOpt
+        } yield new StreamRoutes(mgr, reg, effectiveConstellation, compiler)
+
+        // Wire event publisher from lifecycle manager to WebSocket
+        _ <- Resource.eval(
+          (streamManagerOpt, streamWsOpt) match {
+            case (Some(mgr), Some(ws)) => mgr.setEventPublisher(ws.publish)
+            case _                     => IO.unit
+          }
+        )
+
         // Create HTTP routes with version store and canary router wired in
         httpRoutes = new ConstellationRoutes(
           effectiveConstellation,
@@ -369,6 +405,13 @@ object ConstellationServer {
         // Module HTTP endpoint routes (RFC-027)
         moduleHttpRoutes = new ModuleHttpRoutes(effectiveConstellation).routes
 
+        // Build health routes with optional stream manager
+        healthRoutes = HealthCheckRoutes.routes(
+          healthCheckConfig,
+          compiler = Some(compiler),
+          streamManager = streamManagerOpt
+        )
+
         server <- EmberServerBuilder
           .default[IO]
           .withHost(host)
@@ -380,8 +423,17 @@ object ConstellationServer {
             // Combine core routes + health routes + optional dashboard routes + WebSocket routes
             // Note: executionWs routes MUST come FIRST because both httpRoutes and dashboardRoutes have
             // catch-all patterns `GET /api/v1/executions/:id` that would match "events" as an ID
+
+            // Stream routes (WebSocket events must come before REST to avoid path conflicts)
+            val streamRoutes = (streamWsOpt, streamRoutesOpt) match {
+              case (Some(sws), Some(sr)) => sws.routes(wsb) <+> sr.routes
+              case (Some(sws), None)     => sws.routes(wsb)
+              case (None, Some(sr))      => sr.routes
+              case (None, None)          => HttpRoutes.empty[IO]
+            }
+
             val coreRoutes =
-              moduleHttpRoutes <+> httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
+              streamRoutes <+> moduleHttpRoutes <+> httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
               case Some(dashboardRoutes) =>
                 executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes
@@ -429,8 +481,11 @@ object ConstellationServer {
         val loaderSummary = config.pipelineLoaderConfig
           .map(c => s"pipelineDir=${c.directory}")
           .getOrElse("pipelineLoader=off")
+        val streamSummary = config.streamRegistry
+          .map(_ => "streaming=on")
+          .getOrElse("streaming=off")
         logger.info(
-          s"Constellation HTTP API server started at http://${config.host}:${config.port} [$authSummary, $corsSummary, $rateSummary, $loaderSummary]"
+          s"Constellation HTTP API server started at http://${config.host}:${config.port} [$authSummary, $corsSummary, $rateSummary, $loaderSummary, $streamSummary]"
         ) *>
           IO.never
       }
