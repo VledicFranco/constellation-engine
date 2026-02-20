@@ -3,11 +3,11 @@ package io.constellation.stream.config
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import io.constellation.*
 import io.constellation.stream.connector.*
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
 

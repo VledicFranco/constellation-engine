@@ -5,8 +5,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 import scala.jdk.CollectionConverters.*
 
-import cats.effect.std.Queue
 import cats.effect.IO
+import cats.effect.std.Queue
 import cats.implicits.*
 
 import fs2.{Pipe, Stream}

@@ -7,12 +7,11 @@ import cats.implicits.*
 
 import io.constellation.http.StreamApiModels.*
 import io.constellation.lang.LangCompiler
-import io.constellation.stream.StreamCompiler
-import io.constellation.stream.StreamOptions
 import io.constellation.stream.config.{SinkBinding, SourceBinding, StreamPipelineConfig}
 import io.constellation.stream.connector.ConnectorRegistry
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
+import io.constellation.stream.{StreamCompiler, StreamOptions}
 import io.constellation.{
   CType,
   CValue,

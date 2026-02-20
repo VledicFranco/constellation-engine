@@ -2,10 +2,10 @@ package io.constellation.stream.connector.websocket
 
 import scala.concurrent.duration.*
 
+import io.constellation.stream.connector.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import io.constellation.stream.connector.*
 
 class WebSocketConnectorTest extends AnyFlatSpec with Matchers {
 

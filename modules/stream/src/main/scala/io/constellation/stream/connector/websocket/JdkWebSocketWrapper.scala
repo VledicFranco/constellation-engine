@@ -4,8 +4,8 @@ import java.net.URI
 import java.net.http.{HttpClient, WebSocket}
 import java.util.concurrent.CompletionStage
 
-import cats.effect.{IO, Resource}
 import cats.effect.std.Queue
+import cats.effect.{IO, Resource}
 
 import fs2.Stream
 

@@ -5,12 +5,11 @@ import java.time.Instant
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import fs2.{Pipe, Stream}
+import io.constellation.CValue
 
+import fs2.{Pipe, Stream}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import io.constellation.CValue
 
 class ConnectorHealthTest extends AnyFlatSpec with Matchers {
 

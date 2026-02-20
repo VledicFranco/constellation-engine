@@ -6,17 +6,15 @@ import scala.concurrent.duration.*
 
 import cats.effect.{IO, Ref}
 
-import fs2.Stream
-
-import io.circe.parser.parse as parseJson
-
-import org.http4s.{Header, Headers, Method, Request, Uri}
-import org.http4s.ember.client.EmberClientBuilder
-import org.typelevel.ci.CIString
-
 import io.constellation.CValue
 import io.constellation.json.cvalueDecoder
 import io.constellation.stream.connector.*
+
+import fs2.Stream
+import io.circe.parser.parse as parseJson
+import org.http4s.ember.client.EmberClientBuilder
+import org.http4s.{Header, Headers, Method, Request, Uri}
+import org.typelevel.ci.CIString
 
 /** A source connector that reads from an HTTP Server-Sent Events endpoint.
   *

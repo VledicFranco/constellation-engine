@@ -5,13 +5,13 @@ import java.util.UUID
 import cats.effect.{Deferred, IO}
 import cats.implicits.*
 
-import fs2.Stream
-
 import io.constellation.*
 import io.constellation.stream.config.*
 import io.constellation.stream.connector.*
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
+
+import fs2.Stream
 
 /** Compiles a DagSpec into an fs2 Stream graph for continuous execution.
   *

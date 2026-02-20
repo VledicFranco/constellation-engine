@@ -3,9 +3,9 @@ package io.constellation.stream.connector
 import cats.effect.IO
 import cats.effect.std.Queue
 
-import fs2.{Pipe, Stream}
-
 import io.constellation.CValue
+
+import fs2.{Pipe, Stream}
 
 /** Queue-based in-memory source and sink connectors for testing and local use.
   *

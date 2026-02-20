@@ -4,10 +4,10 @@ import java.time.Instant
 
 import cats.effect.IO
 
-import fs2.Stream
-
 import io.constellation.CValue
 import io.constellation.stream.delivery.{DeliveryGuarantee, OffsetCommitter}
+
+import fs2.Stream
 
 /** A source connector provides a stream of CValues from an external system.
   *

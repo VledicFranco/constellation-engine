@@ -2,9 +2,9 @@ package io.constellation.stream.config
 
 import cats.effect.IO
 
-import fs2.{Pipe, Stream}
-
 import io.constellation.CValue
+
+import fs2.{Pipe, Stream}
 
 /** A fully validated pipeline config with resolved connector streams and pipes.
   *

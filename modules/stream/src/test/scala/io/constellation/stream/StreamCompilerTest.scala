@@ -3,13 +3,13 @@ package io.constellation.stream
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-
 import io.constellation.*
 import io.constellation.stream.connector.*
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
+
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
 class StreamCompilerTest extends AnyFlatSpec with Matchers {
 

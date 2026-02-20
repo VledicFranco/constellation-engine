@@ -2,10 +2,10 @@ package io.constellation.stream.connector.sse
 
 import scala.concurrent.duration.*
 
+import io.constellation.stream.connector.*
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-
-import io.constellation.stream.connector.*
 
 class HttpSseSourceConnectorTest extends AnyFlatSpec with Matchers {
 

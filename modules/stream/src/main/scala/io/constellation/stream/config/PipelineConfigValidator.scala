@@ -2,10 +2,10 @@ package io.constellation.stream.config
 
 import cats.effect.IO
 
-import fs2.{Pipe, Stream}
-
 import io.constellation.CValue
 import io.constellation.stream.connector.*
+
+import fs2.{Pipe, Stream}
 
 /** Validates a StreamPipelineConfig against a DagSpec and ConnectorRegistry.
   *

@@ -4,13 +4,12 @@ import java.net.URI
 
 import cats.effect.IO
 
-import fs2.Pipe
-
-import io.circe.syntax.*
-
 import io.constellation.CValue
 import io.constellation.json.cvalueEncoder
 import io.constellation.stream.connector.*
+
+import fs2.Pipe
+import io.circe.syntax.*
 
 /** A sink connector that writes CValues as JSON text frames to a WebSocket endpoint.
   *

@@ -4,9 +4,9 @@ import java.time.Instant
 
 import cats.effect.IO
 
-import fs2.Pipe
-
 import io.constellation.CValue
+
+import fs2.Pipe
 
 /** A sink connector consumes a stream of CValues and writes them to an external system.
   *
