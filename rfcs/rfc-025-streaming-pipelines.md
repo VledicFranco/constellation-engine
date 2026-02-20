@@ -1281,6 +1281,77 @@ GET /streams/{streamId}/metrics
 - [ ] Schema evolution check on hot-reload (`ReloadCheck`)
 - [ ] Graceful drain → recompile → restart
 
+### Phase 4.5: Integration Validation via constellation-demo
+
+**Scope:** End-to-end regression and feature validation using the [constellation-demo](https://github.com/VledicFranco/constellation-demo) reference app as a real-world test harness. This phase gates the PR from DRAFT → Ready.
+
+> **Why a separate validation phase:** Unit tests validate individual modules in isolation. The demo app exercises the full compilation → registration → execution path with 34 `.cst` pipelines, external providers (TypeScript + Scala gRPC), golden output assertions, and performance benchmarks. It catches integration regressions that unit tests miss — especially the HOF signature change (`List<T>` → `Seq<T>`) and `OutputDecl` ADT evolution.
+
+#### Phase 0: Engine Build (prerequisite)
+
+- [ ] Checkout `dev/rfc-025-streaming-pipelines` in `constellation-engine/`
+- [ ] Fix scalafmt violations (`make format` or `sbt scalafmtAll`)
+- [ ] `sbt publishLocal` — publish all modules as SNAPSHOT to `~/.ivy2/local`
+- [ ] Rebuild TS SDK tarball (`cd sdks/typescript && npm pack`)
+- [ ] Record the local SNAPSHOT version string
+
+#### Phase 1: Regression Validation (does the PR break existing behavior?)
+
+Point `constellation-demo` at the local SNAPSHOT artifacts and run the full existing test suite. This is the highest-value validation — it leverages 34 pre-built pipelines and golden outputs as a regression suite.
+
+- [ ] Update `server/build.sbt` and `provider-scala/build.sbt` to use SNAPSHOT version
+- [ ] Copy fresh TS SDK tarball to `provider-ts/`
+- [ ] `docker compose up --build` — verify all 6 services start
+- [ ] Run `tests/compilation/test-all-compile.sh` — do existing `.cst` files still compile?
+- [ ] Run `tests/execution/test-all-execute.sh` — do golden outputs still match?
+- [ ] Run `tests/errors/` suite — do invalid pipelines still produce correct errors?
+- [ ] Run `tests/performance/benchmark-pipelines.sh` — compare against baseline (~375-460ms)
+- [ ] Run `tests/provider/test-registration.sh` — TS and Scala providers register correctly?
+
+**Expected finding:** The HOF signature change (`filter`/`map`/`all`/`any` from `List<T>` to `Seq<T>`) will break lambda pipelines (`lambda-filter.cst`, `lambda-map-reduce.cst`, `higher-order-validation.cst`). This confirms the regression is real and must be resolved — either via overloaded signatures or `List <: Seq` subtyping — before the PR leaves DRAFT.
+
+#### Phase 2: New Feature Validation (do streaming features compile and run?)
+
+Write new `.cst` pipelines that exercise the PR's additions. These become permanent test fixtures in the demo.
+
+**Compilation-only validation** (streaming syntax parses and type-checks):
+
+- [ ] `stream-seq-type.cst` — `Seq<T>` declared as input, passes through stdlib
+- [ ] `stream-window-options.cst` — `with window: tumbling(5s)`, `with batch: 10`, `with batch_timeout: 2s`
+- [ ] `stream-source-sink.cst` — `@source("memory", topic: "test")` / `@sink("memory", topic: "out")` annotations
+- [ ] `stream-join-strategy.cst` — `with join: combine_latest` on a multi-input module
+- [ ] `stream-mixed-types.cst` — pipeline with both `List<T>` and `Seq<T>` values coexisting
+
+**Runtime validation** (requires `DemoServer` update):
+
+- [ ] Update `DemoServer.scala` to call `.withStreaming(registry)` with `MemoryConnector`
+- [ ] Deploy simple streaming pipeline via `POST /api/v1/streams` (memory source → stdlib → memory sink)
+- [ ] Push test events through memory source, verify arrival at sink
+- [ ] Hit `GET /api/v1/streams/:id/metrics` — confirm stream metrics work
+- [ ] `DELETE /api/v1/streams/:id` — confirm shutdown (known gap: shutdown signal not wired to `interruptWhen`)
+
+#### Phase 3: Boundary Validation (known gaps and edge cases)
+
+Targeted tests for specific risks identified in the PR:
+
+| Test | Risk | Expected Result |
+|------|------|-----------------|
+| `filter(list, pred)` where `list: List<Int>` | HOF `List→Seq` breakage | Type error (confirms regression) |
+| `filter(seq, pred)` where `seq: Seq<Int>` | HOF works with new type | Should compile and run |
+| `with on_error: skip` on non-String module | Skip strategy emits `CString("")` | Wrong type downstream (confirms bug) |
+| DAG with 2 inputs to single module | Fan-in not implemented | Should error clearly, not silently drop |
+| `with window: tumbling(5s)` at runtime | Windowing not applied in `StreamCompiler` | Verify: silent ignore or explicit error? |
+
+#### Phase 4: Document Results and Update Golden Outputs
+
+- [ ] Record all findings in a structured report — passed, regressed, new features working
+- [ ] File GitHub issues for confirmed bugs (HOF breakage, Skip strategy, shutdown signal)
+- [ ] Update golden outputs if response JSON changed legitimately (new fields)
+- [ ] Commit new `.cst` pipelines and golden outputs to `constellation-demo` as permanent fixtures
+- [ ] Update PR description to reflect actual validation results
+
+**Gate criteria for DRAFT → Ready:** Phase 1 regressions resolved, Phase 2 compilation validation passes, known gaps documented as issues with clear scope.
+
 ### Phase 5: External Connectors + Stateful Streaming + Exactly-Once
 
 **Scope:** Kafka, file, gRPC + stateful modules + transactional delivery + key-based joins
