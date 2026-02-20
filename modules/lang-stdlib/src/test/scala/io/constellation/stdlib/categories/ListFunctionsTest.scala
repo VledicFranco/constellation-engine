@@ -56,9 +56,9 @@ class ListFunctionsTest extends AnyFlatSpec with Matchers {
 
   // Signature tests
 
-  "listLengthSignature" should "take List<Int> and return Int" in {
+  "listLengthSignature" should "take Seq<Int> and return Int" in {
     StdLib.listLengthSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
     StdLib.listLengthSignature.returns shouldBe SemanticType.SInt
   }
@@ -67,55 +67,55 @@ class ListFunctionsTest extends AnyFlatSpec with Matchers {
     StdLib.listLengthSignature.namespace shouldBe Some("stdlib.list")
   }
 
-  "listFirstSignature" should "take List<Int> and return Int" in {
+  "listFirstSignature" should "take Seq<Int> and return Int" in {
     StdLib.listFirstSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
     StdLib.listFirstSignature.returns shouldBe SemanticType.SInt
   }
 
-  "listLastSignature" should "take List<Int> and return Int" in {
+  "listLastSignature" should "take Seq<Int> and return Int" in {
     StdLib.listLastSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
     StdLib.listLastSignature.returns shouldBe SemanticType.SInt
   }
 
   "listIsEmptySignature" should "return Boolean" in {
     StdLib.listIsEmptySignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
     StdLib.listIsEmptySignature.returns shouldBe SemanticType.SBoolean
   }
 
-  "listSumSignature" should "take List<Int> and return Int" in {
+  "listSumSignature" should "take Seq<Int> and return Int" in {
     StdLib.listSumSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
     StdLib.listSumSignature.returns shouldBe SemanticType.SInt
   }
 
-  "listConcatSignature" should "take two List<Int> and return List<Int>" in {
+  "listConcatSignature" should "take two List<Int> and return Seq<Int>" in {
     StdLib.listConcatSignature.params shouldBe List(
-      "a" -> SemanticType.SList(SemanticType.SInt),
-      "b" -> SemanticType.SList(SemanticType.SInt)
+      "a" -> SemanticType.SSeq(SemanticType.SInt),
+      "b" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listConcatSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listConcatSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
-  "listContainsSignature" should "take List<Int> and Int, return Boolean" in {
+  "listContainsSignature" should "take Seq<Int> and Int, return Boolean" in {
     StdLib.listContainsSignature.params shouldBe List(
-      "list"  -> SemanticType.SList(SemanticType.SInt),
+      "list"  -> SemanticType.SSeq(SemanticType.SInt),
       "value" -> SemanticType.SInt
     )
     StdLib.listContainsSignature.returns shouldBe SemanticType.SBoolean
   }
 
-  "listReverseSignature" should "take List<Int> and return List<Int>" in {
+  "listReverseSignature" should "take Seq<Int> and return Seq<Int>" in {
     StdLib.listReverseSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listReverseSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listReverseSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
   // Collection tests

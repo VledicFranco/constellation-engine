@@ -306,8 +306,9 @@ object CValueExtractor {
 
   given vectorExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[Vector[A]] = {
     case CValue.CList(value, _) => value.traverse(extractor.extract)
+    case CValue.CSeq(value, _)  => value.traverse(extractor.extract)
     case other =>
-      IO.raiseError(new RuntimeException(s"Expected CValue.CList, but got $other"))
+      IO.raiseError(new RuntimeException(s"Expected CValue.CList or CValue.CSeq, but got $other"))
   }
 
   given listExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[List[A]] =

@@ -247,25 +247,25 @@ class StdLibTest extends AnyFlatSpec with Matchers {
   }
 
   "List signatures" should "have correct types for new list functions" in {
-    StdLib.listSumSignature.params shouldBe List("list" -> SemanticType.SList(SemanticType.SInt))
+    StdLib.listSumSignature.params shouldBe List("list" -> SemanticType.SSeq(SemanticType.SInt))
     StdLib.listSumSignature.returns shouldBe SemanticType.SInt
 
     StdLib.listConcatSignature.params shouldBe List(
-      "a" -> SemanticType.SList(SemanticType.SInt),
-      "b" -> SemanticType.SList(SemanticType.SInt)
+      "a" -> SemanticType.SSeq(SemanticType.SInt),
+      "b" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listConcatSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listConcatSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
 
     StdLib.listContainsSignature.params shouldBe List(
-      "list"  -> SemanticType.SList(SemanticType.SInt),
+      "list"  -> SemanticType.SSeq(SemanticType.SInt),
       "value" -> SemanticType.SInt
     )
     StdLib.listContainsSignature.returns shouldBe SemanticType.SBoolean
 
     StdLib.listReverseSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listReverseSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listReverseSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
   "TypeConversion signatures" should "have correct types" in {

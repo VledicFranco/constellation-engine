@@ -78,35 +78,35 @@ trait ListFunctions {
   // Signatures
   val listLengthSignature: FunctionSignature = FunctionSignature(
     "list-length",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
     SemanticType.SInt,
     "stdlib.list-length",
     Some("stdlib.list")
   )
   val listFirstSignature: FunctionSignature = FunctionSignature(
     "list-first",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
     SemanticType.SInt,
     "stdlib.list-first",
     Some("stdlib.list")
   )
   val listLastSignature: FunctionSignature = FunctionSignature(
     "list-last",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
     SemanticType.SInt,
     "stdlib.list-last",
     Some("stdlib.list")
   )
   val listIsEmptySignature: FunctionSignature = FunctionSignature(
     "list-is-empty",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
     SemanticType.SBoolean,
     "stdlib.list-is-empty",
     Some("stdlib.list")
   )
   val listSumSignature: FunctionSignature = FunctionSignature(
     "list-sum",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
     SemanticType.SInt,
     "stdlib.list-sum",
     Some("stdlib.list")
@@ -114,24 +114,24 @@ trait ListFunctions {
   val listConcatSignature: FunctionSignature = FunctionSignature(
     "list-concat",
     List(
-      "a" -> SemanticType.SList(SemanticType.SInt),
-      "b" -> SemanticType.SList(SemanticType.SInt)
+      "a" -> SemanticType.SSeq(SemanticType.SInt),
+      "b" -> SemanticType.SSeq(SemanticType.SInt)
     ),
-    SemanticType.SList(SemanticType.SInt),
+    SemanticType.SSeq(SemanticType.SInt),
     "stdlib.list-concat",
     Some("stdlib.list")
   )
   val listContainsSignature: FunctionSignature = FunctionSignature(
     "list-contains",
-    List("list" -> SemanticType.SList(SemanticType.SInt), "value" -> SemanticType.SInt),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt), "value" -> SemanticType.SInt),
     SemanticType.SBoolean,
     "stdlib.list-contains",
     Some("stdlib.list")
   )
   val listReverseSignature: FunctionSignature = FunctionSignature(
     "list-reverse",
-    List("list" -> SemanticType.SList(SemanticType.SInt)),
-    SemanticType.SList(SemanticType.SInt),
+    List("list" -> SemanticType.SSeq(SemanticType.SInt)),
+    SemanticType.SSeq(SemanticType.SInt),
     "stdlib.list-reverse",
     Some("stdlib.list")
   )

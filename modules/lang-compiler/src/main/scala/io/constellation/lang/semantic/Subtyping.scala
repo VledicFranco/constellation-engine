@@ -4,7 +4,7 @@ package io.constellation.lang.semantic
   *
   * Implements structural subtyping with:
   *   - SNothing as bottom type (subtype of all types)
-  *   - Covariant collections (List, Optional)
+  *   - Covariant collections (List, Seq, Optional) with List <: Seq
   *   - Width + depth subtyping for records
   *   - Union type handling (upper and lower bounds)
   *   - Contravariant function parameters
@@ -20,6 +20,8 @@ object Subtyping {
     * SNothing <: T                    (Bottom)
     *
     * SList(S) <: SList(T) ⟸ S <: T   (Covariance)
+    * SSeq(S) <: SSeq(T) ⟸ S <: T    (Covariance)
+    * SList(S) <: SSeq(T) ⟸ S <: T   (List is Seq)
     * SOptional(S) <: SOptional(T) ⟸ S <: T
     * SMap(K, S) <: SMap(K, T) ⟸ S <: T (values covariant, keys invariant)
     *
@@ -42,6 +44,13 @@ object Subtyping {
 
       // Collections are covariant in their element type
       case (SemanticType.SList(subElem), SemanticType.SList(supElem)) =>
+        isSubtype(subElem, supElem)
+
+      case (SemanticType.SSeq(subElem), SemanticType.SSeq(supElem)) =>
+        isSubtype(subElem, supElem)
+
+      // List is a subtype of Seq (a finite list IS a sequence)
+      case (SemanticType.SList(subElem), SemanticType.SSeq(supElem)) =>
         isSubtype(subElem, supElem)
 
       case (SemanticType.SOptional(subInner), SemanticType.SOptional(supInner)) =>
@@ -210,6 +219,9 @@ object Subtyping {
 
         case (SemanticType.SList(subElem), SemanticType.SList(supElem)) =>
           explainFailure(subElem, supElem).map(reason => s"List element type mismatch: $reason")
+
+        case (SemanticType.SSeq(subElem), SemanticType.SSeq(supElem)) =>
+          explainFailure(subElem, supElem).map(reason => s"Seq element type mismatch: $reason")
 
         case (SemanticType.SOptional(subInner), SemanticType.SOptional(supInner)) =>
           explainFailure(subInner, supInner).map(reason => s"Optional inner type mismatch: $reason")
