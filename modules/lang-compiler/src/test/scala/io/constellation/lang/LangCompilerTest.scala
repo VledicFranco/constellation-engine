@@ -172,7 +172,7 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     registry.register(
       FunctionSignature(
         name = "ide-ranker-v2-candidate-embed",
-        params = List("input" -> SemanticType.SList(communicationType)),
+        params = List("input" -> SemanticType.SSeq(communicationType)),
         returns = embeddingsType,
         moduleName = "ide-ranker-v2-candidate-embed"
       )
@@ -886,16 +886,16 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     result.isRight shouldBe true
 
     val compiled = result.toOption.get
-    // The output data node should have the merged Candidates type (CList of CProduct)
+    // The output data node should have the merged Candidates type (CSeq of CProduct)
     val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     resultBinding.isDefined shouldBe true
 
     val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
-      case CType.CList(CType.CProduct(fields)) =>
+      case CType.CSeq(CType.CProduct(fields)) =>
         fields.keys should contain allOf ("id", "name", "score")
-      case other => fail(s"Expected CList(CProduct(...)), got $other")
+      case other => fail(s"Expected CSeq(CProduct(...)), got $other")
     }
   }
 
@@ -967,9 +967,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val outputNode = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.isDefined shouldBe true
     outputNode.get.cType match {
-      case CType.CList(CType.CProduct(fields)) =>
+      case CType.CSeq(CType.CProduct(fields)) =>
         fields.keys should contain allOf ("id", "name", "userId", "sessionId")
-      case other => fail(s"Expected CList(CProduct(...)), got $other")
+      case other => fail(s"Expected CSeq(CProduct(...)), got $other")
     }
   }
 
@@ -1944,9 +1944,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType match {
-      case CType.COptional(CType.CList(CType.CProduct(fields))) =>
+      case CType.COptional(CType.CSeq(CType.CProduct(fields))) =>
         fields.keys should contain allOf ("id", "name")
-      case other => fail(s"Expected COptional(CList(CProduct(...))), got $other")
+      case other => fail(s"Expected COptional(CSeq(CProduct(...))), got $other")
     }
   }
 
@@ -1968,9 +1968,9 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
     val resultBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     val outputNode    = compiled.pipeline.image.dagSpec.data.get(resultBinding.get)
     outputNode.get.cType match {
-      case CType.CList(CType.CProduct(fields)) =>
+      case CType.CSeq(CType.CProduct(fields)) =>
         fields.keys should contain("id")
-      case other => fail(s"Expected CList(CProduct(...)), got $other")
+      case other => fail(s"Expected CSeq(CProduct(...)), got $other")
     }
   }
 
@@ -2246,10 +2246,10 @@ class LangCompilerTest extends AnyFlatSpec with Matchers {
       case CType.CUnion(structure) =>
         structure should have size 2
         structure.keys should contain("String")
-        // Should have a Candidates<Item> member (represented as CList)
+        // Should have a Candidates<Item> member (represented as CSeq)
         structure.values.exists {
-          case CType.CList(CType.CProduct(_)) => true
-          case _                              => false
+          case CType.CSeq(CType.CProduct(_)) => true
+          case _                             => false
         } shouldBe true
       case other => fail(s"Expected CUnion, got $other")
     }

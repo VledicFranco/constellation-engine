@@ -21,6 +21,7 @@ import cats.implicits.toTraverseOps
   * ├── CFloat       - Floating point type (Double)
   * ├── CBoolean     - Boolean type
   * ├── CList        - Homogeneous list type
+  * ├── CSeq         - Streaming sequence type
   * ├── CMap         - Key-value map type
   * ├── CProduct     - Record/struct type (named fields)
   * └── CUnion       - Tagged union type
@@ -31,6 +32,7 @@ import cats.implicits.toTraverseOps
   * ├── CFloat       - Float value
   * ├── CBoolean     - Boolean value
   * ├── CList        - List value with element type
+  * ├── CSeq         - Streaming sequence value
   * ├── CMap         - Map value with key/value types
   * ├── CProduct     - Record value with named fields
   * └── CUnion       - Tagged union value
@@ -78,6 +80,7 @@ object CType {
   case object CFloat                                        extends CType
   case object CBoolean                                      extends CType
   final case class CList(valuesType: CType)                 extends CType
+  final case class CSeq(valuesType: CType)                  extends CType
   final case class CMap(keysType: CType, valuesType: CType) extends CType
   final case class CProduct(structure: Map[String, CType])  extends CType
   final case class CUnion(structure: Map[String, CType])    extends CType
@@ -110,6 +113,9 @@ object CValue {
   }
   final case class CList(value: Vector[CValue], subtype: CType) extends CValue {
     override def ctype: CType = CType.CList(subtype)
+  }
+  final case class CSeq(value: Vector[CValue], subtype: CType) extends CValue {
+    override def ctype: CType = CType.CSeq(subtype)
   }
   final case class CMap(value: Vector[(CValue, CValue)], keysType: CType, valuesType: CType)
       extends CValue {
@@ -300,8 +306,9 @@ object CValueExtractor {
 
   given vectorExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[Vector[A]] = {
     case CValue.CList(value, _) => value.traverse(extractor.extract)
+    case CValue.CSeq(value, _)  => value.traverse(extractor.extract)
     case other =>
-      IO.raiseError(new RuntimeException(s"Expected CValue.CList, but got $other"))
+      IO.raiseError(new RuntimeException(s"Expected CValue.CList or CValue.CSeq, but got $other"))
   }
 
   given listExtractor[A](using extractor: CValueExtractor[A]): CValueExtractor[List[A]] =

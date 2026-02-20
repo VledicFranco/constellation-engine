@@ -240,4 +240,65 @@ class RawValueConverterTest extends AnyFlatSpec with Matchers {
     backSome shouldBe some
     backNone shouldBe none
   }
+
+  // ============= CSeq Conversions =============
+
+  "RawValueConverter.fromCValue" should "convert CSeq of ints to RIntList" in {
+    val seqCV = CValue.CSeq(
+      Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
+      CType.CInt
+    )
+    val raw = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RIntList]
+    raw.asInstanceOf[RawValue.RIntList].values shouldBe Array(1L, 2L, 3L)
+  }
+
+  it should "convert CSeq of floats to RFloatList" in {
+    val seqCV = CValue.CSeq(
+      Vector(CValue.CFloat(1.0), CValue.CFloat(2.5)),
+      CType.CFloat
+    )
+    val raw = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RFloatList]
+    raw.asInstanceOf[RawValue.RFloatList].values shouldBe Array(1.0, 2.5)
+  }
+
+  it should "convert CSeq of strings to RStringList" in {
+    val seqCV = CValue.CSeq(
+      Vector(CValue.CString("a"), CValue.CString("b")),
+      CType.CString
+    )
+    val raw = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RStringList]
+    raw.asInstanceOf[RawValue.RStringList].values shouldBe Array("a", "b")
+  }
+
+  it should "convert CSeq of booleans to RBoolList" in {
+    val seqCV = CValue.CSeq(
+      Vector(CValue.CBoolean(true), CValue.CBoolean(false)),
+      CType.CBoolean
+    )
+    val raw = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RBoolList]
+    raw.asInstanceOf[RawValue.RBoolList].values shouldBe Array(true, false)
+  }
+
+  it should "convert CSeq of nested types to RList" in {
+    val seqCV = CValue.CSeq(
+      Vector(
+        CValue.CList(Vector(CValue.CInt(1L)), CType.CInt),
+        CValue.CList(Vector(CValue.CInt(2L)), CType.CInt)
+      ),
+      CType.CList(CType.CInt)
+    )
+    val raw = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RList]
+  }
+
+  it should "convert empty CSeq to empty specialized array" in {
+    val seqCV = CValue.CSeq(Vector.empty, CType.CInt)
+    val raw   = RawValueConverter.fromCValue(seqCV)
+    raw shouldBe a[RawValue.RIntList]
+    raw.asInstanceOf[RawValue.RIntList].values shouldBe Array.empty[Long]
+  }
 }

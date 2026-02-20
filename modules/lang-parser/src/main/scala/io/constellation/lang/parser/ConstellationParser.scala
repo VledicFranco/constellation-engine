@@ -170,6 +170,34 @@ object ConstellationParser extends MemoizationSupport {
   )
 
   // ============================================================================
+  // Window and Join Strategy specs (RFC-025 Phase 3)
+  // ============================================================================
+
+  // WindowSpec: tumbling(5s), sliding(5s, 1s), count(100)
+  private val windowSpec: P[WindowSpec] = P.oneOf(
+    List(
+      (P.string("tumbling") *> openParen *> token(duration) <* closeParen)
+        .map(d => WindowSpec.Tumbling(d)),
+      (P.string("sliding") *> openParen *> token(duration) ~ (comma *> token(
+        duration
+      )) <* closeParen)
+        .map { case (size, slide) => WindowSpec.Sliding(size, slide) },
+      (P.string("count") *> openParen *> token(Numbers.nonNegativeIntString) <* closeParen)
+        .map(n => WindowSpec.Count(n.toInt))
+    )
+  )
+
+  // JoinStrategySpec: combine_latest, zip, buffer(5s)
+  private val joinStrategySpec: P[JoinStrategySpec] = P.oneOf(
+    List(
+      P.string("combine_latest").as(JoinStrategySpec.CombineLatest),
+      (P.string("buffer") *> openParen *> token(duration) <* closeParen)
+        .map(d => JoinStrategySpec.Buffer(d)),
+      P.string("zip").as(JoinStrategySpec.Zip)
+    )
+  )
+
+  // ============================================================================
   // Module call options: with retry: 3, timeout: 30s, cache: 5min
   // ============================================================================
 
@@ -239,6 +267,29 @@ object ConstellationParser extends MemoizationSupport {
       (token(P.string("priority")) *> colon *> (priorityLevelOpt.backtrack | priorityNumericOpt))
         .map(f => f) // f is already the right type
 
+    // Streaming options (RFC-025 Phase 3)
+
+    // batch: 100
+    val batchOpt =
+      (token(P.string("batch")) *> colon *> token(Numbers.nonNegativeIntString))
+        .map(v => (opts: ModuleCallOptions) => opts.copy(batch = Some(v.toInt)))
+
+    // batch_timeout: 5s
+    val batchTimeoutOpt = (token(P.string("batch_timeout")) *> colon *> token(duration))
+      .map(d => (opts: ModuleCallOptions) => opts.copy(batchTimeout = Some(d)))
+
+    // window: tumbling(5s) | sliding(5s, 1s) | count(100)
+    val windowOpt = (token(P.string("window")) *> colon *> token(windowSpec))
+      .map(w => (opts: ModuleCallOptions) => opts.copy(window = Some(w)))
+
+    // checkpoint: 30s
+    val checkpointOpt = (token(P.string("checkpoint")) *> colon *> token(duration))
+      .map(d => (opts: ModuleCallOptions) => opts.copy(checkpoint = Some(d)))
+
+    // join: combine_latest | zip | buffer(5s)
+    val joinOpt = (token(P.string("join")) *> colon *> token(joinStrategySpec))
+      .map(j => (opts: ModuleCallOptions) => opts.copy(join = Some(j)))
+
     P.oneOf(
       List(
         retryOpt.backtrack,
@@ -252,7 +303,12 @@ object ConstellationParser extends MemoizationSupport {
         concurrencyOpt.backtrack,
         onErrorOpt.backtrack,
         lazyOpt.backtrack,
-        priorityOpt.backtrack
+        priorityOpt.backtrack,
+        batchTimeoutOpt.backtrack, // must come before batch
+        batchOpt.backtrack,
+        windowOpt.backtrack,
+        checkpointOpt.backtrack,
+        joinOpt.backtrack
       )
     )
   }
@@ -714,9 +770,40 @@ object ConstellationParser extends MemoizationSupport {
     (token(P.char('@')) *> P.string("example") *> openParen *> withSpan(expression) <* closeParen)
       .map(expr => Annotation.Example(expr))
 
+  // Simple quoted string (no interpolation): "value" -> value
+  private val quotedString: P[String] =
+    P.char('"') *> P.until0(P.char('"')) <* P.char('"')
+
+  // Connector property: key: expression
+  private lazy val connectorProperty: P[(String, Located[Expression])] =
+    (token(rawIdentifier) ~ (colon *> withSpan(expression)))
+      .map { case (key, value) => (key, value) }
+
+  // @source("connector_type", key: value, ...)
+  private lazy val sourceAnnotation: P[Annotation.Source] = P.defer {
+    (token(P.char('@')) *> P.string("source") *> openParen *>
+      token(quotedString) ~
+      (comma *> connectorProperty).rep0.map(_.toMap) <*
+      closeParen)
+      .map { case (connector, props) => Annotation.Source(connector, props) }
+  }
+
+  // @sink("connector_type", key: value, ...)
+  private lazy val sinkAnnotation: P[Annotation.Sink] = P.defer {
+    (token(P.char('@')) *> P.string("sink") *> openParen *>
+      token(quotedString) ~
+      (comma *> connectorProperty).rep0.map(_.toMap) <*
+      closeParen)
+      .map { case (connector, props) => Annotation.Sink(connector, props) }
+  }
+
+  // Any input annotation: @example, @source
+  private lazy val inputAnnotation: P[Annotation] =
+    sourceAnnotation.backtrack | exampleAnnotation
+
   // Input declaration with one or more annotations
   private val inputDeclWithAnnotations: P[Declaration.InputDecl] =
-    (exampleAnnotation.rep.map(_.toList) ~ (inKw *> withSpan(identifier)) ~ (colon *> withSpan(
+    (inputAnnotation.rep.map(_.toList) ~ (inKw *> withSpan(identifier)) ~ (colon *> withSpan(
       typeExpr
     )))
       .map { case ((annots, name), typ) => Declaration.InputDecl(name, typ, annots) }
@@ -733,9 +820,17 @@ object ConstellationParser extends MemoizationSupport {
     (withSpan(identifier) ~ (equals *> withSpan(expression)))
       .map { case (name, expr) => Declaration.Assignment(name, expr) }
 
-  private val outputDecl: P[Declaration.OutputDecl] =
+  // Output declaration with optional @sink annotations
+  private val outputDeclWithAnnotations: P[Declaration.OutputDecl] =
+    (sinkAnnotation.rep.map(_.toList) ~ (outKw *> withSpan(identifier)))
+      .map { case (annots, name) => Declaration.OutputDecl(name, annots) }
+
+  private val outputDeclWithoutAnnotations: P[Declaration.OutputDecl] =
     (outKw *> withSpan(identifier))
       .map(name => Declaration.OutputDecl(name))
+
+  private val outputDecl: P[Declaration.OutputDecl] =
+    outputDeclWithAnnotations.backtrack | outputDeclWithoutAnnotations
 
   private val useDecl: P[Declaration.UseDecl] =
     (useKw *> locatedQualifiedName ~ (asKw *> withSpan(identifier)).?)
@@ -762,7 +857,7 @@ object ConstellationParser extends MemoizationSupport {
   val pipeline: Parser0[Pipeline] =
     (ws *> declaration.repSep0(ws) <* ws).flatMap { declarations =>
       // Collect output declarations
-      val outputs = declarations.collect { case Declaration.OutputDecl(name) =>
+      val outputs = declarations.collect { case Declaration.OutputDecl(name, _) =>
         name
       }
       if outputs.isEmpty then {

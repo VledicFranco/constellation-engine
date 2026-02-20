@@ -1,4 +1,4 @@
-ThisBuild / version := "0.8.1"
+ThisBuild / version := "0.8.2-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.4"
 ThisBuild / organization := "io.github.vledicfranco"
 
@@ -161,7 +161,7 @@ lazy val langLsp = (project in file("modules/lang-lsp"))
 
 // HTTP API - REST API server for compiler and runtime with WebSocket LSP support
 lazy val httpApi = (project in file("modules/http-api"))
-  .dependsOn(runtime, langCompiler, langStdlib, langLsp)
+  .dependsOn(runtime, langCompiler, langStdlib, langLsp, stream)
   .settings(
     name := "constellation-http-api",
     coverageMinimumStmtTotal := 32,
@@ -202,7 +202,7 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
   .dependsOn(moduleProviderSdk, langCompiler)
   .settings(
     name := "constellation-module-provider",
-    publish / skip := true,
+    publish / skip := false, // temporarily enabled for demo validation
     // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
     // Proto types come transitively from moduleProviderSdk.
     coverageMinimumStmtTotal := 78,
@@ -210,6 +210,24 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
     libraryDependencies ++= Seq(
       "org.scalatest"         %% "scalatest"               % "3.2.17" % Test,
       "io.grpc"               %  "grpc-inprocess"          % scalapb.compiler.Version.grpcJavaVersion % Test,
+    ) ++ loggingDeps
+  )
+
+// Stream - fs2-based streaming pipeline execution engine
+lazy val stream = project
+  .in(file("modules/stream"))
+  .dependsOn(runtime)
+  .settings(
+    name := "constellation-stream",
+    coverageMinimumStmtTotal := 0,
+    coverageMinimumBranchTotal := 0,
+    libraryDependencies ++= Seq(
+      "co.fs2"            %% "fs2-core"           % "3.9.4",
+      "org.typelevel"     %% "cats-effect"        % "3.5.2",
+      "io.circe"          %% "circe-core"         % "0.14.6",
+      "io.circe"          %% "circe-parser"       % "0.14.6",
+      "org.http4s"        %% "http4s-ember-client" % "0.23.25",
+      "org.scalatest"     %% "scalatest"          % "3.2.17" % Test,
     ) ++ loggingDeps
   )
 
@@ -320,6 +338,7 @@ lazy val root = (project in file("."))
   .aggregate(
     core,
     runtime,
+    stream,
     langAst,
     langParser,
     langCompiler,

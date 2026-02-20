@@ -115,6 +115,59 @@ object PrometheusFormatter {
       }
     }
 
+    // Stream metrics
+    val streams = cursor.downField("streams")
+    if !streams.focus.exists(_.isNull) then {
+      streams.downField("running").as[Int].foreach { v =>
+        sb.append(
+          "# HELP constellation_streams_running_count Number of currently running streams.\n"
+        )
+        sb.append("# TYPE constellation_streams_running_count gauge\n")
+        sb.append(s"constellation_streams_running_count $v\n")
+      }
+
+      streams.downField("total_elements").as[Long].foreach { v =>
+        sb.append(
+          "# HELP constellation_stream_elements_total Total elements processed across all streams.\n"
+        )
+        sb.append("# TYPE constellation_stream_elements_total counter\n")
+        sb.append(s"constellation_stream_elements_total $v\n")
+      }
+
+      streams.downField("total_errors").as[Long].foreach { v =>
+        sb.append(
+          "# HELP constellation_stream_errors_total Total errors across all streams.\n"
+        )
+        sb.append("# TYPE constellation_stream_errors_total counter\n")
+        sb.append(s"constellation_stream_errors_total $v\n")
+      }
+
+      // Per-stream per-module metrics
+      streams.downField("per_stream").focus.flatMap(_.asObject).foreach { obj =>
+        obj.toMap.foreach { case (streamName, streamJson) =>
+          streamJson.asObject.foreach { moduleObj =>
+            moduleObj.toMap.foreach { case (moduleName, moduleJson) =>
+              moduleJson.hcursor.downField("elements").as[Long].foreach { v =>
+                sb.append(
+                  s"""constellation_stream_module_elements_total{stream="$streamName",module="$moduleName"} $v\n"""
+                )
+              }
+              moduleJson.hcursor.downField("errors").as[Long].foreach { v =>
+                sb.append(
+                  s"""constellation_stream_module_errors_total{stream="$streamName",module="$moduleName"} $v\n"""
+                )
+              }
+              moduleJson.hcursor.downField("dlq").as[Long].foreach { v =>
+                sb.append(
+                  s"""constellation_stream_module_dlq_total{stream="$streamName",module="$moduleName"} $v\n"""
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+
     sb.toString
   }
 }

@@ -301,6 +301,9 @@ object TypeChecker {
                   )
                   .invalidNel
             }
+          // @source/@sink annotations are non-binding connector hints — no type validation needed
+          case Annotation.Source(_, _) => ().validNel
+          case Annotation.Sink(_, _)   => ().validNel
         }.void
 
         annotationValidation.map { _ =>
@@ -317,7 +320,7 @@ object TypeChecker {
         (newEnv, TypedDeclaration.Assignment(target.value, typedExpr, span))
       }
 
-    case Declaration.OutputDecl(name) =>
+    case Declaration.OutputDecl(name, _) =>
       // Check that the output variable exists in scope
       env.lookupVariable(name.value) match {
         case Some(semanticType) =>
@@ -445,6 +448,21 @@ object TypeChecker {
       case (lRec: SemanticType.SRecord, SemanticType.SList(rElem)) =>
         mergeTypes(lRec, rElem, span).map(SemanticType.SList(_))
 
+      // Seq<Record> + Seq<Record> = merge records element-wise
+      case (
+            SemanticType.SSeq(SemanticType.SRecord(lFields)),
+            SemanticType.SSeq(SemanticType.SRecord(rFields))
+          ) =>
+        SemanticType.SSeq(SemanticType.SRecord(lFields ++ rFields)).validNel
+
+      // Seq<Record> + Record = add fields to each element (broadcast)
+      case (SemanticType.SSeq(lElem), rRec: SemanticType.SRecord) =>
+        mergeTypes(lElem, rRec, span).map(SemanticType.SSeq(_))
+
+      // Record + Seq<Record> = add fields to each element (broadcast)
+      case (lRec: SemanticType.SRecord, SemanticType.SSeq(rElem)) =>
+        mergeTypes(lRec, rElem, span).map(SemanticType.SSeq(_))
+
       case _ =>
         CompileError.IncompatibleMerge(left.prettyPrint, right.prettyPrint, Some(span)).invalidNel
     }
@@ -543,6 +561,17 @@ object TypeChecker {
               )
             }
 
+          // Seq<Record> projection: select fields from each element
+          case SemanticType.SSeq(SemanticType.SRecord(availableFields)) =>
+            checkProjection(fields, availableFields, span).map { projectedFields =>
+              TypedExpression.Projection(
+                typedSource,
+                fields,
+                SemanticType.SSeq(SemanticType.SRecord(projectedFields)),
+                span
+              )
+            }
+
           case other =>
             CompileError
               .TypeError(
@@ -576,6 +605,24 @@ object TypeChecker {
                     typedSource,
                     field.value,
                     SemanticType.SList(fieldType),
+                    span
+                  )
+                  .validNel
+              case None =>
+                CompileError
+                  .InvalidFieldAccess(field.value, availableFields.keys.toList, Some(field.span))
+                  .invalidNel
+            }
+
+          // Seq<Record> field access: extract field from each element
+          case SemanticType.SSeq(SemanticType.SRecord(availableFields)) =>
+            availableFields.get(field.value) match {
+              case Some(fieldType) =>
+                TypedExpression
+                  .FieldAccess(
+                    typedSource,
+                    field.value,
+                    SemanticType.SSeq(fieldType),
                     span
                   )
                   .validNel
@@ -1032,11 +1079,13 @@ object TypeChecker {
       case _                                       => false
     }
 
-    // Check if a type is mergeable (record-like: Record, List<Record>)
+    // Check if a type is mergeable (record-like: Record, List<Record>, Seq<Record>)
     def isMergeable(t: SemanticType): Boolean = t match {
       case _: SemanticType.SRecord                     => true
       case SemanticType.SList(_: SemanticType.SRecord) => true
+      case SemanticType.SSeq(_: SemanticType.SRecord)  => true
       case SemanticType.SList(_)                       => false // List of non-record not mergeable
+      case SemanticType.SSeq(_)                        => false // Seq of non-record not mergeable
       case _                                           => false
     }
 

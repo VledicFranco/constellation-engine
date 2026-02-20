@@ -90,6 +90,9 @@ object CacheKeyGenerator {
     case CValue.CList(items, _) =>
       val serialized = items.map(serializeCValue).mkString("[", ",", "]")
       s"L:$serialized"
+    case CValue.CSeq(items, _) =>
+      val serialized = items.map(serializeCValue).mkString("[", ",", "]")
+      s"Q:$serialized"
     case CValue.CMap(pairs, _, _) =>
       val sorted = pairs.sortBy(p => serializeCValue(p._1))
       val serialized = sorted

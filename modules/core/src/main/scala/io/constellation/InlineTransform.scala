@@ -63,7 +63,7 @@ object InlineTransform {
         case (lMap: Map[String, ?] @unchecked, rMap: Map[String, ?] @unchecked, _, _) =>
           lMap ++ rMap
 
-        // Candidates + Candidates element-wise merge
+        // Candidates + Candidates element-wise merge (CList)
         case (
               lList: List[?] @unchecked,
               rList: List[?] @unchecked,
@@ -77,15 +77,43 @@ object InlineTransform {
           }
           lList.zip(rList).map { case (l, r) => mergeValues(l, r, lElem, rElem) }
 
-        // Candidates + Record broadcast (left is list)
+        // Seq + Seq element-wise merge
+        case (
+              lList: List[?] @unchecked,
+              rList: List[?] @unchecked,
+              CType.CSeq(lElem),
+              CType.CSeq(rElem)
+            ) =>
+          if lList.size != rList.size then {
+            throw new IllegalArgumentException(
+              s"Cannot merge Seq with different lengths: left has ${lList.size} elements, right has ${rList.size} elements"
+            )
+          }
+          lList.zip(rList).map { case (l, r) => mergeValues(l, r, lElem, rElem) }
+
+        // Candidates + Record broadcast (left is CList)
         case (lList: List[?] @unchecked, rMap: Map[String, ?] @unchecked, CType.CList(_), _) =>
           lList.map {
             case elemMap: Map[String, ?] @unchecked => elemMap ++ rMap
             case other                              => other
           }
 
-        // Record + Candidates broadcast (right is list)
+        // Seq + Record broadcast (left is CSeq)
+        case (lList: List[?] @unchecked, rMap: Map[String, ?] @unchecked, CType.CSeq(_), _) =>
+          lList.map {
+            case elemMap: Map[String, ?] @unchecked => elemMap ++ rMap
+            case other                              => other
+          }
+
+        // Record + Candidates broadcast (right is CList)
         case (lMap: Map[String, ?] @unchecked, rList: List[?] @unchecked, _, CType.CList(_)) =>
+          rList.map {
+            case elemMap: Map[String, ?] @unchecked => lMap ++ elemMap
+            case other                              => other
+          }
+
+        // Record + Seq broadcast (right is CSeq)
+        case (lMap: Map[String, ?] @unchecked, rList: List[?] @unchecked, _, CType.CSeq(_)) =>
           rList.map {
             case elemMap: Map[String, ?] @unchecked => lMap ++ elemMap
             case other                              => other
@@ -119,6 +147,9 @@ object InlineTransform {
           fields.flatMap(f => map.get(f).map(f -> _)).toMap
 
         case (list: List[?] @unchecked, CType.CList(elemType)) =>
+          list.map(elem => projectFields(elem, elemType))
+
+        case (list: List[?] @unchecked, CType.CSeq(elemType)) =>
           list.map(elem => projectFields(elem, elemType))
 
         case _ => value
@@ -157,6 +188,9 @@ object InlineTransform {
           map.getOrElse(field, MatchBindingMissing)
 
         case (list: List[?] @unchecked, CType.CList(elemType)) =>
+          list.map(elem => accessField(elem, elemType))
+
+        case (list: List[?] @unchecked, CType.CSeq(elemType)) =>
           list.map(elem => accessField(elem, elemType))
 
         // Handle union types: unwrap (tag, innerValue) and access field from inner value
@@ -452,5 +486,47 @@ object InlineTransform {
   final case class RecordBuildTransform(fieldNames: List[String]) extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any =
       fieldNames.map(name => name -> inputs(name)).toMap
+  }
+
+  /** Collect transform - materializes a streaming Seq into a List (single-mode behavior). In
+    * streaming mode, this becomes a chunking boundary.
+    *
+    * @param windowSpec
+    *   Optional windowing specification (reserved for Phase 3)
+    */
+  final case class CollectTransform(windowSpec: Option[Any] = None) extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val source = inputs("source")
+      source match {
+        case list: List[?] => list
+        case other         => List(other)
+      }
+    }
+  }
+
+  /** Interleave transform - non-deterministic merge of two sequences.
+    *
+    * Single mode: round-robin alternating, truncates to shorter. Streaming mode: fs2 merge
+    * (concurrent, non-deterministic).
+    */
+  case object InterleaveTransform extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val left  = inputs("left").asInstanceOf[List[Any]]
+      val right = inputs("right").asInstanceOf[List[Any]]
+      left.zip(right).flatMap { case (l, r) => List(l, r) }
+    }
+  }
+
+  /** Zip transform - strict 1:1 pairing of two sequences.
+    *
+    * Single mode: zip, truncates to shorter. Streaming mode: fs2 zip (backpressure, terminates on
+    * shorter).
+    */
+  case object ZipTransform extends InlineTransform {
+    override def apply(inputs: Map[String, Any]): Any = {
+      val left  = inputs("left").asInstanceOf[List[Any]]
+      val right = inputs("right").asInstanceOf[List[Any]]
+      left.zip(right)
+    }
   }
 }

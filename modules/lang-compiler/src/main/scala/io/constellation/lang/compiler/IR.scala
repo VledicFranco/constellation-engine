@@ -24,13 +24,22 @@ final case class IRModuleCallOptions(
     concurrency: Option[Int] = None,
     onError: Option[ErrorStrategy] = None,
     lazyEval: Option[Boolean] = None,
-    priority: Option[Int] = None // Normalized to Int (critical=100, high=80, etc.)
+    priority: Option[Int] = None, // Normalized to Int (critical=100, high=80, etc.)
+    // Streaming options (RFC-025 Phase 3)
+    batchSize: Option[Int] = None,
+    batchTimeoutMs: Option[Long] = None,
+    window: Option[String] =
+      None, // Serialized window spec: "tumbling:5000", "sliding:5000:1000", "count:100"
+    checkpointMs: Option[Long] = None,
+    joinStrategy: Option[String] = None // "combine-latest", "zip", "buffer:5000"
 ) {
   def isEmpty: Boolean =
     retry.isEmpty && timeoutMs.isEmpty && delayMs.isEmpty && backoff.isEmpty &&
       fallback.isEmpty && cacheMs.isEmpty && cacheBackend.isEmpty &&
       throttleCount.isEmpty && throttlePerMs.isEmpty && concurrency.isEmpty &&
-      onError.isEmpty && lazyEval.isEmpty && priority.isEmpty
+      onError.isEmpty && lazyEval.isEmpty && priority.isEmpty &&
+      batchSize.isEmpty && batchTimeoutMs.isEmpty && window.isEmpty &&
+      checkpointMs.isEmpty && joinStrategy.isEmpty
 
   /** Convert to runtime-level [[ModuleCallOptions]] (drops IR-specific `fallback`). */
   def toModuleCallOptions: ModuleCallOptions = ModuleCallOptions(
@@ -54,7 +63,12 @@ final case class IRModuleCallOptions(
       case ErrorStrategy.Wrap      => "wrap"
     },
     lazyEval = lazyEval,
-    priority = priority
+    priority = priority,
+    batchSize = batchSize,
+    batchTimeoutMs = batchTimeoutMs,
+    window = window,
+    checkpointMs = checkpointMs,
+    joinStrategy = joinStrategy
   )
 }
 

@@ -43,14 +43,22 @@ final case class ModuleCallOptions(
     concurrency: Option[Int] = None,
     onError: Option[String] = None,
     lazyEval: Option[Boolean] = None,
-    priority: Option[Int] = None
+    priority: Option[Int] = None,
+    // Streaming options (RFC-025 Phase 3)
+    batchSize: Option[Int] = None,
+    batchTimeoutMs: Option[Long] = None,
+    window: Option[String] = None,
+    checkpointMs: Option[Long] = None,
+    joinStrategy: Option[String] = None
 ) {
 
   def isEmpty: Boolean =
     retry.isEmpty && timeoutMs.isEmpty && delayMs.isEmpty && backoff.isEmpty &&
       cacheMs.isEmpty && cacheBackend.isEmpty && throttleCount.isEmpty &&
       throttlePerMs.isEmpty && concurrency.isEmpty && onError.isEmpty &&
-      lazyEval.isEmpty && priority.isEmpty
+      lazyEval.isEmpty && priority.isEmpty &&
+      batchSize.isEmpty && batchTimeoutMs.isEmpty && window.isEmpty &&
+      checkpointMs.isEmpty && joinStrategy.isEmpty
 }
 
 object ModuleCallOptions {

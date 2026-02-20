@@ -173,6 +173,8 @@ object RowUnification {
         SRecord(fields.view.mapValues(applySubstitution(_, subst)).toMap)
       case SList(elem) =>
         SList(applySubstitution(elem, subst))
+      case SSeq(elem) =>
+        SSeq(applySubstitution(elem, subst))
       case SOptional(inner) =>
         SOptional(applySubstitution(inner, subst))
       // Note: SCandidates was removed - "Candidates" is now a legacy alias for List

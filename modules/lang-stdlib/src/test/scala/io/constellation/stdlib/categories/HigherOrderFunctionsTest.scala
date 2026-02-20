@@ -16,13 +16,13 @@ class HigherOrderFunctionsTest extends AnyFlatSpec with Matchers {
 
   it should "take List<Int> and predicate function" in {
     StdLib.filterIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
   }
 
   it should "return List<Int>" in {
-    StdLib.filterIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.filterIntSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
   it should "have stdlib.collection namespace" in {
@@ -39,13 +39,13 @@ class HigherOrderFunctionsTest extends AnyFlatSpec with Matchers {
 
   it should "take List<Int> and transform function" in {
     StdLib.mapIntIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
     )
   }
 
   it should "return List<Int>" in {
-    StdLib.mapIntIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.mapIntIntSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
   it should "have stdlib.collection namespace" in {
@@ -62,7 +62,7 @@ class HigherOrderFunctionsTest extends AnyFlatSpec with Matchers {
 
   it should "take List<Int> and predicate function" in {
     StdLib.allIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
   }
@@ -81,7 +81,7 @@ class HigherOrderFunctionsTest extends AnyFlatSpec with Matchers {
 
   it should "take List<Int> and predicate function" in {
     StdLib.anyIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
   }

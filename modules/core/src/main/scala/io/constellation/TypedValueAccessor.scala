@@ -81,9 +81,10 @@ final class TypedValueAccessor(val cType: CType) {
     */
   def elementAccessor: TypedValueAccessor = cType match {
     case CType.CList(elementType) => new TypedValueAccessor(elementType)
+    case CType.CSeq(elementType)  => new TypedValueAccessor(elementType)
     case other =>
       throw TypeMismatchError(
-        expected = "CList type",
+        expected = "CList or CSeq type",
         actual = other.toString,
         context = Map("operation" -> "elementAccessor")
       )
@@ -174,6 +175,21 @@ final class TypedValueAccessor(val cType: CType) {
     case (RawValue.RList(values), CType.CList(elementType)) =>
       val elementAccessor = new TypedValueAccessor(elementType)
       CValue.CList(values.map(elementAccessor.toCValue).toVector, elementType)
+
+    // Specialized primitive seqs
+    case (RawValue.RIntList(values), CType.CSeq(CType.CInt)) =>
+      CValue.CSeq(values.map(CValue.CInt(_)).toVector, CType.CInt)
+    case (RawValue.RFloatList(values), CType.CSeq(CType.CFloat)) =>
+      CValue.CSeq(values.map(CValue.CFloat(_)).toVector, CType.CFloat)
+    case (RawValue.RStringList(values), CType.CSeq(CType.CString)) =>
+      CValue.CSeq(values.map(CValue.CString(_)).toVector, CType.CString)
+    case (RawValue.RBoolList(values), CType.CSeq(CType.CBoolean)) =>
+      CValue.CSeq(values.map(CValue.CBoolean(_)).toVector, CType.CBoolean)
+
+    // Generic seq
+    case (RawValue.RList(values), CType.CSeq(elementType)) =>
+      val elementAccessor = new TypedValueAccessor(elementType)
+      CValue.CSeq(values.map(elementAccessor.toCValue).toVector, elementType)
 
     // Map
     case (RawValue.RMap(entries), CType.CMap(keyType, valueType)) =>

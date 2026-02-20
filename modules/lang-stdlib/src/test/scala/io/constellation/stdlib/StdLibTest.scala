@@ -247,25 +247,25 @@ class StdLibTest extends AnyFlatSpec with Matchers {
   }
 
   "List signatures" should "have correct types for new list functions" in {
-    StdLib.listSumSignature.params shouldBe List("list" -> SemanticType.SList(SemanticType.SInt))
+    StdLib.listSumSignature.params shouldBe List("list" -> SemanticType.SSeq(SemanticType.SInt))
     StdLib.listSumSignature.returns shouldBe SemanticType.SInt
 
     StdLib.listConcatSignature.params shouldBe List(
-      "a" -> SemanticType.SList(SemanticType.SInt),
-      "b" -> SemanticType.SList(SemanticType.SInt)
+      "a" -> SemanticType.SSeq(SemanticType.SInt),
+      "b" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listConcatSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listConcatSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
 
     StdLib.listContainsSignature.params shouldBe List(
-      "list"  -> SemanticType.SList(SemanticType.SInt),
+      "list"  -> SemanticType.SSeq(SemanticType.SInt),
       "value" -> SemanticType.SInt
     )
     StdLib.listContainsSignature.returns shouldBe SemanticType.SBoolean
 
     StdLib.listReverseSignature.params shouldBe List(
-      "list" -> SemanticType.SList(SemanticType.SInt)
+      "list" -> SemanticType.SSeq(SemanticType.SInt)
     )
-    StdLib.listReverseSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.listReverseSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
   }
 
   "TypeConversion signatures" should "have correct types" in {
@@ -461,25 +461,25 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   "HOF signatures" should "have correct types for filter" in {
     StdLib.filterIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
-    StdLib.filterIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.filterIntSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
     StdLib.filterIntSignature.namespace shouldBe Some("stdlib.collection")
   }
 
   it should "have correct types for map" in {
     StdLib.mapIntIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "transform" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SInt)
     )
-    StdLib.mapIntIntSignature.returns shouldBe SemanticType.SList(SemanticType.SInt)
+    StdLib.mapIntIntSignature.returns shouldBe SemanticType.SSeq(SemanticType.SInt)
     StdLib.mapIntIntSignature.namespace shouldBe Some("stdlib.collection")
   }
 
   it should "have correct types for all" in {
     StdLib.allIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
     StdLib.allIntSignature.returns shouldBe SemanticType.SBoolean
@@ -488,7 +488,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
 
   it should "have correct types for any" in {
     StdLib.anyIntSignature.params shouldBe List(
-      "items"     -> SemanticType.SList(SemanticType.SInt),
+      "items"     -> SemanticType.SSeq(SemanticType.SInt),
       "predicate" -> SemanticType.SFunction(List(SemanticType.SInt), SemanticType.SBoolean)
     )
     StdLib.anyIntSignature.returns shouldBe SemanticType.SBoolean
@@ -502,7 +502,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val source = """
       use stdlib.collection
       use stdlib.compare
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = filter(numbers, (x) => gt(x, 0))
       out result
     """
@@ -521,7 +521,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val source = """
       use stdlib.collection
       use stdlib.math
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = map(numbers, (x) => multiply(x, 2))
       out result
     """
@@ -539,7 +539,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val source = """
       use stdlib.collection
       use stdlib.compare
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = all(numbers, (x) => gt(x, 0))
       out result
     """
@@ -557,7 +557,7 @@ class StdLibTest extends AnyFlatSpec with Matchers {
     val source = """
       use stdlib.collection
       use stdlib.compare
-      in numbers: List<Int>
+      in numbers: Seq<Int>
       result = any(numbers, (x) => lt(x, 0))
       out result
     """

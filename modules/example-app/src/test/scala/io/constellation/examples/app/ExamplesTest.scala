@@ -755,7 +755,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
-    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+    outputNode.get.cType shouldBe CType.CSeq(CType.CInt)
   }
 
   it should "compile map with lambda" in {
@@ -776,7 +776,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
 
     val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
     outputNode.isDefined shouldBe true
-    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+    outputNode.get.cType shouldBe CType.CSeq(CType.CInt)
   }
 
   it should "compile all with lambda" in {
@@ -864,7 +864,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     outputBinding.isDefined shouldBe true
 
     val outputNode = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
-    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+    outputNode.get.cType shouldBe CType.CSeq(CType.CInt)
   }
 
   it should "compile lambda with explicit type annotation" in {
@@ -935,7 +935,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val compiled      = result.toOption.get
     val outputBinding = compiled.pipeline.image.dagSpec.outputBindings.get("result")
     val outputNode    = compiled.pipeline.image.dagSpec.data.get(outputBinding.get)
-    outputNode.get.cType shouldBe CType.CList(CType.CInt)
+    outputNode.get.cType shouldBe CType.CSeq(CType.CInt)
   }
 
   it should "compile lambda with literal comparison" in {
@@ -1620,7 +1620,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(1L, 3L, 5L)
   }
 
@@ -1656,7 +1656,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value shouldBe empty
   }
 
@@ -1692,7 +1692,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(2L, 4L, 6L)
   }
 
@@ -1728,7 +1728,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(11L, 12L, 13L)
   }
 
@@ -1967,7 +1967,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(2L, 6L, 10L)
   }
 
@@ -2041,7 +2041,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(1L, 5L)
   }
 
@@ -2078,7 +2078,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(-5L, 15L, 20L)
   }
 
@@ -2115,7 +2115,7 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     val resultValue     = sig.outputs.get("result")
 
     resultValue shouldBe defined
-    val resultList = resultValue.get.asInstanceOf[CValue.CList]
+    val resultList = resultValue.get.asInstanceOf[CValue.CSeq]
     resultList.value.map(_.asInstanceOf[CValue.CInt].value) shouldBe Vector(1L, 3L, 5L)
   }
 }

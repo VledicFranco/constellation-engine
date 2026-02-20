@@ -58,6 +58,8 @@ trait CustomJsonCodecs {
       Json.obj("tag" -> "CUnion".asJson, "structure" -> structure.asJson)
     case CType.COptional(innerType) =>
       Json.obj("tag" -> "COptional".asJson, "innerType" -> innerType.asJson)
+    case CType.CSeq(valuesType) =>
+      Json.obj("tag" -> "CSeq".asJson, "valuesType" -> valuesType.asJson)
   }
 
   given ctypeDecoder: Decoder[CType] = Decoder.instance { c =>
@@ -75,6 +77,7 @@ trait CustomJsonCodecs {
       case "CProduct"  => c.downField("structure").as[Map[String, CType]].map(CType.CProduct.apply)
       case "CUnion"    => c.downField("structure").as[Map[String, CType]].map(CType.CUnion.apply)
       case "COptional" => c.downField("innerType").as[CType].map(CType.COptional.apply)
+      case "CSeq"      => c.downField("valuesType").as[CType].map(CType.CSeq.apply)
       case other       => Left(io.circe.DecodingFailure(s"Unknown CType tag: $other", c.history))
     }
   }
@@ -136,6 +139,8 @@ trait CustomJsonCodecs {
         "structure" -> structure.asJson,
         "unionTag"  -> tag.asJson
       )
+    case CValue.CSeq(value, subtype) =>
+      Json.obj("tag" -> "CSeq".asJson, "value" -> value.asJson, "subtype" -> subtype.asJson)
     case CValue.CSome(value, innerType) =>
       Json.obj("tag" -> "CSome".asJson, "value" -> value.asJson, "innerType" -> innerType.asJson)
     case CValue.CNone(innerType) =>
@@ -177,6 +182,11 @@ trait CustomJsonCodecs {
           structure <- c.downField("structure").as[Map[String, CType]]
           tag       <- c.downField("unionTag").as[String]
         } yield CValue.CUnion(value, structure, tag)
+      case "CSeq" =>
+        for {
+          value   <- c.downField("value").as[Vector[CValue]]
+          subtype <- c.downField("subtype").as[CType]
+        } yield CValue.CSeq(value, subtype)
       case "CSome" =>
         for {
           value     <- c.downField("value").as[CValue]
@@ -191,35 +201,45 @@ trait CustomJsonCodecs {
   // ModuleCallOptions codec
   given moduleCallOptionsEncoder: Encoder[ModuleCallOptions] = Encoder.instance { opts =>
     Json.obj(
-      "retry"         -> opts.retry.asJson,
-      "timeoutMs"     -> opts.timeoutMs.asJson,
-      "delayMs"       -> opts.delayMs.asJson,
-      "backoff"       -> opts.backoff.asJson,
-      "cacheMs"       -> opts.cacheMs.asJson,
-      "cacheBackend"  -> opts.cacheBackend.asJson,
-      "throttleCount" -> opts.throttleCount.asJson,
-      "throttlePerMs" -> opts.throttlePerMs.asJson,
-      "concurrency"   -> opts.concurrency.asJson,
-      "onError"       -> opts.onError.asJson,
-      "lazyEval"      -> opts.lazyEval.asJson,
-      "priority"      -> opts.priority.asJson
+      "retry"          -> opts.retry.asJson,
+      "timeoutMs"      -> opts.timeoutMs.asJson,
+      "delayMs"        -> opts.delayMs.asJson,
+      "backoff"        -> opts.backoff.asJson,
+      "cacheMs"        -> opts.cacheMs.asJson,
+      "cacheBackend"   -> opts.cacheBackend.asJson,
+      "throttleCount"  -> opts.throttleCount.asJson,
+      "throttlePerMs"  -> opts.throttlePerMs.asJson,
+      "concurrency"    -> opts.concurrency.asJson,
+      "onError"        -> opts.onError.asJson,
+      "lazyEval"       -> opts.lazyEval.asJson,
+      "priority"       -> opts.priority.asJson,
+      "batchSize"      -> opts.batchSize.asJson,
+      "batchTimeoutMs" -> opts.batchTimeoutMs.asJson,
+      "window"         -> opts.window.asJson,
+      "checkpointMs"   -> opts.checkpointMs.asJson,
+      "joinStrategy"   -> opts.joinStrategy.asJson
     )
   }
 
   given moduleCallOptionsDecoder: Decoder[ModuleCallOptions] = Decoder.instance { c =>
     for {
-      retry         <- c.downField("retry").as[Option[Int]]
-      timeoutMs     <- c.downField("timeoutMs").as[Option[Long]]
-      delayMs       <- c.downField("delayMs").as[Option[Long]]
-      backoff       <- c.downField("backoff").as[Option[String]]
-      cacheMs       <- c.downField("cacheMs").as[Option[Long]]
-      cacheBackend  <- c.downField("cacheBackend").as[Option[String]]
-      throttleCount <- c.downField("throttleCount").as[Option[Int]]
-      throttlePerMs <- c.downField("throttlePerMs").as[Option[Long]]
-      concurrency   <- c.downField("concurrency").as[Option[Int]]
-      onError       <- c.downField("onError").as[Option[String]]
-      lazyEval      <- c.downField("lazyEval").as[Option[Boolean]]
-      priority      <- c.downField("priority").as[Option[Int]]
+      retry          <- c.downField("retry").as[Option[Int]]
+      timeoutMs      <- c.downField("timeoutMs").as[Option[Long]]
+      delayMs        <- c.downField("delayMs").as[Option[Long]]
+      backoff        <- c.downField("backoff").as[Option[String]]
+      cacheMs        <- c.downField("cacheMs").as[Option[Long]]
+      cacheBackend   <- c.downField("cacheBackend").as[Option[String]]
+      throttleCount  <- c.downField("throttleCount").as[Option[Int]]
+      throttlePerMs  <- c.downField("throttlePerMs").as[Option[Long]]
+      concurrency    <- c.downField("concurrency").as[Option[Int]]
+      onError        <- c.downField("onError").as[Option[String]]
+      lazyEval       <- c.downField("lazyEval").as[Option[Boolean]]
+      priority       <- c.downField("priority").as[Option[Int]]
+      batchSize      <- c.downField("batchSize").as[Option[Int]]
+      batchTimeoutMs <- c.downField("batchTimeoutMs").as[Option[Long]]
+      window         <- c.downField("window").as[Option[String]]
+      checkpointMs   <- c.downField("checkpointMs").as[Option[Long]]
+      joinStrategy   <- c.downField("joinStrategy").as[Option[String]]
     } yield ModuleCallOptions(
       retry,
       timeoutMs,
@@ -232,7 +252,12 @@ trait CustomJsonCodecs {
       concurrency,
       onError,
       lazyEval,
-      priority
+      priority,
+      batchSize,
+      batchTimeoutMs,
+      window,
+      checkpointMs,
+      joinStrategy
     )
   }
 

@@ -135,7 +135,7 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     val exception = intercept[TypeMismatchError] {
       accessor.elementAccessor
     }
-    exception.getMessage should include("Expected CList type")
+    exception.getMessage should include("Expected CList or CSeq type")
   }
 
   // ========== innerAccessor Tests ==========
@@ -484,5 +484,69 @@ class TypedValueAccessorTest extends AnyFlatSpec with Matchers {
     itemsAccessor.cType shouldBe listType
     elementAccessor.cType shouldBe innerType
     xAccessor.cType shouldBe CType.CInt
+  }
+
+  // ========== CSeq toCValue Tests ==========
+
+  "TypedValueAccessor.toCValue" should "convert RIntList to CSeq with CSeq type" in {
+    val accessor = TypedValueAccessor(CType.CSeq(CType.CInt))
+    val raw      = RawValue.RIntList(Array(1L, 2L, 3L))
+    val result   = accessor.toCValue(raw)
+
+    result shouldBe CValue.CSeq(
+      Vector(CValue.CInt(1L), CValue.CInt(2L), CValue.CInt(3L)),
+      CType.CInt
+    )
+  }
+
+  it should "convert RFloatList to CSeq with CSeq type" in {
+    val accessor = TypedValueAccessor(CType.CSeq(CType.CFloat))
+    val raw      = RawValue.RFloatList(Array(1.0, 2.5))
+    val result   = accessor.toCValue(raw)
+
+    result shouldBe CValue.CSeq(
+      Vector(CValue.CFloat(1.0), CValue.CFloat(2.5)),
+      CType.CFloat
+    )
+  }
+
+  it should "convert RStringList to CSeq with CSeq type" in {
+    val accessor = TypedValueAccessor(CType.CSeq(CType.CString))
+    val raw      = RawValue.RStringList(Array("a", "b"))
+    val result   = accessor.toCValue(raw)
+
+    result shouldBe CValue.CSeq(
+      Vector(CValue.CString("a"), CValue.CString("b")),
+      CType.CString
+    )
+  }
+
+  it should "convert RBoolList to CSeq with CSeq type" in {
+    val accessor = TypedValueAccessor(CType.CSeq(CType.CBoolean))
+    val raw      = RawValue.RBoolList(Array(true, false))
+    val result   = accessor.toCValue(raw)
+
+    result shouldBe CValue.CSeq(
+      Vector(CValue.CBoolean(true), CValue.CBoolean(false)),
+      CType.CBoolean
+    )
+  }
+
+  it should "convert RList to CSeq with generic element type" in {
+    val elemType = CType.CProduct(Map("x" -> CType.CInt))
+    val accessor = TypedValueAccessor(CType.CSeq(elemType))
+    val raw      = RawValue.RList(Array(RawValue.RProduct(Array(RawValue.RInt(42L)))))
+    val result   = accessor.toCValue(raw)
+
+    result shouldBe a[CValue.CSeq]
+    result.ctype shouldBe CType.CSeq(elemType)
+  }
+
+  "TypedValueAccessor.elementAccessor" should "work with CSeq types" in {
+    val seqType  = CType.CSeq(CType.CString)
+    val accessor = TypedValueAccessor(seqType)
+
+    val elemAccessor = accessor.elementAccessor
+    elemAccessor.cType shouldBe CType.CString
   }
 }
