@@ -15,9 +15,9 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 sealed trait StreamStatus
 
 object StreamStatus {
-  case object Running                  extends StreamStatus
+  case object Running                    extends StreamStatus
   final case class Failed(error: String) extends StreamStatus
-  case object Stopped                  extends StreamStatus
+  case object Stopped                    extends StreamStatus
 }
 
 /** A stream graph managed by the lifecycle manager */
@@ -50,16 +50,16 @@ class StreamLifecycleManager private (
       if streams.contains(id) then IO.pure(Left(s"Stream with id '$id' already exists"))
       else {
         for {
-          fiber <- graph.stream.compile.drain
-            .handleErrorWith { err =>
-              for {
-                _ <- logger.error(err)(s"Stream '$name' ($id) failed")
-                _ <- state.update(_.updatedWith(id)(_.map(_.copy(status = StreamStatus.Failed(err.getMessage)))))
-                _ <- publishEvent(StreamEvent.StreamFailed(id, name, err.getMessage))
-              } yield ()
-            }
-            .start
-          now = Instant.now()
+          fiber <- graph.stream.compile.drain.handleErrorWith { err =>
+            for {
+              _ <- logger.error(err)(s"Stream '$name' ($id) failed")
+              _ <- state.update(
+                _.updatedWith(id)(_.map(_.copy(status = StreamStatus.Failed(err.getMessage))))
+              )
+              _ <- publishEvent(StreamEvent.StreamFailed(id, name, err.getMessage))
+            } yield ()
+          }.start
+          now     = Instant.now()
           managed = ManagedStream(id, name, graph, fiber, now, StreamStatus.Running)
           _ <- state.update(_ + (id -> managed))
           _ <- logger.info(s"Deployed stream '$name' ($id)")
@@ -107,9 +107,10 @@ class StreamLifecycleManager private (
 
   private def publishEvent(event: StreamEvent): IO[Unit] =
     eventPublisher.get.flatMap {
-      case Some(f) => f(event).handleErrorWith(err =>
-        logger.warn(s"Failed to publish stream event: ${err.getMessage}")
-      )
+      case Some(f) =>
+        f(event).handleErrorWith(err =>
+          logger.warn(s"Failed to publish stream event: ${err.getMessage}")
+        )
       case None => IO.unit
     }
 }

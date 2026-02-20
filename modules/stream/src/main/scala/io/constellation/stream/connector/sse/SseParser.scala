@@ -36,32 +36,32 @@ object SseParser {
       s.pull.uncons1.flatMap {
         case None =>
           // End of stream — emit any pending event
-          if (dataLines.nonEmpty) {
+          if dataLines.nonEmpty then {
             val event = SseEvent(dataLines.reverse.mkString("\n"), eventType, id, retry)
             Pull.output1(event)
           } else Pull.done
 
         case Some((line, rest)) =>
-          if (line.isEmpty) {
+          if line.isEmpty then {
             // Blank line: dispatch event if we have data
-            if (dataLines.nonEmpty) {
+            if dataLines.nonEmpty then {
               val event = SseEvent(dataLines.reverse.mkString("\n"), eventType, id, retry)
               Pull.output1(event) >> go(rest, Nil, None, None, None)
             } else {
               go(rest, Nil, None, None, None)
             }
-          } else if (line.startsWith(":")) {
+          } else if line.startsWith(":") then {
             // Comment line — ignore
             go(rest, dataLines, eventType, id, retry)
           } else {
             // Parse field:value
             val (field, value) = line.indexOf(':') match {
-              case -1  => (line, "")
+              case -1 => (line, "")
               case idx =>
                 val f = line.substring(0, idx)
                 val v = line.substring(idx + 1)
                 // Strip single leading space from value per spec
-                (f, if (v.startsWith(" ")) v.substring(1) else v)
+                (f, if v.startsWith(" ") then v.substring(1) else v)
             }
 
             field match {

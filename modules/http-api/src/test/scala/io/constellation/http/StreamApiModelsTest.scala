@@ -21,13 +21,15 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       sinkBindings = Map(
         "output" -> SinkBindingRequest("memory", Map.empty)
       ),
-      options = Some(StreamOptionsRequest(
-        errorStrategy = Some("log"),
-        parallelism = Some(4)
-      ))
+      options = Some(
+        StreamOptionsRequest(
+          errorStrategy = Some("log"),
+          parallelism = Some(4)
+        )
+      )
     )
 
-    val json = req.asJson
+    val json    = req.asJson
     val decoded = json.as[StreamDeployRequest]
     decoded shouldBe Right(req)
   }
@@ -50,15 +52,17 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       name = "my-stream",
       status = "running",
       startedAt = "2026-01-01T00:00:00Z",
-      metrics = Some(StreamMetricsSummary(
-        totalElements = 100,
-        totalErrors = 2,
-        totalDlq = 1,
-        perModule = Map("Uppercase" -> ModuleMetrics(100, 2, 1))
-      ))
+      metrics = Some(
+        StreamMetricsSummary(
+          totalElements = 100,
+          totalErrors = 2,
+          totalDlq = 1,
+          perModule = Map("Uppercase" -> ModuleMetrics(100, 2, 1))
+        )
+      )
     )
 
-    val json = info.asJson
+    val json    = info.asJson
     val decoded = json.as[StreamInfoResponse]
     decoded shouldBe Right(info)
   }
@@ -85,11 +89,11 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       totalDlq = 0,
       perModule = Map(
         "Transform" -> ModuleMetrics(250, 1, 0),
-        "Filter" -> ModuleMetrics(250, 2, 0)
+        "Filter"    -> ModuleMetrics(250, 2, 0)
       )
     )
 
-    val json = summary.asJson
+    val json    = summary.asJson
     val decoded = json.as[StreamMetricsSummary]
     decoded shouldBe Right(summary)
   }
@@ -101,13 +105,15 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       name = "kafka-source",
       typeName = "kafka",
       kind = "source",
-      schema = Some(ConnectorSchemaResponse(
-        required = Map("topic" -> "StringProp"),
-        optional = Map("groupId" -> "StringProp")
-      ))
+      schema = Some(
+        ConnectorSchemaResponse(
+          required = Map("topic" -> "StringProp"),
+          optional = Map("groupId" -> "StringProp")
+        )
+      )
     )
 
-    val json = info.asJson
+    val json    = info.asJson
     val decoded = json.as[ConnectorInfoResponse]
     decoded shouldBe Right(info)
   }
@@ -122,7 +128,7 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       )
     )
 
-    val json = list.asJson
+    val json    = list.asJson
     val decoded = json.as[ConnectorListResponse]
     decoded shouldBe Right(list)
   }
@@ -137,7 +143,7 @@ class StreamApiModelsTest extends AnyFlatSpec with Matchers {
       )
     )
 
-    val json = list.asJson
+    val json    = list.asJson
     val decoded = json.as[StreamListResponse]
     decoded shouldBe Right(list)
   }

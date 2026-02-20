@@ -50,7 +50,7 @@ class StreamLifecycleManagerTest extends AnyFlatSpec with Matchers {
   // ===== Create =====
 
   "StreamLifecycleManager" should "be created with empty state" in {
-    val mgr = StreamLifecycleManager.create.unsafeRunSync()
+    val mgr     = StreamLifecycleManager.create.unsafeRunSync()
     val streams = mgr.list.unsafeRunSync()
     streams shouldBe empty
   }
@@ -73,11 +73,11 @@ class StreamLifecycleManagerTest extends AnyFlatSpec with Matchers {
 
   it should "reject duplicate stream IDs" in {
     val result = (for {
-      mgr   <- StreamLifecycleManager.create
-      graph <- immediateGraph
-      _     <- mgr.deploy("s1", "test-stream", graph)
+      mgr    <- StreamLifecycleManager.create
+      graph  <- immediateGraph
+      _      <- mgr.deploy("s1", "test-stream", graph)
       graph2 <- immediateGraph
-      res   <- mgr.deploy("s1", "duplicate", graph2)
+      res    <- mgr.deploy("s1", "duplicate", graph2)
     } yield res).unsafeRunSync()
 
     result shouldBe a[Left[_, _]]

@@ -872,7 +872,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       Map(
         "source" -> List(
           Map("name" -> "Alice", "age" -> 30),
-          Map("name" -> "Bob", "age" -> 25)
+          Map("name" -> "Bob", "age"   -> 25)
         )
       )
     )
@@ -892,7 +892,7 @@ class InlineTransformTest extends AnyFlatSpec with Matchers {
       Map(
         "source" -> List(
           Map("name" -> "Alice", "age" -> 30),
-          Map("name" -> "Bob", "age" -> 25)
+          Map("name" -> "Bob", "age"   -> 25)
         )
       )
     )

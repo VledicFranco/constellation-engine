@@ -26,7 +26,7 @@ class StreamWebSocketTest extends AnyFlatSpec with Matchers {
   // ===== Event Publishing =====
 
   it should "publish events without error when no subscribers" in {
-    val ws = StreamWebSocket()
+    val ws    = StreamWebSocket()
     val event = StreamEvent.StreamDeployed("s1", "test-stream")
 
     noException should be thrownBy {

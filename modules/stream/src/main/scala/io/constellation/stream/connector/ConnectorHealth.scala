@@ -9,9 +9,9 @@ import cats.implicits.*
 sealed trait ConnectorHealthStatus
 
 object ConnectorHealthStatus {
-  case object Healthy                    extends ConnectorHealthStatus
-  case class Unhealthy(reason: String)   extends ConnectorHealthStatus
-  case object Unknown                    extends ConnectorHealthStatus
+  case object Healthy                  extends ConnectorHealthStatus
+  case class Unhealthy(reason: String) extends ConnectorHealthStatus
+  case object Unknown                  extends ConnectorHealthStatus
 }
 
 /** Health check report for a single connector. */

@@ -48,7 +48,7 @@ class StreamRoutes(
 
     case req @ POST -> Root / "api" / "v1" / "streams" =>
       (for {
-        body <- req.as[StreamDeployRequest]
+        body   <- req.as[StreamDeployRequest]
         result <- deployStream(body)
         resp <- result match {
           case Right(info) => Created(info)
@@ -92,7 +92,8 @@ class StreamRoutes(
       for {
         result <- manager.stop(id)
         resp <- result match {
-          case Right(_)    => Ok(Json.obj("status" -> Json.fromString("stopped"), "id" -> Json.fromString(id)))
+          case Right(_) =>
+            Ok(Json.obj("status" -> Json.fromString("stopped"), "id" -> Json.fromString(id)))
           case Left(error) => NotFound(Json.obj("error" -> Json.fromString(error)))
         }
       } yield resp
@@ -104,7 +105,7 @@ class StreamRoutes(
         metricsOpt <- manager.metrics(id)
         resp <- metricsOpt match {
           case Some(snap) => Ok(toMetricsSummary(snap))
-          case None       => NotFound(Json.obj("error" -> Json.fromString(s"Stream '$id' not found")))
+          case None => NotFound(Json.obj("error" -> Json.fromString(s"Stream '$id' not found")))
         }
       } yield resp
 
@@ -171,7 +172,7 @@ class StreamRoutes(
       req: StreamDeployRequest,
       image: PipelineImage
   ): IO[Either[String, StreamInfoResponse]] = {
-    val dagSpec = image.dagSpec
+    val dagSpec  = image.dagSpec
     val streamId = UUID.randomUUID().toString
 
     for {
@@ -215,8 +216,9 @@ class StreamRoutes(
 
   /** Extract module functions from the constellation instance for streaming.
     *
-    * For each module in the DAG, looks up the Module.Uninitialized from the constellation, initializes
-    * it with a synthetic DAG spec, and wraps its run function as a simple CValue => IO[CValue].
+    * For each module in the DAG, looks up the Module.Uninitialized from the constellation,
+    * initializes it with a synthetic DAG spec, and wraps its run function as a simple CValue =>
+    * IO[CValue].
     */
   private def extractModuleFunctions(
       dagSpec: DagSpec
@@ -248,9 +250,9 @@ class StreamRoutes(
       id = managed.id,
       name = managed.name,
       status = managed.status match {
-        case StreamStatus.Running    => "running"
-        case StreamStatus.Failed(e)  => s"failed"
-        case StreamStatus.Stopped    => "stopped"
+        case StreamStatus.Running   => "running"
+        case StreamStatus.Failed(e) => s"failed"
+        case StreamStatus.Stopped   => "stopped"
       },
       startedAt = managed.startedAt.toString,
       metrics = metrics

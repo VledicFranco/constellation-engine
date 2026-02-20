@@ -3,14 +3,19 @@ package io.constellation.lang.integration
 import io.constellation.lang.ast.*
 import io.constellation.lang.compiler.IRModuleCallOptions
 import io.constellation.lang.parser.ConstellationParser
-import io.constellation.lang.semantic.{FunctionRegistry, FunctionSignature, SemanticType, TypeChecker}
+import io.constellation.lang.semantic.{
+  FunctionRegistry,
+  FunctionSignature,
+  SemanticType,
+  TypeChecker
+}
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** Integration tests for RFC-025 Phase 3 streaming options:
-  * - IR translation (WindowSpec/JoinStrategySpec -> serialized strings)
-  * - Type checker validation (range checks, mutual exclusivity, dependency warnings)
+  *   - IR translation (WindowSpec/JoinStrategySpec -> serialized strings)
+  *   - Type checker validation (range checks, mutual exclusivity, dependency warnings)
   */
 class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
 
@@ -74,7 +79,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   "Parser-to-IR round-trip" should "parse and preserve batch option" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with batch: 100
       out result
@@ -84,7 +89,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse and preserve window tumbling spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: tumbling(5s)
       out result
@@ -94,7 +99,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse and preserve window sliding spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: sliding(10s, 2s)
       out result
@@ -106,7 +111,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse and preserve window count spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: count(50)
       out result
@@ -116,7 +121,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse and preserve join combine_latest" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with join: combine_latest
       out result
@@ -126,7 +131,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse and preserve join buffer with timeout" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with join: buffer(3s)
       out result
@@ -171,7 +176,8 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "be non-empty with window set" in {
-    val opts = ModuleCallOptions(window = Some(WindowSpec.Tumbling(Duration(5, DurationUnit.Seconds))))
+    val opts =
+      ModuleCallOptions(window = Some(WindowSpec.Tumbling(Duration(5, DurationUnit.Seconds))))
     opts.isEmpty shouldBe false
   }
 
@@ -213,7 +219,7 @@ class StreamingOptionsIntegrationTest extends AnyFlatSpec with Matchers {
   ): Either[List[CompileError], Unit] = {
     val parseResult = ConstellationParser.parse(source)
     parseResult match {
-      case Left(err) => Left(List(err))
+      case Left(err)      => Left(List(err))
       case Right(program) =>
         // Create a minimal function registry with "Process"
         val processSignature = FunctionSignature(

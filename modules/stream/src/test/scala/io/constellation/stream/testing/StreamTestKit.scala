@@ -76,9 +76,7 @@ object StreamTestKit {
       srcQueues <- sourceNames.traverse(name =>
         Queue.bounded[IO, Option[CValue]](bufferSize).map(name -> _)
       )
-      snkQueues <- sinkNames.traverse(name =>
-        Queue.bounded[IO, CValue](bufferSize).map(name -> _)
-      )
+      snkQueues <- sinkNames.traverse(name => Queue.bounded[IO, CValue](bufferSize).map(name -> _))
     } yield {
       val srcMap = srcQueues.toMap
       val snkMap = snkQueues.toMap
@@ -86,9 +84,11 @@ object StreamTestKit {
       val registryBuilder = srcMap.foldLeft(ConnectorRegistry.builder) { case (b, (name, q)) =>
         b.source(name, MemoryConnector.source(name, q))
       }
-      val registry = snkMap.foldLeft(registryBuilder) { case (b, (name, q)) =>
-        b.sink(name, MemoryConnector.sink(name, q))
-      }.build
+      val registry = snkMap
+        .foldLeft(registryBuilder) { case (b, (name, q)) =>
+          b.sink(name, MemoryConnector.sink(name, q))
+        }
+        .build
 
       new StreamTestKit(srcMap, snkMap, registry, None)
     }

@@ -38,9 +38,9 @@ object ValidatedConnectorConfig {
   private[connector] def parseDuration(s: String): Option[FiniteDuration] = {
     import scala.concurrent.duration.*
     val trimmed = s.trim
-    try {
+    try
       Some(Duration(trimmed).asInstanceOf[FiniteDuration])
-    } catch {
+    catch {
       case _: Exception => None
     }
   }

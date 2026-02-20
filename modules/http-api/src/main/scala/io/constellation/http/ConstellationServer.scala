@@ -293,7 +293,7 @@ object ConstellationServer {
 
       // healthRoutes will be built later in the for-comprehension after streamManager is available
       val healthCheckConfig = config.healthCheckConfig
-      val lspHandler = LspWebSocketHandler(constellation, compiler)
+      val lspHandler        = LspWebSocketHandler(constellation, compiler)
 
       val host = Host.fromString(config.host).getOrElse(host"0.0.0.0")
       val port = Port.fromInt(config.port).getOrElse(port"8080")
@@ -378,8 +378,8 @@ object ConstellationServer {
         )
         streamWsOpt = config.streamRegistry.map(_ => StreamWebSocket())
         streamRoutesOpt = for {
-          reg     <- config.streamRegistry
-          mgr     <- streamManagerOpt
+          reg <- config.streamRegistry
+          mgr <- streamManagerOpt
         } yield new StreamRoutes(mgr, reg, effectiveConstellation, compiler)
 
         // Wire event publisher from lifecycle manager to WebSocket
@@ -433,7 +433,8 @@ object ConstellationServer {
             }
 
             val coreRoutes =
-              streamRoutes <+> moduleHttpRoutes <+> httpRoutes <+> healthRoutes <+> lspHandler.routes(wsb)
+              streamRoutes <+> moduleHttpRoutes <+> httpRoutes <+> healthRoutes <+> lspHandler
+                .routes(wsb)
             val withDashboard = dashboardRoutesOpt match {
               case Some(dashboardRoutes) =>
                 executionWs.routes(wsb) <+> dashboardRoutes.routes <+> coreRoutes

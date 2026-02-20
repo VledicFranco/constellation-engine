@@ -10,8 +10,8 @@ import io.constellation.CValue
 
 /** A sink connector consumes a stream of CValues and writes them to an external system.
   *
-  * Implementations wrap external data sinks (queues, files, databases, etc.) and expose them as
-  * fs2 Pipes. Each connector declares its type name and configuration schema for validation.
+  * Implementations wrap external data sinks (queues, files, databases, etc.) and expose them as fs2
+  * Pipes. Each connector declares its type name and configuration schema for validation.
   */
 trait SinkConnector extends HealthCheckable {
 

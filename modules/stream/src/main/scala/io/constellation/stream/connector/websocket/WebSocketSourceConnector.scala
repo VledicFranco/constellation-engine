@@ -8,7 +8,7 @@ import cats.effect.IO
 
 import fs2.Stream
 
-import io.circe.parser.{parse => parseJson}
+import io.circe.parser.parse as parseJson
 
 import io.constellation.CValue
 import io.constellation.json.cvalueDecoder
@@ -37,7 +37,7 @@ class WebSocketSourceConnector(connectorName: String) extends SourceConnector {
         incoming.map(parseTextToCValue)
       }
 
-    if (reconnect) withReconnect(connectStream, delay, maxReconnects)
+    if reconnect then withReconnect(connectStream, delay, maxReconnects)
     else connectStream
   }
 
@@ -48,7 +48,7 @@ class WebSocketSourceConnector(connectorName: String) extends SourceConnector {
   ): Stream[IO, CValue] = {
     def go(remaining: Int): Stream[IO, CValue] =
       base.handleErrorWith { _ =>
-        if (remaining <= 0) Stream.empty
+        if remaining <= 0 then Stream.empty
         else Stream.exec(IO.sleep(delay)) ++ go(remaining - 1)
       }
     go(maxReconnects)

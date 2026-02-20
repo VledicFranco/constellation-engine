@@ -97,14 +97,18 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
     val result = (for {
       srcQ <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
       snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
-      src   = MemoryConnector.source("test", srcQ)
-      snk   = MemoryConnector.sink("test", snkQ)
+      src = MemoryConnector.source("test", srcQ)
+      snk = MemoryConnector.sink("test", snkQ)
       // Push values to source and terminate
-      _     <- srcQ.offer(Some(CValue.CString("hello")))
-      _     <- srcQ.offer(Some(CValue.CInt(42L)))
-      _     <- srcQ.offer(None)
+      _ <- srcQ.offer(Some(CValue.CString("hello")))
+      _ <- srcQ.offer(Some(CValue.CInt(42L)))
+      _ <- srcQ.offer(None)
       // Pipe source through sink
-      _     <- src.stream(connector.ValidatedConnectorConfig.empty).through(snk.pipe(connector.ValidatedConnectorConfig.empty)).compile.drain
+      _ <- src
+        .stream(connector.ValidatedConnectorConfig.empty)
+        .through(snk.pipe(connector.ValidatedConnectorConfig.empty))
+        .compile
+        .drain
       // Collect results
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()
@@ -157,8 +161,14 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        sourceId -> DataNodeSpec(sourceName, Map(sourceId -> sourceName), CType.CString, None, Map.empty),
-        sinkId   -> DataNodeSpec(sinkName, Map(sinkId -> sinkName), CType.CString, None, Map.empty)
+        sourceId -> DataNodeSpec(
+          sourceName,
+          Map(sourceId -> sourceName),
+          CType.CString,
+          None,
+          Map.empty
+        ),
+        sinkId -> DataNodeSpec(sinkName, Map(sinkId -> sinkName), CType.CString, None, Map.empty)
       ),
       inEdges = Set(sourceId -> moduleId),
       outEdges = Set(moduleId -> sinkId),
@@ -343,15 +353,15 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
     )
 
     val result = (for {
-      graph  <- StreamCompiler.wire(dagSpec, ConnectorRegistry.empty, Map.empty)
-      _      <- StreamRuntime.deploy(graph)
+      graph <- StreamCompiler.wire(dagSpec, ConnectorRegistry.empty, Map.empty)
+      _     <- StreamRuntime.deploy(graph)
     } yield "deployed").unsafeRunSync()
 
     result shouldBe "deployed"
   }
 
   "StreamEvent" should "create events with timestamps" in {
-    val open  = StreamEvent.CircuitOpen("mod", 5)
+    val open = StreamEvent.CircuitOpen("mod", 5)
     open.moduleName shouldBe "mod"
     open.consecutiveErrors shouldBe 5
 
@@ -367,11 +377,15 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
 
   "MemoryConnector.pair" should "create matched source/sink pair" in {
     val result = (for {
-      pairResult          <- MemoryConnector.pair("test-pair")
+      pairResult <- MemoryConnector.pair("test-pair")
       (srcQ, snkQ, src, snk) = pairResult
       _ <- srcQ.offer(Some(CValue.CInt(99L)))
       _ <- srcQ.offer(None)
-      _ <- src.stream(connector.ValidatedConnectorConfig.empty).through(snk.pipe(connector.ValidatedConnectorConfig.empty)).compile.drain
+      _ <- src
+        .stream(connector.ValidatedConnectorConfig.empty)
+        .through(snk.pipe(connector.ValidatedConnectorConfig.empty))
+        .compile
+        .drain
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()
 

@@ -61,8 +61,8 @@ class OffsetCommitterTest extends AnyFlatSpec with Matchers {
     import fs2.Stream
 
     val src = new SourceConnector {
-      def name: String     = "test"
-      def typeName: String = "test"
+      def name: String                                                 = "test"
+      def typeName: String                                             = "test"
       def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = Stream.empty
     }
 

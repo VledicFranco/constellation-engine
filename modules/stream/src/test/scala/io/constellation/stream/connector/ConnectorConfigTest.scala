@@ -186,7 +186,7 @@ class ConnectorConfigTest extends AnyFlatSpec with Matchers {
     val schema = ConnectorSchema(
       required = Map("key" -> PropertyType.StringProp())
     )
-    val config   = ConnectorConfig(Map("key" -> "value"))
+    val config    = ConnectorConfig(Map("key" -> "value"))
     val validated = config.validate(schema).toOption.get
 
     validated.toMap shouldBe Map("key" -> "value")

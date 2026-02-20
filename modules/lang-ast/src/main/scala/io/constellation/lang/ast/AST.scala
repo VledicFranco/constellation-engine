@@ -164,18 +164,19 @@ object Annotation {
     */
   final case class Example(value: Located[Expression]) extends Annotation
 
-  /** @source(connector, key: "value", ...)
-    *   \- hints that an input should be bound to a specific connector type. Non-binding — deployment
-    *   config overrides. Connector name is resolved against ConnectorRegistry at deployment time.
+  /** @source(connector,
+    *   key: "value", ...) \- hints that an input should be bound to a specific connector type.
+    *   Non-binding — deployment config overrides. Connector name is resolved against
+    *   ConnectorRegistry at deployment time.
     */
   final case class Source(
       connector: String,
       properties: Map[String, Located[Expression]] = Map.empty
   ) extends Annotation
 
-  /** @sink(connector, key: "value", ...)
-    *   \- hints that an output should be bound to a specific connector type. Non-binding — deployment
-    *   config overrides.
+  /** @sink(connector,
+    *   key: "value", ...) \- hints that an output should be bound to a specific connector type.
+    *   Non-binding — deployment config overrides.
     */
   final case class Sink(
       connector: String,
@@ -722,6 +723,7 @@ object CompileWarning {
       option2: String,
       span: Option[Span]
   ) extends CompileWarning {
-    def message: String = s"'$option1' and '$option2' are mutually exclusive; '$option2' will be ignored"
+    def message: String =
+      s"'$option1' and '$option2' are mutually exclusive; '$option2' will be ignored"
   }
 }

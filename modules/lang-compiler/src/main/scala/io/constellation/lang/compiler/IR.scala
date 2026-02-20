@@ -28,9 +28,10 @@ final case class IRModuleCallOptions(
     // Streaming options (RFC-025 Phase 3)
     batchSize: Option[Int] = None,
     batchTimeoutMs: Option[Long] = None,
-    window: Option[String] = None,       // Serialized window spec: "tumbling:5000", "sliding:5000:1000", "count:100"
+    window: Option[String] =
+      None, // Serialized window spec: "tumbling:5000", "sliding:5000:1000", "count:100"
     checkpointMs: Option[Long] = None,
-    joinStrategy: Option[String] = None  // "combine-latest", "zip", "buffer:5000"
+    joinStrategy: Option[String] = None // "combine-latest", "zip", "buffer:5000"
 ) {
   def isEmpty: Boolean =
     retry.isEmpty && timeoutMs.isEmpty && delayMs.isEmpty && backoff.isEmpty &&

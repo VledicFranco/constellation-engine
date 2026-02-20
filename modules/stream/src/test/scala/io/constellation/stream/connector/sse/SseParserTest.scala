@@ -110,9 +110,9 @@ class SseParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse bytes through full pipeline" in {
-    val text    = "data: from bytes\n\n"
-    val bytes   = text.getBytes("UTF-8")
-    val events  = Stream.emits(bytes).through(SseParser.parse).compile.toList.unsafeRunSync()
+    val text   = "data: from bytes\n\n"
+    val bytes  = text.getBytes("UTF-8")
+    val events = Stream.emits(bytes).through(SseParser.parse).compile.toList.unsafeRunSync()
 
     events should have size 1
     events.head.data shouldBe "from bytes"

@@ -11,7 +11,11 @@ import io.constellation.stream.connector.*
 
 class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
 
-  private def makeRegistry: (ConnectorRegistry, cats.effect.std.Queue[IO, Option[CValue]], cats.effect.std.Queue[IO, CValue]) = {
+  private def makeRegistry: (
+      ConnectorRegistry,
+      cats.effect.std.Queue[IO, Option[CValue]],
+      cats.effect.std.Queue[IO, CValue]
+  ) = {
     val srcQ = cats.effect.std.Queue.bounded[IO, Option[CValue]](10).unsafeRunSync()
     val snkQ = cats.effect.std.Queue.bounded[IO, CValue](10).unsafeRunSync()
     val registry = ConnectorRegistry.builder
@@ -33,7 +37,8 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
     )
 
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[ConfigValidationError.UnboundSource]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[ConfigValidationError.UnboundSource]) shouldBe true
   }
 
   it should "fail when a sink binding is missing" in {
@@ -64,7 +69,8 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
     )
 
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[ConfigValidationError.UnknownConnectorType]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[ConfigValidationError.UnknownConnectorType]) shouldBe true
   }
 
   it should "fail when connector config validation fails" in {
@@ -94,7 +100,8 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
     )
 
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[ConfigValidationError.ConnectorConfigErrors]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[ConfigValidationError.ConnectorConfigErrors]) shouldBe true
   }
 
   it should "succeed with valid bindings" in {
@@ -148,7 +155,8 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
     )
 
     result.isLeft shouldBe true
-    result.left.toOption.get.exists(_.isInstanceOf[ConfigValidationError.UnknownConnectorType]) shouldBe true
+    result.left.toOption.get
+      .exists(_.isInstanceOf[ConfigValidationError.UnknownConnectorType]) shouldBe true
   }
 
   it should "pass with empty source and sink names" in {
@@ -186,7 +194,10 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
           case other             => IO.pure(other)
         }
       graph <- io.constellation.stream.StreamCompiler.wireWithConfig(
-        dagSpec, config, registry, Map(moduleId -> uppercaseFn)
+        dagSpec,
+        config,
+        registry,
+        Map(moduleId -> uppercaseFn)
       )
       _     <- srcQ.offer(Some(CValue.CString("hello")))
       _     <- srcQ.offer(None)
@@ -217,8 +228,14 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        sourceId -> DataNodeSpec(sourceName, Map(sourceId -> sourceName), CType.CString, None, Map.empty),
-        sinkId   -> DataNodeSpec(sinkName, Map(sinkId -> sinkName), CType.CString, None, Map.empty)
+        sourceId -> DataNodeSpec(
+          sourceName,
+          Map(sourceId -> sourceName),
+          CType.CString,
+          None,
+          Map.empty
+        ),
+        sinkId -> DataNodeSpec(sinkName, Map(sinkId -> sinkName), CType.CString, None, Map.empty)
       ),
       inEdges = Set(sourceId -> moduleId),
       outEdges = Set(moduleId -> sinkId),
@@ -237,6 +254,8 @@ class PipelineConfigValidatorTest extends AnyFlatSpec with Matchers {
     ConfigValidationError.UnknownConnectorType("binding", "kafka").message should include("kafka")
 
     val configErrors = List(ConnectorConfigError.MissingRequired("url"))
-    ConfigValidationError.ConnectorConfigErrors("binding", configErrors).message should include("url")
+    ConfigValidationError.ConnectorConfigErrors("binding", configErrors).message should include(
+      "url"
+    )
   }
 }

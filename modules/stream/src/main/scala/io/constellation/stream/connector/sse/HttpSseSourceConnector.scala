@@ -8,7 +8,7 @@ import cats.effect.{IO, Ref}
 
 import fs2.Stream
 
-import io.circe.parser.{parse => parseJson}
+import io.circe.parser.parse as parseJson
 
 import org.http4s.{Header, Headers, Method, Request, Uri}
 import org.http4s.ember.client.EmberClientBuilder
@@ -32,11 +32,11 @@ class HttpSseSourceConnector(connectorName: String) extends SourceConnector {
   override def configSchema: ConnectorSchema = HttpSseSourceConnector.schema
 
   override def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = {
-    val url           = config.getString("url").get
-    val reconnect     = config.getStringOrDefault("reconnect", "true") == "true"
-    val delay         = config.getDuration("reconnect_delay").getOrElse(3.seconds)
-    val lastEventId   = config.getString("last_event_id")
-    val headerPairs   = config.getString("headers").map(parseHeaders).getOrElse(Nil)
+    val url         = config.getString("url").get
+    val reconnect   = config.getStringOrDefault("reconnect", "true") == "true"
+    val delay       = config.getDuration("reconnect_delay").getOrElse(3.seconds)
+    val lastEventId = config.getString("last_event_id")
+    val headerPairs = config.getString("headers").map(parseHeaders).getOrElse(Nil)
 
     val uri = Uri.unsafeFromString(url)
 
@@ -55,20 +55,22 @@ class HttpSseSourceConnector(connectorName: String) extends SourceConnector {
             }
             val request = Request[IO](Method.GET, uri, headers = customHeaders)
 
-            Stream.eval(client.run(request).use { response =>
-              response.body
-                .through(SseParser.parse)
-                .evalTap { event =>
-                  event.id.fold(IO.unit)(id => lastIdRef.set(Some(id)))
-                }
-                .map(event => parseDataToCValue(event.data))
-                .compile
-                .toList
-            }).flatMap(Stream.emits)
+            Stream
+              .eval(client.run(request).use { response =>
+                response.body
+                  .through(SseParser.parse)
+                  .evalTap { event =>
+                    event.id.fold(IO.unit)(id => lastIdRef.set(Some(id)))
+                  }
+                  .map(event => parseDataToCValue(event.data))
+                  .compile
+                  .toList
+              })
+              .flatMap(Stream.emits)
           }
         }
 
-      if (reconnect) withReconnect(connectStream, delay)
+      if reconnect then withReconnect(connectStream, delay)
       else connectStream
     }
   }

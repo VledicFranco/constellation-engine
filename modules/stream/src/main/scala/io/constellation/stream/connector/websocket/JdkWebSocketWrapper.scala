@@ -32,23 +32,26 @@ private[websocket] object JdkWebSocketWrapper {
       uri: URI,
       bufferSize: Int = 256
   ): Resource[IO, (Stream[IO, String], String => IO[Unit])] =
-    Resource.make(
-      for {
-        queue <- Queue.bounded[IO, Option[String]](bufferSize)
-        ws    <- openWebSocket(uri, queue)
-      } yield (queue, ws)
-    ) { case (queue, ws) =>
-      IO.fromCompletableFuture(
-        IO.delay(ws.sendClose(WebSocket.NORMAL_CLOSURE, "closing").toCompletableFuture)
-      ).void.handleError(_ => ()) *> queue.offer(None)
-    }.map { case (queue, ws) =>
-      val incoming = Stream.fromQueueNoneTerminated(queue)
-      val send: String => IO[Unit] = msg =>
+    Resource
+      .make(
+        for {
+          queue <- Queue.bounded[IO, Option[String]](bufferSize)
+          ws    <- openWebSocket(uri, queue)
+        } yield (queue, ws)
+      ) { case (queue, ws) =>
         IO.fromCompletableFuture(
-          IO.delay(ws.sendText(msg, true).toCompletableFuture)
+          IO.delay(ws.sendClose(WebSocket.NORMAL_CLOSURE, "closing").toCompletableFuture)
         ).void
-      (incoming, send)
-    }
+          .handleError(_ => ()) *> queue.offer(None)
+      }
+      .map { case (queue, ws) =>
+        val incoming = Stream.fromQueueNoneTerminated(queue)
+        val send: String => IO[Unit] = msg =>
+          IO.fromCompletableFuture(
+            IO.delay(ws.sendText(msg, true).toCompletableFuture)
+          ).void
+        (incoming, send)
+      }
 
   private def openWebSocket(
       uri: URI,
@@ -64,13 +67,15 @@ private[websocket] object JdkWebSocketWrapper {
           last: Boolean
       ): CompletionStage[?] = {
         buffer.append(data)
-        if (last) {
+        if last then {
           val message = buffer.toString()
           buffer.clear()
           // Offer message to queue, request next message after enqueue
-          queue.offer(Some(message)).unsafeRunAndForget()(
-            cats.effect.unsafe.IORuntime.global
-          )
+          queue
+            .offer(Some(message))
+            .unsafeRunAndForget()(
+              cats.effect.unsafe.IORuntime.global
+            )
         }
         webSocket.request(1)
         null // null means "I'll handle backpressure myself"
@@ -81,16 +86,20 @@ private[websocket] object JdkWebSocketWrapper {
           statusCode: Int,
           reason: String
       ): CompletionStage[?] = {
-        queue.offer(None).unsafeRunAndForget()(
-          cats.effect.unsafe.IORuntime.global
-        )
+        queue
+          .offer(None)
+          .unsafeRunAndForget()(
+            cats.effect.unsafe.IORuntime.global
+          )
         null
       }
 
       override def onError(webSocket: WebSocket, error: Throwable): Unit =
-        queue.offer(None).unsafeRunAndForget()(
-          cats.effect.unsafe.IORuntime.global
-        )
+        queue
+          .offer(None)
+          .unsafeRunAndForget()(
+            cats.effect.unsafe.IORuntime.global
+          )
     }
 
     IO.fromCompletableFuture(

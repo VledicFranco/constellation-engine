@@ -23,8 +23,8 @@ object OffsetCommitter {
 
   /** A no-op committer that does nothing. Used by connectors without offset tracking. */
   val noop: OffsetCommitter = new OffsetCommitter {
-    def commit(offset: Offset): IO[Unit]    = IO.unit
-    def currentOffset: IO[Option[Offset]]   = IO.pure(None)
+    def commit(offset: Offset): IO[Unit]  = IO.unit
+    def currentOffset: IO[Option[Offset]] = IO.pure(None)
   }
 
   /** An in-memory committer backed by a Ref. Useful for testing. */

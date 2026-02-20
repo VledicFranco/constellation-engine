@@ -1,4 +1,4 @@
-ThisBuild / version := "0.8.1"
+ThisBuild / version := "0.8.2-SNAPSHOT"
 ThisBuild / scalaVersion := "3.3.4"
 ThisBuild / organization := "io.github.vledicfranco"
 
@@ -202,7 +202,7 @@ lazy val moduleProvider = (project in file("modules/module-provider"))
   .dependsOn(moduleProviderSdk, langCompiler)
   .settings(
     name := "constellation-module-provider",
-    publish / skip := true,
+    publish / skip := false, // temporarily enabled for demo validation
     // Server-only code: ~1100 stmts, no longer diluted by ~3750 ScalaPB-generated statements.
     // Proto types come transitively from moduleProviderSdk.
     coverageMinimumStmtTotal := 78,

@@ -9,8 +9,8 @@ import io.constellation.stream.connector.*
 
 /** Validates a StreamPipelineConfig against a DagSpec and ConnectorRegistry.
   *
-  * Checks that all DAG source/sink nodes have bindings, that binding connector types exist
-  * in the registry, and that binding properties validate against connector schemas.
+  * Checks that all DAG source/sink nodes have bindings, that binding connector types exist in the
+  * registry, and that binding properties validate against connector schemas.
   */
 object PipelineConfigValidator {
 
@@ -33,10 +33,14 @@ object PipelineConfigValidator {
       sinkNames: Set[String],
       registry: ConnectorRegistry
   ): Either[List[ConfigValidationError], ValidatedPipelineConfig] = {
-    val unboundSources = sourceNames.filterNot(config.sourceBindings.contains).toList
+    val unboundSources = sourceNames
+      .filterNot(config.sourceBindings.contains)
+      .toList
       .map(ConfigValidationError.UnboundSource.apply)
 
-    val unboundSinks = sinkNames.filterNot(config.sinkBindings.contains).toList
+    val unboundSinks = sinkNames
+      .filterNot(config.sinkBindings.contains)
+      .toList
       .map(ConfigValidationError.UnboundSink.apply)
 
     val (sourceErrors, resolvedSources) = resolveSourceBindings(config.sourceBindings, registry)
@@ -45,7 +49,7 @@ object PipelineConfigValidator {
 
     val allErrors = unboundSources ++ unboundSinks ++ sourceErrors ++ sinkErrors ++ dlqErrors
 
-    if (allErrors.nonEmpty) Left(allErrors)
+    if allErrors.nonEmpty then Left(allErrors)
     else Right(ValidatedPipelineConfig(resolvedSources, resolvedSinks, resolvedDlq))
   }
 
@@ -62,7 +66,10 @@ object PipelineConfigValidator {
           // Try to find by typeName across all registered sources
           registry.allSources.values.find(_.typeName == binding.connectorType) match {
             case None =>
-              errors += ConfigValidationError.UnknownConnectorType(bindingName, binding.connectorType)
+              errors += ConfigValidationError.UnknownConnectorType(
+                bindingName,
+                binding.connectorType
+              )
             case Some(connector) =>
               resolveSourceConnector(bindingName, binding, connector) match {
                 case Left(errs)    => errors ++= errs
@@ -106,7 +113,10 @@ object PipelineConfigValidator {
         case None =>
           registry.allSinks.values.find(_.typeName == binding.connectorType) match {
             case None =>
-              errors += ConfigValidationError.UnknownConnectorType(bindingName, binding.connectorType)
+              errors += ConfigValidationError.UnknownConnectorType(
+                bindingName,
+                binding.connectorType
+              )
             case Some(connector) =>
               resolveSinkConnector(bindingName, binding, connector) match {
                 case Left(errs)  => errors ++= errs
@@ -149,7 +159,10 @@ object PipelineConfigValidator {
           case None =>
             registry.allSinks.values.find(_.typeName == binding.connectorType) match {
               case None =>
-                (List(ConfigValidationError.UnknownConnectorType("dlq", binding.connectorType)), None)
+                (
+                  List(ConfigValidationError.UnknownConnectorType("dlq", binding.connectorType)),
+                  None
+                )
               case Some(connector) =>
                 resolveSinkConnector("dlq", binding, connector) match {
                   case Left(errs)  => (errs, None)

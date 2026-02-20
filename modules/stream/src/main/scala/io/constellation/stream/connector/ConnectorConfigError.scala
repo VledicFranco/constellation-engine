@@ -12,15 +12,18 @@ object ConnectorConfigError {
     def message: String = s"Required field '$field' is missing"
   }
 
-  case class InvalidType(field: String, expected: String, actual: String) extends ConnectorConfigError {
+  case class InvalidType(field: String, expected: String, actual: String)
+      extends ConnectorConfigError {
     def message: String = s"Field '$field': expected $expected but got '$actual'"
   }
 
-  case class OutOfRange(field: String, value: Int, min: Int, max: Int) extends ConnectorConfigError {
+  case class OutOfRange(field: String, value: Int, min: Int, max: Int)
+      extends ConnectorConfigError {
     def message: String = s"Field '$field': value $value is out of range [$min, $max]"
   }
 
-  case class InvalidEnum(field: String, value: String, allowed: Set[String]) extends ConnectorConfigError {
+  case class InvalidEnum(field: String, value: String, allowed: Set[String])
+      extends ConnectorConfigError {
     def message: String = s"Field '$field': '$value' is not one of ${allowed.mkString(", ")}"
   }
 }

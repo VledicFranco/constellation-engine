@@ -173,7 +173,7 @@ object ErrorStrategyExecutor {
     * Some types (like functions or resources) don't have sensible defaults.
     */
   def hasZeroValue(ctype: CType): Boolean = ctype match {
-    case CType.CString | CType.CInt | CType.CFloat | CType.CBoolean => true
+    case CType.CString | CType.CInt | CType.CFloat | CType.CBoolean             => true
     case CType.CList(_) | CType.CSeq(_) | CType.CMap(_, _) | CType.COptional(_) => true
     case CType.CProduct(structure) => structure.values.forall(hasZeroValue)
     case CType.CUnion(variants)    => variants.values.exists(hasZeroValue)

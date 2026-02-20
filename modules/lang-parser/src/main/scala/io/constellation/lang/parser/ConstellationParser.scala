@@ -178,7 +178,9 @@ object ConstellationParser extends MemoizationSupport {
     List(
       (P.string("tumbling") *> openParen *> token(duration) <* closeParen)
         .map(d => WindowSpec.Tumbling(d)),
-      (P.string("sliding") *> openParen *> token(duration) ~ (comma *> token(duration)) <* closeParen)
+      (P.string("sliding") *> openParen *> token(duration) ~ (comma *> token(
+        duration
+      )) <* closeParen)
         .map { case (size, slide) => WindowSpec.Sliding(size, slide) },
       (P.string("count") *> openParen *> token(Numbers.nonNegativeIntString) <* closeParen)
         .map(n => WindowSpec.Count(n.toInt))

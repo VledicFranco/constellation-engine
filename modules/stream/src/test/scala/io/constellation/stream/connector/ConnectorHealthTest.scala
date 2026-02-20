@@ -16,8 +16,8 @@ class ConnectorHealthTest extends AnyFlatSpec with Matchers {
 
   "SourceConnector" should "default to Healthy status" in {
     val src = new SourceConnector {
-      def name: String     = "test-source"
-      def typeName: String = "test"
+      def name: String                                                 = "test-source"
+      def typeName: String                                             = "test"
       def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = Stream.empty
     }
 
@@ -29,8 +29,8 @@ class ConnectorHealthTest extends AnyFlatSpec with Matchers {
 
   it should "default isHealthy to true" in {
     val src = new SourceConnector {
-      def name: String     = "test"
-      def typeName: String = "test"
+      def name: String                                                 = "test"
+      def typeName: String                                             = "test"
       def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = Stream.empty
     }
 
@@ -39,8 +39,8 @@ class ConnectorHealthTest extends AnyFlatSpec with Matchers {
 
   "SinkConnector" should "default to Healthy status" in {
     val snk = new SinkConnector {
-      def name: String     = "test-sink"
-      def typeName: String = "test"
+      def name: String                                                   = "test-sink"
+      def typeName: String                                               = "test"
       def pipe(config: ValidatedConnectorConfig): Pipe[IO, CValue, Unit] = _.drain
     }
 
@@ -52,15 +52,20 @@ class ConnectorHealthTest extends AnyFlatSpec with Matchers {
 
   "Custom connector" should "report Unhealthy when overridden" in {
     val unhealthySrc = new SourceConnector {
-      def name: String     = "bad-source"
-      def typeName: String = "broken"
+      def name: String                                                 = "bad-source"
+      def typeName: String                                             = "broken"
       def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = Stream.empty
 
       override def isHealthy: IO[Boolean] = IO.pure(false)
 
       override def healthReport: IO[ConnectorHealthReport] =
         IO.realTimeInstant.map { now =>
-          ConnectorHealthReport(name, typeName, ConnectorHealthStatus.Unhealthy("connection lost"), now)
+          ConnectorHealthReport(
+            name,
+            typeName,
+            ConnectorHealthStatus.Unhealthy("connection lost"),
+            now
+          )
         }
     }
 

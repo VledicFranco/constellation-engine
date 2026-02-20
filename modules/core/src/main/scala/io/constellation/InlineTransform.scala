@@ -506,8 +506,8 @@ object InlineTransform {
 
   /** Interleave transform - non-deterministic merge of two sequences.
     *
-    * Single mode: round-robin alternating, truncates to shorter.
-    * Streaming mode: fs2 merge (concurrent, non-deterministic).
+    * Single mode: round-robin alternating, truncates to shorter. Streaming mode: fs2 merge
+    * (concurrent, non-deterministic).
     */
   case object InterleaveTransform extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any = {
@@ -519,8 +519,8 @@ object InlineTransform {
 
   /** Zip transform - strict 1:1 pairing of two sequences.
     *
-    * Single mode: zip, truncates to shorter.
-    * Streaming mode: fs2 zip (backpressure, terminates on shorter).
+    * Single mode: zip, truncates to shorter. Streaming mode: fs2 zip (backpressure, terminates on
+    * shorter).
     */
   case object ZipTransform extends InlineTransform {
     override def apply(inputs: Map[String, Any]): Any = {

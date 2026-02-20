@@ -51,10 +51,12 @@ class WebSocketConnectorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject invalid reconnect enum value" in {
-    val config = ConnectorConfig(Map(
-      "uri"       -> "ws://localhost:8080",
-      "reconnect" -> "maybe"
-    ))
+    val config = ConnectorConfig(
+      Map(
+        "uri"       -> "ws://localhost:8080",
+        "reconnect" -> "maybe"
+      )
+    )
     val result = config.validate(WebSocketSourceConnector.schema)
 
     result.isLeft shouldBe true
@@ -62,10 +64,12 @@ class WebSocketConnectorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject out-of-range max_reconnects" in {
-    val config = ConnectorConfig(Map(
-      "uri"            -> "ws://localhost:8080",
-      "max_reconnects" -> "5000"
-    ))
+    val config = ConnectorConfig(
+      Map(
+        "uri"            -> "ws://localhost:8080",
+        "max_reconnects" -> "5000"
+      )
+    )
     val result = config.validate(WebSocketSourceConnector.schema)
 
     result.isLeft shouldBe true
@@ -73,12 +77,14 @@ class WebSocketConnectorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "accept custom optional values" in {
-    val config = ConnectorConfig(Map(
-      "uri"             -> "ws://localhost:8080",
-      "reconnect"       -> "false",
-      "reconnect_delay" -> "5 seconds",
-      "max_reconnects"  -> "3"
-    ))
+    val config = ConnectorConfig(
+      Map(
+        "uri"             -> "ws://localhost:8080",
+        "reconnect"       -> "false",
+        "reconnect_delay" -> "5 seconds",
+        "max_reconnects"  -> "3"
+      )
+    )
     val result = config.validate(WebSocketSourceConnector.schema)
 
     result.isRight shouldBe true

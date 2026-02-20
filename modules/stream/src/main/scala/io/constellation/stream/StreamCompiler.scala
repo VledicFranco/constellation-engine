@@ -52,15 +52,25 @@ object StreamCompiler {
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
   ): IO[StreamGraph] =
     for {
-      metrics  <- if options.metricsEnabled then StreamMetrics.create else IO.pure(StreamMetrics.noop)
+      metrics <-
+        if options.metricsEnabled then StreamMetrics.create else IO.pure(StreamMetrics.noop)
       shutdown <- cats.effect.std.Queue.bounded[IO, Unit](1)
-      graph    <- buildGraph(dagSpec, registry, modules, options, errorStrategy, joinStrategy, metrics, shutdown)
+      graph <- buildGraph(
+        dagSpec,
+        registry,
+        modules,
+        options,
+        errorStrategy,
+        joinStrategy,
+        metrics,
+        shutdown
+      )
     } yield graph
 
   /** Wire a DagSpec into a StreamGraph using a pipeline configuration.
     *
-    * Validates the config against the DAG and registry, resolves all connector bindings,
-    * then delegates to the core wiring logic.
+    * Validates the config against the DAG and registry, resolves all connector bindings, then
+    * delegates to the core wiring logic.
     */
   def wireWithConfig(
       dagSpec: DagSpec,
@@ -82,29 +92,32 @@ object StreamCompiler {
 
     PipelineConfigValidator.validate(config, sourceNames, sinkNames, registry) match {
       case Left(errors) =>
-        IO.raiseError(new IllegalArgumentException(
-          s"Pipeline config validation failed: ${errors.map(_.message).mkString("; ")}"
-        ))
+        IO.raiseError(
+          new IllegalArgumentException(
+            s"Pipeline config validation failed: ${errors.map(_.message).mkString("; ")}"
+          )
+        )
       case Right(validated) =>
         // Build a temporary registry with resolved connectors
         val resolvedBuilder = validated.resolvedSources.foldLeft(ConnectorRegistry.builder) {
           case (b, (srcName, resolvedStream)) =>
             val src = new SourceConnector {
-              def name: String     = srcName
-              def typeName: String = "resolved"
+              def name: String                                                 = srcName
+              def typeName: String                                             = "resolved"
               def stream(config: ValidatedConnectorConfig): Stream[IO, CValue] = resolvedStream
             }
             b.source(srcName, src)
         }
-        val resolvedRegistry = validated.resolvedSinks.foldLeft(resolvedBuilder) {
-          case (b, (snkName, resolvedPipe)) =>
+        val resolvedRegistry = validated.resolvedSinks
+          .foldLeft(resolvedBuilder) { case (b, (snkName, resolvedPipe)) =>
             val snk = new SinkConnector {
-              def name: String     = snkName
-              def typeName: String = "resolved"
+              def name: String                                                       = snkName
+              def typeName: String                                                   = "resolved"
               def pipe(config: ValidatedConnectorConfig): fs2.Pipe[IO, CValue, Unit] = resolvedPipe
             }
             b.sink(snkName, snk)
-        }.build
+          }
+          .build
 
         wire(dagSpec, resolvedRegistry, modules, StreamOptions(), errorStrategy, joinStrategy)
     }
@@ -145,7 +158,7 @@ object StreamCompiler {
       val moduleName = moduleSpec.metadata.name
 
       // Find input data nodes for this module
-      val inputEdges = dagSpec.inEdges.filter(_._2 == moduleId)
+      val inputEdges   = dagSpec.inEdges.filter(_._2 == moduleId)
       val inputDataIds = inputEdges.map(_._1)
 
       // Find output data nodes for this module
@@ -211,12 +224,13 @@ object StreamCompiler {
     }
 
     // Compose all sink streams into a single graph
-    val composedStream: Stream[IO, Unit] = if sinkStreams.isEmpty then Stream.empty
-    else
-      sinkStreams.toList match {
-        case single :: Nil => single
-        case multiple      => multiple.reduce(_ merge _)
-      }
+    val composedStream: Stream[IO, Unit] =
+      if sinkStreams.isEmpty then Stream.empty
+      else
+        sinkStreams.toList match {
+          case single :: Nil => single
+          case multiple      => multiple.reduce(_ merge _)
+        }
 
     IO.pure(
       StreamGraph(

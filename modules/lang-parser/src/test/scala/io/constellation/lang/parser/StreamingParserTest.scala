@@ -5,8 +5,8 @@ import io.constellation.lang.ast.*
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/** Tests for RFC-025 Phase 3 parser extensions: streaming with-clause options,
-  * WindowSpec, JoinStrategySpec, and @source/@sink annotations.
+/** Tests for RFC-025 Phase 3 parser extensions: streaming with-clause options, WindowSpec,
+  * JoinStrategySpec, and @source/@sink annotations.
   */
 class StreamingParserTest extends AnyFlatSpec with Matchers {
 
@@ -40,7 +40,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   "Parser" should "parse batch option with integer value" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with batch: 100
       out result
@@ -50,7 +50,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse batch_timeout option with duration" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with batch_timeout: 5s
       out result
@@ -60,7 +60,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse batch and batch_timeout together" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with batch: 50, batch_timeout: 10s
       out result
@@ -71,7 +71,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse checkpoint option with duration" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with checkpoint: 30s
       out result
@@ -81,7 +81,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse checkpoint with millisecond duration" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with checkpoint: 500ms
       out result
@@ -95,7 +95,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse window with tumbling spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: tumbling(5s)
       out result
@@ -105,7 +105,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse window with sliding spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: sliding(10s, 2s)
       out result
@@ -120,7 +120,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse window with count spec" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: count(100)
       out result
@@ -130,7 +130,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse window with tumbling minutes" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with window: tumbling(5min)
       out result
@@ -144,7 +144,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse join with combine_latest" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with join: combine_latest
       out result
@@ -154,7 +154,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse join with zip" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with join: zip
       out result
@@ -164,7 +164,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse join with buffer and timeout" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with join: buffer(5s)
       out result
@@ -178,7 +178,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse streaming options combined with existing options" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with retry: 3, timeout: 30s, batch: 100, window: tumbling(5s), join: combine_latest
       out result
@@ -192,7 +192,7 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse all streaming options together" in {
-    val source = """
+    val source  = """
       in x: Int
       result = Process(x) with batch: 50, batch_timeout: 5s, checkpoint: 30s, join: zip
       out result
@@ -209,12 +209,12 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse @source annotation on input with connector type only" in {
-    val source = """
+    val source    = """
       @source("websocket")
       in events: String
       out events
     """
-    val program = parseProgram(source)
+    val program   = parseProgram(source)
     val inputDecl = program.declarations.collectFirst { case i: Declaration.InputDecl => i }.get
     inputDecl.annotations should have size 1
     inputDecl.annotations.head shouldBe a[Annotation.Source]
@@ -224,12 +224,12 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse @source annotation with properties" in {
-    val source = """
+    val source    = """
       @source("websocket", uri: "ws://localhost:8080")
       in events: String
       out events
     """
-    val program = parseProgram(source)
+    val program   = parseProgram(source)
     val inputDecl = program.declarations.collectFirst { case i: Declaration.InputDecl => i }.get
     inputDecl.annotations should have size 1
     val srcAnnot = inputDecl.annotations.head.asInstanceOf[Annotation.Source]
@@ -239,14 +239,14 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse @source annotation with multiple properties" in {
-    val source = """
+    val source    = """
       @source("http-sse", url: "https://api.example.com/events", reconnect: true)
       in events: String
       out events
     """
-    val program = parseProgram(source)
+    val program   = parseProgram(source)
     val inputDecl = program.declarations.collectFirst { case i: Declaration.InputDecl => i }.get
-    val srcAnnot = inputDecl.annotations.head.asInstanceOf[Annotation.Source]
+    val srcAnnot  = inputDecl.annotations.head.asInstanceOf[Annotation.Source]
     srcAnnot.connector shouldBe "http-sse"
     srcAnnot.properties should have size 2
     srcAnnot.properties("url").value shouldBe Expression.StringLit("https://api.example.com/events")
@@ -258,12 +258,12 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse @sink annotation on output with connector type only" in {
-    val source = """
+    val source     = """
       in x: String
       @sink("websocket")
       out x
     """
-    val program = parseProgram(source)
+    val program    = parseProgram(source)
     val outputDecl = program.declarations.collectFirst { case o: Declaration.OutputDecl => o }.get
     outputDecl.annotations should have size 1
     val sinkAnnot = outputDecl.annotations.head.asInstanceOf[Annotation.Sink]
@@ -272,14 +272,14 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse @sink annotation with properties" in {
-    val source = """
+    val source     = """
       in x: String
       @sink("websocket", uri: "ws://localhost:9090")
       out x
     """
-    val program = parseProgram(source)
+    val program    = parseProgram(source)
     val outputDecl = program.declarations.collectFirst { case o: Declaration.OutputDecl => o }.get
-    val sinkAnnot = outputDecl.annotations.head.asInstanceOf[Annotation.Sink]
+    val sinkAnnot  = outputDecl.annotations.head.asInstanceOf[Annotation.Sink]
     sinkAnnot.connector shouldBe "websocket"
     sinkAnnot.properties should have size 1
     sinkAnnot.properties("uri").value shouldBe Expression.StringLit("ws://localhost:9090")
@@ -290,13 +290,13 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   // ============================================================================
 
   it should "parse @source with @example on the same input" in {
-    val source = """
+    val source    = """
       @source("websocket", uri: "ws://localhost:8080")
       @example("hello")
       in text: String
       out text
     """
-    val program = parseProgram(source)
+    val program   = parseProgram(source)
     val inputDecl = program.declarations.collectFirst { case i: Declaration.InputDecl => i }.get
     inputDecl.annotations should have size 2
     inputDecl.annotations(0) shouldBe a[Annotation.Source]
@@ -304,11 +304,11 @@ class StreamingParserTest extends AnyFlatSpec with Matchers {
   }
 
   it should "parse output without @sink annotation" in {
-    val source = """
+    val source     = """
       in x: String
       out x
     """
-    val program = parseProgram(source)
+    val program    = parseProgram(source)
     val outputDecl = program.declarations.collectFirst { case o: Declaration.OutputDecl => o }.get
     outputDecl.annotations shouldBe empty
   }

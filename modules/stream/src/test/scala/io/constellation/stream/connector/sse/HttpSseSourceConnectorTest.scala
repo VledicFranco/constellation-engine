@@ -41,13 +41,15 @@ class HttpSseSourceConnectorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "accept custom optional values" in {
-    val config = ConnectorConfig(Map(
-      "url"             -> "http://localhost:8080/events",
-      "reconnect"       -> "false",
-      "reconnect_delay" -> "10 seconds",
-      "last_event_id"   -> "42",
-      "headers"         -> "Authorization=Bearer token,X-Custom=value"
-    ))
+    val config = ConnectorConfig(
+      Map(
+        "url"             -> "http://localhost:8080/events",
+        "reconnect"       -> "false",
+        "reconnect_delay" -> "10 seconds",
+        "last_event_id"   -> "42",
+        "headers"         -> "Authorization=Bearer token,X-Custom=value"
+      )
+    )
     val result = config.validate(HttpSseSourceConnector.schema)
 
     result.isRight shouldBe true
@@ -59,10 +61,12 @@ class HttpSseSourceConnectorTest extends AnyFlatSpec with Matchers {
   }
 
   it should "reject invalid reconnect enum value" in {
-    val config = ConnectorConfig(Map(
-      "url"       -> "http://localhost:8080/events",
-      "reconnect" -> "maybe"
-    ))
+    val config = ConnectorConfig(
+      Map(
+        "url"       -> "http://localhost:8080/events",
+        "reconnect" -> "maybe"
+      )
+    )
     val result = config.validate(HttpSseSourceConnector.schema)
 
     result.isLeft shouldBe true
