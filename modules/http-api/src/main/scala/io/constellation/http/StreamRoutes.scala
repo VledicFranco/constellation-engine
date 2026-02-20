@@ -64,25 +64,21 @@ class StreamRoutes(
           case Right(info) => Created(info)
           case Left(error) => BadRequest(Json.obj("error" -> Json.fromString(error)))
         }
-      } yield resp).handleErrorWith { err =>
-        val message = Option(err.getMessage).getOrElse(err.getClass.getSimpleName)
-        logger.error(err)(s"Stream deploy failed") *>
-          InternalServerError(Json.obj("error" -> Json.fromString(message)))
-      }
+      } yield resp).handleErrorWith(unexpectedError("POST /streams"))
 
     // ===== List =====
 
     case GET -> Root / "api" / "v1" / "streams" =>
-      for {
+      (for {
         streams <- manager.list
         infos = streams.map(m => toStreamInfo(m))
         resp <- Ok(StreamListResponse(infos))
-      } yield resp
+      } yield resp).handleErrorWith(unexpectedError("GET /streams"))
 
     // ===== Get =====
 
     case GET -> Root / "api" / "v1" / "streams" / id =>
-      for {
+      (for {
         streamOpt <- manager.get(id)
         resp <- streamOpt match {
           case Some(managed) =>
@@ -94,65 +90,69 @@ class StreamRoutes(
           case None =>
             NotFound(Json.obj("error" -> Json.fromString(s"Stream '$id' not found")))
         }
-      } yield resp
+      } yield resp).handleErrorWith(unexpectedError("GET /streams/:id"))
 
     // ===== Stop =====
 
     case DELETE -> Root / "api" / "v1" / "streams" / id =>
-      for {
+      (for {
         result <- manager.stop(id)
         resp <- result match {
           case Right(_) =>
             Ok(Json.obj("status" -> Json.fromString("stopped"), "id" -> Json.fromString(id)))
           case Left(error) => NotFound(Json.obj("error" -> Json.fromString(error)))
         }
-      } yield resp
+      } yield resp).handleErrorWith(unexpectedError("DELETE /streams/:id"))
 
     // ===== Metrics =====
 
     case GET -> Root / "api" / "v1" / "streams" / id / "metrics" =>
-      for {
+      (for {
         metricsOpt <- manager.metrics(id)
         resp <- metricsOpt match {
           case Some(snap) => Ok(toMetricsSummary(snap))
           case None => NotFound(Json.obj("error" -> Json.fromString(s"Stream '$id' not found")))
         }
-      } yield resp
+      } yield resp).handleErrorWith(unexpectedError("GET /streams/:id/metrics"))
 
     // ===== Connectors =====
 
     case GET -> Root / "api" / "v1" / "connectors" =>
-      val sourceInfos = registry.allSources.map { case (name, connector) =>
-        val schema = registry.getSourceSchema(name).map { s =>
-          ConnectorSchemaResponse(
-            required = s.required.map { case (k, v) => k -> v.toString },
-            optional = s.optional.map { case (k, v) => k -> v.toString }
-          )
+      (for {
+        sourceInfos <- IO {
+          registry.allSources.map { case (name, connector) =>
+            val schema = registry.getSourceSchema(name).map { s =>
+              ConnectorSchemaResponse(
+                required = s.required.map { case (k, v) => k -> v.toString },
+                optional = s.optional.map { case (k, v) => k -> v.toString }
+              )
+            }
+            ConnectorInfoResponse(
+              name = name,
+              typeName = connector.typeName,
+              kind = "source",
+              schema = schema
+            )
+          }.toList
         }
-        ConnectorInfoResponse(
-          name = name,
-          typeName = connector.typeName,
-          kind = "source",
-          schema = schema
-        )
-      }.toList
-
-      val sinkInfos = registry.allSinks.map { case (name, connector) =>
-        val schema = registry.getSinkSchema(name).map { s =>
-          ConnectorSchemaResponse(
-            required = s.required.map { case (k, v) => k -> v.toString },
-            optional = s.optional.map { case (k, v) => k -> v.toString }
-          )
+        sinkInfos <- IO {
+          registry.allSinks.map { case (name, connector) =>
+            val schema = registry.getSinkSchema(name).map { s =>
+              ConnectorSchemaResponse(
+                required = s.required.map { case (k, v) => k -> v.toString },
+                optional = s.optional.map { case (k, v) => k -> v.toString }
+              )
+            }
+            ConnectorInfoResponse(
+              name = name,
+              typeName = connector.typeName,
+              kind = "sink",
+              schema = schema
+            )
+          }.toList
         }
-        ConnectorInfoResponse(
-          name = name,
-          typeName = connector.typeName,
-          kind = "sink",
-          schema = schema
-        )
-      }.toList
-
-      Ok(ConnectorListResponse(sourceInfos ++ sinkInfos))
+        resp <- Ok(ConnectorListResponse(sourceInfos ++ sinkInfos))
+      } yield resp).handleErrorWith(unexpectedError("GET /connectors"))
   }
 
   /** Deploy a streaming pipeline from a request. */
@@ -363,6 +363,16 @@ class StreamRoutes(
         name -> ModuleMetrics(m.elementsProcessed, m.errors, m.dlqCount)
       }
     )
+
+  private def unexpectedError(
+      route: String
+  ): Throwable => IO[org.http4s.Response[IO]] = { err =>
+    logger.error(err)(s"Unexpected error in $route") *>
+      InternalServerError(Json.obj("error" -> Json.fromString(safeMessage(err))))
+  }
+
+  private def safeMessage(e: Throwable): String =
+    Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
 
   private def parseErrorStrategy(s: String): StreamErrorStrategy = s.toLowerCase match {
     case "skip"      => StreamErrorStrategy.Skip

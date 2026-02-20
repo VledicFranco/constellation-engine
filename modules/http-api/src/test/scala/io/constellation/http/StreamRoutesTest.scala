@@ -90,7 +90,7 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.NotFound
   }
 
-  it should "stop a running stream" in {
+  it should "stop and remove a running stream" in {
     val (sr, mgr) = createRoutes()
 
     // Deploy
@@ -111,6 +111,11 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.Ok
     val body = response.as[Json].unsafeRunSync()
     body.hcursor.downField("status").as[String] shouldBe Right("stopped")
+
+    // Stream should be removed from state — GET returns 404
+    val getReq  = Request[IO](Method.GET, uri"/api/v1/streams/s1")
+    val getResp = sr.routes.orNotFound.run(getReq).unsafeRunSync()
+    getResp.status shouldBe Status.NotFound
   }
 
   // ===== Metrics =====
