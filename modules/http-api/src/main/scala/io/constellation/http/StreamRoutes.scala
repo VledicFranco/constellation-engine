@@ -13,7 +13,18 @@ import io.constellation.stream.config.{SinkBinding, SourceBinding, StreamPipelin
 import io.constellation.stream.connector.ConnectorRegistry
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
-import io.constellation.{CValue, Constellation, DagSpec, ModuleNodeSpec, PipelineImage}
+import io.constellation.{
+  CType,
+  CValue,
+  ComponentMetadata,
+  Constellation,
+  DagSpec,
+  DataNodeSpec,
+  Module,
+  ModuleNodeSpec,
+  PipelineImage,
+  Runtime
+}
 
 import io.circe.Json
 import io.circe.syntax.*
@@ -216,31 +227,115 @@ class StreamRoutes(
 
   /** Extract module functions from the constellation instance for streaming.
     *
-    * For each module in the DAG, looks up the Module.Uninitialized from the constellation,
-    * initializes it with a synthetic DAG spec, and wraps its run function as a simple CValue =>
-    * IO[CValue].
+    * For each module in the DAG, looks up the Module.Uninitialized from the constellation, builds a
+    * synthetic single-node DAG, and wraps it as `CValue => IO[CValue]` using `Runtime.run`. This
+    * mirrors the pattern in `ModuleHttpRoutes.runSyntheticDag`.
     */
   private def extractModuleFunctions(
       dagSpec: DagSpec
   ): IO[Map[UUID, CValue => IO[CValue]]] =
     dagSpec.modules.toList
       .traverse { case (moduleId, spec) =>
-        constellation.getModuleByName(spec.name).map { moduleOpt =>
-          moduleOpt.map { module =>
-            // Create a simple wrapper that calls the module's implementation directly
-            val fn: CValue => IO[CValue] = { input =>
-              // For streaming, modules receive/produce single CValues
-              // The module implementation is accessed through the Uninitialized spec
-              module.init(moduleId, dagSpec).flatMap { runnable =>
-                // Use a simplified execution: provide input, run, collect output
-                IO.pure(input) // Passthrough if module can't be wrapped
-              }
+        constellation.getModuleByName(spec.name).flatMap {
+          case None =>
+            logger.warn(
+              s"Module '${spec.name}' not found, streaming will passthrough for module $moduleId"
+            ) *>
+              IO.pure(Some(moduleId -> (((input: CValue) => IO.pure(input)): CValue => IO[CValue])))
+          case Some(module) =>
+            buildStreamingModuleFn(spec, module).map { fn =>
+              Some(moduleId -> fn)
             }
-            moduleId -> fn
-          }
         }
       }
       .map(_.flatten.toMap)
+
+  /** Build a `CValue => IO[CValue]` wrapper for a module by constructing a synthetic single-node
+    * DAG and delegating to `Runtime.run` on each invocation.
+    *
+    * Each streaming element gets a fresh Runtime context — the module is initialized and executed
+    * per element, matching the behavior of single-mode execution.
+    */
+  private def buildStreamingModuleFn(
+      spec: ModuleNodeSpec,
+      module: Module.Uninitialized
+  ): IO[CValue => IO[CValue]] = {
+    val syntheticModuleId = UUID.randomUUID()
+
+    // Create input data nodes — one per consumes field
+    val inputNodes: Map[UUID, (String, CType)] =
+      spec.consumes.map { case (fieldName, ctype) =>
+        UUID.randomUUID() -> (fieldName, ctype)
+      }
+
+    // Create output data nodes — one per produces field
+    val outputNodes: Map[UUID, (String, CType)] =
+      spec.produces.map { case (fieldName, ctype) =>
+        UUID.randomUUID() -> (fieldName, ctype)
+      }
+
+    // Build data node specs with nicknames mapping the synthetic module to field names
+    val dataSpecs: Map[UUID, DataNodeSpec] =
+      inputNodes.map { case (uuid, (name, ctype)) =>
+        uuid -> DataNodeSpec(
+          name = name,
+          nicknames = Map(syntheticModuleId -> name),
+          cType = ctype
+        )
+      } ++
+        outputNodes.map { case (uuid, (name, ctype)) =>
+          uuid -> DataNodeSpec(
+            name = name,
+            nicknames = Map(syntheticModuleId -> name),
+            cType = ctype
+          )
+        }
+
+    val inEdges: Set[(UUID, UUID)]  = inputNodes.keySet.map(dataId => (dataId, syntheticModuleId))
+    val outEdges: Set[(UUID, UUID)] = outputNodes.keySet.map(dataId => (syntheticModuleId, dataId))
+    val outputBindings: Map[String, UUID] =
+      outputNodes.map { case (uuid, (name, _)) => name -> uuid }
+
+    val syntheticDag = DagSpec(
+      metadata = ComponentMetadata.empty(s"__stream_${spec.name}"),
+      modules = Map(syntheticModuleId -> spec),
+      data = dataSpecs,
+      inEdges = inEdges,
+      outEdges = outEdges,
+      declaredOutputs = outputNodes.values.map(_._1).toList,
+      outputBindings = outputBindings
+    )
+
+    IO.pure { (input: CValue) =>
+      // Map single CValue to the module's input fields
+      val inputMap: Map[String, CValue] = spec.consumes.keys.toList match {
+        case singleField :: Nil => Map(singleField -> input)
+        case _ =>
+          input match {
+            case CValue.CProduct(fields, _) => fields
+            case _ => spec.consumes.map { case (fieldName, _) => fieldName -> input }
+          }
+      }
+
+      Runtime.run(syntheticDag, inputMap, Map(syntheticModuleId -> module)).map { state =>
+        // Extract output CValue from runtime state
+        spec.produces.keys.toList match {
+          case singleField :: Nil =>
+            outputNodes
+              .collectFirst {
+                case (uuid, (name, _)) if name == singleField =>
+                  state.data.get(uuid).map(_.value).getOrElse(input)
+              }
+              .getOrElse(input)
+          case _ =>
+            val fields = outputNodes.flatMap { case (uuid, (name, _)) =>
+              state.data.get(uuid).map(ev => name -> ev.value)
+            }
+            CValue.CProduct(fields, spec.produces)
+        }
+      }
+    }
+  }
 
   private def toStreamInfo(
       managed: ManagedStream,
@@ -251,7 +346,7 @@ class StreamRoutes(
       name = managed.name,
       status = managed.status match {
         case StreamStatus.Running   => "running"
-        case StreamStatus.Failed(e) => s"failed"
+        case StreamStatus.Failed(e) => s"failed: $e"
         case StreamStatus.Stopped   => "stopped"
       },
       startedAt = managed.startedAt.toString,

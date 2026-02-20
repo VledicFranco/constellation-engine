@@ -1352,6 +1352,22 @@ Targeted tests for specific risks identified in the PR:
 
 **Gate criteria for DRAFT → Ready:** Phase 1 regressions resolved, Phase 2 compilation validation passes, known gaps documented as issues with clear scope.
 
+#### Implementation Status (as of 0.8.2)
+
+| Feature | Status | Notes |
+|---|---|---|
+| Linear streaming pipelines | **Implemented** | `StreamCompiler` wires DAG → fs2 graph; `StreamRoutes` executes real modules via synthetic Runtime |
+| `with window:` / `with batch:` options | **Implemented** | Parser supports; `StreamCompiler` applies window/batch options |
+| Graceful shutdown | **Fixed** | `Deferred`-based `interruptWhen` wired into composed stream |
+| Error message in `StreamStatus.Failed` | **Fixed** | Was silently discarding error string |
+| Fan-in (multiple upstream inputs) | **Deferred** | Raises warning; only first input used. See [P1] issue |
+| Join strategies (zip, combineLatest, buffer) | **Deferred** | Parsed but not applied by `StreamCompiler` |
+| `collect` pseudo-module | **Deferred** | Not implemented — auto-materialization boundary |
+| `CType.CSeq` in type system | **Deferred** | `CValue.CSeq` exists; `CType.CSeq` is a separate RFC scope |
+| Circuit breaker | **Deferred** | Phase 5 RFC — requires own design doc |
+| Delivery guarantees | **Deferred** | Phase 5 RFC — requires connector-level protocol |
+| Stateful streaming (`StreamModule[S]`) | **Deferred** | Phase 5 RFC — state serialization, checkpointing, recovery |
+
 ### Phase 5: External Connectors + Stateful Streaming + Exactly-Once
 
 **Scope:** Kafka, file, gRPC + stateful modules + transactional delivery + key-based joins

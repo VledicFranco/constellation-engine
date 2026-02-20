@@ -2,8 +2,7 @@ package io.constellation.stream
 
 import java.util.UUID
 
-import cats.effect.IO
-import cats.effect.std.Queue
+import cats.effect.{Deferred, IO}
 import cats.implicits.*
 
 import fs2.Stream
@@ -54,7 +53,7 @@ object StreamCompiler {
     for {
       metrics <-
         if options.metricsEnabled then StreamMetrics.create else IO.pure(StreamMetrics.noop)
-      shutdown <- cats.effect.std.Queue.bounded[IO, Unit](1)
+      shutdown <- Deferred[IO, Either[Throwable, Unit]]
       graph <- buildGraph(
         dagSpec,
         registry,
@@ -131,7 +130,7 @@ object StreamCompiler {
       errorStrategy: StreamErrorStrategy,
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
-      shutdownSignal: Queue[IO, Unit]
+      shutdownSignal: Deferred[IO, Either[Throwable, Unit]]
   ): IO[StreamGraph] = {
     // Identify source nodes (data nodes with no incoming edges from module outputs)
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -168,13 +167,18 @@ object StreamCompiler {
       // Get module function
       val moduleFn = modules.get(moduleId)
 
+      // Fan-in guard: warn when multiple inputs are present (fan-in is deferred to a future RFC)
+      if inputDataIds.size > 1 then
+        System.err.println(
+          s"[WARN] StreamCompiler: Module '$moduleName' ($moduleId) has ${inputDataIds.size} inputs; only first used (fan-in is deferred)"
+        )
+
       // For each output data node, create a stream that:
       // 1. Takes input from upstream data nodes
       // 2. Applies the module function
       // 3. Applies error handling
       val newStreams = outputDataIds.flatMap { outDataId =>
         moduleFn.map { fn =>
-          // Pick the first input stream (fan-in merges handled separately)
           val inputStream = inputDataIds.headOption
             .flatMap(id => streams.get(id))
             .getOrElse(Stream.empty)
@@ -234,9 +238,9 @@ object StreamCompiler {
 
     IO.pure(
       StreamGraph(
-        stream = composedStream,
+        stream = composedStream.interruptWhen(shutdownSignal),
         metrics = metrics,
-        shutdown = shutdownSignal.offer(())
+        shutdown = shutdownSignal.complete(Right(())).void
       )
     )
   }
