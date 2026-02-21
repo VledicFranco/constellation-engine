@@ -266,9 +266,8 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()
 
-    result should have size 1
-    // Skip still emits a fallback value (empty string)
-    result(0) shouldBe CValue.CString("")
+    // Skip genuinely drops failed elements — nothing reaches the sink
+    result shouldBe empty
   }
 
   it should "propagate errors with Propagate strategy" in {

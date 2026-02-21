@@ -7,7 +7,6 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.http.StreamApiModels.*
 import io.constellation.impl.ConstellationImpl
-import io.constellation.lang.LangCompiler
 import io.constellation.stream.connector.{ConnectorRegistry, MemoryConnector}
 
 import io.circe.Json
@@ -24,9 +23,8 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
       registry: ConnectorRegistry = ConnectorRegistry.empty
   ): (StreamRoutes, StreamLifecycleManager) = {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler      = LangCompiler.empty
     val manager       = StreamLifecycleManager.create.unsafeRunSync()
-    val routes        = new StreamRoutes(manager, registry, constellation, compiler)
+    val routes        = new StreamRoutes(manager, registry, constellation)
     (routes, manager)
   }
 
@@ -90,7 +88,7 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.NotFound
   }
 
-  it should "stop a running stream" in {
+  it should "stop and remove a running stream" in {
     val (sr, mgr) = createRoutes()
 
     // Deploy
@@ -111,6 +109,11 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
     response.status shouldBe Status.Ok
     val body = response.as[Json].unsafeRunSync()
     body.hcursor.downField("status").as[String] shouldBe Right("stopped")
+
+    // Stream should be removed from state — GET returns 404
+    val getReq  = Request[IO](Method.GET, uri"/api/v1/streams/s1")
+    val getResp = sr.routes.orNotFound.run(getReq).unsafeRunSync()
+    getResp.status shouldBe Status.NotFound
   }
 
   // ===== Metrics =====

@@ -43,46 +43,68 @@ class StreamLifecycleManager private (
 
   /** Deploy a stream graph with the given ID and name.
     *
-    * Starts the graph on a fiber. Returns `Left` if a stream with the given ID already exists.
+    * Starts the graph on a fiber. Returns `Left` if a stream with the given ID already exists. Uses
+    * a two-phase modify pattern to prevent TOCTOU races on the state map.
     */
   def deploy(id: String, name: String, graph: StreamGraph): IO[Either[String, ManagedStream]] =
-    state.get.flatMap { streams =>
-      if streams.contains(id) then IO.pure(Left(s"Stream with id '$id' already exists"))
-      else {
-        for {
-          fiber <- graph.stream.compile.drain.handleErrorWith { err =>
-            for {
-              _ <- logger.error(err)(s"Stream '$name' ($id) failed")
-              _ <- state.update(
-                _.updatedWith(id)(_.map(_.copy(status = StreamStatus.Failed(err.getMessage))))
-              )
-              _ <- publishEvent(StreamEvent.StreamFailed(id, name, err.getMessage))
-            } yield ()
-          }.start
-          now     = Instant.now()
-          managed = ManagedStream(id, name, graph, fiber, now, StreamStatus.Running)
-          _ <- state.update(_ + (id -> managed))
-          _ <- logger.info(s"Deployed stream '$name' ($id)")
-          _ <- publishEvent(StreamEvent.StreamDeployed(id, name))
-        } yield Right(managed)
+    // Phase 1: Atomic existence check
+    state
+      .modify { streams =>
+        if streams.contains(id) then (streams, false) else (streams, true)
       }
-    }
-
-  /** Stop a running stream by ID. Returns `Left` if the stream is not found. */
-  def stop(id: String): IO[Either[String, Unit]] =
-    state.get.flatMap { streams =>
-      streams.get(id) match {
-        case None => IO.pure(Left(s"Stream '$id' not found"))
-        case Some(managed) =>
+      .flatMap { canProceed =>
+        if !canProceed then IO.pure(Left(s"Stream with id '$id' already exists"))
+        else
           for {
-            _ <- managed.graph.shutdown
-            _ <- managed.fiber.cancel
-            _ <- state.update(_.updatedWith(id)(_.map(_.copy(status = StreamStatus.Stopped))))
-            _ <- logger.info(s"Stopped stream '${managed.name}' ($id)")
-            _ <- publishEvent(StreamEvent.StreamStopped(id, managed.name))
-          } yield Right(())
+            // Phase 2: Launch fiber
+            fiber <- graph.stream.compile.drain.handleErrorWith { err =>
+              val message = safeMessage(err)
+              logger.error(err)(s"Stream '$name' ($id) failed") *>
+                state.update(
+                  _.updatedWith(id)(_.map(_.copy(status = StreamStatus.Failed(message))))
+                ) *>
+                publishEvent(StreamEvent.StreamFailed(id, name, message))
+            }.start
+            now     = Instant.now()
+            managed = ManagedStream(id, name, graph, fiber, now, StreamStatus.Running)
+            // Phase 3: Atomic insert (second check guards against concurrent deploy races)
+            inserted <- state.modify { streams =>
+              if streams.contains(id) then (streams, false)
+              else (streams + (id -> managed), true)
+            }
+            result <-
+              if inserted then
+                logger.info(s"Deployed stream '$name' ($id)") *>
+                  publishEvent(StreamEvent.StreamDeployed(id, name)).as(Right(managed))
+              else
+                // Race lost — cancel the fiber we just started
+                fiber.cancel.as(Left(s"Stream with id '$id' already exists"))
+          } yield result
       }
-    }
+
+  /** Stop and remove a stream by ID. Returns `Left` if the stream is not found.
+    *
+    * Uses `state.modify` to atomically extract and remove the entry, then performs shutdown effects
+    * outside the atomic operation. This prevents TOCTOU races (e.g. double-stop) and ensures
+    * stopped streams don't leak in the state map.
+    */
+  def stop(id: String): IO[Either[String, Unit]] =
+    state
+      .modify { streams =>
+        streams.get(id) match {
+          case None          => (streams, None)
+          case Some(managed) => (streams - id, Some(managed))
+        }
+      }
+      .flatMap {
+        case None =>
+          IO.pure(Left(s"Stream '$id' not found"))
+        case Some(managed) =>
+          managed.graph.shutdown *>
+            managed.fiber.cancel *>
+            logger.info(s"Stopped stream '${managed.name}' ($id)") *>
+            publishEvent(StreamEvent.StreamStopped(id, managed.name)).as(Right(()))
+      }
 
   /** Get a managed stream by ID */
   def get(id: String): IO[Option[ManagedStream]] =
@@ -109,10 +131,13 @@ class StreamLifecycleManager private (
     eventPublisher.get.flatMap {
       case Some(f) =>
         f(event).handleErrorWith(err =>
-          logger.warn(s"Failed to publish stream event: ${err.getMessage}")
+          logger.warn(s"Failed to publish stream event: ${safeMessage(err)}")
         )
       case None => IO.unit
     }
+
+  private def safeMessage(e: Throwable): String =
+    Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
 }
 
 object StreamLifecycleManager {
