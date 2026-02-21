@@ -7,7 +7,6 @@ import cats.effect.unsafe.implicits.global
 
 import io.constellation.http.StreamApiModels.*
 import io.constellation.impl.ConstellationImpl
-import io.constellation.lang.LangCompiler
 import io.constellation.stream.connector.{ConnectorRegistry, MemoryConnector}
 
 import io.circe.Json
@@ -24,9 +23,8 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
       registry: ConnectorRegistry = ConnectorRegistry.empty
   ): (StreamRoutes, StreamLifecycleManager) = {
     val constellation = ConstellationImpl.init.unsafeRunSync()
-    val compiler      = LangCompiler.empty
     val manager       = StreamLifecycleManager.create.unsafeRunSync()
-    val routes        = new StreamRoutes(manager, registry, constellation, compiler)
+    val routes        = new StreamRoutes(manager, registry, constellation)
     (routes, manager)
   }
 

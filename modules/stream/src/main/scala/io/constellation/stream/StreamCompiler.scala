@@ -76,6 +76,7 @@ object StreamCompiler {
       config: StreamPipelineConfig,
       registry: ConnectorRegistry,
       modules: Map[UUID, CValue => IO[CValue]],
+      options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
   ): IO[StreamGraph] = {
@@ -118,7 +119,7 @@ object StreamCompiler {
           }
           .build
 
-        wire(dagSpec, resolvedRegistry, modules, StreamOptions(), errorStrategy, joinStrategy)
+        wire(dagSpec, resolvedRegistry, modules, options, errorStrategy, joinStrategy)
     }
   }
 

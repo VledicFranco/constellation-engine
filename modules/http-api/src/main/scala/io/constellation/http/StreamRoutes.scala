@@ -6,7 +6,6 @@ import cats.effect.IO
 import cats.implicits.*
 
 import io.constellation.http.StreamApiModels.*
-import io.constellation.lang.LangCompiler
 import io.constellation.stream.config.{SinkBinding, SourceBinding, StreamPipelineConfig}
 import io.constellation.stream.connector.ConnectorRegistry
 import io.constellation.stream.error.StreamErrorStrategy
@@ -46,8 +45,7 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 class StreamRoutes(
     manager: StreamLifecycleManager,
     registry: ConnectorRegistry,
-    constellation: Constellation,
-    compiler: LangCompiler
+    constellation: Constellation
 ) {
 
   private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[StreamRoutes])
@@ -208,6 +206,10 @@ class StreamRoutes(
         .flatMap(_.joinStrategy)
         .map(parseJoinStrategy)
         .getOrElse(JoinStrategy.CombineLatest)
+      streamOptions = StreamOptions(
+        defaultParallelism = req.options.flatMap(_.parallelism).getOrElse(1),
+        metricsEnabled = req.options.flatMap(_.metricsEnabled).getOrElse(true)
+      )
 
       // Wire the stream graph
       graph <- StreamCompiler.wireWithConfig(
@@ -215,6 +217,7 @@ class StreamRoutes(
         config,
         registry,
         moduleFns,
+        streamOptions,
         errorStrategy,
         joinStrategy
       )
