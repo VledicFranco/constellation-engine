@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp benchmark-stream test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk test-invariants
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp benchmark-stream benchmark-provider test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk test-invariants
 
 # Default target
 help:
@@ -49,6 +49,7 @@ help:
 	@echo "  make benchmark-cache    - Cache effectiveness benchmarks"
 	@echo "  make benchmark-lsp      - LSP operations benchmarks"
 	@echo "  make benchmark-stream   - Streaming module benchmarks"
+	@echo "  make benchmark-provider - Provider baseline benchmarks (RFC-034)"
 	@echo ""
 	@echo "Code Coverage:"
 	@echo "  make coverage       - Run tests with coverage and generate reports"
@@ -249,7 +250,7 @@ install-dashboard-tests:
 benchmark:
 	@echo "Running all performance benchmarks..."
 	@echo "Results will be written to target/benchmark-*.json"
-	sbt "set ThisBuild / Test / testOptions := Seq()" "langCompiler/testOnly *Benchmark" "langLsp/testOnly *LspOperationsBenchmark" "httpApi/testOnly *StreamingModuleBenchmark"
+	sbt "set ThisBuild / Test / testOptions := Seq()" "langCompiler/testOnly *Benchmark" "langLsp/testOnly *LspOperationsBenchmark" "httpApi/testOnly *StreamingModuleBenchmark" "moduleProvider/testOnly *ProviderBaselineBenchmark"
 
 # Run compiler pipeline benchmarks only
 benchmark-compiler:
@@ -275,6 +276,11 @@ benchmark-lsp:
 benchmark-stream:
 	@echo "Running streaming module benchmarks..."
 	sbt "set ThisBuild / Test / testOptions := Seq()" "httpApi/testOnly *StreamingModuleBenchmark"
+
+# Run provider baseline benchmarks (RFC-034 pre-optimization baselines)
+benchmark-provider:
+	@echo "Running provider baseline benchmarks..."
+	sbt "set ThisBuild / Test / testOptions := Seq()" "moduleProvider/testOnly *ProviderBaselineBenchmark"
 
 # =============================================================================
 # Code Coverage
