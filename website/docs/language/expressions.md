@@ -22,7 +22,9 @@ description: "Reference for constellation-lang expressions: arithmetic, comparis
 | Match | `match { ... }` | `match x { { a } -> a, _ -> 0 }` |
 | Guard | `expr when cond` | `x when x > 0` |
 | Coalesce | `??` | `optional ?? default` |
-| Lambda | `(param) => expr` | `item => item.score > 0.5` |
+| Lambda | `(param) => expr` | `(x) => x > 0` |
+| Implicit `it` | `it` in HOF args | `filter(numbers, it > 0)` |
+| Infix HOF | `coll verb expr` | `numbers filter it > 0` |
 | Record literal | `{ field: value }` | `{ name: "Alice", age: 30 }` |
 | List literal | `[value, ...]` | `[1, 2, 3]` |
 
@@ -408,23 +410,35 @@ Lambdas enable collection operations:
 ```
 in items: List<{ score: Float, active: Boolean }>
 
-# Filter items by condition
-highScoring = Filter(items, item => item.score > 0.8)
+# Infix HOF with implicit it
+highScoring = items filter it.score > 0.8
 
-# Transform items
-doubled = Map(items, item => item.score * 2)
+# Prefix with implicit it
+doubled = map(items, it.score * 2)
 
-# Check conditions across all items
-allActive = All(items, item => item.active)
-anyHighScore = Any(items, item => item.score > 0.9)
+# Explicit lambda
+allActive = all(items, (item) => item.active)
+anyHighScore = any(items, (item) => item.score > 0.9)
 ```
 
-Lambdas can use multiple parameters:
+### Infix HOF Syntax
+
+`filter`, `map`, `all`, `any` work as infix operators with left-to-right chaining:
 
 ```
-# Custom comparison
-sorted = sortBy(items, (a, b) => a.score > b.score)
+numbers filter it > 0 map it * 2
+# equivalent to: map(filter(numbers, it > 0), it * 2)
 ```
+
+### Implicit `it` Parameter
+
+When a HOF expects a single-parameter lambda, use `it` as an implicit parameter:
+
+```
+filter(numbers, it > 0)    # desugars to: filter(numbers, (it) => it > 0)
+```
+
+See [Lambdas](./lambdas.md) for full details on all three calling forms.
 
 ## String Interpolation
 

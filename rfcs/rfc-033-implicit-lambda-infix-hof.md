@@ -1,6 +1,6 @@
 # RFC-033: Implicit Lambda Parameter (`it`) and Infix HOF Syntax
 
-- **Status:** Accepted
+- **Status:** Implemented
 - **Created:** 2026-02-22
 - **Author:** Francisco
 - **Depends on:** RFC-032 (Lambda Infix Operators), RFC-030 (Lambda Closures)

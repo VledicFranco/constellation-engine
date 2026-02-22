@@ -18,6 +18,8 @@ This document describes the orchestration control flow system in constellation-l
 | Boolean operators (`and`, `or`, `not`) | ✅ Implemented | #10 |
 | Comparison operators | ✅ Implemented | #9 |
 | Lambda expressions (for `all`, `any`, etc.) | ✅ Implemented | #23 |
+| Lambda infix operators (`>`, `*`, etc. in bodies) | ✅ Implemented | RFC-032 |
+| Implicit `it` parameter + infix HOF syntax | ✅ Implemented | RFC-033 |
 | Optional chaining (`?.`) | 🔮 Future | - |
 | Unwrap with default (`?:`) | 🔮 Future | - |
 
@@ -195,7 +197,7 @@ model_output = branch {
 
 ### 7. Parallel Guards (`all`, `any`) ✅
 
-> **Status:** Implemented in #23 (via lambda expressions)
+> **Status:** Implemented in #23 (via lambda expressions), enhanced by RFC-033 (infix + `it`)
 
 Aggregate boolean conditions over collections:
 
@@ -207,11 +209,15 @@ any(collection, predicate)  # True if predicate holds for any element
 **Examples:**
 
 ```
-# Only proceed if all items are valid
-validated = process(items) when all(items, isValid)
+# Infix with implicit it (RFC-033)
+validated = process(items) when items all it.isValid
+special = special-process(items) when items any it.needsSpecial
 
-# Check if any item needs special handling
-special = special-process(items) when any(items, needsSpecial)
+# Prefix with implicit it
+validated = process(items) when all(items, it.isValid)
+
+# Explicit lambda (always works)
+validated = process(items) when all(items, (item) => item.isValid)
 ```
 
 ### 8. Optional Chaining (`?.`) 🔮
@@ -345,6 +351,8 @@ Potential extensions to the algebra:
 | Boolean ops | `and`, `or`, `not` | Predicate composition | ✅ #10 |
 | Comparisons | `==`, `!=`, `<`, `>`, `<=`, `>=` | Predicate construction | ✅ #9 |
 | Lambda | `(x) => expr` | Inline functions | ✅ #23 |
+| Implicit `it` | `filter(xs, it > 0)` | Lambda shorthand | ✅ RFC-033 |
+| Infix HOF | `xs filter it > 0` | Left-to-right pipelines | ✅ RFC-033 |
 | Aggregates | `all(xs, p)`, `any(xs, p)` | Collection predicates | ✅ #23 |
 | Optional chain | `a?.field` | Safe access | 🔮 Future |
 | Unwrap default | `a ?: b` | Explicit None handling | 🔮 Future |

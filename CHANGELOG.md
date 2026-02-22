@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Implicit `it` parameter** (RFC-033): In HOF argument position, bare expressions containing free variable `it` are auto-wrapped in a single-parameter lambda — `filter(numbers, it > 0)` desugars to `filter(numbers, (it) => it > 0)`
+- **Infix HOF syntax** (RFC-033): `filter`, `map`, `all`, `any` work as left-associative infix operators — `numbers filter it > 0 map it * 2` desugars to `map(filter(numbers, (it) => it > 0), (it) => it * 2)`
 - **Module HTTP Endpoints** (RFC-027): Opt-in HTTP endpoint publishing for individual modules via `ModuleBuilder.httpEndpoint()`. Adds `GET /modules/published` for discovery and `POST /modules/{name}/invoke` for direct module invocation without writing a `.cst` pipeline
 - **Coursier channel**: `cs channel --add https://vledicfranco.github.io/constellation-engine/channel && cs install constellation` for easy CLI installation
 - **Structural invariant tests**: 12 tests across 4 specs using `organon-testing` v0.4.0 — verifies core purity, organon file structure, naming conventions, and module purity constraints (`make test-invariants`)

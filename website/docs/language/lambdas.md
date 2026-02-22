@@ -8,7 +8,21 @@ description: "Define inline functions with lambda expressions for filter, map, a
 
 Lambda expressions define inline functions for use with higher-order functions. They enable functional-style list processing with operations like `filter`, `map`, `all`, and `any`.
 
+## Three Levels of Ceremony
+
+Constellation offers three equivalent ways to write lambda arguments, from most concise to most explicit:
+
+| Form | Example | When to use |
+|------|---------|-------------|
+| **Infix + `it`** | `numbers filter it > 0` | Simple single-param predicates and transforms |
+| **Prefix + `it`** | `filter(numbers, it > 0)` | Single-param lambdas in prefix call style |
+| **Explicit lambda** | `filter(numbers, (x) => x > 0)` | Multi-param lambdas, nested HOFs, or when naming the parameter aids clarity |
+
+All three compile to the same IR. Choose based on readability.
+
 ## Syntax
+
+### Explicit Lambda
 
 ```
 (parameter) => expression
@@ -22,34 +36,40 @@ Parameters can optionally include type annotations:
 (a: Int, b: Int) => a + b
 ```
 
-## Basic Usage
+### Implicit `it` Parameter
 
-### Single Parameter
-
-Define a simple transformation or predicate:
+When a higher-order function expects a single-parameter lambda, you can write the body expression directly using `it` as the parameter name:
 
 ```
-# Transformation lambda
-(x) => x * 2
-
-# Predicate lambda (returns Boolean)
-(x) => x > 0
+filter(numbers, it > 0)        # equivalent to: filter(numbers, (it) => it > 0)
+map(numbers, it * 2)           # equivalent to: map(numbers, (it) => it * 2)
 ```
 
-### Multiple Parameters
+The type checker auto-wraps the expression in a lambda when:
+1. The expected argument type is a single-parameter function
+2. The expression contains a free reference to `it`
+3. `it` is not already bound as a variable in the enclosing scope
 
-Lambdas can accept multiple parameters:
+### Infix HOF Syntax
+
+`filter`, `map`, `all`, and `any` can be used as infix operators between a collection and a predicate/transform:
 
 ```
-# Two-parameter lambda
-(a, b) => a + b
-
-# Comparison lambda
-(x, y) => x > y
+numbers filter it > 0          # equivalent to: filter(numbers, it > 0)
+numbers map it * 2             # equivalent to: map(numbers, it * 2)
+numbers all it >= 0            # equivalent to: all(numbers, it >= 0)
+numbers any it < 0             # equivalent to: any(numbers, it < 0)
 ```
 
-:::note Import Required
-Remember to import the required stdlib namespaces (`stdlib.collection`, `stdlib.compare`, `stdlib.math`) before using higher-order functions and comparison operations in lambdas.
+Infix HOF calls are **left-associative** and can be chained:
+
+```
+numbers filter it > 0 map it * 2
+# parses as: map(filter(numbers, it > 0), it * 2)
+```
+
+:::note Soft Keywords
+`filter`, `map`, `all`, and `any` are soft keywords — they are only recognized as infix operators at word boundaries. Names like `filterBy` or `mapping` remain valid identifiers.
 :::
 
 ## Higher-Order Functions
@@ -60,43 +80,42 @@ Lambda expressions are primarily used with higher-order functions from the stand
 
 Keep elements that match a predicate:
 
-```
+```constellation
 use stdlib.collection
 
 in numbers: List<Int>
 
-# Keep only positive numbers
-positives = filter(numbers, (x) => gt(x, 0))
+# Infix style (recommended)
+positives = numbers filter it > 0
 
-# Keep numbers above 10
-above10 = filter(numbers, (x) => gt(x, 10))
+# Prefix with implicit it
+above10 = filter(numbers, it > 10)
 
-# Keep numbers at most 50
-atMost50 = filter(numbers, (x) => lte(x, 50))
+# Explicit lambda (always works)
+atMost50 = filter(numbers, (x) => x <= 50)
 
 out positives
 ```
 
-The predicate lambda must return `Boolean`. Elements where the predicate returns `true` are kept.
+The predicate must return `Boolean`. Elements where the predicate returns `true` are kept.
 
 ### map
 
 Transform each element:
 
-```
+```constellation
 use stdlib.collection
-use stdlib.math
 
 in numbers: List<Int>
 
-# Double each number
-doubled = map(numbers, (x) => multiply(x, 2))
+# Infix style
+doubled = numbers map it * 2
 
-# Add 10 to each number
-plus10 = map(numbers, (x) => add(x, 10))
+# Prefix with implicit it
+plus10 = map(numbers, it + 10)
 
-# Triple each number
-tripled = map(numbers, (x) => multiply(x, 3))
+# Explicit lambda
+tripled = map(numbers, (x) => x * 3)
 
 out doubled
 ```
@@ -107,19 +126,13 @@ The transformation lambda can return any type. The result is `List<T>` where `T`
 
 Check if all elements satisfy a predicate:
 
-```
+```constellation
 use stdlib.collection
 
 in numbers: List<Int>
 
-# Check if all numbers are positive
-allPositive = all(numbers, (x) => gt(x, 0))
-
-# Check if all numbers are below 100
-allBelow100 = all(numbers, (x) => lt(x, 100))
-
-# Check if all numbers are non-negative
-allNonNegative = all(numbers, (x) => gte(x, 0))
+allPositive = numbers all it > 0
+allBelow100 = numbers all it < 100
 
 out allPositive
 ```
@@ -130,19 +143,13 @@ Returns `true` if the predicate is true for every element. Returns `true` for em
 
 Check if any element satisfies a predicate:
 
-```
+```constellation
 use stdlib.collection
 
 in numbers: List<Int>
 
-# Check if any number is negative
-hasNegative = any(numbers, (x) => lt(x, 0))
-
-# Check if any number exceeds 100
-hasAbove100 = any(numbers, (x) => gt(x, 100))
-
-# Check if any number equals 42
-has42 = any(numbers, (x) => eq-int(x, 42))
+hasNegative = numbers any it < 0
+hasAbove100 = numbers any it > 100
 
 out hasNegative
 ```
@@ -151,99 +158,120 @@ Returns `true` if the predicate is true for at least one element. Returns `false
 
 ## Chaining Operations
 
-Combine higher-order functions for complex processing:
+Infix HOF syntax enables natural left-to-right pipelines:
 
-```
+```constellation
 use stdlib.collection
-use stdlib.math
 
 in numbers: List<Int>
 
-# Filter positive, then double them
-positives = filter(numbers, (x) => gt(x, 0))
-positivesDoubled = map(positives, (x) => multiply(x, 2))
+# Filter positive numbers, then double them — reads left to right
+doubledPositives = numbers filter it > 0 map it * 2
 
-# Check if all positives are below 50
-positivesAllBelow50 = all(positives, (x) => lt(x, 50))
+# Equivalent nested prefix form
+doubledPositives2 = map(filter(numbers, it > 0), it * 2)
 
-# Check if any doubled value exceeds 100
-anyDoubledLarge = any(positivesDoubled, (x) => gt(x, 100))
-
-out positivesDoubled
-out positivesAllBelow50
-out anyDoubledLarge
+out doubledPositives
 ```
 
-## Lambda with Comparison Functions
+For multi-step pipelines, intermediate variables can improve readability:
 
-Since lambda bodies currently use function calls for comparisons, import comparison functions:
+```constellation
+use stdlib.collection
 
+in numbers: List<Int>
+in threshold: Int
+
+positives = numbers filter it > 0
+aboveThreshold = filter(positives, it > threshold)
+scaled = aboveThreshold map it * 10
+
+out scaled
 ```
+
+## Closure Capture
+
+Lambdas can reference variables from the enclosing scope. Captured variables are snapshotted by value at execution time:
+
+```constellation
+use stdlib.collection
+
+in numbers: List<Int>
+in threshold: Int
+in factor: Int
+
+# `threshold` is captured from outer scope
+aboveThreshold = numbers filter it > threshold
+
+# `factor` is captured from outer scope
+scaled = numbers map it * factor
+
+out aboveThreshold
+out scaled
+```
+
+Capture works with all three lambda forms:
+
+```constellation
+# Infix + it
+result1 = numbers filter it > threshold
+
+# Prefix + it
+result2 = filter(numbers, it > threshold)
+
+# Explicit lambda
+result3 = filter(numbers, (x) => x > threshold)
+```
+
+## Lambda with Operators
+
+Lambda bodies support the full expression grammar — arithmetic, comparison, boolean, and field access operators:
+
+### Arithmetic Operators
+
+| Operator | Example |
+|----------|---------|
+| `+` | `numbers map it + 10` |
+| `-` | `numbers map it - 5` |
+| `*` | `numbers map it * 2` |
+| `/` | `numbers map it / 2` |
+
+### Comparison Operators
+
+| Operator | Example |
+|----------|---------|
+| `>` | `numbers filter it > 0` |
+| `<` | `numbers filter it < 100` |
+| `>=` | `numbers filter it >= 5` |
+| `<=` | `numbers filter it <= 50` |
+| `==` | `numbers filter it == 42` |
+| `!=` | `numbers filter it != 0` |
+
+### Stdlib Comparison Functions
+
+The function-call comparison style (`gt`, `lt`, etc.) still works and is available for backwards compatibility:
+
+```constellation
 use stdlib.compare
 
-# Comparison functions available:
-# gt(a, b)  - greater than (a > b)
-# lt(a, b)  - less than (a < b)
-# gte(a, b) - greater than or equal (a >= b)
-# lte(a, b) - less than or equal (a <= b)
-# eq-int(a, b) - equality for integers
+# These are equivalent:
+positives1 = filter(numbers, it > 0)
+positives2 = filter(numbers, (x) => gt(x, 0))
 ```
-
-### Available Comparison Functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `gt(a, b)` | Greater than | `(x) => gt(x, 0)` |
-| `lt(a, b)` | Less than | `(x) => lt(x, 100)` |
-| `gte(a, b)` | Greater than or equal | `(x) => gte(x, 5)` |
-| `lte(a, b)` | Less than or equal | `(x) => lte(x, 50)` |
-| `eq-int(a, b)` | Integer equality | `(x) => eq-int(x, 42)` |
-
-## Lambda with Math Functions
-
-Use math functions for transformations:
-
-```
-use stdlib.math
-
-# Math functions available:
-# add(a, b)      - addition
-# subtract(a, b) - subtraction
-# multiply(a, b) - multiplication
-# divide(a, b)   - division
-```
-
-### Available Math Functions
-
-| Function | Description | Example |
-|----------|-------------|---------|
-| `add(a, b)` | Addition | `(x) => add(x, 10)` |
-| `subtract(a, b)` | Subtraction | `(x) => subtract(x, 5)` |
-| `multiply(a, b)` | Multiplication | `(x) => multiply(x, 2)` |
-| `divide(a, b)` | Division | `(x) => divide(x, 2)` |
 
 ## Practical Examples
 
 ### Data Filtering Pipeline
 
-Filter and transform a list of items:
-
-```
+```constellation
 use stdlib.collection
-use stdlib.compare
-use stdlib.math
 
 in scores: List<Int>
 in threshold: Int
 
-# Filter scores above threshold
-passing = filter(scores, (x) => gte(x, threshold))
-
-# Normalize passing scores (divide by 100)
-normalized = map(passing, (x) => divide(x, 100))
-
-# Check if all passing scores are valid (positive)
-allValid = all(passing, (x) => gt(x, 0))
+passing = scores filter it >= threshold
+normalized = passing map it / 100
+allValid = passing all it > 0
 
 out passing
 out normalized
@@ -252,20 +280,14 @@ out allValid
 
 ### Validation Checks
 
-Validate list data with predicates:
-
-```
+```constellation
 use stdlib.collection
-use stdlib.compare
 
 in values: List<Int>
 
-# Validation checks
-noNegatives = all(values, (x) => gte(x, 0))
-allInRange = all(values, (x) => lte(x, 100))
-hasData = any(values, (x) => gt(x, 0))
-
-# Combined validation
+noNegatives = values all it >= 0
+allInRange = values all it <= 100
+hasData = values any it > 0
 isValid = noNegatives and allInRange and hasData
 
 out isValid
@@ -273,20 +295,14 @@ out isValid
 
 ### Conditional Processing with Guards
 
-Combine lambdas with guard expressions:
-
-```
+```constellation
 use stdlib.collection
-use stdlib.compare
 
 in items: List<Int>
 in minCount: Int
 
-# Only process if we have enough items
-count = length(items)
-filtered = filter(items, (x) => gt(x, 0)) when count > minCount
-
-# Process filtered items only if filtering happened
+count = list-length(items)
+filtered = (items filter it > 0) when count > minCount
 result = filtered ?? items
 
 out result
@@ -296,56 +312,50 @@ out result
 
 Lambda parameter types are inferred from context:
 
-```
+```constellation
 use stdlib.collection
 
 in numbers: List<Int>
 
 # x is inferred as Int from List<Int>
-doubled = map(numbers, (x) => multiply(x, 2))
+doubled = numbers map it * 2
+
+# Explicit type annotation is optional
+doubled2 = map(numbers, (x: Int) => x * 2)
 ```
 
-Explicit type annotations are optional but can improve clarity:
+## Edge Cases
 
-```
-# Explicit type annotation
-doubled = map(numbers, (x: Int) => multiply(x, 2))
-```
+### `it` as a Regular Variable
 
-:::warning Current Limitations
-Lambda expressions do not yet support closure capture (referencing variables from outer scope). Use literals directly in lambda bodies, or restructure your pipeline to pass values through function parameters.
-:::
+If `it` is already bound in scope (e.g., as an input), the implicit lifting does **not** apply — `it` is treated as a normal variable reference:
 
-## Current Limitations
-
-Lambda expressions have the following current limitations:
-
-1. **Closure capture**: Lambda bodies currently support only the lambda parameter and literals. Referencing outer variables (closure capture) is not yet implemented.
-
-```
-in multiplier: Int
+```constellation
+in it: Int
 in numbers: List<Int>
 
-# NOT YET SUPPORTED: capturing 'multiplier' in lambda
-# scaled = map(numbers, (x) => multiply(x, multiplier))
-
-# WORKAROUND: Use function calls that accept the value
-scaled = map(numbers, (x) => multiply(x, 2))  # Use literal instead
+# Here `it` refers to the input variable, NOT the implicit parameter.
+# This would need an explicit lambda:
+filtered = filter(numbers, (x) => x > it)
 ```
 
-2. **Function calls in predicates**: Comparisons in lambda bodies currently use function calls (`gt`, `lt`, etc.) rather than operators (`>`, `<`).
+### Nested HOFs
 
-:::tip Keep It Simple
-If your lambda logic becomes complex (nested calls, multiple operations), consider extracting it to a named module instead. Lambdas work best for simple predicates and transformations.
-:::
+In nested HOF calls, each `it` binds to its immediately enclosing HOF:
+
+```constellation
+# The inner `it` belongs to the inner `any` call.
+# The outer `filter` needs an explicit lambda:
+result = filter(numbers, (x) => any(items, it == x))
+```
 
 ## Best Practices
 
-1. **Use meaningful parameter names**: `(item) => ...` is clearer than `(x) => ...` for complex operations
-2. **Keep lambdas simple**: If logic is complex, consider a named module
-3. **Chain operations**: Build pipelines by chaining filter, map, all, any
-4. **Import required functions**: Remember to `use` stdlib namespaces for comparison and math functions
-5. **Validate early**: Use `all` and `any` for early validation before expensive processing
+1. **Use infix + `it` for simple operations** — `numbers filter it > 0` reads naturally
+2. **Use explicit lambdas for complex logic** — if the body needs multiple operations or named parameters for clarity
+3. **Chain left-to-right** — `numbers filter it > 0 map it * 2` reads better than nested calls
+4. **Capture freely** — closures are well-supported; reference outer variables without ceremony
+5. **Validate early** — use `all` and `any` for validation before expensive processing
 
 ## Related
 
