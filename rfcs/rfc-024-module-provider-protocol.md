@@ -1,6 +1,6 @@
 # RFC-024: Module Provider Protocol
 
-**Status:** Draft (Revision 3 - CURRENT)
+**Status:** Superseded by RFC-024 v4
 **Priority:** P3 (Extensibility)
 **Author:** Claude + User
 **Created:** 2026-02-10
@@ -8,11 +8,9 @@
 
 > **⚠️ This is version 1 (superseded)**
 >
-> **Current version:** [rfc-024-module-provider-protocol-v3.md](./rfc-024-module-provider-protocol-v3.md)
+> **Current version:** [rfc-024-module-provider-protocol-v4.md](./rfc-024-module-provider-protocol-v4.md) (Implemented)
 >
-> **Key changes in v3:**
-> - ✅ gRPC (not HTTP) for 2.5x better performance
-> - ✅ Compile-time type validation with proof protocol
+> This document is preserved for historical reference. The final implemented design is v4.
 > - ✅ Static configuration first (defer dynamic registration)
 > - ✅ Leverages existing compiler for validation
 >

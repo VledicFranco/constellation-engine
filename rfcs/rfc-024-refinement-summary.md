@@ -1,5 +1,6 @@
 # RFC-024 Refinement Summary
 
+**Status:** Archived (Historical — v1→v2 refinement process log)
 **Process:** Organon Methodology Application
 **Date:** 2026-02-10
 **Reviewer:** Claude

@@ -1,6 +1,6 @@
 # RFC-025: Streaming Pipelines
 
-**Status:** Draft
+**Status:** Implemented (Beta)
 **Priority:** P1 (Core Runtime / Extensibility)
 **Author:** Human + Claude
 **Created:** 2026-02-10

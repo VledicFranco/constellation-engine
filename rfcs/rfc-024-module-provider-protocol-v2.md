@@ -1,10 +1,11 @@
 # RFC-024: Module Provider Protocol (Revised)
 
-**Status:** Draft (Revision 2 - Organon Compliant)
+**Status:** Superseded by RFC-024 v4
 **Priority:** P3 (Extensibility)
 **Author:** Claude (Revision after Organon Analysis)
 **Created:** 2026-02-10
 **Supersedes:** RFC-024 v1
+**Superseded by:** [RFC-024 v4](./rfc-024-module-provider-protocol-v4.md) (Implemented)
 
 ---
 

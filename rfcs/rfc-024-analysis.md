@@ -1,7 +1,7 @@
 # RFC-024 Organon Analysis
 
 **RFC:** Module Provider Protocol
-**Status:** Draft (Under Review)
+**Status:** Archived (Historical — Organon analysis of RFC-024 v1)
 **Reviewer:** Claude (Organon Methodology Application)
 **Date:** 2026-02-10
 
