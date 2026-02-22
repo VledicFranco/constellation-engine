@@ -113,6 +113,73 @@ class ClosureTest extends AnyFlatSpec with Matchers {
     LangCompiler(registry, Map.empty)
   }
 
+  /** Extended compiler with additional stdlib functions needed for infix operator desugaring. The
+    * TypeChecker desugars infix operators to stdlib function calls (e.g., `x > 5` → `gt(x, 5)`), so
+    * the function registry must include all target functions.
+    */
+  private def infixCompiler: LangCompiler = {
+    val base     = closureCompiler
+    val registry = base.functionRegistry
+    // Additional comparison functions for infix desugaring
+    registry.register(
+      FunctionSignature(
+        name = "gte",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.gte",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "lte",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.lte",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "eq-int",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.eq-int",
+        namespace = Some("stdlib.compare")
+      )
+    )
+    // not — needed for != desugaring (TypeChecker wraps eq in not)
+    registry.register(
+      FunctionSignature(
+        name = "not",
+        params = List("a" -> SemanticType.SBoolean),
+        returns = SemanticType.SBoolean,
+        moduleName = "stdlib.not",
+        namespace = Some("stdlib.logic")
+      )
+    )
+    // Additional arithmetic for infix desugaring
+    registry.register(
+      FunctionSignature(
+        name = "subtract",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.subtract",
+        namespace = Some("stdlib.math")
+      )
+    )
+    registry.register(
+      FunctionSignature(
+        name = "divide",
+        params = List("a" -> SemanticType.SInt, "b" -> SemanticType.SInt),
+        returns = SemanticType.SInt,
+        moduleName = "stdlib.divide",
+        namespace = Some("stdlib.math")
+      )
+    )
+    LangCompiler(registry, Map.empty)
+  }
+
   // ===== Basic Closure Tests =====
 
   "ClosureTest" should "compile filter with captured input variable" in {
@@ -402,5 +469,281 @@ class ClosureTest extends AnyFlatSpec with Matchers {
         _.isInstanceOf[InlineTransform.MapTransform]
       )
     ) shouldBe true
+  }
+
+  // ===== Infix Operator Tests (RFC-032) =====
+  //
+  // The TypeChecker desugars infix operators to the same stdlib FunctionCall nodes
+  // used by explicit function-call syntax. These tests verify that the full pipeline
+  // (parser → TypeChecker → IRGenerator → DagCompiler) handles infix in lambda bodies.
+
+  it should "compile filter with infix > operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |positive = filter(numbers, (x) => x > 0)
+        |out positive""".stripMargin
+
+    val result = compiler.compile(source, "infix-gt-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.FilterTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile filter with infix < operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |small = filter(numbers, (x) => x < 100)
+        |out small""".stripMargin
+
+    val result = compiler.compile(source, "infix-lt-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with infix >= operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |result = filter(numbers, (x) => x >= 0)
+        |out result""".stripMargin
+
+    val result = compiler.compile(source, "infix-gte-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with infix <= operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |result = filter(numbers, (x) => x <= 100)
+        |out result""".stripMargin
+
+    val result = compiler.compile(source, "infix-lte-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with infix == operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |zeros = filter(numbers, (x) => x == 0)
+        |out zeros""".stripMargin
+
+    val result = compiler.compile(source, "infix-eq-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with infix != operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |use stdlib.logic
+        |
+        |in numbers: List<Int>
+        |
+        |nonzero = filter(numbers, (x) => x != 0)
+        |out nonzero""".stripMargin
+
+    val result = compiler.compile(source, "infix-neq-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile map with infix * operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |doubled = map(numbers, (x) => x * 2)
+        |out doubled""".stripMargin
+
+    val result = compiler.compile(source, "infix-mul-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile map with infix + operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |incremented = map(numbers, (x) => x + 1)
+        |out incremented""".stripMargin
+
+    val result = compiler.compile(source, "infix-add-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile map with infix - operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |decremented = map(numbers, (x) => x - 1)
+        |out decremented""".stripMargin
+
+    val result = compiler.compile(source, "infix-sub-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile map with infix / operator" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |halved = map(numbers, (x) => x / 2)
+        |out halved""".stripMargin
+
+    val result = compiler.compile(source, "infix-div-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with combined infix and boolean operators" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |inRange = filter(numbers, (x) => x > 0 and x < 100)
+        |out inRange""".stripMargin
+
+    val result = compiler.compile(source, "infix-combined-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile map with compound infix arithmetic" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |transformed = map(numbers, (x) => x * 2 + 1)
+        |out transformed""".stripMargin
+
+    val result = compiler.compile(source, "infix-compound-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile filter with infix > and captured variable (closure)" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |in threshold: Int
+        |
+        |above = filter(numbers, (x) => x > threshold)
+        |out above""".stripMargin
+
+    val result = compiler.compile(source, "infix-closure-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    // Captured variable → ClosureFilterTransform
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureFilterTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("threshold")
+  }
+
+  it should "compile map with infix + and captured variable (closure)" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |in offset: Int
+        |
+        |shifted = map(numbers, (x) => x + offset)
+        |out shifted""".stripMargin
+
+    val result = compiler.compile(source, "infix-closure-map-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureMapTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile filter with infix range and two captured variables (closure)" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |in lower: Int
+        |in upper: Int
+        |
+        |inRange = filter(numbers, (x) => x > lower and x < upper)
+        |out inRange""".stripMargin
+
+    val result = compiler.compile(source, "infix-closure-range-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureFilterTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("lower")
+    hofNode.transformInputs.keys should contain("upper")
   }
 }

@@ -1142,7 +1142,8 @@ object DagCompiler {
         "gte",
         "lte",
         "eq-int",
-        "eq-string"
+        "eq-string",
+        "not" // supports != desugaring (TypeChecker wraps eq in not)
       )
       if supported.contains(funcName) then Right(())
       else Left(DagCompilerError.UnsupportedFunction(moduleName, funcName))
@@ -1237,31 +1238,73 @@ object DagCompiler {
       // Extract function name from module name (e.g., "stdlib.multiply" -> "multiply")
       val funcName = moduleName.split('.').last
 
-      funcName match {
-        // Arithmetic operations
-        case "add" | "add-int" =>
-          inputs("a").asInstanceOf[Long] + inputs("b").asInstanceOf[Long]
-        case "subtract" | "sub-int" =>
-          inputs("a").asInstanceOf[Long] - inputs("b").asInstanceOf[Long]
-        case "multiply" | "mul-int" =>
-          inputs("a").asInstanceOf[Long] * inputs("b").asInstanceOf[Long]
-        case "divide" | "div-int" =>
-          val b = inputs("b").asInstanceOf[Long]
-          if b != 0 then inputs("a").asInstanceOf[Long] / b else 0L
+      // Coerce a value to Double for mixed-type arithmetic/comparison
+      def toDouble(v: Any): Double = v match {
+        case l: Long   => l.toDouble
+        case d: Double => d
+        case other =>
+          throw DagCompilerError.toException(
+            DagCompilerError.UnsupportedFunction(
+              moduleName,
+              s"$funcName: non-numeric ${other.getClass.getSimpleName}"
+            )
+          )
+      }
 
-        // Comparison operations
+      // True when either operand is a Double (Float values arrive as Double from CValue.CFloat)
+      def hasFloat(a: Any, b: Any): Boolean = a.isInstanceOf[Double] || b.isInstanceOf[Double]
+
+      funcName match {
+        // Arithmetic operations — type-aware for Int and Float
+        case "add" | "add-int" =>
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) + toDouble(b)
+          else a.asInstanceOf[Long] + b.asInstanceOf[Long]
+        case "subtract" | "sub-int" =>
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) - toDouble(b)
+          else a.asInstanceOf[Long] - b.asInstanceOf[Long]
+        case "multiply" | "mul-int" =>
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) * toDouble(b)
+          else a.asInstanceOf[Long] * b.asInstanceOf[Long]
+        case "divide" | "div-int" =>
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then {
+            val bd = toDouble(b)
+            if bd != 0.0 then toDouble(a) / bd else 0.0
+          } else {
+            val bl = b.asInstanceOf[Long]
+            if bl != 0 then a.asInstanceOf[Long] / bl else 0L
+          }
+
+        // Comparison operations — type-aware for Int and Float
         case "gt" =>
-          inputs("a").asInstanceOf[Long] > inputs("b").asInstanceOf[Long]
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) > toDouble(b)
+          else a.asInstanceOf[Long] > b.asInstanceOf[Long]
         case "lt" =>
-          inputs("a").asInstanceOf[Long] < inputs("b").asInstanceOf[Long]
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) < toDouble(b)
+          else a.asInstanceOf[Long] < b.asInstanceOf[Long]
         case "gte" =>
-          inputs("a").asInstanceOf[Long] >= inputs("b").asInstanceOf[Long]
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) >= toDouble(b)
+          else a.asInstanceOf[Long] >= b.asInstanceOf[Long]
         case "lte" =>
-          inputs("a").asInstanceOf[Long] <= inputs("b").asInstanceOf[Long]
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) <= toDouble(b)
+          else a.asInstanceOf[Long] <= b.asInstanceOf[Long]
         case "eq-int" =>
-          inputs("a").asInstanceOf[Long] == inputs("b").asInstanceOf[Long]
+          val (a, b) = (inputs("a"), inputs("b"))
+          if hasFloat(a, b) then toDouble(a) == toDouble(b)
+          else a.asInstanceOf[Long] == b.asInstanceOf[Long]
         case "eq-string" =>
           inputs("a").asInstanceOf[String] == inputs("b").asInstanceOf[String]
+
+        // Boolean — supports != desugaring (TypeChecker wraps eq in not)
+        case "not" =>
+          !inputs("a").asInstanceOf[Boolean]
 
         case _ =>
           throw DagCompilerError.toException(
