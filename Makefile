@@ -1,7 +1,7 @@
 # Constellation Engine - Development Makefile
 # Usage: make <target>
 
-.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk test-invariants
+.PHONY: help dev server watch test compile clean extension ext-watch install all coverage coverage-report coverage-html fmt fmt-check lint lint-fix benchmark benchmark-compiler benchmark-viz benchmark-cache benchmark-lsp benchmark-stream test-dashboard test-dashboard-smoke test-dashboard-full install-dashboard-tests dashboard dashboard-watch install-dashboard assembly docker-build docker-run docs-dev docs-build docs-install docs-serve docs-sync generate-docs check-docs verify-ethos cli test-cli cli-assembly test-typescript-sdk build-typescript-sdk test-invariants
 
 # Default target
 help:
@@ -48,6 +48,7 @@ help:
 	@echo "  make benchmark-viz      - Visualization benchmarks"
 	@echo "  make benchmark-cache    - Cache effectiveness benchmarks"
 	@echo "  make benchmark-lsp      - LSP operations benchmarks"
+	@echo "  make benchmark-stream   - Streaming module benchmarks"
 	@echo ""
 	@echo "Code Coverage:"
 	@echo "  make coverage       - Run tests with coverage and generate reports"
@@ -248,7 +249,7 @@ install-dashboard-tests:
 benchmark:
 	@echo "Running all performance benchmarks..."
 	@echo "Results will be written to target/benchmark-*.json"
-	sbt "langCompiler/testOnly *Benchmark" "langLsp/testOnly *LspOperationsBenchmark"
+	sbt "set ThisBuild / Test / testOptions := Seq()" "langCompiler/testOnly *Benchmark" "langLsp/testOnly *LspOperationsBenchmark" "httpApi/testOnly *StreamingModuleBenchmark"
 
 # Run compiler pipeline benchmarks only
 benchmark-compiler:
@@ -269,6 +270,11 @@ benchmark-cache:
 benchmark-lsp:
 	@echo "Running LSP operations benchmarks..."
 	sbt "langLsp/testOnly *LspOperationsBenchmark"
+
+# Run streaming module benchmarks
+benchmark-stream:
+	@echo "Running streaming module benchmarks..."
+	sbt "set ThisBuild / Test / testOptions := Seq()" "httpApi/testOnly *StreamingModuleBenchmark"
 
 # =============================================================================
 # Code Coverage
