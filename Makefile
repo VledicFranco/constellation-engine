@@ -335,15 +335,15 @@ fmt-check:
 	@echo "Checking code formatting..."
 	sbt scalafmtCheckAll
 
-# Check for lint issues
+# Check for lint issues (compiles test sources first — scalafix needs the semantic DB)
 lint:
 	@echo "Checking for lint issues..."
-	sbt "scalafixAll --check"
+	sbt "Test / compile" "scalafixAll --check"
 
 # Auto-fix lint issues
 lint-fix:
 	@echo "Fixing lint issues..."
-	sbt scalafixAll
+	sbt "Test / compile" scalafixAll
 
 # =============================================================================
 # Deployment
