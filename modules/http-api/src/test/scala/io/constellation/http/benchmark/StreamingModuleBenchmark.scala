@@ -3,8 +3,8 @@ package io.constellation.http.benchmark
 import java.util.UUID
 
 import cats.Eval
-import cats.effect.{IO, Ref}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, Ref}
 import cats.implicits.*
 
 import io.constellation.*
