@@ -419,7 +419,7 @@ object ConstellationParser extends MemoizationSupport {
     }
 
   // Expressions
-  // Precedence (low to high): lambda -> coalesce (??) -> when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
+  // Precedence (low to high): lambda -> coalesce (??) -> hof-infix -> when (guard) -> or -> and -> not -> compare -> addSub -> mulDiv -> postfix -> primary
   lazy val expression: P[Expression] = P.defer(lambdaExpr.backtrack | exprCoalesce)
 
   // Coalesce operator: a ?? b
@@ -428,9 +428,39 @@ object ConstellationParser extends MemoizationSupport {
   private lazy val coalesceOp: P[Unit] = token(P.string("??").void)
 
   private lazy val exprCoalesce: P[Expression] =
-    (withSpan(exprGuard) ~ (coalesceOp *> withSpan(P.defer(exprCoalesce))).?).map {
+    (withSpan(exprHofInfix) ~ (coalesceOp *> withSpan(P.defer(exprCoalesce))).?).map {
       case (left, None)        => left.value
       case (left, Some(right)) => Expression.Coalesce(left, right)
+    }
+
+  // RFC-033: Infix HOF syntax — numbers filter it > 0 map it * 2
+  // Soft keywords: filter, map, all, any are NOT added to `reserved`.
+  // They remain valid identifiers elsewhere; only matched at word boundaries in infix position.
+  // Left-associative. Right operand is exprGuard (NOT expression), so bare lambdas
+  // cannot appear in infix position — use prefix form filter(nums, (x) => x > 0).
+  private lazy val hofKeyword: P[String] =
+    token(
+      (P.string("filter") <* P.not(alpha | digit | P.charIn("-_"))).as("filter").backtrack |
+        (P.string("map") <* P.not(alpha | digit | P.charIn("-_"))).as("map").backtrack |
+        (P.string("all") <* P.not(alpha | digit | P.charIn("-_"))).as("all").backtrack |
+        (P.string("any") <* P.not(alpha | digit | P.charIn("-_"))).as("any").backtrack
+    )
+
+  private lazy val exprHofInfix: P[Expression] =
+    (withSpan(exprGuard) ~ (hofKeyword ~ withSpan(exprGuard)).rep0).map {
+      case (first, Nil) => first.value
+      case (first, rest) =>
+        rest
+          .foldLeft((first.value, first.span)) { case ((left, leftSpan), (op, right)) =>
+            val callSpan = Span(leftSpan.start, right.span.end)
+            val call = Expression.FunctionCall(
+              QualifiedName(List(op)),
+              List(Located(left, leftSpan), right),
+              ModuleCallOptions.empty
+            )
+            (call, callSpan)
+          }
+          ._1
     }
 
   // Guard expression: expr when condition
