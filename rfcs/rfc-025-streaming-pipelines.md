@@ -1,6 +1,6 @@
 # RFC-025: Streaming Pipelines
 
-**Status:** Implemented (Beta)
+**Status:** Implemented
 **Priority:** P1 (Core Runtime / Extensibility)
 **Author:** Human + Claude
 **Created:** 2026-02-10
@@ -1339,7 +1339,7 @@ Targeted tests for specific risks identified in the PR:
 | `filter(list, pred)` where `list: List<Int>` | HOF `List→Seq` breakage | Type error (confirms regression) |
 | `filter(seq, pred)` where `seq: Seq<Int>` | HOF works with new type | Should compile and run |
 | `with on_error: skip` on non-String module | Skip strategy emits `CString("")` | Wrong type downstream (confirms bug) |
-| DAG with 2 inputs to single module | Fan-in not implemented | Should error clearly, not silently drop |
+| DAG with 2 inputs to single module | Fan-in implemented (#229) | Joins via Zip/CombineLatest/Buffer → CProduct |
 | `with window: tumbling(5s)` at runtime | Windowing not applied in `StreamCompiler` | Verify: silent ignore or explicit error? |
 
 #### Phase 4: Document Results and Update Golden Outputs
@@ -1360,8 +1360,8 @@ Targeted tests for specific risks identified in the PR:
 | `with window:` / `with batch:` options | **Implemented** | Parser supports; `StreamCompiler` applies window/batch options |
 | Graceful shutdown | **Fixed** | `Deferred`-based `interruptWhen` wired into composed stream |
 | Error message in `StreamStatus.Failed` | **Fixed** | Was silently discarding error string |
-| Fan-in (multiple upstream inputs) | **Deferred** | Raises warning; only first input used. See [P1] issue |
-| Join strategies (zip, combineLatest, buffer) | **Deferred** | Parsed but not applied by `StreamCompiler` |
+| Fan-in (multiple upstream inputs) | **Implemented** | `joinInputStreams` dispatches Zip/CombineLatest/Buffer. Closes #229 |
+| Join strategies (zip, combineLatest, buffer) | **Implemented** | Applied by `StreamCompiler.buildGraph` via `joinInputStreams` |
 | `collect` pseudo-module | **Deferred** | Not implemented — auto-materialization boundary |
 | `CType.CSeq` in type system | **Deferred** | `CValue.CSeq` exists; `CType.CSeq` is a separate RFC scope |
 | Circuit breaker | **Deferred** | Phase 5 RFC — requires own design doc |

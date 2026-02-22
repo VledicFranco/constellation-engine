@@ -374,6 +374,172 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
     dlq.moduleName shouldBe "mod"
   }
 
+  // ===== Fan-in Join Strategy Tests (Issue #229) =====
+
+  /** Helper to build a fan-in DAG: source1 + source2 -> module -> sink */
+  private def fanInDag(
+      source1Name: String,
+      source2Name: String,
+      moduleName: String,
+      sinkName: String
+  ): (DagSpec, java.util.UUID, java.util.UUID, java.util.UUID) = {
+    val src1Id = java.util.UUID.randomUUID()
+    val src2Id = java.util.UUID.randomUUID()
+    val modId  = java.util.UUID.randomUUID()
+    val snkId  = java.util.UUID.randomUUID()
+
+    val dagSpec = DagSpec(
+      metadata = ComponentMetadata("fan-in", "fan-in pipeline", Nil, 1, 0),
+      modules = Map(
+        modId -> ModuleNodeSpec(
+          metadata = ComponentMetadata(moduleName, "merge", Nil, 1, 0),
+          consumes = Map(source1Name -> CType.CString, source2Name -> CType.CString),
+          produces = Map(
+            "output" -> CType.CProduct(
+              Map(source1Name -> CType.CString, source2Name -> CType.CString)
+            )
+          )
+        )
+      ),
+      data = Map(
+        src1Id -> DataNodeSpec(
+          source1Name,
+          Map(src1Id -> source1Name),
+          CType.CString,
+          None,
+          Map.empty
+        ),
+        src2Id -> DataNodeSpec(
+          source2Name,
+          Map(src2Id -> source2Name),
+          CType.CString,
+          None,
+          Map.empty
+        ),
+        snkId -> DataNodeSpec(
+          sinkName,
+          Map(snkId -> sinkName),
+          CType.CProduct(Map(source1Name -> CType.CString, source2Name -> CType.CString)),
+          None,
+          Map.empty
+        )
+      ),
+      inEdges = Set(src1Id -> modId, src2Id -> modId),
+      outEdges = Set(modId -> snkId),
+      declaredOutputs = List(sinkName),
+      outputBindings = Map(sinkName -> snkId)
+    )
+    (dagSpec, src1Id, src2Id, modId)
+  }
+
+  "StreamCompiler fan-in" should "zip two input streams into CProduct values" in {
+    val (dagSpec, _, _, modId) = fanInDag("left", "right", "Merge", "output")
+
+    val result = (for {
+      q1   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      q2   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("left", MemoryConnector.source("left", q1))
+        .source("right", MemoryConnector.source("right", q2))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      identityFn = (v: CValue) => IO.pure(v)
+      graph <- StreamCompiler.wire(
+        dagSpec,
+        registry,
+        Map(modId -> identityFn),
+        joinStrategy = JoinStrategy.Zip
+      )
+      _     <- q1.offer(Some(CValue.CString("a")))
+      _     <- q1.offer(Some(CValue.CString("b")))
+      _     <- q1.offer(Some(CValue.CString("c")))
+      _     <- q1.offer(None)
+      _     <- q2.offer(Some(CValue.CString("x")))
+      _     <- q2.offer(Some(CValue.CString("y")))
+      _     <- q2.offer(Some(CValue.CString("z")))
+      _     <- q2.offer(None)
+      _     <- graph.stream.compile.drain
+      items <- snkQ.tryTakeN(None)
+    } yield items).unsafeRunSync()
+
+    result should have size 3
+    all(result) shouldBe a[CValue.CProduct]
+    result(0).asInstanceOf[CValue.CProduct].value("left") shouldBe CValue.CString("a")
+    result(0).asInstanceOf[CValue.CProduct].value("right") shouldBe CValue.CString("x")
+    result(2).asInstanceOf[CValue.CProduct].value("left") shouldBe CValue.CString("c")
+    result(2).asInstanceOf[CValue.CProduct].value("right") shouldBe CValue.CString("z")
+  }
+
+  it should "combineLatest two input streams into CProduct values" in {
+    val (dagSpec, _, _, modId) = fanInDag("left", "right", "Merge", "output")
+
+    val result = (for {
+      q1   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      q2   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("left", MemoryConnector.source("left", q1))
+        .source("right", MemoryConnector.source("right", q2))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      identityFn = (v: CValue) => IO.pure(v)
+      graph <- StreamCompiler.wire(
+        dagSpec,
+        registry,
+        Map(modId -> identityFn),
+        joinStrategy = JoinStrategy.CombineLatest
+      )
+      _     <- q1.offer(Some(CValue.CString("a")))
+      _     <- q1.offer(None)
+      _     <- q2.offer(Some(CValue.CString("x")))
+      _     <- q2.offer(None)
+      _     <- graph.stream.compile.drain
+      items <- snkQ.tryTakeN(None)
+    } yield items).unsafeRunSync()
+
+    result should not be empty
+    all(result) shouldBe a[CValue.CProduct]
+    result.foreach { v =>
+      val m = v.asInstanceOf[CValue.CProduct].value
+      m should contain key "left"
+      m should contain key "right"
+    }
+  }
+
+  it should "buffer two input streams and zip into CProduct values" in {
+    val (dagSpec, _, _, modId) = fanInDag("left", "right", "Merge", "output")
+
+    val result = (for {
+      q1   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      q2   <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("left", MemoryConnector.source("left", q1))
+        .source("right", MemoryConnector.source("right", q2))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      identityFn = (v: CValue) => IO.pure(v)
+      graph <- StreamCompiler.wire(
+        dagSpec,
+        registry,
+        Map(modId -> identityFn),
+        joinStrategy = JoinStrategy.Buffer(16)
+      )
+      _     <- q1.offer(Some(CValue.CString("a")))
+      _     <- q1.offer(Some(CValue.CString("b")))
+      _     <- q1.offer(None)
+      _     <- q2.offer(Some(CValue.CString("x")))
+      _     <- q2.offer(Some(CValue.CString("y")))
+      _     <- q2.offer(None)
+      _     <- graph.stream.compile.drain
+      items <- snkQ.tryTakeN(None)
+    } yield items).unsafeRunSync()
+
+    result should have size 2
+    all(result) shouldBe a[CValue.CProduct]
+  }
+
   "MemoryConnector.pair" should "create matched source/sink pair" in {
     val result = (for {
       pairResult <- MemoryConnector.pair("test-pair")

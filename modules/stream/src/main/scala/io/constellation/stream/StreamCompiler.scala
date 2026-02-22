@@ -12,6 +12,7 @@ import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
 
 import fs2.Stream
+import fs2.concurrent.SignallingRef
 
 /** Compiles a DagSpec into an fs2 Stream graph for continuous execution.
   *
@@ -168,21 +169,23 @@ object StreamCompiler {
       // Get module function
       val moduleFn = modules.get(moduleId)
 
-      // Fan-in guard: warn when multiple inputs are present (fan-in is deferred to a future RFC)
-      if inputDataIds.size > 1 then
-        System.err.println(
-          s"[WARN] StreamCompiler: Module '$moduleName' ($moduleId) has ${inputDataIds.size} inputs; only first used (fan-in is deferred)"
-        )
+      // Build named input streams for fan-in join (field name from DataNodeSpec.name)
+      val namedInputStreams: List[(String, Stream[IO, CValue])] = inputDataIds.toList.flatMap {
+        id =>
+          for {
+            stream   <- streams.get(id)
+            dataSpec <- dagSpec.data.get(id)
+          } yield dataSpec.name -> stream
+      }
+
+      val inputStream: Stream[IO, CValue] = joinInputStreams(namedInputStreams, joinStrategy)
 
       // For each output data node, create a stream that:
-      // 1. Takes input from upstream data nodes
+      // 1. Takes input from upstream data nodes (joined via strategy)
       // 2. Applies the module function
       // 3. Applies error handling
       val newStreams = outputDataIds.flatMap { outDataId =>
         moduleFn.map { fn =>
-          val inputStream = inputDataIds.headOption
-            .flatMap(id => streams.get(id))
-            .getOrElse(Stream.empty)
 
           val processed = errorStrategy match {
             case StreamErrorStrategy.Skip =>
@@ -257,6 +260,75 @@ object StreamCompiler {
 
   private def safeMessage(e: Throwable): String =
     Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
+
+  /** Build a CProduct from a value map, deriving the type structure from each value's ctype. */
+  private def makeCProduct(values: Map[String, CValue]): CValue.CProduct =
+    CValue.CProduct(values, values.map { case (k, v) => k -> v.ctype })
+
+  /** Dispatches to the correct join implementation based on strategy. Single-input passes through
+    * as-is (no CProduct wrapping) — preserves existing single-input behavior exactly.
+    */
+  private def joinInputStreams(
+      namedStreams: List[(String, Stream[IO, CValue])],
+      strategy: JoinStrategy
+  ): Stream[IO, CValue] =
+    namedStreams match {
+      case Nil                => Stream.empty
+      case (_, single) :: Nil => single
+      case multiple =>
+        val names   = multiple.map(_._1)
+        val streams = multiple.map(_._2)
+        strategy match {
+          case JoinStrategy.Zip            => zipAll(names, streams)
+          case JoinStrategy.CombineLatest  => combineLatestAll(multiple)
+          case JoinStrategy.Buffer(maxBuf) => zipAll(names, streams.map(_.buffer(maxBuf)))
+        }
+    }
+
+  /** Zip N streams synchronously into CProduct emissions. Terminates when the shortest stream
+    * terminates (standard zip semantics).
+    */
+  private def zipAll(
+      names: List[String],
+      streams: List[Stream[IO, CValue]]
+  ): Stream[IO, CValue] =
+    streams match {
+      case Nil      => Stream.empty
+      case s :: Nil => s.map(v => makeCProduct(Map(names.head -> v)))
+      case first :: rest =>
+        val zipped = rest.foldLeft(first.map(v => List(v))) { (acc, s) =>
+          acc.zip(s).map { case (vs, v) => vs :+ v }
+        }
+        zipped.map(values => makeCProduct(names.zip(values).toMap))
+    }
+
+  /** CombineLatest: emit a CProduct snapshot whenever any input emits, once all inputs have
+    * produced at least one value. Uses SignallingRef per input to hold latest values; merge
+    * interleaves concurrent input streams without deadlock.
+    */
+  private def combineLatestAll(
+      namedStreams: List[(String, Stream[IO, CValue])]
+  ): Stream[IO, CValue] = {
+    val n = namedStreams.size
+    Stream
+      .eval(namedStreams.traverse { case (name, _) =>
+        SignallingRef.of[IO, Option[CValue]](None).map(name -> _)
+      })
+      .flatMap { refs =>
+        val refMap = refs.toMap
+        namedStreams
+          .map { case (name, stream) =>
+            stream.evalMapFilter { v =>
+              for {
+                _       <- refMap(name).set(Some(v))
+                entries <- refs.traverse { case (n2, ref) => ref.get.map(n2 -> _) }
+                resolved = entries.collect { case (n2, Some(v2)) => n2 -> v2 }
+              } yield Option.when(resolved.size == n)(makeCProduct(resolved.toMap))
+            }
+          }
+          .reduce(_ merge _)
+      }
+  }
 
   /** Topological sort of module nodes in the DAG. */
   private def topologicalSort(dagSpec: DagSpec): List[UUID] = {
