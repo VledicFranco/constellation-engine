@@ -606,10 +606,10 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
           )
         )
       )
-      _ <- srcQ.offer(Some(CValue.CString("a")))
-      _ <- srcQ.offer(Some(CValue.CString("b")))
-      _ <- srcQ.offer(Some(CValue.CString("c")))
-      _ <- srcQ.offer(None)
+      _     <- srcQ.offer(Some(CValue.CString("a")))
+      _     <- srcQ.offer(Some(CValue.CString("b")))
+      _     <- srcQ.offer(Some(CValue.CString("c")))
+      _     <- srcQ.offer(None)
       _     <- graph.stream.compile.drain
       items <- snkQ.tryTakeN(None)
       snap  <- graph.metrics.snapshot
@@ -648,9 +648,9 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
           )
         )
       )
-      _ <- srcQ.offer(Some(CValue.CString("x")))
-      _ <- srcQ.offer(Some(CValue.CString("y")))
-      _ <- srcQ.offer(None)
+      _     <- srcQ.offer(Some(CValue.CString("x")))
+      _     <- srcQ.offer(Some(CValue.CString("y")))
+      _     <- srcQ.offer(None)
       _     <- graph.stream.compile.drain
       items <- snkQ.tryTakeN(None)
     } yield items).unsafeRunSync()

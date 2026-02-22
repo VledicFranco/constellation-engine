@@ -126,7 +126,15 @@ object StreamCompiler {
           }
           .build
 
-        wire(dagSpec, resolvedRegistry, modules, options, errorStrategy, joinStrategy, moduleOptions)
+        wire(
+          dagSpec,
+          resolvedRegistry,
+          modules,
+          options,
+          errorStrategy,
+          joinStrategy,
+          moduleOptions
+        )
     }
   }
 

@@ -256,9 +256,9 @@ class StreamRoutes(
   /** Build a `CValue => IO[CValue]` wrapper for a module using lightweight per-element execution.
     *
     * Instead of calling `Runtime.run` per element (which re-runs validation, scheduler setup,
-    * inline transforms, and state initialization), this directly initializes the module and runs
-    * it with a minimal Runtime — eliminating all unnecessary overhead for single-module synthetic
-    * DAGs in the streaming hot path.
+    * inline transforms, and state initialization), this directly initializes the module and runs it
+    * with a minimal Runtime — eliminating all unnecessary overhead for single-module synthetic DAGs
+    * in the streaming hot path.
     */
   private def buildStreamingModuleFn(
       spec: ModuleNodeSpec,

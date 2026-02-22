@@ -1141,7 +1141,8 @@ class ConstellationRoutes(
         val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
         val missingNames  = allInputNames -- inputs.keySet
         if missingNames.nonEmpty then {
-          val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs, image.moduleOptions)
+          val sig =
+            buildSuspendedSignature(dagSpec, image.structuralHash, inputs, image.moduleOptions)
           IO.pure(Right((sig, dagSpec)))
         } else {
           val loaded = io.constellation.PipelineImage.rehydrate(image)
