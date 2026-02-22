@@ -380,7 +380,7 @@ object ConstellationServer {
         streamRoutesOpt = for {
           reg <- config.streamRegistry
           mgr <- streamManagerOpt
-        } yield new StreamRoutes(mgr, reg, effectiveConstellation, compiler)
+        } yield new StreamRoutes(mgr, reg, effectiveConstellation)
 
         // Wire event publisher from lifecycle manager to WebSocket
         _ <- Resource.eval(

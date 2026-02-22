@@ -125,19 +125,20 @@ class StreamLifecycleManagerTest extends AnyFlatSpec with Matchers {
 
   // ===== Stop =====
 
-  it should "stop a running stream" in {
+  it should "stop a running stream and remove it from state" in {
     val result = (for {
       mgr   <- StreamLifecycleManager.create
       graph <- longRunningGraph
       _     <- mgr.deploy("s1", "test-stream", graph)
       res   <- mgr.stop("s1")
       got   <- mgr.get("s1")
-    } yield (res, got)).unsafeRunSync()
+      list  <- mgr.list
+    } yield (res, got, list)).unsafeRunSync()
 
-    val (stopResult, streamOpt) = result
+    val (stopResult, streamOpt, streams) = result
     stopResult shouldBe Right(())
-    streamOpt shouldBe defined
-    streamOpt.get.status shouldBe StreamStatus.Stopped
+    streamOpt shouldBe None
+    streams shouldBe empty
   }
 
   it should "return error when stopping unknown stream" in {
@@ -148,6 +149,37 @@ class StreamLifecycleManagerTest extends AnyFlatSpec with Matchers {
 
     result shouldBe a[Left[_, _]]
     result.left.toOption.get should include("not found")
+  }
+
+  it should "return error on double-stop (stream already removed)" in {
+    val result = (for {
+      mgr   <- StreamLifecycleManager.create
+      graph <- longRunningGraph
+      _     <- mgr.deploy("s1", "test-stream", graph)
+      res1  <- mgr.stop("s1")
+      res2  <- mgr.stop("s1")
+    } yield (res1, res2)).unsafeRunSync()
+
+    val (first, second) = result
+    first shouldBe Right(())
+    second shouldBe a[Left[_, _]]
+    second.left.toOption.get should include("not found")
+  }
+
+  it should "stop a failed stream cleanly" in {
+    val result = (for {
+      mgr   <- StreamLifecycleManager.create
+      graph <- failingGraph
+      _     <- mgr.deploy("s1", "test-stream", graph)
+      // Allow the fiber to fail
+      _   <- IO.sleep(scala.concurrent.duration.FiniteDuration(100, "ms"))
+      res <- mgr.stop("s1")
+      got <- mgr.get("s1")
+    } yield (res, got)).unsafeRunSync()
+
+    val (stopResult, streamOpt) = result
+    stopResult shouldBe Right(())
+    streamOpt shouldBe None
   }
 
   // ===== Metrics =====

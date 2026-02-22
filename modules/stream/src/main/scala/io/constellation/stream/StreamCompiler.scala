@@ -76,6 +76,7 @@ object StreamCompiler {
       config: StreamPipelineConfig,
       registry: ConnectorRegistry,
       modules: Map[UUID, CValue => IO[CValue]],
+      options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
   ): IO[StreamGraph] = {
@@ -118,7 +119,7 @@ object StreamCompiler {
           }
           .build
 
-        wire(dagSpec, resolvedRegistry, modules, StreamOptions(), errorStrategy, joinStrategy)
+        wire(dagSpec, resolvedRegistry, modules, options, errorStrategy, joinStrategy)
     }
   }
 
@@ -183,24 +184,33 @@ object StreamCompiler {
             .flatMap(id => streams.get(id))
             .getOrElse(Stream.empty)
 
-          val processed = inputStream.evalMap { input =>
-            val wrapped = errorStrategy match {
-              case StreamErrorStrategy.Skip =>
-                fn(input).handleError(_ => CValue.CString(""))
-              case StreamErrorStrategy.Log =>
-                fn(input).handleErrorWith { err =>
+          val processed = errorStrategy match {
+            case StreamErrorStrategy.Skip =>
+              // Skip genuinely drops failed elements instead of emitting a sentinel
+              inputStream.evalMapFilter { input =>
+                (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
+                  .handleError(_ => None)
+              }
+            case StreamErrorStrategy.Log =>
+              inputStream.evalMap { input =>
+                val wrapped = fn(input).handleErrorWith { err =>
                   metrics.recordError(moduleName) *>
-                    IO.pure(CValue.CString(s"error: ${err.getMessage}"))
+                    IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
                 }
-              case StreamErrorStrategy.Propagate =>
-                fn(input)
-              case StreamErrorStrategy.Dlq =>
-                fn(input).handleErrorWith { err =>
+                wrapped <* metrics.recordElement(moduleName)
+              }
+            case StreamErrorStrategy.Propagate =>
+              inputStream.evalMap { input =>
+                fn(input) <* metrics.recordElement(moduleName)
+              }
+            case StreamErrorStrategy.Dlq =>
+              inputStream.evalMap { input =>
+                val wrapped = fn(input).handleErrorWith { err =>
                   metrics.recordDlq(moduleName) *>
-                    IO.pure(CValue.CString(s"dlq: ${err.getMessage}"))
+                    IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
                 }
-            }
-            wrapped <* metrics.recordElement(moduleName)
+                wrapped <* metrics.recordElement(moduleName)
+              }
           }
 
           outDataId -> processed
@@ -244,6 +254,9 @@ object StreamCompiler {
       )
     )
   }
+
+  private def safeMessage(e: Throwable): String =
+    Option(e.getMessage).getOrElse(e.getClass.getSimpleName)
 
   /** Topological sort of module nodes in the DAG. */
   private def topologicalSort(dagSpec: DagSpec): List[UUID] = {
