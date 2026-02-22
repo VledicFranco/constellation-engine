@@ -540,6 +540,129 @@ class StreamCompilerTest extends AnyFlatSpec with Matchers {
     all(result) shouldBe a[CValue.CProduct]
   }
 
+  // ===== Collect Pseudo-Module Tests (Issue #230) =====
+
+  /** Helper to build a collect DAG: source -> collect -> sink */
+  private def collectDag(
+      sourceName: String,
+      sinkName: String
+  ): (DagSpec, java.util.UUID, java.util.UUID, java.util.UUID) = {
+    val sourceId  = java.util.UUID.randomUUID()
+    val collectId = java.util.UUID.randomUUID()
+    val sinkId    = java.util.UUID.randomUUID()
+
+    val dagSpec = DagSpec(
+      metadata = ComponentMetadata("collect-test", "collect pipeline", Nil, 1, 0),
+      modules = Map(
+        collectId -> ModuleNodeSpec(
+          metadata = ComponentMetadata("collect", "batch elements", Nil, 1, 0),
+          consumes = Map("input" -> CType.CString),
+          produces = Map("output" -> CType.CList(CType.CString))
+        )
+      ),
+      data = Map(
+        sourceId -> DataNodeSpec(
+          sourceName,
+          Map(sourceId -> sourceName),
+          CType.CString,
+          None,
+          Map.empty
+        ),
+        sinkId -> DataNodeSpec(
+          sinkName,
+          Map(sinkId -> sinkName),
+          CType.CList(CType.CString),
+          None,
+          Map.empty
+        )
+      ),
+      inEdges = Set(sourceId -> collectId),
+      outEdges = Set(collectId -> sinkId),
+      declaredOutputs = List(sinkName),
+      outputBindings = Map(sinkName -> sinkId)
+    )
+
+    (dagSpec, sourceId, collectId, sinkId)
+  }
+
+  "StreamCompiler collect" should "batch elements by count" in {
+    val (dagSpec, _, collectId, _) = collectDag("input", "output")
+
+    val result = (for {
+      srcQ <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("input", MemoryConnector.source("input", srcQ))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      graph <- StreamCompiler.wire(
+        dagSpec,
+        registry,
+        Map.empty, // collect doesn't use module functions
+        moduleOptions = Map(
+          collectId -> io.constellation.ModuleCallOptions(
+            batchSize = Some(3),
+            batchTimeoutMs = Some(5000L)
+          )
+        )
+      )
+      _ <- srcQ.offer(Some(CValue.CString("a")))
+      _ <- srcQ.offer(Some(CValue.CString("b")))
+      _ <- srcQ.offer(Some(CValue.CString("c")))
+      _ <- srcQ.offer(None)
+      _     <- graph.stream.compile.drain
+      items <- snkQ.tryTakeN(None)
+      snap  <- graph.metrics.snapshot
+    } yield (items, snap)).unsafeRunSync()
+
+    val (items, snap) = result
+    items should have size 1
+    items(0) shouldBe a[CValue.CList]
+    val list = items(0).asInstanceOf[CValue.CList]
+    list.value should have size 3
+    list.value(0) shouldBe CValue.CString("a")
+    list.value(1) shouldBe CValue.CString("b")
+    list.value(2) shouldBe CValue.CString("c")
+    snap.totalElements shouldBe 1L
+    snap.perModule("collect").elementsProcessed shouldBe 1L
+  }
+
+  it should "emit partial batch on stream end before count fills" in {
+    val (dagSpec, _, collectId, _) = collectDag("input", "output")
+
+    val result = (for {
+      srcQ <- cats.effect.std.Queue.bounded[IO, Option[CValue]](10)
+      snkQ <- cats.effect.std.Queue.bounded[IO, CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("input", MemoryConnector.source("input", srcQ))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      graph <- StreamCompiler.wire(
+        dagSpec,
+        registry,
+        Map.empty,
+        moduleOptions = Map(
+          collectId -> io.constellation.ModuleCallOptions(
+            batchSize = Some(10),
+            batchTimeoutMs = Some(200L)
+          )
+        )
+      )
+      _ <- srcQ.offer(Some(CValue.CString("x")))
+      _ <- srcQ.offer(Some(CValue.CString("y")))
+      _ <- srcQ.offer(None)
+      _     <- graph.stream.compile.drain
+      items <- snkQ.tryTakeN(None)
+    } yield items).unsafeRunSync()
+
+    result should have size 1
+    result(0) shouldBe a[CValue.CList]
+    val list = result(0).asInstanceOf[CValue.CList]
+    list.value should have size 2
+    list.value(0) shouldBe CValue.CString("x")
+    list.value(1) shouldBe CValue.CString("y")
+  }
+
   "MemoryConnector.pair" should "create matched source/sink pair" in {
     val result = (for {
       pairResult <- MemoryConnector.pair("test-pair")

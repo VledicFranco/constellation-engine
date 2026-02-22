@@ -1141,7 +1141,7 @@ class ConstellationRoutes(
         val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
         val missingNames  = allInputNames -- inputs.keySet
         if missingNames.nonEmpty then {
-          val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
+          val sig = buildSuspendedSignature(dagSpec, image.structuralHash, inputs, image.moduleOptions)
           IO.pure(Right((sig, dagSpec)))
         } else {
           val loaded = io.constellation.PipelineImage.rehydrate(image)
@@ -1183,7 +1183,7 @@ class ConstellationRoutes(
         if missingNames.nonEmpty then {
           // Short-circuit: build a Suspended DataSignature without runtime execution
           EitherT.rightT[IO, ApiError](
-            buildSuspendedSignature(dagSpec, image.structuralHash, inputs)
+            buildSuspendedSignature(dagSpec, image.structuralHash, inputs, image.moduleOptions)
           )
         } else {
           // All inputs present — run the pipeline
@@ -1600,7 +1600,8 @@ class ConstellationRoutes(
   private def buildSuspendedSignature(
       dagSpec: io.constellation.DagSpec,
       structuralHash: String,
-      inputs: Map[String, CValue]
+      inputs: Map[String, CValue],
+      moduleOptions: Map[UUID, io.constellation.ModuleCallOptions] = Map.empty
   ): DataSignature = {
     val allInputNames = dagSpec.userInputDataNodes.values.map(_.name).toSet
     val missingInputs = (allInputNames -- inputs.keySet).toList.sorted
@@ -1612,7 +1613,7 @@ class ConstellationRoutes(
       structuralHash = structuralHash,
       resumptionCount = 0,
       dagSpec = dagSpec,
-      moduleOptions = Map.empty,
+      moduleOptions = moduleOptions,
       providedInputs = inputs,
       computedValues = Map.empty,
       moduleStatuses = Map.empty
