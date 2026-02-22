@@ -102,6 +102,12 @@
 - Share node UUIDs between lambda body and outer context (self-containment invariant)
 - Add mutable capture semantics (DAG nodes are immutable by design)
 
+### Interaction with Implicit `it` Lifting (RFC-033)
+
+- **Implicit `it` and closures compose.** When `filter(numbers, it > threshold)` is desugared to `filter(numbers, (it) => it > threshold)`, the resulting lambda captures `threshold` via the normal closure mechanism. The two features are layered: `it`-lifting happens first (in `BidirectionalTypeChecker.checkAgainst`), then the synthesized lambda goes through `checkLambdaAgainst` which triggers closure capture as usual.
+- **Environment guard prevents conflicts.** `it`-lifting only fires when `env.lookupVariable("it").isEmpty`. If `it` is a user-defined variable, the expression is checked normally — no lambda synthesis.
+- **`containsItRef` stops at lambda boundaries.** `Expression.Lambda` returns `false` in the `containsItRef` walk, preventing double-lifting in nested HOF scenarios like `filter(numbers, any(items, it > 0))`.
+
 ---
 
 ## What Is Out of Scope

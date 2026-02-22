@@ -1,6 +1,6 @@
 # RFC-032: Lambda Body Infix Operators
 
-- **Status:** Proposed
+- **Status:** Implemented
 - **Created:** 2026-02-21
 - **Author:** Francisco (discovered during #220 investigation)
 

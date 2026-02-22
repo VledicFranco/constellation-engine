@@ -746,4 +746,297 @@ class ClosureTest extends AnyFlatSpec with Matchers {
     hofNode.transformInputs.keys should contain("lower")
     hofNode.transformInputs.keys should contain("upper")
   }
+
+  // ===== Implicit 'it' Parameter Tests (RFC-033) =====
+  //
+  // When a HOF expects a single-param lambda and the argument expression contains
+  // a free VarRef("it"), the TypeChecker auto-wraps it in (it) => expr.
+  // No new AST nodes — pure compile-time sugar.
+
+  it should "compile filter with implicit it parameter" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |positive = filter(numbers, it > 0)
+        |out positive""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-filter-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.FilterTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile filter with implicit it and closure capture" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |in threshold: Int
+        |
+        |above = filter(numbers, it > threshold)
+        |out above""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-closure-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureFilterTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("threshold")
+  }
+
+  it should "compile map with implicit it parameter" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |doubled = map(numbers, it * 2)
+        |out doubled""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-map-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.MapTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile map with implicit it and closure capture" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |in factor: Int
+        |
+        |scaled = map(numbers, it * factor)
+        |out scaled""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-map-closure-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureMapTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("factor")
+  }
+
+  it should "compile all with implicit it parameter" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |allPositive = all(numbers, it >= 0)
+        |out allPositive""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-all-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile any with implicit it parameter" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |hasNegative = any(numbers, it < 0)
+        |out hasNegative""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-any-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile chained HOFs with implicit it" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |result = map(filter(numbers, it > 0), it * 2)
+        |out result""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-chained-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile implicit it with compound boolean expression" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |in lower: Int
+        |in upper: Int
+        |
+        |inRange = filter(numbers, it > lower and it < upper)
+        |out inRange""".stripMargin
+
+    val result = compiler.compile(source, "implicit-it-boolean-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureFilterTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("lower")
+    hofNode.transformInputs.keys should contain("upper")
+  }
+
+  // ===== Infix HOF Syntax Tests (RFC-033, Phase 2) =====
+  //
+  // Infix syntax: numbers filter it > 0 map it * 2
+  // Parser produces FunctionCall("filter", [numbers, it > 0]), then the
+  // TypeChecker lifts `it` into a lambda via the Phase 1 implicit-it case.
+
+  it should "compile infix filter with implicit it" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |positive = numbers filter it > 0
+        |out positive""".stripMargin
+
+    val result = compiler.compile(source, "infix-filter-it-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.FilterTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile infix map with implicit it" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |doubled = numbers map it * 2
+        |out doubled""".stripMargin
+
+    val result = compiler.compile(source, "infix-map-it-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.MapTransform]
+      )
+    ) shouldBe true
+  }
+
+  it should "compile chained infix filter then map" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |result = numbers filter it > 0 map it * 2
+        |out result""".stripMargin
+
+    val result = compiler.compile(source, "infix-chain-dag")
+    result.isRight shouldBe true
+  }
+
+  it should "compile infix filter with closure capture" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |in threshold: Int
+        |
+        |above = numbers filter it > threshold
+        |out above""".stripMargin
+
+    val result = compiler.compile(source, "infix-closure-dag")
+    result.isRight shouldBe true
+
+    val compiled = result.toOption.get
+    compiled.pipeline.image.dagSpec.data.values.exists(d =>
+      d.name.contains("hof") && d.inlineTransform.exists(
+        _.isInstanceOf[InlineTransform.ClosureFilterTransform]
+      )
+    ) shouldBe true
+
+    val hofNode = compiled.pipeline.image.dagSpec.data.values
+      .find(d => d.name.contains("hof"))
+      .get
+    hofNode.transformInputs.keys should contain("threshold")
+  }
+
+  it should "compile infix all and any" in {
+    val compiler = infixCompiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |
+        |in numbers: List<Int>
+        |
+        |allPos = numbers all it > 0
+        |hasNeg = numbers any it < 0
+        |out allPos
+        |out hasNeg""".stripMargin
+
+    val result = compiler.compile(source, "infix-all-any-dag")
+    result.isRight shouldBe true
+  }
 }

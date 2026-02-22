@@ -156,3 +156,31 @@ out has42
 out positivesDoubled
 out positivesAllBelow50
 out anyDoubledLarge
+
+# =============================================================================
+# RFC-033: Implicit `it` Parameter and Infix HOF Syntax
+# =============================================================================
+
+# Implicit `it` — filter/map without naming the parameter
+positivesIt   = filter(numbers, it > 0)
+doubledIt     = map(numbers, it * 2)
+allPositiveIt = all(numbers, it > 0)
+hasNegativeIt = any(numbers, it < 0)
+
+# Infix HOF syntax — reads like English
+positivesInfix = numbers filter it > 0
+doubledInfix   = numbers map it * 2
+
+# Chaining infix
+doubledPositives = numbers filter it > 0 map it * 2
+
+# Implicit `it` results
+out positivesIt
+out doubledIt
+out allPositiveIt
+out hasNegativeIt
+
+# Infix results
+out positivesInfix
+out doubledInfix
+out doubledPositives

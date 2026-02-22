@@ -176,17 +176,18 @@ object StdLib
 
 ### Higher-Order (4 functions)
 
-| Function | Signature | Implementation |
-|----------|-----------|----------------|
-| `filter` | `(List<A>, A -> Boolean) -> List<A>` | Keep elements where predicate is true |
-| `map` | `(List<A>, A -> B) -> List<B>` | Transform each element |
-| `all` | `(List<A>, A -> Boolean) -> Boolean` | True if all match |
-| `any` | `(List<A>, A -> Boolean) -> Boolean` | True if any match |
+| Function | Signature | Sugar form (RFC-033) |
+|----------|-----------|---------------------|
+| `filter` | `(List<A>, A -> Boolean) -> List<A>` | `numbers filter it > 0` |
+| `map` | `(List<A>, A -> B) -> List<B>` | `numbers map it * 2` |
+| `all` | `(List<A>, A -> Boolean) -> Boolean` | `numbers all it >= 0` |
+| `any` | `(List<A>, A -> Boolean) -> Boolean` | `numbers any it < 0` |
 
 Higher-order functions are implemented via `InlineTransform` in the compiler:
 - Lambda bodies are compiled to inline evaluators
 - Supports arithmetic, comparison, and field access in lambdas
 - No module creation overhead per element
+- As of RFC-033, these four names are **soft keywords** in infix position (word-boundary checked, not reserved)
 
 ### Utility (2 functions)
 

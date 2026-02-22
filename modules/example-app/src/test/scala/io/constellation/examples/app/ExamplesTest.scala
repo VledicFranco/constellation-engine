@@ -1073,6 +1073,81 @@ class ExamplesTest extends AnyFlatSpec with Matchers {
     anyNodes.size should be > 0
   }
 
+  // ========== RFC-033: Implicit `it` and Infix HOF Tests ==========
+
+  "lambdas-and-hof.cst" should "compile with RFC-033 implicit it and infix syntax" in {
+    val files          = getExampleFiles
+    val hofExample     = files.find(_.getName == "lambdas-and-hof.cst").get
+    val source         = readFile(hofExample)
+    val stdlibCompiler = StdLib.compiler
+    val result         = stdlibCompiler.compile(source, "lambdas-and-hof-rfc033")
+
+    result match {
+      case Left(errors) =>
+        fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(compiled) =>
+        // RFC-033 outputs should all be declared
+        compiled.pipeline.image.dagSpec.declaredOutputs should contain allOf (
+          "positivesIt", "doubledIt", "allPositiveIt", "hasNegativeIt",
+          "positivesInfix", "doubledInfix", "doubledPositives"
+        )
+    }
+  }
+
+  "RFC-033 implicit it" should "compile standalone programs with prefix call syntax" in {
+    val stdlibCompiler = StdLib.compiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |positive = filter(numbers, it > 0)
+        |doubled  = map(numbers, it * 2)
+        |allPos   = all(numbers, it > 0)
+        |hasNeg   = any(numbers, it < 0)
+        |out positive
+        |out doubled
+        |out allPos
+        |out hasNeg""".stripMargin
+
+    val result = stdlibCompiler.compile(source, "rfc033-prefix-it-dag")
+    result match {
+      case Left(errors) =>
+        fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => // ok
+    }
+  }
+
+  it should "compile standalone programs with infix syntax" in {
+    val stdlibCompiler = StdLib.compiler
+    val source =
+      """use stdlib.collection
+        |use stdlib.compare
+        |use stdlib.math
+        |
+        |in numbers: List<Int>
+        |
+        |positive = numbers filter it > 0
+        |doubled  = numbers map it * 2
+        |allPos   = numbers all it > 0
+        |hasNeg   = numbers any it < 0
+        |chained  = numbers filter it > 0 map it * 2
+        |out positive
+        |out doubled
+        |out allPos
+        |out hasNeg
+        |out chained""".stripMargin
+
+    val result = stdlibCompiler.compile(source, "rfc033-infix-dag")
+    result match {
+      case Left(errors) =>
+        fail(s"Compilation failed: ${errors.map(_.message).mkString(", ")}")
+      case Right(_) => // ok
+    }
+  }
+
   // ========== String Interpolation Tests ==========
 
   "String interpolation programs" should "compile simple interpolation" in {

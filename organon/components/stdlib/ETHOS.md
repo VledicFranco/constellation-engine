@@ -104,6 +104,7 @@ Operations that can fail (division by zero, empty list access) raise explicit er
 - When naming functions, use lowercase-hyphenated names (e.g., `list-length`, `eq-string`) for consistency
 - When a function operates on a specific type, include the type in the name to avoid overloading ambiguity (e.g., `eq-int` vs `eq-string`)
 - When implementing higher-order functions, prefer InlineTransform to avoid module creation overhead per element
+- Note that `filter`, `map`, `all`, `any` are soft keywords in infix position as of RFC-033 — new HOF names should be considered for potential infix promotion if they follow the same pattern
 - When in doubt about error handling, raise an explicit error rather than returning a default value
 
 ---

@@ -405,6 +405,28 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
     case (Expression.Lambda(params, body), SFunction(expectedParams, expectedReturn)) =>
       checkLambdaAgainst(params, body, expectedParams, expectedReturn, span, env, context)
 
+    // RFC-033: Implicit `it` lambda-lifting
+    // filter(numbers, it > 0) → filter(numbers, (it) => it > 0)
+    // Fires when: expected type is single-param function, expr is NOT a lambda,
+    // `it` is not already bound in scope, and expr contains VarRef("it").
+    case (expr, SFunction(expectedParams, expectedReturn))
+        if expectedParams.size == 1
+          && env.lookupVariable("it").isEmpty
+          && containsItRef(expr) =>
+      val implicitLambda = Expression.Lambda(
+        List(Expression.LambdaParam(Located("it", span), None)),
+        Located(expr, span)
+      )
+      checkLambdaAgainst(
+        implicitLambda.params,
+        implicitLambda.body,
+        expectedParams,
+        expectedReturn,
+        span,
+        env,
+        context
+      )
+
     // Empty list: use expected element type
     case (Expression.ListLit(Nil), SList(expectedElem)) =>
       TypedExpression.ListLiteral(Nil, expectedElem, span).validNel
@@ -1470,6 +1492,24 @@ class BidirectionalTypeChecker(functions: FunctionRegistry) {
           .validNel
       case Left(err) => err.invalidNel
     }
+  }
+
+  /** RFC-033: Syntactic check — does expr contain a VarRef("it") anywhere? Returns false for nested
+    * lambdas (scope boundary — inner lambda owns its own `it`).
+    */
+  private def containsItRef(expr: Expression): Boolean = expr match {
+    case Expression.VarRef(name)             => name == "it"
+    case Expression.FieldAccess(e, _)        => containsItRef(e.value)
+    case Expression.FunctionCall(_, args, _) => args.exists(a => containsItRef(a.value))
+    case Expression.Arithmetic(l, _, r)      => containsItRef(l.value) || containsItRef(r.value)
+    case Expression.Compare(l, _, r)         => containsItRef(l.value) || containsItRef(r.value)
+    case Expression.BoolBinary(l, _, r)      => containsItRef(l.value) || containsItRef(r.value)
+    case Expression.Not(e)                   => containsItRef(e.value)
+    case Expression.Coalesce(l, r)           => containsItRef(l.value) || containsItRef(r.value)
+    case Expression.Guard(e, c)              => containsItRef(e.value) || containsItRef(c.value)
+    case Expression.Projection(e, _)         => containsItRef(e.value)
+    case Expression.Lambda(_, _)             => false
+    case _                                   => false
   }
 }
 

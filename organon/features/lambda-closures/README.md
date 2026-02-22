@@ -23,13 +23,17 @@ Lambda expressions that capture variables from their enclosing scope.
 
 ```constellation
 use stdlib.collection
-use stdlib.compare
 
 in numbers: List<Int>
 in threshold: Int
 
-# Lambda captures `threshold` from outer scope
-above = filter(numbers, (x) => gt(x, threshold))
+# Infix + implicit it — captures `threshold` from outer scope
+above = numbers filter it > threshold
+
+# Equivalent explicit forms:
+above2 = filter(numbers, it > threshold)
+above3 = filter(numbers, (x) => x > threshold)
+
 out above
 ```
 
@@ -44,5 +48,6 @@ out above
 
 ## See Also
 
-- [rfcs/rfc-030-lambda-closures.md](../../../rfcs/rfc-030-lambda-closures.md) - RFC specification
+- [rfcs/rfc-030-lambda-closures.md](../../../rfcs/rfc-030-lambda-closures.md) - RFC specification (closure capture)
+- [rfcs/rfc-033-implicit-lambda-infix-hof.md](../../../rfcs/rfc-033-implicit-lambda-infix-hof.md) - RFC specification (implicit `it` + infix HOF)
 - [type-safety/](../type-safety/) - Type checking (already supports closures)

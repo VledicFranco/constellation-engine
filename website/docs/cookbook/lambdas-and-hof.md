@@ -18,29 +18,27 @@ You have a list of numbers and need to filter, transform, and validate them with
 # lambdas-and-hof.cst
 
 use stdlib.collection
-use stdlib.compare
-use stdlib.math
 
 in numbers: List<Int>
 
 # Filter: keep elements matching predicate
-positives = filter(numbers, (x) => gt(x, 0))
-above10 = filter(numbers, (x) => gt(x, 10))
+positives = numbers filter it > 0
+above10 = numbers filter it > 10
 
 # Map: transform each element
-doubled = map(numbers, (x) => multiply(x, 2))
-plus10 = map(numbers, (x) => add(x, 10))
+doubled = numbers map it * 2
+plus10 = numbers map it + 10
 
 # All: check if all elements satisfy predicate
-allPositive = all(numbers, (x) => gt(x, 0))
-allBelow100 = all(numbers, (x) => lt(x, 100))
+allPositive = numbers all it > 0
+allBelow100 = numbers all it < 100
 
 # Any: check if any element satisfies predicate
-hasNegative = any(numbers, (x) => lt(x, 0))
-hasAbove100 = any(numbers, (x) => gt(x, 100))
+hasNegative = numbers any it < 0
+hasAbove100 = numbers any it > 100
 
-# Chaining: filter then transform
-positivesDoubled = map(positives, (x) => multiply(x, 2))
+# Chaining: filter then transform (left-to-right)
+positivesDoubled = numbers filter it > 0 map it * 2
 
 out positives
 out above10
@@ -62,10 +60,29 @@ out positivesDoubled
 | `all` | `all(list, predicate)` | `Boolean` | True if predicate holds for all elements |
 | `any` | `any(list, predicate)` | `Boolean` | True if predicate holds for at least one element |
 
-Lambda syntax: `(x) => expression`. The lambda body can call any function available in scope (imported via `use` or fully qualified).
+### Three equivalent forms
 
-:::note
-Lambda bodies currently support the lambda parameter and literals. Closure capture (referencing outer variables from the enclosing scope) is not yet implemented.
+All higher-order functions support three calling styles:
+
+```constellation
+# Infix + implicit it (most concise)
+positives = numbers filter it > 0
+
+# Prefix + implicit it
+positives = filter(numbers, it > 0)
+
+# Explicit lambda (most explicit)
+positives = filter(numbers, (x) => x > 0)
+```
+
+Use infix for simple predicates and transforms. Use explicit lambdas when the body is complex or when naming the parameter aids clarity.
+
+:::tip
+Lambda bodies support closure capture — you can reference variables from the enclosing scope:
+```constellation
+in threshold: Int
+above = numbers filter it > threshold   # captures `threshold`
+```
 :::
 
 ## Running the Example
@@ -98,26 +115,42 @@ Lambda bodies currently support the lambda parameter and literals. Closure captu
 
 ```constellation
 use stdlib.collection
-use stdlib.compare
 
 in scores: List<Int>
 
-passing = filter(scores, (x) => gte(x, 60))
-allPassing = all(scores, (x) => gte(x, 60))
+passing = scores filter it >= 60
+allPassing = scores all it >= 60
 
 out passing
 out allPassing
 ```
 
+### Chaining pipelines
+
+```constellation
+use stdlib.collection
+
+in numbers: List<Int>
+
+# Left-to-right pipeline: filter, then transform
+result = numbers filter it > 0 map it * 10
+
+# Equivalent nested form
+result2 = map(filter(numbers, it > 0), it * 10)
+
+out result
+```
+
 :::tip
-Filter before map. Running `map(filter(list, pred), transform)` is more efficient than `filter(map(list, transform), pred)` because fewer elements are transformed.
+Filter before map. Running `numbers filter pred map transform` is more efficient than mapping first and filtering after, because fewer elements are transformed.
 :::
 
 ## Best Practices
 
-1. **Import the right namespaces** — `stdlib.collection` for HOF, `stdlib.compare` for comparison functions, `stdlib.math` for arithmetic
+1. **Use infix for readability** — `numbers filter it > 0` reads naturally left-to-right
 2. **Chain operations** — filter first, then map, to avoid transforming elements you'll discard
 3. **Use `all`/`any` for validation** — check batch constraints without manual iteration
+4. **Capture outer variables** — closures work with all three calling forms
 
 ## Related Examples
 

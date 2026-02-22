@@ -127,6 +127,10 @@ Source Code (.cst)
 | `expr when cond` | `exprGuard` |
 | `opt ?? default` | `exprCoalesce` |
 | `(x) => body` | `lambdaExpr` |
+| `coll filter expr` | `exprHofInfix` |
+| `coll map expr` | `exprHofInfix` |
+| `coll all expr` | `exprHofInfix` |
+| `coll any expr` | `exprHofInfix` |
 
 ### Module Call Options
 
@@ -178,6 +182,7 @@ The type checker uses bidirectional inference:
 
 This enables:
 - Lambda parameter type inference from context
+- Implicit `it` lambda synthesis (RFC-033): auto-wraps `it`-containing expressions as lambdas
 - Empty list typing from expected type
 - Better error messages with contextual information
 

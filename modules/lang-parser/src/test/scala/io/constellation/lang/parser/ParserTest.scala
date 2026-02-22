@@ -1947,6 +1947,125 @@ class ParserTest extends AnyFlatSpec with Matchers {
     compare.right.value shouldBe a[Expression.FieldAccess]
   }
 
+  // ===== Infix HOF Syntax Tests (RFC-033) =====
+
+  it should "parse infix filter expression" in {
+    val source = """
+      in numbers: List<Int>
+      result = numbers filter it > 0
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name.localName shouldBe "filter"
+    funcCall.args should have size 2
+    funcCall.args(0).value shouldBe Expression.VarRef("numbers")
+    funcCall.args(1).value shouldBe a[Expression.Compare]
+  }
+
+  it should "parse infix map expression" in {
+    val source = """
+      in numbers: List<Int>
+      result = numbers map it * 2
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name.localName shouldBe "map"
+    funcCall.args should have size 2
+    funcCall.args(0).value shouldBe Expression.VarRef("numbers")
+    funcCall.args(1).value shouldBe a[Expression.Arithmetic]
+  }
+
+  it should "parse infix all expression" in {
+    val source = """
+      in numbers: List<Int>
+      result = numbers all it >= 0
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name.localName shouldBe "all"
+  }
+
+  it should "parse infix any expression" in {
+    val source = """
+      in numbers: List<Int>
+      result = numbers any it < 0
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name.localName shouldBe "any"
+  }
+
+  it should "parse chained infix HOF (left-associative)" in {
+    val source = """
+      in numbers: List<Int>
+      result = numbers filter it > 0 map it * 2
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    // Outer call: map(filter(numbers, ...), ...)
+    val mapCall = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    mapCall.name.localName shouldBe "map"
+    mapCall.args should have size 2
+    // First arg to map is the filter call
+    val filterCall = mapCall.args(0).value.asInstanceOf[Expression.FunctionCall]
+    filterCall.name.localName shouldBe "filter"
+    filterCall.args(0).value shouldBe Expression.VarRef("numbers")
+  }
+
+  it should "not match filter as infix when part of a longer identifier" in {
+    val source = """
+      in filterBy: Int
+      result = filterBy
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    assignment.value.value shouldBe Expression.VarRef("filterBy")
+  }
+
+  it should "parse prefix function call alongside infix syntax" in {
+    val source = """
+      in numbers: List<Int>
+      result = filter(numbers, it > 0)
+      out result
+    """
+    val result = ConstellationParser.parse(source)
+    result.isRight shouldBe true
+    val program = result.toOption.get
+
+    val assignment = program.declarations(1).asInstanceOf[Declaration.Assignment]
+    val funcCall   = assignment.value.value.asInstanceOf[Expression.FunctionCall]
+    funcCall.name.localName shouldBe "filter"
+    funcCall.args should have size 2
+  }
+
   // Union type tests
 
   it should "parse simple union type A | B" in {

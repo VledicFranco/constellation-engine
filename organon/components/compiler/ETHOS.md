@@ -103,14 +103,18 @@ Every well-formed AST receives a type judgment (success with TypedPipeline) or a
 | Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/TypeChecker.scala#def check` |
 | Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala#Bidirectional type inference` |
 
-### 3. Lambda types are inferred from context
+### 3. Lambda types are inferred from context — and lambdas are synthesized from `it`
 
 Bidirectional type inference allows lambda parameter types to be inferred from the expected function type, enabling untyped lambda syntax like `(x) => x > 5`.
 
+Additionally, when the expected type is a single-parameter function (`SFunction` with one param), the expression contains a free reference to `it`, and `it` is not already bound in the `TypeEnvironment`, the type checker auto-wraps the expression as `(it) => expr` (RFC-033). This is pure compile-time desugaring — no new AST or IR nodes.
+
 | Aspect | Reference |
 |--------|-----------|
-| Implementation | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala#checkLambdaAgainst` |
-| Test | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala#infer lambda parameter types from filter context` |
+| Lambda inference | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala#checkLambdaAgainst` |
+| Implicit `it` lifting | `modules/lang-compiler/src/main/scala/io/constellation/lang/semantic/BidirectionalTypeChecker.scala#containsItRef` |
+| Test (inference) | `modules/lang-compiler/src/test/scala/io/constellation/lang/semantic/BidirectionalTypeCheckerSpec.scala#infer lambda parameter types from filter context` |
+| Test (`it` lifting) | `modules/lang-compiler/src/test/scala/io/constellation/lang/compiler/ClosureTest.scala#Implicit 'it' Parameter Tests (RFC-033)` |
 
 ### 4. IR preserves type safety
 
@@ -161,7 +165,8 @@ Compilation cache entries are keyed by source hash and registry hash. Changed so
 
 ## Decision Heuristics
 
-- When adding a new language construct, implement parser rule first, then type checking, then IR generation
+- When adding a new language construct, implement parser rule first, then type checking, then IR generation. Exception: pure type-checker desugaring (like implicit `it` lifting) requires no parser changes
+- When adding syntactic sugar that desugars to existing constructs, prefer compile-time rewriting over new AST/IR nodes
 - When extending the type system, add SemanticType variant, then subtyping rules, then CType conversion
 - When uncertain about type inference, prefer bidirectional checking over unification
 - When adding optimization passes, implement as stateless transformations on IRPipeline
