@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/core/src/main/scala/io/constellation -->
 <!-- Hash: 9265ebb4609c -->
-<!-- Generated: 2026-02-22T03:14:06.227894100Z -->
+<!-- Generated: 2026-02-22T12:18:06.799620100Z -->
 
 # io.constellation.errors
 
@@ -13,13 +13,13 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `ordinal` | `(x$0: MirroredMonoType): Int` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
@@ -42,10 +42,8 @@
 | Method | Signature | Description |
 |--------|-----------|-------------|
 | `handleNotification` | `(operation: String, logger: Function1[String, IO[Unit]], fa: IO[Unit]): IO[Unit]` | /** Handle errors in notification handlers by logging instead of silently swallowing. |
-| `pure` | `[E, A](a: A): EitherT[IO, Any, Any]` | /** Lift a pure value into EitherT */ |
 | `fromEither` | `[E, A](either: Either[E, A]): EitherT[IO, Any, Any]` | /** Convert an Either value into EitherT */ |
 | `executeWithResult` | `[A, R](fa: IO[A], onSuccess: Function1[A, R], onError: Function1[Throwable, R]): IO[Any]` | /** Execute an IO and map failure to a result type. |
-| `fromOption` | `[E, A](opt: Option[A], ifNone: E): EitherT[IO, Any, Any]` | /** Convert an Option into EitherT with a custom error for None */ |
 | `liftIO` | `[E, A](io: IO[A], mapError: Function1[Throwable, E]): EitherT[IO, Any, Any]` | /** Convert an IO operation to EitherT with error mapping */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
@@ -54,6 +52,8 @@
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `fromOption` | `[E, A](opt: Option[A], ifNone: E): EitherT[IO, Any, Any]` | /** Convert an Option into EitherT with a custom error for None */ |
+| `pure` | `[E, A](a: A): EitherT[IO, Any, Any]` | /** Lift a pure value into EitherT */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |

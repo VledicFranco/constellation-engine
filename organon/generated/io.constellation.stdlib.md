@@ -1,7 +1,7 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/lang-stdlib/src/main/scala/io/constellation -->
 <!-- Hash: 284220508b2a -->
-<!-- Generated: 2026-02-22T03:14:06.174044500Z -->
+<!-- Generated: 2026-02-22T12:18:06.746342900Z -->
 
 # io.constellation.stdlib
 
@@ -30,42 +30,42 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `booleanSignatures` | `(): List` |  |
-| `allSignatures` | `(): List` | /** Get all standard library function signatures */ |
+| `hofSignatures` | `(): List` |  |
 | `booleanModules` | `(): Map` |  |
+| `hofModules` | `(): Map` |  |
+| `allSignatures` | `(): List` | /** Get all standard library function signatures */ |
+| `utilitySignatures` | `(): List` |  |
+| `stringModules` | `(): Map` |  |
+| `comparisonSignatures` | `(): List` |  |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
+| `listSignatures` | `(): List` |  |
+| `booleanSignatures` | `(): List` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `mathSignatures` | `(): List` |  |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `comparisonModules` | `(): Map` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `conversionModules` | `(): Map` |  |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `conversionSignatures` | `(): List` |  |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `comparisonSignatures` | `(): List` |  |
-| `stringSignatures` | `(): List` |  |
+| `utilityModules` | `(): Map` |  |
+| `conversionSignatures` | `(): List` |  |
 | `registerAll` | `(builder: LangCompilerBuilder): LangCompilerBuilder` | /** Register all standard library functions with a LangCompiler builder */ |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `hofSignatures` | `(): List` |  |
 | `mathModules` | `(): Map` |  |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `stringSignatures` | `(): List` |  |
 | `compiler` | `(): LangCompiler` | /** Create a LangCompiler with all standard library functions registered */ |
-| `hofModules` | `(): Map` |  |
-| `utilitySignatures` | `(): List` |  |
-| `listSignatures` | `(): List` |  |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `stringModules` | `(): Map` |  |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `utilityModules` | `(): Map` |  |
-| `comparisonModules` | `(): Map` |  |
 | `listModules` | `(): Map` |  |
 | `allModules` | `(): Map` | /** Get all standard library modules */ |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 
 <!-- END GENERATED -->
