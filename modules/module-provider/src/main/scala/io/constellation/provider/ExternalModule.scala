@@ -199,6 +199,63 @@ object ExternalModule {
     )
   }
 
+  /** Create a batch function for an external module (RFC-034 Phase 1).
+    *
+    * Returns `Some(batchFn)` if the provider declared `supports_batch = true`, `None` otherwise.
+    * The batch function serializes all inputs, sends a single `ExecuteBatch` gRPC call, and
+    * deserializes results — amortizing connection overhead across the entire batch.
+    */
+  def createBatchFunction(
+      name: String,
+      executorPool: ExecutorPool,
+      serializer: CValueSerializer,
+      channelCache: GrpcChannelCache,
+      supportsBatch: Boolean
+  ): Option[List[CValue] => IO[List[Either[Throwable, CValue]]]] =
+    if !supportsBatch then None
+    else
+      Some { (inputs: List[CValue]) =>
+        for {
+          serializedInputs <- inputs.traverse { input =>
+            IO.fromEither(
+              serializer
+                .serialize(input)
+                .left
+                .map(e => new RuntimeException(s"Batch serialization error: $e"))
+            )
+          }
+          executor <- executorPool.next
+          response <- callExecutorBatch(
+            channelCache,
+            executor.executorUrl,
+            name,
+            serializedInputs,
+            UUID.randomUUID().toString
+          )
+          results <- response.results.toList.traverse { batchResult =>
+            batchResult.result match {
+              case pb.ExecuteBatchResult.Result.OutputData(outputBytes) =>
+                IO.fromEither(
+                  serializer
+                    .deserialize(outputBytes.toByteArray)
+                    .left
+                    .map(e => new RuntimeException(s"Batch deserialization error: $e"))
+                ).map(Right(_))
+              case pb.ExecuteBatchResult.Result.Error(err) =>
+                IO.pure(
+                  Left(
+                    new RuntimeException(
+                      s"External module '$name' batch element failed: [${err.code}] ${err.message}"
+                    )
+                  )
+                )
+              case pb.ExecuteBatchResult.Result.Empty =>
+                IO.pure(Left(new RuntimeException(s"External module '$name' empty batch result")))
+            }
+          }
+        } yield results
+      }
+
   private def callExecutor(
       channelCache: GrpcChannelCache,
       executorUrl: String,
@@ -212,6 +269,24 @@ object ExternalModule {
       pb.ExecuteRequest(
         moduleName = moduleName,
         inputData = com.google.protobuf.ByteString.copyFrom(inputBytes),
+        executionId = executionId
+      )
+    )
+  }
+
+  private def callExecutorBatch(
+      channelCache: GrpcChannelCache,
+      executorUrl: String,
+      moduleName: String,
+      inputBatches: List[Array[Byte]],
+      executionId: String
+  ): IO[pb.ExecuteBatchResponse] = IO {
+    val channel = channelCache.getChannel(executorUrl)
+    val stub    = pb.ModuleExecutorGrpc.blockingStub(channel)
+    stub.executeBatch(
+      pb.ExecuteBatchRequest(
+        moduleName = moduleName,
+        inputs = inputBatches.map(b => com.google.protobuf.ByteString.copyFrom(b)),
         executionId = executionId
       )
     )

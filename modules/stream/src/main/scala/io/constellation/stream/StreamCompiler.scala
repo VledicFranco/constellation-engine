@@ -53,7 +53,8 @@ object StreamCompiler {
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] =
     for {
       metrics <-
@@ -68,7 +69,8 @@ object StreamCompiler {
         joinStrategy,
         metrics,
         shutdown,
-        moduleOptions
+        moduleOptions,
+        batchModules
       )
     } yield graph
 
@@ -85,7 +87,8 @@ object StreamCompiler {
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source and sink names from the DAG
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -133,7 +136,8 @@ object StreamCompiler {
           options,
           errorStrategy,
           joinStrategy,
-          moduleOptions
+          moduleOptions,
+          batchModules
         )
     }
   }
@@ -147,7 +151,8 @@ object StreamCompiler {
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
       shutdownSignal: Deferred[IO, Either[Throwable, Unit]],
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source nodes (data nodes with no incoming edges from module outputs)
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -216,36 +221,75 @@ object StreamCompiler {
 
           outputDataIds.map(_ -> collected).toMap
         } else {
-          // Standard module processing with error handling
+          // Standard module processing with batch support (RFC-034 Phase 1)
+          val opts      = moduleOptions.get(moduleId)
+          val batchSize = opts.flatMap(_.batchSize).getOrElse(1)
+          val batchTimeout = opts
+            .flatMap(_.batchTimeoutMs)
+            .map(ms => FiniteDuration(ms, TimeUnit.MILLISECONDS))
+            .getOrElse(FiniteDuration(1, TimeUnit.SECONDS))
+          val batchFn = batchModules.get(moduleId)
+
           outputDataIds.flatMap { outDataId =>
             moduleFn.map { fn =>
+              val processed = (batchFn, batchSize > 1) match {
+                case (Some(bf), true) =>
+                  // Batch path: group elements, call batch function, flatten results
+                  inputStream
+                    .groupWithin(batchSize, batchTimeout)
+                    .evalMap { chunk =>
+                      bf(chunk.toList).flatMap { results =>
+                        results.traverse {
+                          case Right(v) =>
+                            metrics.recordElement(moduleName).as(Some(v))
+                          case Left(err) =>
+                            errorStrategy match {
+                              case StreamErrorStrategy.Skip =>
+                                metrics.recordError(moduleName).as(None)
+                              case StreamErrorStrategy.Log =>
+                                metrics.recordError(moduleName).as(
+                                  Some(CValue.CString(s"error: ${safeMessage(err)}"))
+                                )
+                              case StreamErrorStrategy.Dlq =>
+                                metrics.recordDlq(moduleName).as(
+                                  Some(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                                )
+                              case StreamErrorStrategy.Propagate =>
+                                IO.raiseError(err)
+                            }
+                        }
+                      }
+                    }
+                    .flatMap(results => Stream.emits(results.flatten))
 
-              val processed = errorStrategy match {
-                case StreamErrorStrategy.Skip =>
-                  // Skip genuinely drops failed elements instead of emitting a sentinel
-                  inputStream.evalMapFilter { input =>
-                    (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
-                      .handleError(_ => None)
-                  }
-                case StreamErrorStrategy.Log =>
-                  inputStream.evalMap { input =>
-                    val wrapped = fn(input).handleErrorWith { err =>
-                      metrics.recordError(moduleName) *>
-                        IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
-                    }
-                    wrapped <* metrics.recordElement(moduleName)
-                  }
-                case StreamErrorStrategy.Propagate =>
-                  inputStream.evalMap { input =>
-                    fn(input) <* metrics.recordElement(moduleName)
-                  }
-                case StreamErrorStrategy.Dlq =>
-                  inputStream.evalMap { input =>
-                    val wrapped = fn(input).handleErrorWith { err =>
-                      metrics.recordDlq(moduleName) *>
-                        IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
-                    }
-                    wrapped <* metrics.recordElement(moduleName)
+                case _ =>
+                  // Per-element path (unchanged)
+                  errorStrategy match {
+                    case StreamErrorStrategy.Skip =>
+                      inputStream.evalMapFilter { input =>
+                        (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
+                          .handleError(_ => None)
+                      }
+                    case StreamErrorStrategy.Log =>
+                      inputStream.evalMap { input =>
+                        val wrapped = fn(input).handleErrorWith { err =>
+                          metrics.recordError(moduleName) *>
+                            IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
+                        }
+                        wrapped <* metrics.recordElement(moduleName)
+                      }
+                    case StreamErrorStrategy.Propagate =>
+                      inputStream.evalMap { input =>
+                        fn(input) <* metrics.recordElement(moduleName)
+                      }
+                    case StreamErrorStrategy.Dlq =>
+                      inputStream.evalMap { input =>
+                        val wrapped = fn(input).handleErrorWith { err =>
+                          metrics.recordDlq(moduleName) *>
+                            IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                        }
+                        wrapped <* metrics.recordElement(moduleName)
+                      }
                   }
               }
 

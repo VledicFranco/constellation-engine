@@ -15,8 +15,14 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
   def create(
       handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
       port: Int
+  ): Resource[IO, Int] = createWithBatch(handler, None, port)
+
+  def createWithBatch(
+      handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
+      batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
+      port: Int
   ): Resource[IO, Int] = {
-    val serviceImpl = new GrpcModuleExecutorImpl(handler)
+    val serviceImpl = new GrpcModuleExecutorImpl(handler, batchHandler)
 
     Resource.make(
       IO {
@@ -31,9 +37,11 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
   }
 }
 
-/** gRPC service implementation that delegates to a handler function. */
-private class GrpcModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.ExecuteResponse])
-    extends pb.ModuleExecutorGrpc.ModuleExecutor {
+/** gRPC service implementation that delegates to handler functions. */
+private class GrpcModuleExecutorImpl(
+    handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
+    batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]]
+) extends pb.ModuleExecutorGrpc.ModuleExecutor {
 
   import cats.effect.unsafe.implicits.global
 
@@ -48,6 +56,34 @@ private class GrpcModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.Execute
               pb.ExecutionError(
                 code = "RUNTIME_ERROR",
                 message = error.getMessage
+              )
+            )
+          )
+        )
+    }
+    promise.future
+  }
+
+  override def executeBatch(
+      request: pb.ExecuteBatchRequest
+  ): scala.concurrent.Future[pb.ExecuteBatchResponse] = {
+    val promise = scala.concurrent.Promise[pb.ExecuteBatchResponse]()
+    val handler = batchHandler.getOrElse((_: pb.ExecuteBatchRequest) =>
+      IO.raiseError(new UnsupportedOperationException("ExecuteBatch not supported"))
+    )
+    handler(request).unsafeRunAsync {
+      case Right(response) => promise.success(response)
+      case Left(error) =>
+        promise.success(
+          pb.ExecuteBatchResponse(
+            results = Seq(
+              pb.ExecuteBatchResult(
+                result = pb.ExecuteBatchResult.Result.Error(
+                  pb.ExecutionError(
+                    code = "RUNTIME_ERROR",
+                    message = error.getMessage
+                  )
+                )
               )
             )
           )

@@ -574,4 +574,10 @@ private class BenchmarkExecutorImpl(handler: pb.ExecuteRequest => IO[pb.ExecuteR
     }
     promise.future
   }
+
+  override def executeBatch(
+      request: pb.ExecuteBatchRequest
+  ): scala.concurrent.Future[pb.ExecuteBatchResponse] =
+    // Stub: batch not used in these tests
+    scala.concurrent.Future.successful(pb.ExecuteBatchResponse())
 }

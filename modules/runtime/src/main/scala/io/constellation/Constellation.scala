@@ -55,6 +55,20 @@ trait Constellation {
     */
   def removeModule(name: String): IO[Unit] = IO.unit
 
+  /** Get batch functions for external modules by qualified name (RFC-034 Phase 1).
+    *
+    * Returns a map from module name to batch function for modules that support batch execution.
+    * Returns an empty map by default; only ModuleProviderManager overrides with actual batch functions.
+    *
+    * @param moduleNames
+    *   Qualified module names to look up batch functions for
+    * @return
+    *   Map of qualified name to batch function if available, empty map if not supported
+    */
+  def getBatchFunctions(
+      moduleNames: List[String]
+  ): IO[Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] = IO.pure(Map.empty)
+
   /** List modules that have been published as HTTP endpoints.
     *
     * Returns only modules whose `httpConfig` is defined and `published` is true.

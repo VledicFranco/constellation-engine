@@ -1,6 +1,7 @@
 package io.constellation.provider.sdk
 
 import cats.effect.{IO, Ref}
+import cats.implicits.*
 
 import io.constellation.CValue
 import io.constellation.provider.CValueSerializer
@@ -66,8 +67,72 @@ class ModuleExecutorServer(
       )
     )
 
+  /** Handle an ExecuteBatchRequest by dispatching each input to the module (RFC-034 Phase 1). */
+  def handleBatchRequest(request: pb.ExecuteBatchRequest): IO[pb.ExecuteBatchResponse] =
+    for {
+      startTime      <- IO.monotonic
+      currentModules <- modules.get
+      moduleDef <- currentModules.find(_.name == request.moduleName) match {
+        case Some(md) => IO.pure(md)
+        case None     => IO.raiseError(new ModuleNotFoundException(request.moduleName))
+      }
+      inputs <- request.inputs.toList.traverse { inputBytes =>
+        IO.fromEither(
+          serializer
+            .deserialize(inputBytes.toByteArray)
+            .left
+            .map(e => new TypeErrorException(s"Failed to deserialize batch input: $e"))
+        )
+      }
+      // Use batch handler if available, otherwise loop single handler
+      results <- moduleDef.batchHandler match {
+        case Some(batchFn) => batchFn(inputs)
+        case None =>
+          inputs.traverse { input =>
+            moduleDef
+              .handler(input)
+              .map(Right(_))
+              .handleError(Left(_))
+          }
+      }
+      batchResults <- results.traverse {
+        case Right(output) =>
+          IO.fromEither(
+            serializer
+              .serialize(output)
+              .left
+              .map(e => new RuntimeException(s"Failed to serialize batch output: $e"))
+          ).map(bytes =>
+            pb.ExecuteBatchResult(
+              result = pb.ExecuteBatchResult.Result.OutputData(
+                com.google.protobuf.ByteString.copyFrom(bytes)
+              )
+            )
+          )
+        case Left(error) =>
+          IO.pure(
+            pb.ExecuteBatchResult(
+              result = pb.ExecuteBatchResult.Result.Error(
+                pb.ExecutionError(
+                  code = "RUNTIME_ERROR",
+                  message = Option(error.getMessage).getOrElse("Unknown error")
+                )
+              )
+            )
+          )
+      }
+      endTime <- IO.monotonic
+      durationMs = (endTime - startTime).toMillis
+    } yield pb.ExecuteBatchResponse(
+      results = batchResults,
+      aggregateMetrics = Some(pb.ExecutionMetrics(durationMs = durationMs))
+    )
+
   /** Convert this server into a request handler function for use with ExecutorServerFactory. */
   def toHandler: pb.ExecuteRequest => IO[pb.ExecuteResponse] = handleRequest
+
+  /** Convert this server into a batch request handler function. */
+  def toBatchHandler: pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse] = handleBatchRequest
 }
 
 private[sdk] class ModuleNotFoundException(moduleName: String)

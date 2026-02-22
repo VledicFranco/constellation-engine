@@ -188,6 +188,9 @@ class StreamRoutes(
       // Extract module functions from constellation
       moduleFns <- extractModuleFunctions(dagSpec)
 
+      // Extract batch functions for external modules (RFC-034 Phase 1)
+      batchFns <- extractBatchFunctions(dagSpec)
+
       // Build StreamPipelineConfig from request bindings
       config = StreamPipelineConfig(
         sourceBindings = req.sourceBindings.map { case (name, binding) =>
@@ -221,13 +224,32 @@ class StreamRoutes(
         streamOptions,
         errorStrategy,
         joinStrategy,
-        image.moduleOptions
+        image.moduleOptions,
+        batchFns
       )
 
       // Deploy via lifecycle manager
       result <- manager.deploy(streamId, req.name, graph)
     } yield result.map(managed => toStreamInfo(managed))
   }
+
+  /** Extract batch functions for external modules in the DAG (RFC-034 Phase 1).
+    *
+    * For each module in the DAG, requests batch functions from constellation by qualified name.
+    * Maps module UUID to batch function if available.
+    */
+  private def extractBatchFunctions(
+      dagSpec: DagSpec
+  ): IO[Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+    dagSpec.modules.toList
+      .traverse { case (moduleId, spec) =>
+        // Module names in constellation can be qualified (namespace.name) or unqualified
+        val candidateNames = List(spec.name, spec.metadata.name)
+        constellation.getBatchFunctions(candidateNames).map { batchFnMap =>
+          batchFnMap.values.headOption.map(moduleId -> _)
+        }
+      }
+      .map(_.flatten.toMap)
 
   /** Extract module functions from the constellation instance for streaming.
     *
