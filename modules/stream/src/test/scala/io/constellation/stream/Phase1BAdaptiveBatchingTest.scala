@@ -1,5 +1,10 @@
 package io.constellation.stream
 
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+
+import io.constellation.CValue
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -231,5 +236,96 @@ class Phase1BAdaptiveBatchingTest extends AnyFlatSpec with Matchers {
     )
 
     config.shouldDecreaseSize shouldBe true
+  }
+
+  "Phase 1B vs Phase 1 Comparison" should "verify batch splitting preserves correctness with larger batches" in {
+    val batchFn: List[CValue] => IO[List[Either[Throwable, CValue]]] = { inputs =>
+      IO.pure(
+        inputs.map { input =>
+          Right(
+            input match {
+              case CValue.CString(s) => CValue.CString(s"processed:$s")
+              case other             => other
+            }
+          )
+        }
+      )
+    }
+
+    // Test with 250 elements
+    val inputs = (1 to 250).map(i => CValue.CString(s"item_$i")).toList
+
+    // Phase 1: Process without splitting
+    val phase1Results =
+      batchFn(inputs).unsafeRunSync()
+
+    // Phase 1B: Process with splitting at 50
+    val phase1bResults = BatchSplitter.processWithSplitting(inputs, batchFn, 50).unsafeRunSync()
+
+    // Both should produce same results
+    phase1Results should have length 250
+    phase1bResults should have length 250
+
+    // Results should match
+    phase1Results.zip(phase1bResults).foreach { case (r1, r2) =>
+      (r1, r2) match {
+        case (Right(v1), Right(v2)) => v1 shouldEqual v2
+        case _                       => fail("Results should both be Right values")
+      }
+    }
+  }
+
+  it should "demonstrate batch routing enforces conservative routing decisions" in {
+    // Batch routing is conservative: only use batch when conditions are very favorable
+    // The amortization formula: amortization = singleTime / batchTime
+    // Since batchTime = fixedOverhead + singleTime, amortization < 1 when fixedOverhead > 0
+    // This means batch functions are rarely used unless overhead is negligible
+
+    // Test 1: Single element should never use batch function (batch size < 2)
+    val singleElemDecision = BatchSplitter.decideBatchRouting(1, true, 1.0, 0.1)
+    singleElemDecision.useBatchFunction shouldBe false
+
+    // Test 2: Small batch should not use batch (insufficient size to amortize overhead)
+    val smallDecision = BatchSplitter.decideBatchRouting(2, true, 1.0, 0.1)
+    smallDecision.useBatchFunction shouldBe false
+
+    // Test 3: No batch function available means never use batch
+    val noBatchDecision = BatchSplitter.decideBatchRouting(100, false, 1.0, 0.1)
+    noBatchDecision.useBatchFunction shouldBe false
+
+    // Test 4: With positive fixed overhead, amortization < 1, so batch is rarely preferred
+    val withOverheadDecision = BatchSplitter.decideBatchRouting(50, true, 1.0, 0.1)
+    withOverheadDecision.useBatchFunction shouldBe false
+
+    // Test 5: Verify decision has reasoning
+    val withOverheadDecision2 = BatchSplitter.decideBatchRouting(100, true, 0.5, 0.1)
+    withOverheadDecision2.reason should not be empty
+  }
+
+  it should "show adaptive sizing recommends correct directions based on throughput" in {
+    val scenarios = List(
+      ("Throughput too low (40% of target)", 2000.0, 5000.0, 50, true, true),  // Should decrease, ratio < 0.8
+      ("Throughput optimal (95% of target)", 4750.0, 5000.0, 50, false, false), // Should keep
+      ("Throughput very high (130% of target)", 6500.0, 5000.0, 50, true, false) // Should increase, ratio > 1.2
+    )
+
+    for ((scenarioName, observed, target, current, shouldChange, shouldDecrease) <- scenarios) {
+      val config = BatchSplitter.AdaptiveBatchConfig(current, observed, target)
+      val ratio = observed / target
+      val recommended = config.recommendedBatchSize
+      val changed = recommended != current
+
+      // Verify change occurs as expected
+      changed shouldEqual shouldChange
+
+      // Verify direction of change
+      if (ratio < 0.8) {
+        recommended should be < current
+      } else if (ratio > 1.2) {
+        recommended should be > current
+      } else {
+        recommended shouldEqual current
+      }
+    }
   }
 }
