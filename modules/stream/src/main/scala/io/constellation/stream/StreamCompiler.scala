@@ -1,6 +1,9 @@
 package io.constellation.stream
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.{Deferred, IO}
 import cats.implicits.*
@@ -49,7 +52,8 @@ object StreamCompiler {
       modules: Map[UUID, CValue => IO[CValue]],
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
-      joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
+      joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
   ): IO[StreamGraph] =
     for {
       metrics <-
@@ -63,7 +67,8 @@ object StreamCompiler {
         errorStrategy,
         joinStrategy,
         metrics,
-        shutdown
+        shutdown,
+        moduleOptions
       )
     } yield graph
 
@@ -79,7 +84,8 @@ object StreamCompiler {
       modules: Map[UUID, CValue => IO[CValue]],
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
-      joinStrategy: JoinStrategy = JoinStrategy.CombineLatest
+      joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source and sink names from the DAG
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -120,7 +126,7 @@ object StreamCompiler {
           }
           .build
 
-        wire(dagSpec, resolvedRegistry, modules, options, errorStrategy, joinStrategy)
+        wire(dagSpec, resolvedRegistry, modules, options, errorStrategy, joinStrategy, moduleOptions)
     }
   }
 
@@ -132,7 +138,8 @@ object StreamCompiler {
       errorStrategy: StreamErrorStrategy,
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
-      shutdownSignal: Deferred[IO, Either[Throwable, Unit]]
+      shutdownSignal: Deferred[IO, Either[Throwable, Unit]],
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source nodes (data nodes with no incoming edges from module outputs)
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -180,45 +187,64 @@ object StreamCompiler {
 
       val inputStream: Stream[IO, CValue] = joinInputStreams(namedInputStreams, joinStrategy)
 
-      // For each output data node, create a stream that:
-      // 1. Takes input from upstream data nodes (joined via strategy)
-      // 2. Applies the module function
-      // 3. Applies error handling
-      val newStreams = outputDataIds.flatMap { outDataId =>
-        moduleFn.map { fn =>
+      // Detect collect pseudo-module
+      val isCollect = moduleName == "collect" || moduleName == "stdlib.builtin.collect"
 
-          val processed = errorStrategy match {
-            case StreamErrorStrategy.Skip =>
-              // Skip genuinely drops failed elements instead of emitting a sentinel
-              inputStream.evalMapFilter { input =>
-                (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
-                  .handleError(_ => None)
-              }
-            case StreamErrorStrategy.Log =>
-              inputStream.evalMap { input =>
-                val wrapped = fn(input).handleErrorWith { err =>
-                  metrics.recordError(moduleName) *>
-                    IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
-                }
-                wrapped <* metrics.recordElement(moduleName)
-              }
-            case StreamErrorStrategy.Propagate =>
-              inputStream.evalMap { input =>
-                fn(input) <* metrics.recordElement(moduleName)
-              }
-            case StreamErrorStrategy.Dlq =>
-              inputStream.evalMap { input =>
-                val wrapped = fn(input).handleErrorWith { err =>
-                  metrics.recordDlq(moduleName) *>
-                    IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
-                }
-                wrapped <* metrics.recordElement(moduleName)
-              }
-          }
+      val newStreams: Map[UUID, Stream[IO, CValue]] =
+        if isCollect then {
+          val opts      = moduleOptions.get(moduleId)
+          val batchSize = opts.flatMap(_.batchSize).getOrElse(100)
+          val batchMs   = opts.flatMap(_.batchTimeoutMs).getOrElse(1000L)
+          val timeout   = FiniteDuration(batchMs, TimeUnit.MILLISECONDS)
+          val elemType = inputDataIds.headOption
+            .flatMap(id => dagSpec.data.get(id))
+            .map(_.cType)
+            .getOrElse(CType.CString)
 
-          outDataId -> processed
+          val collected = inputStream
+            .groupWithin(batchSize, timeout)
+            .map(chunk => CValue.CList(chunk.toVector, elemType))
+            .evalTap(_ => metrics.recordElement(moduleName))
+
+          outputDataIds.map(_ -> collected).toMap
+        } else {
+          // Standard module processing with error handling
+          outputDataIds.flatMap { outDataId =>
+            moduleFn.map { fn =>
+
+              val processed = errorStrategy match {
+                case StreamErrorStrategy.Skip =>
+                  // Skip genuinely drops failed elements instead of emitting a sentinel
+                  inputStream.evalMapFilter { input =>
+                    (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
+                      .handleError(_ => None)
+                  }
+                case StreamErrorStrategy.Log =>
+                  inputStream.evalMap { input =>
+                    val wrapped = fn(input).handleErrorWith { err =>
+                      metrics.recordError(moduleName) *>
+                        IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
+                    }
+                    wrapped <* metrics.recordElement(moduleName)
+                  }
+                case StreamErrorStrategy.Propagate =>
+                  inputStream.evalMap { input =>
+                    fn(input) <* metrics.recordElement(moduleName)
+                  }
+                case StreamErrorStrategy.Dlq =>
+                  inputStream.evalMap { input =>
+                    val wrapped = fn(input).handleErrorWith { err =>
+                      metrics.recordDlq(moduleName) *>
+                        IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                    }
+                    wrapped <* metrics.recordElement(moduleName)
+                  }
+              }
+
+              outDataId -> processed
+            }
+          }.toMap
         }
-      }.toMap
 
       streams ++ newStreams
     }

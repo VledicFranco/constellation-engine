@@ -2,7 +2,8 @@ package io.constellation.http
 
 import java.util.UUID
 
-import cats.effect.IO
+import cats.Eval
+import cats.effect.{IO, Ref}
 import cats.implicits.*
 
 import io.constellation.http.StreamApiModels.*
@@ -252,11 +253,12 @@ class StreamRoutes(
       }
       .map(_.flatten.toMap)
 
-  /** Build a `CValue => IO[CValue]` wrapper for a module by constructing a synthetic single-node
-    * DAG and delegating to `Runtime.run` on each invocation.
+  /** Build a `CValue => IO[CValue]` wrapper for a module using lightweight per-element execution.
     *
-    * Each streaming element gets a fresh Runtime context — the module is initialized and executed
-    * per element, matching the behavior of single-mode execution.
+    * Instead of calling `Runtime.run` per element (which re-runs validation, scheduler setup,
+    * inline transforms, and state initialization), this directly initializes the module and runs
+    * it with a minimal Runtime — eliminating all unnecessary overhead for single-module synthetic
+    * DAGs in the streaming hot path.
     */
   private def buildStreamingModuleFn(
       spec: ModuleNodeSpec,
@@ -308,6 +310,12 @@ class StreamRoutes(
       outputBindings = outputBindings
     )
 
+    // Pre-compute field-to-UUID mappings (stable across elements)
+    val fieldToInputUUID: Map[String, UUID] =
+      inputNodes.map { case (uuid, (name, _)) => name -> uuid }
+    val fieldToOutputUUID: Map[String, UUID] =
+      outputNodes.map { case (uuid, (name, _)) => name -> uuid }
+
     IO.pure { (input: CValue) =>
       // Map single CValue to the module's input fields
       val inputMap: Map[String, CValue] = spec.consumes.keys.toList match {
@@ -319,23 +327,45 @@ class StreamRoutes(
           }
       }
 
-      Runtime.run(syntheticDag, inputMap, Map(syntheticModuleId -> module)).map { state =>
-        // Extract output CValue from runtime state
-        spec.produces.keys.toList match {
+      for {
+        // Re-init module per element (Deferred is fire-once, unavoidable)
+        runnable <- module.init(syntheticModuleId, syntheticDag)
+
+        // Minimal state: only what module needs for setModuleStatus/setStateData
+        minimalState <- Ref.of[IO, Runtime.State](
+          Runtime.State(
+            processUuid = UUID.randomUUID(),
+            dag = syntheticDag,
+            moduleStatus = Map(syntheticModuleId -> Eval.later(Module.Status.Unfired)),
+            data = Map.empty
+          )
+        )
+
+        runtime = Runtime(table = runnable.data, state = minimalState)
+
+        // Fill input Deferreds directly (replaces initUserInputDataTable + completeTopLevelDataNodes)
+        _ <- inputMap.toList.traverse { case (fieldName, cValue) =>
+          fieldToInputUUID.get(fieldName).traverse(uuid => runtime.setTableDataCValue(uuid, cValue))
+        }
+
+        // Run module directly — no scheduler, no fibers, no inline transforms
+        _ <- runnable.run(runtime)
+
+        // Extract output from minimal state (module called setStateData per output field)
+        state <- minimalState.get
+        result = spec.produces.keys.toList match {
           case singleField :: Nil =>
-            outputNodes
-              .collectFirst {
-                case (uuid, (name, _)) if name == singleField =>
-                  state.data.get(uuid).map(_.value).getOrElse(input)
-              }
+            fieldToOutputUUID
+              .get(singleField)
+              .flatMap(uuid => state.data.get(uuid).map(_.value))
               .getOrElse(input)
           case _ =>
-            val fields = outputNodes.flatMap { case (uuid, (name, _)) =>
+            val fields = fieldToOutputUUID.flatMap { case (name, uuid) =>
               state.data.get(uuid).map(ev => name -> ev.value)
             }
             CValue.CProduct(fields, spec.produces)
         }
-      }
+      } yield result
     }
   }
 
