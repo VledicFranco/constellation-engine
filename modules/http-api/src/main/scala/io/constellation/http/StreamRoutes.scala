@@ -220,7 +220,8 @@ class StreamRoutes(
         moduleFns,
         streamOptions,
         errorStrategy,
-        joinStrategy
+        joinStrategy,
+        image.moduleOptions
       )
 
       // Deploy via lifecycle manager

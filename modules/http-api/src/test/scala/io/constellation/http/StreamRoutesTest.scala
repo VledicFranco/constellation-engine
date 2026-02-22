@@ -200,4 +200,97 @@ class StreamRoutesTest extends AnyFlatSpec with Matchers {
     // Should fail because pipeline doesn't exist
     response.status shouldBe Status.BadRequest
   }
+
+  // ===== moduleOptions propagation (RFC-034 Phase 0) =====
+
+  it should "propagate moduleOptions from PipelineImage to StreamCompiler" in {
+    // Build a collect DAG: source -> collect -> sink
+    val collectId = UUID.randomUUID()
+    val sourceId  = UUID.randomUUID()
+    val sinkId    = UUID.randomUUID()
+
+    val dagSpec = io.constellation.DagSpec(
+      metadata = io.constellation.ComponentMetadata("collect-prop-test", "test", Nil, 1, 0),
+      modules = Map(
+        collectId -> io.constellation.ModuleNodeSpec(
+          metadata = io.constellation.ComponentMetadata("collect", "batch", Nil, 1, 0),
+          consumes = Map("input" -> io.constellation.CType.CString),
+          produces = Map("output" -> io.constellation.CType.CList(io.constellation.CType.CString))
+        )
+      ),
+      data = Map(
+        sourceId -> io.constellation.DataNodeSpec(
+          "input",
+          Map(sourceId -> "input"),
+          io.constellation.CType.CString,
+          None,
+          Map.empty
+        ),
+        sinkId -> io.constellation.DataNodeSpec(
+          "output",
+          Map(sinkId -> "output"),
+          io.constellation.CType.CList(io.constellation.CType.CString),
+          None,
+          Map.empty
+        )
+      ),
+      inEdges = Set(sourceId -> collectId),
+      outEdges = Set(collectId -> sinkId),
+      declaredOutputs = List("output"),
+      outputBindings = Map("output" -> sinkId)
+    )
+
+    // PipelineImage with moduleOptions: batchSize=2 for collect
+    val image = io.constellation.PipelineImage(
+      structuralHash = "test-hash-propagation",
+      syntacticHash = "test-syn",
+      dagSpec = dagSpec,
+      moduleOptions = Map(
+        collectId -> io.constellation
+          .ModuleCallOptions(batchSize = Some(2), batchTimeoutMs = Some(5000L))
+      ),
+      compiledAt = java.time.Instant.now()
+    )
+
+    val result = (for {
+      constellation <- ConstellationImpl.init
+      _             <- constellation.PipelineStore.store(image)
+      _             <- constellation.PipelineStore.alias("collect-test", image.structuralHash)
+      srcQ          <- cats.effect.std.Queue.bounded[IO, Option[io.constellation.CValue]](10)
+      snkQ          <- cats.effect.std.Queue.bounded[IO, io.constellation.CValue](10)
+      registry = ConnectorRegistry.builder
+        .source("input", MemoryConnector.source("input", srcQ))
+        .sink("output", MemoryConnector.sink("output", snkQ))
+        .build
+      manager <- StreamLifecycleManager.create
+      routes = new StreamRoutes(manager, registry, constellation)
+      deployReq = StreamDeployRequest(
+        name = "batch-test",
+        pipelineRef = "collect-test",
+        sourceBindings = Map("input" -> SourceBindingRequest("memory")),
+        sinkBindings = Map("output" -> SinkBindingRequest("memory"))
+      )
+      request = Request[IO](Method.POST, uri"/api/v1/streams").withEntity(deployReq)
+      response <- routes.routes.orNotFound.run(request)
+      _ = response.status shouldBe Status.Created
+
+      // Push exactly 2 elements (matching batchSize=2) then close
+      _ <- srcQ.offer(Some(io.constellation.CValue.CString("a")))
+      _ <- srcQ.offer(Some(io.constellation.CValue.CString("b")))
+      _ <- srcQ.offer(None)
+
+      // Wait for the stream to process
+      _ <- IO.sleep(scala.concurrent.duration.FiniteDuration(500, "ms"))
+
+      // Check sink: should have 1 batch of 2 (not default batch of 100)
+      items <- snkQ.tryTakeN(None)
+    } yield items).unsafeRunSync()
+
+    result should have size 1
+    result.head shouldBe a[io.constellation.CValue.CList]
+    val batch = result.head.asInstanceOf[io.constellation.CValue.CList]
+    batch.value should have size 2
+    batch.value(0) shouldBe io.constellation.CValue.CString("a")
+    batch.value(1) shouldBe io.constellation.CValue.CString("b")
+  }
 }
