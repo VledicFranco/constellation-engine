@@ -188,8 +188,8 @@ class StreamRoutes(
       // Extract module functions from constellation
       moduleFns <- extractModuleFunctions(dagSpec)
 
-      // Extract batch functions for external modules (RFC-034 Phase 1)
-      batchFns <- extractBatchFunctions(dagSpec)
+      // Extract batch functions for external modules (RFC-034 Phase 1 or 2B)
+      batchFns <- extractBatchFunctions(dagSpec, req.options)
 
       // Build StreamPipelineConfig from request bindings
       config = StreamPipelineConfig(
@@ -233,23 +233,35 @@ class StreamRoutes(
     } yield result.map(managed => toStreamInfo(managed))
   }
 
-  /** Extract batch functions for external modules in the DAG (RFC-034 Phase 1).
+  /** Extract batch functions for external modules in the DAG (RFC-034 Phase 1 and 2B).
     *
-    * For each module in the DAG, requests batch functions from constellation by qualified name.
+    * For each module in the DAG, requests batch or streaming batch functions from constellation
+    * by qualified name. If `options.persistentStreaming` is true, uses ExecuteBatchStream RPC
+    * via persistent bidirectional streams (Phase 2B); otherwise uses ExecuteBatch RPC (Phase 1).
     * Maps module UUID to batch function if available.
     */
   private def extractBatchFunctions(
-      dagSpec: DagSpec
-  ): IO[Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+      dagSpec: DagSpec,
+      options: Option[StreamApiModels.StreamOptionsRequest]
+  ): IO[Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]]] = {
+    val useStreamingBatch = options.flatMap(_.persistentStreaming).getOrElse(false)
+
     dagSpec.modules.toList
       .traverse { case (moduleId, spec) =>
         // Module names in constellation can be qualified (namespace.name) or unqualified
         val candidateNames = List(spec.name, spec.metadata.name)
-        constellation.getBatchFunctions(candidateNames).map { batchFnMap =>
+
+        val batchFnIO = if useStreamingBatch then
+          constellation.getStreamingBatchFunctions(candidateNames)
+        else
+          constellation.getBatchFunctions(candidateNames)
+
+        batchFnIO.map { batchFnMap =>
           batchFnMap.values.headOption.map(moduleId -> _)
         }
       }
       .map(_.flatten.toMap)
+  }
 
   /** Extract module functions from the constellation instance for streaming.
     *

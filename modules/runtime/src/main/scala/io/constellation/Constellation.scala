@@ -70,6 +70,21 @@ trait Constellation {
       moduleNames: List[String]
   ): IO[Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] = IO.pure(Map.empty)
 
+  /** Get streaming batch functions for persistent bidirectional gRPC streaming (RFC-034 Phase 2B).
+    *
+    * Used by StreamRoutes when `persistentStreaming: true` is passed in the HTTP request.
+    * Returns a map of qualified module names to streaming batch functions for modules
+    * that support persistent streaming via ExecuteBatchStream RPC.
+    *
+    * @param moduleNames
+    *   Qualified module names to look up streaming batch functions for
+    * @return
+    *   Map of qualified name to streaming batch function if available, empty map if not supported
+    */
+  def getStreamingBatchFunctions(
+      moduleNames: List[String]
+  ): IO[Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] = IO.pure(Map.empty)
+
   /** List modules that have been published as HTTP endpoints.
     *
     * Returns only modules whose `httpConfig` is defined and `published` is true.

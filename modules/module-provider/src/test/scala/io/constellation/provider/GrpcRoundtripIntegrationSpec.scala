@@ -51,8 +51,9 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
     val state  = cats.effect.Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val cp     = new ControlPlaneManager(state, config, _ => IO.unit)
     val cache  = new GrpcChannelCache
+    val streamPool = StreamingBatchPool.resource(cache, JsonCValueSerializer).allocated.unsafeRunSync()._1
     val manager =
-      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
+      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache, streamPool)
 
     // Start gRPC server hosting the ModuleProvider service
     val serviceImpl = new ModuleProviderServiceImplForTest(manager)

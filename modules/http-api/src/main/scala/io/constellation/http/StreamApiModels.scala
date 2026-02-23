@@ -49,7 +49,8 @@ object StreamApiModels {
       errorStrategy: Option[String] = None,
       joinStrategy: Option[String] = None,
       parallelism: Option[Int] = None,
-      metricsEnabled: Option[Boolean] = None
+      metricsEnabled: Option[Boolean] = None,
+      persistentStreaming: Option[Boolean] = None
   )
 
   object StreamOptionsRequest {

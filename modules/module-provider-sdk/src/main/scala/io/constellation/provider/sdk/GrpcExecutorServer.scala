@@ -21,8 +21,15 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
       handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
       batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
       port: Int
+  ): Resource[IO, Int] = createWithBatchAndStream(handler, batchHandler, None, port)
+
+  def createWithBatchAndStream(
+      handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
+      batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
+      batchStreamHandler: Option[PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[Unit]]],
+      port: Int
   ): Resource[IO, Int] = {
-    val serviceImpl = new GrpcModuleExecutorImpl(handler, batchHandler)
+    val serviceImpl = new GrpcModuleExecutorImpl(handler, batchHandler, batchStreamHandler)
 
     Resource.make(
       IO {
@@ -40,10 +47,12 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
 /** gRPC service implementation that delegates to handler functions. */
 private class GrpcModuleExecutorImpl(
     handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
-    batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]]
+    batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
+    batchStreamHandler: Option[PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[Unit]]] = None
 ) extends pb.ModuleExecutorGrpc.ModuleExecutor {
 
   import cats.effect.unsafe.implicits.global
+  import io.grpc.stub.StreamObserver
 
   override def execute(request: pb.ExecuteRequest): scala.concurrent.Future[pb.ExecuteResponse] = {
     val promise = scala.concurrent.Promise[pb.ExecuteResponse]()
@@ -91,4 +100,35 @@ private class GrpcModuleExecutorImpl(
     }
     promise.future
   }
+
+  override def executeBatchStream(
+      responseObserver: StreamObserver[pb.ExecuteBatchStreamResponse]
+  ): StreamObserver[pb.ExecuteBatchStreamRequest] =
+    new StreamObserver[pb.ExecuteBatchStreamRequest] {
+      override def onNext(request: pb.ExecuteBatchStreamRequest): Unit =
+        batchStreamHandler match {
+          case Some(handler) if handler.isDefinedAt(request) =>
+            handler(request)(msg => responseObserver.onNext(msg)).unsafeRunAndForget()
+          case Some(_) =>
+            responseObserver.onNext(
+              pb.ExecuteBatchStreamResponse(
+                correlationId = request.correlationId,
+                error = s"Handler not defined for module: ${request.moduleName}"
+              )
+            )
+          case None =>
+            responseObserver.onNext(
+              pb.ExecuteBatchStreamResponse(
+                correlationId = request.correlationId,
+                error = "ExecuteBatchStream not supported by this server"
+              )
+            )
+        }
+
+      override def onError(t: Throwable): Unit =
+        responseObserver.onError(t)
+
+      override def onCompleted(): Unit =
+        responseObserver.onCompleted()
+    }
 }
