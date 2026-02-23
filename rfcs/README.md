@@ -144,13 +144,97 @@ RFC-015 (terminology rename)
 
 ---
 
-### Future Features
+### Module Providers & External Integration
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-024 v4](./rfc-024-module-provider-protocol-v4.md) | Module Provider Protocol | Implemented | Dynamic module registration via gRPC, schema validation, canary deployments, provider groups |
+| [RFC-027](./rfc-027-module-http-endpoints.md) | Module HTTP Endpoints | Implemented | Opt-in HTTP endpoint publishing for individual modules |
+| [RFC-028](./rfc-028-typescript-module-provider-sdk.md) | TypeScript Module Provider SDK | Implemented | Node.js/TypeScript SDK for external module providers over gRPC |
+
+---
+
+### Language Features
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-030](./rfc-030-lambda-closures.md) | Lambda Closures | Implemented | Full closure support for lambda parameters with recursive functions |
+| [RFC-032](./rfc-032-lambda-infix-operators.md) | Lambda Infix Operators | Implemented | Arithmetic/comparison operators in lambda bodies desugar to stdlib calls |
+| [RFC-033](./rfc-033-implicit-lambda-infix-hof.md) | Implicit `it` & Infix HOF | Implemented | Auto-wrap bare `it` expressions in lambdas; infix syntax for filter/map/all/any |
+
+---
+
+### Documentation & Tooling
 
 | RFC | Feature | Status | Description |
 |-----|---------|--------|-------------|
 | [RFC-018](./rfc-018-mcp-server.md) | MCP Server | Draft | Model Context Protocol server for LLM integration |
 | [RFC-019](./rfc-019-generated-documentation.md) | Generated Documentation | Implemented | Scala catalog generation, organon verification, freshness tracking |
 | [RFC-020](./rfc-020-dashboard-ide-features.md) | Dashboard IDE Features | Implemented (Beta) | Live execution visualization, Monaco editor, module browser, profiling |
+| [RFC-021](./rfc-021-cli.md) | Constellation CLI | Implemented | Unified CLI for compile, run, viz, deploy, and server operations |
+
+---
+
+### Streaming & Performance
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-025](./rfc-025-streaming-pipelines.md) | Streaming Pipelines | Implemented | Source/sink connectors, batching, error strategies (Log/Skip/Propagate), join/fan-in operations |
+| [RFC-034](./rfc-034-provider-performance-optimizations.md) | Provider Performance (Phase 2B) | Accepted | Persistent bidirectional gRPC streaming with correlation ID multiplexing for 10-20% throughput gain |
+| [RFC-035](./rfc-035-stream-circuit-breaker.md) | Stream Circuit Breaker | Draft | Stream-level circuit breaker for reliability — pause source on sustained errors, auto-recover |
+| [RFC-036](./rfc-036-delivery-guarantees.md) | Delivery Guarantees | Draft | At-least-once and exactly-once semantics for streaming pipelines |
+| [RFC-037](./rfc-037-stateful-streaming.md) | Stateful Streaming | Draft | Stateful processors for windowed operations and session management |
+
+---
+
+### Quality & Testing
+
+| RFC | Feature | Status | Description |
+|-----|---------|--------|-------------|
+| [RFC-026](./rfc-026-testing-framework.md) | Testing Framework | Draft | Advanced testing infrastructure for streaming pipelines and external modules |
+| [RFC-029](./rfc-029-demo-qa-gold-standard.md) | Demo QA Gold Standard | Implemented | QA standards and reproducible testing methodology |
+| [RFC-031](./rfc-031-ir-generator-error-handling.md) | IR Generator Error Handling | Implemented | Comprehensive error handling for the IR generation phase |
+
+---
+
+## RFC Dependency Graph
+
+```
+Core Resilience (RFC-001 to RFC-011)
+  └─ Runtime Features (RFC-013, RFC-014)
+       └─ Pipeline Lifecycle (RFC-015 + family)
+             ├─ Module Providers (RFC-024 v4)
+             │   ├─ Module HTTP Endpoints (RFC-027)
+             │   ├─ TypeScript SDK (RFC-028)
+             │   └─ Performance (RFC-034)
+             │         └─ Stream Circuit Breaker (RFC-035)
+             │         └─ Delivery Guarantees (RFC-036)
+             ├─ Streaming (RFC-025)
+             │   └─ Stateful Streaming (RFC-037)
+             ├─ Language Features (RFC-030, RFC-032, RFC-033)
+             │   └─ Lambda Closures
+             │   └─ Infix Operators
+             ├─ Testing (RFC-026)
+             ├─ Documentation (RFC-019)
+             └─ CLI (RFC-021)
+
+Future (In Discussion):
+  └─ MCP Server (RFC-018)
+```
+
+---
+
+## Current Release Status
+
+**v0.8.3 (2026-02-23):** Lambda infix operators, implicit `it` parameter, and persistent gRPC streaming
+
+| Category | Count | Status |
+|----------|-------|--------|
+| **Implemented** | 30 | ✅ Shipped and production-ready |
+| **Accepted** | 1 | ✨ (RFC-034 Phase 2B — opt-in feature in v0.8.3) |
+| **Draft** | 4 | 📋 In discussion; RFC-035 is P1 for v0.8.4 |
+
+**Next Release:** v0.8.4 will include RFC-035 (stream circuit breaker) + RFC-032 Phase 2 (float arithmetic support).
 
 ---
 
