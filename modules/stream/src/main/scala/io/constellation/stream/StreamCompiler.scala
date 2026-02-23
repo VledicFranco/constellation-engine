@@ -234,11 +234,53 @@ object StreamCompiler {
             moduleFn.map { fn =>
               val processed = (batchFn, batchSize > 1) match {
                 case (Some(bf), true) =>
-                  // Batch path: group elements, call batch function, flatten results
+                  // Batch path with Phase 1B batch splitting and routing integration (RFC-034 Phase 1B)
+                  val maxBatchSize    = options.maxBatchSize // RFC-034: max batch size constraint
+                  val useBatchRouting = options.batchRouting // RFC-034: enable conditional routing
+
                   inputStream
                     .groupWithin(batchSize, batchTimeout)
                     .evalMap { chunk =>
-                      bf(chunk.toList).flatMap { results =>
+                      val inputs = chunk.toList
+
+                      // RFC-034 Phase 1B: Apply batch splitting if max_batch_size constraint is set
+                      val batches = if (maxBatchSize > 0) {
+                        BatchSplitter.splitBatch(inputs, maxBatchSize)
+                      } else {
+                        List(inputs) // No constraint: single batch
+                      }
+
+                      // RFC-034 Phase 1B: Decide whether to use batch function based on routing
+                      val shouldUseBatchFn = if (useBatchRouting) {
+                        val decision = BatchSplitter.decideBatchRouting(
+                          batchSize = inputs.length,
+                          hasBatchFunction = true,
+                          fixedOverheadMs = 1.0, // Estimated per-batch overhead
+                          singleElementTimeMs = 0.1 // Estimated per-element cost
+                        )
+                        decision.useBatchFunction
+                      } else {
+                        true // Use batch function by default if routing disabled
+                      }
+
+                      // Execute batches through batch function with splitting and handle results
+                      val resultsIO = if (shouldUseBatchFn) {
+                        // Process via batch function with splitting
+                        batches
+                          .traverse { batch =>
+                            bf(batch)
+                          }
+                          .map(_.flatten) // Flatten results from all batches
+                      } else {
+                        // Fallback: process single-element for each item
+                        inputs
+                          .traverse { input =>
+                            fn(input).map(Right(_))
+                          }
+                      }
+
+                      // Handle results and errors according to error strategy
+                      resultsIO.flatMap { results =>
                         results.traverse {
                           case Right(v) =>
                             metrics.recordElement(moduleName).as(Some(v))
