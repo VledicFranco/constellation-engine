@@ -76,6 +76,7 @@ class SerializationRoundTripPropertyTest
     case CType.CFloat       => CValue.CFloat(0.0)
     case CType.CBoolean     => CValue.CBoolean(false)
     case CType.CList(et)    => CValue.CList(Vector.empty, et)
+    case CType.CSeq(et)     => CValue.CSeq(Vector.empty, et)
     case CType.CMap(kt, vt) => CValue.CMap(Vector.empty, kt, vt)
     case CType.CProduct(s) =>
       CValue.CProduct(s.map { case (k, t) => k -> defaultCValue(t) }, s)
@@ -98,6 +99,13 @@ class SerializationRoundTripPropertyTest
             size  <- Gen.choose(0, 5)
             elems <- Gen.listOfN(size, genCValueForType(elemType, maxDepth - 1))
           } yield CValue.CList(elems.toVector, elemType)
+      case CType.CSeq(elemType) =>
+        if maxDepth <= 0 then Gen.const(CValue.CSeq(Vector.empty, elemType))
+        else
+          for {
+            size  <- Gen.choose(0, 5)
+            elems <- Gen.listOfN(size, genCValueForType(elemType, maxDepth - 1))
+          } yield CValue.CSeq(elems.toVector, elemType)
       case CType.CMap(kt, vt) =>
         if maxDepth <= 0 then Gen.const(CValue.CMap(Vector.empty, kt, vt))
         else

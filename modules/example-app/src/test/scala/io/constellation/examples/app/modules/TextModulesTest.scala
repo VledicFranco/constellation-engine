@@ -454,6 +454,7 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
 
     val result = runModule[Boolean](source, "contains-empty-sub", inputs, "result") {
       case CValue.CBoolean(v) => v
+      case other              => fail(s"Expected CBoolean, got $other")
     }
     result shouldBe true
   }
@@ -469,7 +470,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     val inputs = Map("text" -> CValue.CString("line1\nline2\nline3"))
 
     val result = runModule[Vector[String]](source, "splitlines-test", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("line1", "line2", "line3")
   }
@@ -483,7 +489,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     val inputs = Map("text" -> CValue.CString("single line"))
 
     val result = runModule[Vector[String]](source, "splitlines-single", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("single line")
   }
@@ -497,7 +508,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     val inputs = Map("text" -> CValue.CString(""))
 
     val result = runModule[Vector[String]](source, "splitlines-empty", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("")
   }
@@ -517,7 +533,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[String]](source, "split-test", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("a", "b", "c", "d")
   }
@@ -535,7 +556,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[String]](source, "split-multi", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("a", "b", "c")
   }
@@ -553,7 +579,12 @@ class TextModulesTest extends AnyFlatSpec with Matchers {
     )
 
     val result = runModule[Vector[String]](source, "split-none", inputs, "result") {
-      case CValue.CList(values, _) => values.map { case CValue.CString(v) => v }
+      case CValue.CList(values, _) =>
+        values.map {
+          case CValue.CString(v) => v
+          case other             => fail(s"Expected CString in list, got $other")
+        }
+      case other => fail(s"Expected CList, got $other")
     }
     result shouldBe Vector("hello world")
   }
