@@ -57,20 +57,20 @@ class CachingLangCompiler(
       case Some(cached) =>
         // Cache hit
         logger.debug(s"Compilation cache hit for '$dagName' [src:${sourceHash.take(8)}]") *>
-        IO.pure(Right(cached))
+          IO.pure(Right(cached))
       case None =>
         // Cache miss - compile and cache the result
         logger.debug(s"Compilation cache miss for '$dagName' — compiling") *>
-        IO {
-          underlying.compile(source, dagName)
-        }.flatMap { result =>
-          result match {
-            case Right(r) =>
-              cache.put(dagName, sourceHash, registryHash, r).as(result)
-            case Left(_) =>
-              IO.pure(result)
+          IO {
+            underlying.compile(source, dagName)
+          }.flatMap { result =>
+            result match {
+              case Right(r) =>
+                cache.put(dagName, sourceHash, registryHash, r).as(result)
+              case Left(_) =>
+                IO.pure(result)
+            }
           }
-        }
     }
   }
 

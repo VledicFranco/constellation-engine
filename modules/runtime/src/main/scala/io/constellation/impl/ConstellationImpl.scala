@@ -94,8 +94,8 @@ final class ConstellationImpl(
       inputs: Map[String, CValue],
       options: ExecutionOptions = ExecutionOptions()
   ): IO[DataSignature] = {
-    val dagSpec   = loaded.image.dagSpec
-    val startedAt = Instant.now()
+    val dagSpec      = loaded.image.dagSpec
+    val startedAt    = Instant.now()
     val pipelineName = dagSpec.metadata.name
     val hashPrefix   = loaded.structuralHash.take(12)
 
@@ -113,9 +113,11 @@ final class ConstellationImpl(
         allModules,
         Map.empty
       )
-      sig = buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
+      sig     = buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
       elapsed = java.time.Duration.between(startedAt, Instant.now()).toMillis
-      _ <- logger.info(s"Pipeline '$pipelineName' [$hashPrefix] completed: ${sig.status} in ${elapsed}ms")
+      _ <- logger.info(
+        s"Pipeline '$pipelineName' [$hashPrefix] completed: ${sig.status} in ${elapsed}ms"
+      )
     } yield sig
   }
 

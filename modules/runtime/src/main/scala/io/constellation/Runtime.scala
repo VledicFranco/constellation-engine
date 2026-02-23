@@ -1211,14 +1211,18 @@ object Module {
                 .timeout(partialSpec.config.inputsTimeout)
                 .handleErrorWith {
                   case _: TimeoutException =>
-                    logger.warn(s"Module '${partialSpec.metadata.name}' timed out after ${partialSpec.config.inputsTimeout}") *>
-                    runtime.setModuleStatus(
-                      moduleId,
-                      Module.Status.Timed(partialSpec.config.inputsTimeout)
-                    )
+                    logger.warn(
+                      s"Module '${partialSpec.metadata.name}' timed out after ${partialSpec.config.inputsTimeout}"
+                    ) *>
+                      runtime.setModuleStatus(
+                        moduleId,
+                        Module.Status.Timed(partialSpec.config.inputsTimeout)
+                      )
                   case e =>
-                    logger.error(e)(s"Module '${partialSpec.metadata.name}' failed: ${e.getMessage}") *>
-                    runtime.setModuleStatus(moduleId, Module.Status.Failed(e))
+                    logger.error(e)(
+                      s"Module '${partialSpec.metadata.name}' failed: ${e.getMessage}"
+                    ) *>
+                      runtime.setModuleStatus(moduleId, Module.Status.Failed(e))
                 }
                 .void
           )

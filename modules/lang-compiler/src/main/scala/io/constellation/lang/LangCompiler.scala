@@ -4,7 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.effect.IO
-import org.slf4j.{Logger => SLF4JLogger, LoggerFactory}
+import org.slf4j.{Logger as SLF4JLogger, LoggerFactory}
 
 import io.constellation.*
 import io.constellation.cache.CacheBackend
