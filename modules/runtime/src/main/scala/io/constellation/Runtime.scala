@@ -18,6 +18,9 @@ import cats.implicits.{
 }
 import cats.{Eval, Monoid}
 
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
+
 import io.constellation.execution.{CancellableExecution, ExecutionStatus, GlobalScheduler}
 import io.constellation.pool.RuntimePool
 import io.constellation.spi.ConstellationBackends
@@ -1109,6 +1112,8 @@ object Runtime {
 
 object Module {
 
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromName[IO]("io.constellation.Runtime")
+
   final case class Produces[A](data: A, implementationContext: Eval[Map[String, Json]])
 
   sealed trait Status
@@ -1206,11 +1211,13 @@ object Module {
                 .timeout(partialSpec.config.inputsTimeout)
                 .handleErrorWith {
                   case _: TimeoutException =>
+                    logger.warn(s"Module '${partialSpec.metadata.name}' timed out after ${partialSpec.config.inputsTimeout}") *>
                     runtime.setModuleStatus(
                       moduleId,
                       Module.Status.Timed(partialSpec.config.inputsTimeout)
                     )
                   case e =>
+                    logger.error(e)(s"Module '${partialSpec.metadata.name}' failed: ${e.getMessage}") *>
                     runtime.setModuleStatus(moduleId, Module.Status.Failed(e))
                 }
                 .void

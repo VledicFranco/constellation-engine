@@ -4,6 +4,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import io.constellation.ContentHash
 import io.constellation.cache.CacheStats
@@ -31,6 +33,8 @@ class CachingLangCompiler(
     cache: CompilationCache
 ) extends LangCompiler {
 
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[CachingLangCompiler])
+
   // Simple in-memory cache for IR results (separate from CompilationOutput cache)
   // Key: (sourceHash, registryHash), Value: IRPipeline
   private val irCache = new ConcurrentHashMap[(String, String), IRPipeline]()
@@ -52,9 +56,11 @@ class CachingLangCompiler(
     cache.get(dagName, sourceHash, registryHash).flatMap {
       case Some(cached) =>
         // Cache hit
+        logger.debug(s"Compilation cache hit for '$dagName' [src:${sourceHash.take(8)}]") *>
         IO.pure(Right(cached))
       case None =>
         // Cache miss - compile and cache the result
+        logger.debug(s"Compilation cache miss for '$dagName' — compiling") *>
         IO {
           underlying.compile(source, dagName)
         }.flatMap { result =>

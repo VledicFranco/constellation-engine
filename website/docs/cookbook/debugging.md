@@ -473,17 +473,28 @@ result = ExpensiveService(input) with cache: 300s
 
 ### Server Logs
 
-The server logs important events to stderr:
+The server logs important events to stderr. Control logging verbosity with the `CONSTELLATION_LOG_LEVEL` environment variable:
 
 ```bash
-# Run with visible logs
+# Development: see all debug information
+export CONSTELLATION_LOG_LEVEL=DEBUG
 make server 2>&1 | tee server.log
+
+# Production: minimal logging (default)
+make server
+
+# Quiet: errors only
+export CONSTELLATION_LOG_LEVEL=ERROR
+make server
 ```
 
-Log levels include:
-- **INFO**: Normal operations
-- **WARN**: Potential issues (type cast violations in ErrorsOnly mode)
-- **ERROR**: Failures
+**Log categories:**
+- **DEBUG**: Cache hits/misses, compilation details (hidden by default)
+- **INFO**: Pipeline execution lifecycle, starts and completions
+- **WARN**: Module timeouts
+- **ERROR**: Failures with full stacktraces
+
+**See also:** [Logging Configuration](../operations/logging.md) for detailed setup guide, library integration, and production deployment strategies.
 
 ### Request Tracing
 
@@ -579,6 +590,7 @@ When a pipeline fails:
 
 | Variable | Purpose | Values |
 |----------|---------|--------|
+| `CONSTELLATION_LOG_LEVEL` | Logging verbosity | `DEBUG`, `INFO` (default), `WARN`, `ERROR` |
 | `CONSTELLATION_DEBUG` | Type validation level | `off`, `errors`, `full` |
 | `CONSTELLATION_PORT` | Server port | Default: `8080` |
 

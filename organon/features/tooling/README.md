@@ -22,6 +22,7 @@ CLI, Dashboard, LSP integration, and VSCode extension.
 | dashboard.md | Web-based pipeline visualization |
 | lsp.md | Language Server Protocol implementation |
 | vscode.md | VSCode extension features |
+| logging.md | Logging architecture and implementation patterns |
 
 ## Quick Reference
 

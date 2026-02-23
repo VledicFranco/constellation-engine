@@ -7,6 +7,8 @@ import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO
 import cats.implicits.*
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import io.constellation.*
 import io.constellation.cache.CacheBackend
@@ -67,6 +69,8 @@ final class ConstellationImpl(
     suspensionStoreOpt: Option[SuspensionStore] = None
 ) extends Constellation {
 
+  private val logger: Logger[IO] = Slf4jLogger.getLoggerFromClass[IO](classOf[ConstellationImpl])
+
   def getModules: IO[List[ModuleNodeSpec]] =
     moduleRegistry.listModules
 
@@ -92,8 +96,11 @@ final class ConstellationImpl(
   ): IO[DataSignature] = {
     val dagSpec   = loaded.image.dagSpec
     val startedAt = Instant.now()
+    val pipelineName = dagSpec.metadata.name
+    val hashPrefix   = loaded.structuralHash.take(12)
 
     for {
+      _ <- logger.info(s"Executing pipeline '$pipelineName' [$hashPrefix]")
       // Merge registry modules with synthetic modules from the loaded pipeline
       registryModules <- moduleRegistry.initModules(dagSpec)
       allModules = registryModules ++ loaded.syntheticModules
@@ -106,7 +113,10 @@ final class ConstellationImpl(
         allModules,
         Map.empty
       )
-    } yield buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
+      sig = buildDataSignature(state, loaded, inputs, options, startedAt, resumptionCount = 0)
+      elapsed = java.time.Duration.between(startedAt, Instant.now()).toMillis
+      _ <- logger.info(s"Pipeline '$pipelineName' [$hashPrefix] completed: ${sig.status} in ${elapsed}ms")
+    } yield sig
   }
 
   def run(

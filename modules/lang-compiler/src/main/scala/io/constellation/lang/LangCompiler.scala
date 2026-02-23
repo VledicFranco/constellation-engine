@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.effect.IO
+import org.slf4j.{Logger => SLF4JLogger, LoggerFactory}
 
 import io.constellation.*
 import io.constellation.cache.CacheBackend
@@ -158,10 +159,12 @@ private class LangCompilerImpl(
     optimizationConfig: OptimizationConfig = OptimizationConfig.none
 ) extends LangCompiler {
 
+  private val logger: SLF4JLogger = LoggerFactory.getLogger(getClass)
+
   def functionRegistry: FunctionRegistry = registry
 
-  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] =
-    for {
+  def compile(source: String, dagName: String): Either[List[CompileError], CompilationOutput] = {
+    val result = for {
       // Phase 1: Parse
       program <- ConstellationParser.parse(source).left.map(List(_))
 
@@ -198,6 +201,14 @@ private class LangCompilerImpl(
       val loaded = LoadedPipeline(image, result.syntheticModules)
       CompilationOutput(loaded, typedPipeline.warnings)
     }
+
+    result.left.foreach { errors =>
+      logger.error(
+        s"Compilation failed for '$dagName': ${errors.size} error(s) — ${errors.map(_.message).mkString("; ")}"
+      )
+    }
+    result
+  }
 
   def compileToIR(source: String, dagName: String): Either[List[CompileError], IRPipeline] =
     for {
