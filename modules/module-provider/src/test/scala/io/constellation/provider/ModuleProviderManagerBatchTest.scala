@@ -40,8 +40,8 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
 
   // ===== Helper: Batch function creator =====
 
-  private def createTestBatchFunction(): List[CValue] => IO[List[Either[Throwable, CValue]]] =
-    { inputs =>
+  private def createTestBatchFunction(): List[CValue] => IO[List[Either[Throwable, CValue]]] = {
+    inputs =>
       IO.pure(
         inputs.map { input =>
           Right(
@@ -52,7 +52,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
           )
         }
       )
-    }
+  }
 
   // ===== Tests =====
 
@@ -63,7 +63,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
       override def getModuleByName(name: String): IO[Option[Module.Uninitialized]] =
         IO.pure(None)
       override def setModule(module: Module.Uninitialized): IO[Unit] = IO.unit
-      override def PipelineStore: PipelineStore = ???
+      override def PipelineStore: PipelineStore                      = ???
       override def run(
           loaded: LoadedPipeline,
           inputs: Map[String, CValue],
@@ -91,7 +91,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
 
   "Batch function support flags" should "handle ModuleCapabilities correctly" in {
     // Test that capabilities are parsed correctly
-    val capWithBatch = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 100)
+    val capWithBatch    = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 100)
     val capWithoutBatch = pb.ModuleCapabilities(supportsBatch = false, maxBatchSize = 0)
 
     capWithBatch.supportsBatch shouldBe true
@@ -200,23 +200,21 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
 
   it should "preserve order of inputs" in {
     val batchFn = createTestBatchFunction()
-    val inputs = (1 to 100).map(i => CValue.CString(s"item$i")).toList
+    val inputs  = (1 to 100).map(i => CValue.CString(s"item$i")).toList
 
     val results = batchFn(inputs).unsafeRunSync()
 
     val resultStrings = results.map(_.toOption.get.asInstanceOf[CValue.CString].value)
     resultStrings should have length 100
 
-    for (i <- 0 until 100) {
-      resultStrings(i) shouldBe s"batched:item${i + 1}"
-    }
+    for i <- 0 until 100 do resultStrings(i) shouldBe s"batched:item${i + 1}"
   }
 
   "Batch function error handling" should "propagate errors correctly" in {
     val errorBatchFn: List[CValue] => IO[List[Either[Throwable, CValue]]] = { inputs =>
       IO.pure(
         inputs.zipWithIndex.map { case (_, idx) =>
-          if (idx == 1) Left(new RuntimeException("Error at index 1"))
+          if idx == 1 then Left(new RuntimeException("Error at index 1"))
           else Right(CValue.CString("ok"))
         }
       )
@@ -238,7 +236,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
 
   "Batch function qualification" should "use qualified names" in {
     val qualifiedName = "my_namespace.MyBatchModule"
-    val parts = qualifiedName.split("\\.")
+    val parts         = qualifiedName.split("\\.")
 
     parts should have length 2
     parts(0) shouldBe "my_namespace"
@@ -247,8 +245,8 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
 
   it should "support nested namespaces" in {
     val qualifiedName = "company.team.service.BatchModule"
-    val namespace = qualifiedName.split("\\.").dropRight(1).mkString(".")
-    val moduleName = qualifiedName.split("\\.").last
+    val namespace     = qualifiedName.split("\\.").dropRight(1).mkString(".")
+    val moduleName    = qualifiedName.split("\\.").last
 
     namespace shouldBe "company.team.service"
     moduleName shouldBe "BatchModule"
@@ -257,7 +255,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
   "Max batch size handling" should "declare batch size limits" in {
     val smallBatch = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 10)
     val largeBatch = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 10000)
-    val unlimited = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 0)
+    val unlimited  = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = 0)
 
     smallBatch.maxBatchSize shouldBe 10
     largeBatch.maxBatchSize shouldBe 10000
@@ -265,7 +263,7 @@ class ModuleProviderManagerBatchTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function with max size" should "respect batch size constraints" in {
-    val maxSize = 50
+    val maxSize      = 50
     val capabilities = pb.ModuleCapabilities(supportsBatch = true, maxBatchSize = maxSize)
 
     // In Phase 1, StreamCompiler will need to split batches exceeding maxSize

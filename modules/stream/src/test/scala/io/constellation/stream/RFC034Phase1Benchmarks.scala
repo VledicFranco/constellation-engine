@@ -46,11 +46,11 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
     println("\n1. SINGLE-ELEMENT THROUGHPUT")
     println("-" * 90)
     val singleOpsPerElement = 1000
-    val singleStart = System.nanoTime()
+    val singleStart         = System.nanoTime()
     (1 to singleOpsPerElement).foreach { _ =>
       singleElementFn(CValue.CString("test")).unsafeRunSync()
     }
-    val singleTime = (System.nanoTime() - singleStart) / 1e6
+    val singleTime       = (System.nanoTime() - singleStart) / 1e6
     val singleThroughput = (singleOpsPerElement * 1000) / singleTime
     println(f"  Processing $singleOpsPerElement single elements: ${singleTime}%.2f ms")
     println(f"  Throughput: $singleThroughput%.0f elem/sec")
@@ -59,7 +59,7 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
     println("-" * 90)
     val batchSizes = List(5, 10, 25, 50, 100)
 
-    for (batchSize <- batchSizes) {
+    for batchSize <- batchSizes do {
       val inputs = (1 to batchSize).map(i => CValue.CString(s"item_$i")).toList
 
       val batchStart = System.nanoTime()
@@ -67,23 +67,26 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
       val batchTime = (System.nanoTime() - batchStart) / 1e6
 
       val avgPerElement = batchTime / batchSize
-      val speedup = singleTime / batchSize / (batchTime / batchSize)
+      val speedup       = singleTime / batchSize / (batchTime / batchSize)
 
-      println(f"  Batch size $batchSize%-3d: ${batchTime}%.3f ms total  (${avgPerElement}%.4f ms/elem)  Speedup: ${speedup}%.2f×")
+      println(
+        f"  Batch size $batchSize%-3d: ${batchTime}%.3f ms total  (${avgPerElement}%.4f ms/elem)  Speedup: ${speedup}%.2f×"
+      )
     }
 
     println("\n3. STREAMING THROUGHPUT (Continuous batch processing)")
     println("-" * 90)
     val elementsPerBatch = 50
-    val numBatches = 20
-    val totalElements = elementsPerBatch * numBatches
+    val numBatches       = 20
+    val totalElements    = elementsPerBatch * numBatches
 
     val streamStart = System.nanoTime()
     (1 to numBatches).foreach { batchIdx =>
-      val inputs = (1 to elementsPerBatch).map(i => CValue.CString(s"batch_${batchIdx}_item_$i")).toList
+      val inputs =
+        (1 to elementsPerBatch).map(i => CValue.CString(s"batch_${batchIdx}_item_$i")).toList
       batchFn(inputs).unsafeRunSync()
     }
-    val streamTime = (System.nanoTime() - streamStart) / 1e6
+    val streamTime       = (System.nanoTime() - streamStart) / 1e6
     val streamThroughput = (totalElements * 1000) / streamTime
 
     println(f"  Processing $numBatches batches of $elementsPerBatch elements:")
@@ -93,7 +96,7 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
     println("\n4. DAG COMPILATION (Batch-enabled vs Single-element)")
     println("-" * 90)
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     val dagSpec = DagSpec(
@@ -106,7 +109,7 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
+        inputId  -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
         outputId -> DataNodeSpec("output", Map(moduleId -> "output"), CType.CString)
       ),
       inEdges = Set(inputId -> moduleId),
@@ -116,7 +119,7 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
     )
 
     val registry = ConnectorRegistry.empty
-    val modules = Map(moduleId -> singleElementFn)
+    val modules  = Map(moduleId -> singleElementFn)
 
     // Single-element compilation
     val singleCompileStart = System.nanoTime()
@@ -136,7 +139,7 @@ class RFC034Phase1Benchmarks extends AnyFlatSpec with Matchers {
     }
     val batchCompileTime = (System.nanoTime() - batchCompileStart) / 1e6 / 5
 
-    val compileOverhead = ((batchCompileTime - singleCompileTime) / singleCompileTime * 100)
+    val compileOverhead = (batchCompileTime - singleCompileTime) / singleCompileTime * 100
 
     println(f"  Single-element DAG compilation: ${singleCompileTime}%.2f ms (avg of 5)")
     println(f"  Batch-enabled DAG compilation:  ${batchCompileTime}%.2f ms (avg of 5)")

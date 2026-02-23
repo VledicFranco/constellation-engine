@@ -17,8 +17,8 @@ import org.scalatest.matchers.should.Matchers
 
 /** RFC-034 Phase 2 Task #1: StreamCompiler integration tests
   *
-  * Validates that Phase 1B batch splitting, adaptive batching, and batch routing
-  * are correctly integrated into StreamCompiler.wire()
+  * Validates that Phase 1B batch splitting, adaptive batching, and batch routing are correctly
+  * integrated into StreamCompiler.wire()
   */
 class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
@@ -77,9 +77,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   "StreamCompiler batch splitting integration" should "respect maxBatchSize constraint when set" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Create options with max batch size constraint
     val options = StreamOptions(
@@ -107,9 +107,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "not apply splitting when maxBatchSize is 0 (unlimited)" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Unlimited batch size
     val options = StreamOptions(
@@ -136,9 +136,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
     // This would require a full integration test with actual streaming
     // For now, validate the options are accepted
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 10,
@@ -163,9 +163,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "apply batch routing decision when enabled" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Enable batch routing
     val options = StreamOptions(
@@ -190,9 +190,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "fall back to single-element when batch routing disabled" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 100,
@@ -218,9 +218,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "maintain backward compatibility with default options" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Default options (all Phase 1B features disabled)
     val defaultOptions = StreamOptions()
@@ -240,9 +240,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "work with existing code using no Phase 1B options" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Call without Phase 1B options
     val graph = StreamCompiler
@@ -261,9 +261,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "combine maxBatchSize and batchRouting options correctly" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 50,
@@ -286,14 +286,14 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "combine all Phase 1B options together" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 50,
-      adaptiveBatching = true,  // Phase 1B: adaptive sizing
-      batchRouting = true        // Phase 1B: conditional routing
+      adaptiveBatching = true, // Phase 1B: adaptive sizing
+      batchRouting = true      // Phase 1B: conditional routing
     )
 
     val graph = StreamCompiler
@@ -313,8 +313,8 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "handle missing batch function gracefully" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
     val batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map()
 
     val options = StreamOptions(
@@ -337,10 +337,10 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle missing single-element function" in {
-    val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
+    val (dagSpec, moduleId, _)                   = createSimpleDag()
+    val registry                                 = ConnectorRegistry.empty
     val modules: Map[UUID, CValue => IO[CValue]] = Map()
-    val batchModules            = Map(moduleId -> batchFn)
+    val batchModules                             = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 50,
@@ -365,9 +365,9 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
 
   it should "have zero compilation overhead for Phase 1B integration" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // With Phase 1B options
     val startWithOptions = System.nanoTime()
@@ -399,7 +399,7 @@ class Phase2StreamCompilerIntegrationTest extends AnyFlatSpec with Matchers {
     }
     val timeBaseline = (System.nanoTime() - startBaseline) / 1e6
 
-    val overhead = ((timeWithOptions - timeBaseline) / timeBaseline * 100)
+    val overhead = (timeWithOptions - timeBaseline) / timeBaseline * 100
 
     println(f"\nCompilation overhead: ${overhead}%+.1f%%")
     // Overhead should be acceptable (<25% for configuration checking)

@@ -68,7 +68,7 @@ class Phase1BAdaptiveBatchingTest extends AnyFlatSpec with Matchers {
     val decision = BatchSplitter.decideBatchRouting(
       batchSize = 100,
       hasBatchFunction = true,
-      fixedOverheadMs = 0.5, // Small fixed overhead
+      fixedOverheadMs = 0.5,    // Small fixed overhead
       singleElementTimeMs = 0.1 // Normal per-element cost
     )
 
@@ -115,7 +115,7 @@ class Phase1BAdaptiveBatchingTest extends AnyFlatSpec with Matchers {
     val decision = BatchSplitter.decideBatchRouting(
       batchSize = 100,
       hasBatchFunction = true,
-      fixedOverheadMs = 5.0, // High fixed overhead
+      fixedOverheadMs = 5.0,    // High fixed overhead
       singleElementTimeMs = 0.1 // Low per-element cost
     )
 
@@ -270,7 +270,7 @@ class Phase1BAdaptiveBatchingTest extends AnyFlatSpec with Matchers {
     phase1Results.zip(phase1bResults).foreach { case (r1, r2) =>
       (r1, r2) match {
         case (Right(v1), Right(v2)) => v1 shouldEqual v2
-        case _                       => fail("Results should both be Right values")
+        case _                      => fail("Results should both be Right values")
       }
     }
   }
@@ -304,24 +304,38 @@ class Phase1BAdaptiveBatchingTest extends AnyFlatSpec with Matchers {
 
   it should "show adaptive sizing recommends correct directions based on throughput" in {
     val scenarios = List(
-      ("Throughput too low (40% of target)", 2000.0, 5000.0, 50, true, true),  // Should decrease, ratio < 0.8
+      (
+        "Throughput too low (40% of target)",
+        2000.0,
+        5000.0,
+        50,
+        true,
+        true
+      ), // Should decrease, ratio < 0.8
       ("Throughput optimal (95% of target)", 4750.0, 5000.0, 50, false, false), // Should keep
-      ("Throughput very high (130% of target)", 6500.0, 5000.0, 50, true, false) // Should increase, ratio > 1.2
+      (
+        "Throughput very high (130% of target)",
+        6500.0,
+        5000.0,
+        50,
+        true,
+        false
+      ) // Should increase, ratio > 1.2
     )
 
-    for ((scenarioName, observed, target, current, shouldChange, shouldDecrease) <- scenarios) {
-      val config = BatchSplitter.AdaptiveBatchConfig(current, observed, target)
-      val ratio = observed / target
+    for (scenarioName, observed, target, current, shouldChange, shouldDecrease) <- scenarios do {
+      val config      = BatchSplitter.AdaptiveBatchConfig(current, observed, target)
+      val ratio       = observed / target
       val recommended = config.recommendedBatchSize
-      val changed = recommended != current
+      val changed     = recommended != current
 
       // Verify change occurs as expected
       changed shouldEqual shouldChange
 
       // Verify direction of change
-      if (ratio < 0.8) {
+      if ratio < 0.8 then {
         recommended should be < current
-      } else if (ratio > 1.2) {
+      } else if ratio > 1.2 then {
         recommended should be > current
       } else {
         recommended shouldEqual current

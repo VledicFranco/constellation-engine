@@ -17,8 +17,8 @@ import org.scalatest.matchers.should.Matchers
 
 /** RFC-034 Phase 2 Task #2: Runtime Metrics Collection
   *
-  * Validates that batch execution times are tracked, history is maintained,
-  * and adaptive sizing recommendations respond to throughput metrics.
+  * Validates that batch execution times are tracked, history is maintained, and adaptive sizing
+  * recommendations respond to throughput metrics.
   */
 class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
@@ -83,7 +83,8 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   it should "record batch execution with size and time" in {
     val history0 = BatchSplitter.BatchHistory.empty
-    val history1 = BatchSplitter.BatchHistory.record(history0, batchSize = 10, executionTimeMs = 5.0)
+    val history1 =
+      BatchSplitter.BatchHistory.record(history0, batchSize = 10, executionTimeMs = 5.0)
 
     history1.batchSizes should contain(10)
     history1.executionTimesMs should contain(5.0)
@@ -177,7 +178,7 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
     val h1 = BatchSplitter.BatchHistory.record(h0, batchSize = 100, executionTimeMs = 20.0)
     val h2 = BatchSplitter.BatchHistory.record(h1, batchSize = 100, executionTimeMs = 20.0)
 
-    val avgPerElement = h2.averagePerElementTime
+    val avgPerElement     = h2.averagePerElementTime
     val elementsPerSecond = 1000.0 / avgPerElement
 
     // 100 elements in 20ms = 5000 elements/sec
@@ -188,15 +189,15 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   "StreamCompiler batch metrics integration" should "record batch size in compiled graphs" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Create options with metrics enabled
     val options = StreamOptions(
       maxBatchSize = 50,
-      adaptiveBatching = true,  // Enable adaptive batching
-      batchRouting = true        // Enable routing decisions
+      adaptiveBatching = true, // Enable adaptive batching
+      batchRouting = true      // Enable routing decisions
     )
 
     val graph = StreamCompiler
@@ -217,9 +218,9 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   it should "add minimal overhead during compilation when metrics enabled" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Baseline: no adaptive batching or routing
     val startBaseline = System.nanoTime()
@@ -251,7 +252,7 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
     }
     val timeWithMetrics = (System.nanoTime() - startWithMetrics) / 1e6
 
-    val overhead = ((timeWithMetrics - timeBaseline) / timeBaseline * 100)
+    val overhead = (timeWithMetrics - timeBaseline) / timeBaseline * 100
     println(f"\nCompilation overhead with metrics: ${overhead}%+.1f%%")
 
     // Compilation overhead should be acceptable (<10% for configuration handling)
@@ -284,9 +285,9 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   "StreamCompiler with metrics options" should "combine adaptive batching and batch routing" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 50,
@@ -309,9 +310,9 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   it should "work with default options (metrics disabled)" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val graph = StreamCompiler
       .wire(
@@ -374,9 +375,13 @@ class Phase2MetricsCollectionTest extends AnyFlatSpec with Matchers {
 
   it should "have <1% overhead on history recording" in {
     val startRecord = System.nanoTime()
-    var history = BatchSplitter.BatchHistory.empty
+    var history     = BatchSplitter.BatchHistory.empty
     (1 to 100).foreach { i =>
-      history = BatchSplitter.BatchHistory.record(history, batchSize = 10 + i, executionTimeMs = 1.0 + i * 0.1)
+      history = BatchSplitter.BatchHistory.record(
+        history,
+        batchSize = 10 + i,
+        executionTimeMs = 1.0 + i * 0.1
+      )
       history = BatchSplitter.BatchHistory.keep(history, maxSize = 100)
     }
     val timeRecord = (System.nanoTime() - startRecord) / 1e6

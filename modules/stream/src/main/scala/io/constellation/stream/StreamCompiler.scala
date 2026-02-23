@@ -64,7 +64,9 @@ object StreamCompiler {
         if options.adaptiveBatching then
           Ref.of[IO, BatchSplitter.BatchHistory](BatchSplitter.BatchHistory.empty)
         else
-          Ref.of[IO, BatchSplitter.BatchHistory](BatchSplitter.BatchHistory.empty) // Unused but created for consistency
+          Ref.of[IO, BatchSplitter.BatchHistory](
+            BatchSplitter.BatchHistory.empty
+          ) // Unused but created for consistency
       shutdown <- Deferred[IO, Either[Throwable, Unit]]
       graph <- buildGraph(
         dagSpec,
@@ -158,7 +160,10 @@ object StreamCompiler {
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
       shutdownSignal: Deferred[IO, Either[Throwable, Unit]],
-      batchHistory: Ref[IO, BatchSplitter.BatchHistory],  // RFC-034 Phase 2: Batch execution history for adaptive sizing
+      batchHistory: Ref[
+        IO,
+        BatchSplitter.BatchHistory
+      ], // RFC-034 Phase 2: Batch execution history for adaptive sizing
       moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
       batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
@@ -252,18 +257,18 @@ object StreamCompiler {
                       val inputs = chunk.toList
 
                       // RFC-034 Phase 1B: Apply batch splitting if max_batch_size constraint is set
-                      val batches = if (maxBatchSize > 0) {
+                      val batches = if maxBatchSize > 0 then {
                         BatchSplitter.splitBatch(inputs, maxBatchSize)
                       } else {
                         List(inputs) // No constraint: single batch
                       }
 
                       // RFC-034 Phase 1B: Decide whether to use batch function based on routing
-                      val shouldUseBatchFn = if (useBatchRouting) {
+                      val shouldUseBatchFn = if useBatchRouting then {
                         val decision = BatchSplitter.decideBatchRouting(
                           batchSize = inputs.length,
                           hasBatchFunction = true,
-                          fixedOverheadMs = 1.0, // Estimated per-batch overhead
+                          fixedOverheadMs = 1.0,    // Estimated per-batch overhead
                           singleElementTimeMs = 0.1 // Estimated per-element cost
                         )
                         decision.useBatchFunction
@@ -272,7 +277,7 @@ object StreamCompiler {
                       }
 
                       // RFC-034 Phase 2: Execute batches with timing and metrics recording
-                      val resultsIO = if (shouldUseBatchFn) {
+                      val resultsIO = if shouldUseBatchFn then {
                         for {
                           startNanos <- IO(System.nanoTime())
                           // Process via batch function with splitting
@@ -283,20 +288,21 @@ object StreamCompiler {
                             .map(_.flatten) // Flatten results from all batches
                           endNanos <- IO(System.nanoTime())
                           // RFC-034 Phase 2: Record metrics if adaptive batching enabled
-                          _ <- if (options.adaptiveBatching) {
-                            val executionTimeMs = (endNanos - startNanos) / 1_000_000.0
-                            batchHistory.update { history =>
-                              val updated = BatchSplitter.BatchHistory.record(
-                                history,
-                                batchSize = inputs.length,
-                                executionTimeMs = executionTimeMs
-                              )
-                              // Keep only recent history (trim to 100 entries)
-                              BatchSplitter.BatchHistory.keep(updated, maxSize = 100)
+                          _ <-
+                            if options.adaptiveBatching then {
+                              val executionTimeMs = (endNanos - startNanos) / 1_000_000.0
+                              batchHistory.update { history =>
+                                val updated = BatchSplitter.BatchHistory.record(
+                                  history,
+                                  batchSize = inputs.length,
+                                  executionTimeMs = executionTimeMs
+                                )
+                                // Keep only recent history (trim to 100 entries)
+                                BatchSplitter.BatchHistory.keep(updated, maxSize = 100)
+                              }
+                            } else {
+                              IO.unit
                             }
-                          } else {
-                            IO.unit
-                          }
                         } yield batchResults
                       } else {
                         // Fallback: process single-element for each item
@@ -316,13 +322,17 @@ object StreamCompiler {
                               case StreamErrorStrategy.Skip =>
                                 metrics.recordError(moduleName).as(None)
                               case StreamErrorStrategy.Log =>
-                                metrics.recordError(moduleName).as(
-                                  Some(CValue.CString(s"error: ${safeMessage(err)}"))
-                                )
+                                metrics
+                                  .recordError(moduleName)
+                                  .as(
+                                    Some(CValue.CString(s"error: ${safeMessage(err)}"))
+                                  )
                               case StreamErrorStrategy.Dlq =>
-                                metrics.recordDlq(moduleName).as(
-                                  Some(CValue.CString(s"dlq: ${safeMessage(err)}"))
-                                )
+                                metrics
+                                  .recordDlq(moduleName)
+                                  .as(
+                                    Some(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                                  )
                               case StreamErrorStrategy.Propagate =>
                                 IO.raiseError(err)
                             }

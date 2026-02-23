@@ -29,7 +29,9 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   private def createTestModule(name: String): Module.Uninitialized =
     ModuleBuilder
       .metadata(name, s"Test module $name", 1, 0)
-      .implementationPure[StringInput, StringOutput](input => StringOutput(s"processed:${input.value}"))
+      .implementationPure[StringInput, StringOutput](input =>
+        StringOutput(s"processed:${input.value}")
+      )
       .build
 
   // ===== Helper: Batch function that processes a list of inputs =====
@@ -56,8 +58,8 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
       consumes: Map[String, CType] = Map("input" -> CType.CString),
       produces: Map[String, CType] = Map("output" -> CType.CString)
   ): DagSpec = {
-    val moduleId = UUID.randomUUID()
-    val inputDataId = UUID.randomUUID()
+    val moduleId     = UUID.randomUUID()
+    val inputDataId  = UUID.randomUUID()
     val outputDataId = UUID.randomUUID()
 
     DagSpec(
@@ -91,9 +93,9 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   // ===== Tests =====
 
   "StreamCompiler.wire" should "accept batchModules parameter" in {
-    val dagSpec = makeSingleModuleDag("TestMod")
-    val registry = ConnectorRegistry.empty
-    val modules = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
+    val dagSpec      = makeSingleModuleDag("TestMod")
+    val registry     = ConnectorRegistry.empty
+    val modules      = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
     val batchModules = Map.empty[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]]
 
     val graph = StreamCompiler
@@ -110,11 +112,11 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "use batch functions when provided" in {
-    val dagSpec = makeSingleModuleDag("BatchModule")
+    val dagSpec  = makeSingleModuleDag("BatchModule")
     val registry = ConnectorRegistry.empty
 
     val moduleId = dagSpec.modules.keys.head
-    val modules = Map(moduleId -> ((s: CValue) => IO.pure(s)))
+    val modules  = Map(moduleId -> ((s: CValue) => IO.pure(s)))
     val batchFunctions = Map(
       moduleId -> createBatchFunction("BatchModule")
     )
@@ -133,12 +135,12 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   it should "ignore batch functions for modules not in DAG" in {
-    val dagSpec = makeSingleModuleDag("Module1")
+    val dagSpec  = makeSingleModuleDag("Module1")
     val registry = ConnectorRegistry.empty
 
-    val moduleId = dagSpec.modules.keys.head
+    val moduleId       = dagSpec.modules.keys.head
     val unusedModuleId = UUID.randomUUID()
-    val modules = Map(moduleId -> ((s: CValue) => IO.pure(s)))
+    val modules        = Map(moduleId -> ((s: CValue) => IO.pure(s)))
     val batchFunctions = Map(
       unusedModuleId -> createBatchFunction("UnusedModule")
     )
@@ -219,21 +221,20 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function error handling" should "handle batch function failures gracefully" in {
-    val dagSpec = makeSingleModuleDag("FailingBatchModule")
+    val dagSpec  = makeSingleModuleDag("FailingBatchModule")
     val registry = ConnectorRegistry.empty
 
     val moduleId = dagSpec.modules.keys.head
-    val modules = Map(moduleId -> ((s: CValue) => IO.pure(s)))
+    val modules  = Map(moduleId -> ((s: CValue) => IO.pure(s)))
 
     // Batch function that returns errors
-    val batchFunctionWithErrors: List[CValue] => IO[List[Either[Throwable, CValue]]] =
-      { inputs =>
-        IO.pure(
-          inputs.map { input =>
-            Left(new RuntimeException(s"Batch processing failed for $input"))
-          }
-        )
-      }
+    val batchFunctionWithErrors: List[CValue] => IO[List[Either[Throwable, CValue]]] = { inputs =>
+      IO.pure(
+        inputs.map { input =>
+          Left(new RuntimeException(s"Batch processing failed for $input"))
+        }
+      )
+    }
 
     val batchFunctions = Map(moduleId -> batchFunctionWithErrors)
 
@@ -285,11 +286,11 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function integration" should "accept batch functions without errors" in {
-    val dagSpec = makeSingleModuleDag("IntegrationModule")
+    val dagSpec  = makeSingleModuleDag("IntegrationModule")
     val registry = ConnectorRegistry.empty
 
     val moduleId = dagSpec.modules.keys.head
-    val modules = Map(moduleId -> ((s: CValue) => IO.pure(s)))
+    val modules  = Map(moduleId -> ((s: CValue) => IO.pure(s)))
     val batchFunctions = Map(
       moduleId -> createBatchFunction("IntegrationModule")
     )
@@ -306,9 +307,9 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   "Empty batch functions map" should "work with wire API" in {
-    val dagSpec = makeSingleModuleDag("EmptyBatchModule")
+    val dagSpec  = makeSingleModuleDag("EmptyBatchModule")
     val registry = ConnectorRegistry.empty
-    val modules = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
+    val modules  = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
 
     val graph = StreamCompiler
       .wire(
@@ -323,9 +324,9 @@ class BatchFunctionIntegrationTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch functions with default parameter" should "use empty map when omitted" in {
-    val dagSpec = makeSingleModuleDag("DefaultModule")
+    val dagSpec  = makeSingleModuleDag("DefaultModule")
     val registry = ConnectorRegistry.empty
-    val modules = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
+    val modules  = dagSpec.modules.keys.toList.map(_ -> ((s: CValue) => IO.pure(s))).toMap
 
     // Call without batchModules parameter (should default to Map.empty)
     val graph = StreamCompiler

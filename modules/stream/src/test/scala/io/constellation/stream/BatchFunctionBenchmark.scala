@@ -25,7 +25,8 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
       opsPerSec: Double,
       totalOps: Int
   ) {
-    def show: String = f"  $name%-50s avg=${avgMs}%7.3f ms  [${minMs}%.3f–${maxMs}%.3f]  ${opsPerSec}%7.0f ops/s  ($totalOps ops)"
+    def show: String =
+      f"  $name%-50s avg=${avgMs}%7.3f ms  [${minMs}%.3f–${maxMs}%.3f]  ${opsPerSec}%7.0f ops/s  ($totalOps ops)"
   }
 
   private def measure(
@@ -53,7 +54,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
   private def createSimpleDag(): (DagSpec, UUID) = {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     val dagSpec = DagSpec(
@@ -66,7 +67,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
+        inputId  -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
         outputId -> DataNodeSpec("output", Map(moduleId -> "output"), CType.CString)
       ),
       inEdges = Set(inputId -> moduleId),
@@ -108,8 +109,8 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
   "StreamCompiler batch benchmark" should "compile single-element DAG quickly" in {
     val (dagSpec, moduleId) = createSimpleDag()
-    val registry = ConnectorRegistry.empty
-    val modules = Map(moduleId -> singleElementFn)
+    val registry            = ConnectorRegistry.empty
+    val modules             = Map(moduleId -> singleElementFn)
 
     val result = measure(
       "Compile single-element DAG",
@@ -132,9 +133,9 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
   it should "compile batch-enabled DAG with minimal overhead" in {
     val (dagSpec, moduleId) = createSimpleDag()
-    val registry = ConnectorRegistry.empty
-    val modules = Map(moduleId -> singleElementFn)
-    val batchModules = Map(moduleId -> batchFn)
+    val registry            = ConnectorRegistry.empty
+    val modules             = Map(moduleId -> singleElementFn)
+    val batchModules        = Map(moduleId -> batchFn)
 
     val result = measure(
       "Compile batch-enabled DAG",
@@ -156,7 +157,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
   }
 
   "Batch function throughput" should "process single element quickly" in {
-    val input = CValue.CString("test_data")
+    val input            = CValue.CString("test_data")
     val singleElementOps = 100
 
     val result = measure(
@@ -223,7 +224,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
     val batchSizes = List(5, 10, 20, 50, 100)
 
-    for (batchSize <- batchSizes) {
+    for batchSize <- batchSizes do {
       val inputs = (1 to batchSize).map(i => CValue.CString(s"item_$i")).toList
 
       // Single-element execution
@@ -245,9 +246,11 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
       }.avgMs
 
       val speedup = singleTimePerElement / batchTime
-      val savings = ((singleTimePerElement - batchTime) / singleTimePerElement * 100)
+      val savings = (singleTimePerElement - batchTime) / singleTimePerElement * 100
 
-      println(f"  Batch size $batchSize%-3d: Single=${singleTimePerElement}%.3f ms  Batch=${batchTime}%.3f ms  Speedup=${speedup}%.2f×  Savings=${savings}%.1f%%")
+      println(
+        f"  Batch size $batchSize%-3d: Single=${singleTimePerElement}%.3f ms  Batch=${batchTime}%.3f ms  Speedup=${speedup}%.2f×  Savings=${savings}%.1f%%"
+      )
     }
   }
 
@@ -255,7 +258,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
     val errorBatchFn: List[CValue] => IO[List[Either[Throwable, CValue]]] = { inputs =>
       IO.pure(
         inputs.zipWithIndex.map { case (input, idx) =>
-          if (idx % 10 == 0) Left(new RuntimeException(s"Error at $idx"))
+          if idx % 10 == 0 then Left(new RuntimeException(s"Error at $idx"))
           else Right(input)
         }
       )
@@ -278,7 +281,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
   "Streaming throughput" should "sustain high element rate with batching" in {
     val elementsPerBatch = 50
-    val numBatches = 20
+    val numBatches       = 20
 
     val result = measure(
       s"Streaming throughput ($numBatches batches of $elementsPerBatch)",
@@ -286,13 +289,14 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
       n = 10
     ) {
       (1 to numBatches).foreach { batchIdx =>
-        val inputs = (1 to elementsPerBatch).map(i => CValue.CString(s"batch_${batchIdx}_item_$i")).toList
+        val inputs =
+          (1 to elementsPerBatch).map(i => CValue.CString(s"batch_${batchIdx}_item_$i")).toList
         batchFn(inputs).unsafeRunSync()
       }
     }
 
-    val totalElements = elementsPerBatch * numBatches
-    val elementsPerMs = totalElements / result.avgMs
+    val totalElements  = elementsPerBatch * numBatches
+    val elementsPerMs  = totalElements / result.avgMs
     val elementsPerSec = elementsPerMs * 1000
 
     println(s"\n${result.show}")
@@ -304,9 +308,9 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
 
   "Batch compilation overhead" should "be minimal relative to execution" in {
     val (dagSpec, moduleId) = createSimpleDag()
-    val registry = ConnectorRegistry.empty
-    val modules = Map(moduleId -> singleElementFn)
-    val batchModules = Map(moduleId -> batchFn)
+    val registry            = ConnectorRegistry.empty
+    val modules             = Map(moduleId -> singleElementFn)
+    val batchModules        = Map(moduleId -> batchFn)
 
     val singleCompile = measure(
       "Single-element DAG compilation",
@@ -328,7 +332,7 @@ class BatchFunctionBenchmark extends AnyFlatSpec with Matchers {
         .unsafeRunSync()
     }
 
-    val overheadPercent = ((batchCompile.avgMs - singleCompile.avgMs) / singleCompile.avgMs * 100)
+    val overheadPercent = (batchCompile.avgMs - singleCompile.avgMs) / singleCompile.avgMs * 100
 
     println(s"\n${singleCompile.show}")
     println(s"${batchCompile.show}")

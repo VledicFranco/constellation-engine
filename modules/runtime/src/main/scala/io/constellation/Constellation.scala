@@ -58,7 +58,8 @@ trait Constellation {
   /** Get batch functions for external modules by qualified name (RFC-034 Phase 1).
     *
     * Returns a map from module name to batch function for modules that support batch execution.
-    * Returns an empty map by default; only ModuleProviderManager overrides with actual batch functions.
+    * Returns an empty map by default; only ModuleProviderManager overrides with actual batch
+    * functions.
     *
     * @param moduleNames
     *   Qualified module names to look up batch functions for

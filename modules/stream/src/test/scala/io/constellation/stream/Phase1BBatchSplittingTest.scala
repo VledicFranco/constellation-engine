@@ -12,7 +12,7 @@ import org.scalatest.matchers.should.Matchers
 class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
 
   "BatchSplitter.splitBatch" should "return single batch when size is unlimited" in {
-    val inputs = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
+    val inputs  = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 0)
 
     batches should have length 1
@@ -20,7 +20,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return single batch when inputs fit within limit" in {
-    val inputs = (1 to 10).map(i => CValue.CString(s"item_$i")).toList
+    val inputs  = (1 to 10).map(i => CValue.CString(s"item_$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 50)
 
     batches should have length 1
@@ -28,7 +28,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "split batch into multiple chunks when exceeding limit" in {
-    val inputs = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
+    val inputs  = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 30)
 
     batches should have length 4 // 30 + 30 + 30 + 10
@@ -39,7 +39,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle exact boundary conditions" in {
-    val inputs = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
+    val inputs  = (1 to 100).map(i => CValue.CString(s"item_$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 25)
 
     batches should have length 4
@@ -47,7 +47,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "preserve element order after splitting" in {
-    val inputs = (1 to 50).map(i => CValue.CString(s"num_$i")).toList
+    val inputs  = (1 to 50).map(i => CValue.CString(s"num_$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 15)
 
     val flattened = batches.flatten
@@ -76,7 +76,8 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
       )
     }
 
-    val result = BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 2).unsafeRunSync()
+    val result =
+      BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 2).unsafeRunSync()
 
     result should have length 5
     result.map(_.toOption.get.asInstanceOf[CValue.CString].value) should contain theSameElementsAs
@@ -90,7 +91,8 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
       IO.pure(inputs.map(Right(_)))
     }
 
-    val result = BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 15).unsafeRunSync()
+    val result =
+      BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 15).unsafeRunSync()
 
     val resultStrings = result.map(_.toOption.get.asInstanceOf[CValue.CString].value)
     resultStrings should equal(inputs.map(_.asInstanceOf[CValue.CString].value))
@@ -102,13 +104,14 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
     val batchFn: List[CValue] => IO[List[Either[Throwable, CValue]]] = { inputs =>
       IO.pure(
         inputs.zipWithIndex.map { case (input, idx) =>
-          if (idx == 1) Left(new RuntimeException("Error at idx 1"))
+          if idx == 1 then Left(new RuntimeException("Error at idx 1"))
           else Right(input)
         }
       )
     }
 
-    val result = BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 3).unsafeRunSync()
+    val result =
+      BatchSplitter.processWithSplitting(inputs, batchFn, maxBatchSize = 3).unsafeRunSync()
 
     result should have length 10
     // Chunks: [3, 3, 3, 1]. Error at idx==1 in each chunk with >1 element = 3 errors
@@ -157,7 +160,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch splitting edge cases" should "handle empty batch" in {
-    val inputs = List.empty[CValue]
+    val inputs  = List.empty[CValue]
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 50)
 
     batches should have length 1
@@ -165,7 +168,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle single element" in {
-    val inputs = List(CValue.CString("single"))
+    val inputs  = List(CValue.CString("single"))
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 50)
 
     batches should have length 1
@@ -173,7 +176,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle single element with max size 1" in {
-    val inputs = List(CValue.CString("single"))
+    val inputs  = List(CValue.CString("single"))
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 1)
 
     batches should have length 1
@@ -181,7 +184,7 @@ class Phase1BBatchSplittingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle max batch size of 1" in {
-    val inputs = (1 to 5).map(i => CValue.CString(s"$i")).toList
+    val inputs  = (1 to 5).map(i => CValue.CString(s"$i")).toList
     val batches = BatchSplitter.splitBatch(inputs, maxBatchSize = 1)
 
     batches should have length 5

@@ -26,12 +26,14 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
 
   // ===== Helper: Mock Constellation with batch functions =====
 
-  private class MockConstellationWithBatch(batchFns: Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]) extends Constellation {
-    override def getModules: IO[List[ModuleNodeSpec]] = IO.pure(Nil)
+  private class MockConstellationWithBatch(
+      batchFns: Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]
+  ) extends Constellation {
+    override def getModules: IO[List[ModuleNodeSpec]]                            = IO.pure(Nil)
     override def getModuleByName(name: String): IO[Option[Module.Uninitialized]] = IO.pure(None)
-    override def setModule(module: Module.Uninitialized): IO[Unit] = IO.unit
-    override def removeModule(name: String): IO[Unit] = IO.unit
-    override def PipelineStore: PipelineStore = ???
+    override def setModule(module: Module.Uninitialized): IO[Unit]               = IO.unit
+    override def removeModule(name: String): IO[Unit]                            = IO.unit
+    override def PipelineStore: PipelineStore                                    = ???
     override def run(
         loaded: LoadedPipeline,
         inputs: Map[String, CValue],
@@ -59,7 +61,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
 
   private def createTestDag(moduleName: String): DagSpec = {
     val moduleId = UUID.randomUUID()
-    val inputId = UUID.randomUUID()
+    val inputId  = UUID.randomUUID()
     val outputId = UUID.randomUUID()
 
     DagSpec(
@@ -72,7 +74,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
         )
       ),
       data = Map(
-        inputId -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
+        inputId  -> DataNodeSpec("input", Map(moduleId -> "input"), CType.CString),
         outputId -> DataNodeSpec("output", Map(moduleId -> "output"), CType.CString)
       ),
       inEdges = Set(inputId -> moduleId),
@@ -115,7 +117,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
   }
 
   it should "return empty map when no matching modules" in {
-    val batchFns = Map("namespace.Module1" -> createBatchFn("Module1"))
+    val batchFns      = Map("namespace.Module1" -> createBatchFn("Module1"))
     val constellation = new MockConstellationWithBatch(batchFns)
 
     val result = constellation
@@ -147,10 +149,10 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
 
   it should "default to empty map in base Constellation trait" in {
     val constellation = new Constellation {
-      override def getModules: IO[List[ModuleNodeSpec]] = IO.pure(Nil)
+      override def getModules: IO[List[ModuleNodeSpec]]                            = IO.pure(Nil)
       override def getModuleByName(name: String): IO[Option[Module.Uninitialized]] = IO.pure(None)
-      override def setModule(module: Module.Uninitialized): IO[Unit] = IO.unit
-      override def PipelineStore: PipelineStore = ???
+      override def setModule(module: Module.Uninitialized): IO[Unit]               = IO.unit
+      override def PipelineStore: PipelineStore                                    = ???
       override def run(
           loaded: LoadedPipeline,
           inputs: Map[String, CValue],
@@ -187,9 +189,9 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
       .getBatchFunctions(List("MyModule"))
       .unsafeRunSync()
 
-    val testFn = batchFnMap("MyModule")
+    val testFn    = batchFnMap("MyModule")
     val testInput = List(CValue.CString("test"))
-    val results = testFn(testInput).unsafeRunSync()
+    val results   = testFn(testInput).unsafeRunSync()
 
     results should have length 1
     results.head.map(_.asInstanceOf[CValue.CString].value) should be(Right("MyModule:test"))
@@ -212,7 +214,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function integration" should "work end-to-end with StreamCompiler" in {
-    val dagSpec = createTestDag("TestModule")
+    val dagSpec  = createTestDag("TestModule")
     val registry = ConnectorRegistry.empty
     val moduleId = dagSpec.modules.keys.head
 
@@ -275,7 +277,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
       )
     }
 
-    val batchFns = Map("ErrorModule" -> errorBatchFn)
+    val batchFns      = Map("ErrorModule" -> errorBatchFn)
     val constellation = new MockConstellationWithBatch(batchFns)
 
     val result = constellation
@@ -292,7 +294,7 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function extraction" should "handle empty module list" in {
-    val batchFns = Map("Module1" -> createBatchFn("Module1"))
+    val batchFns      = Map("Module1" -> createBatchFn("Module1"))
     val constellation = new MockConstellationWithBatch(batchFns)
 
     val result = constellation
@@ -303,11 +305,9 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
   }
 
   it should "handle large batch function maps" in {
-    val batchFns = (1 to 100)
-      .map { i =>
-        s"Module$i" -> createBatchFn(s"Module$i")
-      }
-      .toMap
+    val batchFns = (1 to 100).map { i =>
+      s"Module$i" -> createBatchFn(s"Module$i")
+    }.toMap
 
     val constellation = new MockConstellationWithBatch(batchFns)
 
@@ -321,11 +321,9 @@ class StreamRoutesBatchFunctionTest extends AnyFlatSpec with Matchers {
   }
 
   "Batch function performance" should "extract functions quickly" in {
-    val batchFns = (1 to 1000)
-      .map { i =>
-        s"Module$i" -> createBatchFn(s"Module$i")
-      }
-      .toMap
+    val batchFns = (1 to 1000).map { i =>
+      s"Module$i" -> createBatchFn(s"Module$i")
+    }.toMap
 
     val constellation = new MockConstellationWithBatch(batchFns)
 

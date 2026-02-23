@@ -18,11 +18,11 @@ import org.scalatest.matchers.should.Matchers
 
 /** RFC-034 Phase 2B: Persistent Streaming & Connection Pooling
   *
-  * Validates bidirectional gRPC streaming benefits, connection reuse,
-  * and fallback behavior for non-streaming clients.
+  * Validates bidirectional gRPC streaming benefits, connection reuse, and fallback behavior for
+  * non-streaming clients.
   *
-  * **Goal:** Achieve 10-20% throughput improvement through persistent
-  * connection reuse and reduced connection setup overhead.
+  * **Goal:** Achieve 10-20% throughput improvement through persistent connection reuse and reduced
+  * connection setup overhead.
   */
 class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
@@ -123,7 +123,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "support multiple concurrent connections up to pool size limit" in {
-    val maxPoolSize = 10
+    val maxPoolSize           = 10
     val concurrentConnections = new AtomicLong(0)
 
     // Fill pool to limit
@@ -138,7 +138,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
   }
 
   it should "clean up idle connections after timeout" in {
-    val idleTimeoutMs = 30_000L // 30 seconds
+    val idleTimeoutMs       = 30_000L // 30 seconds
     val connectionCreatedMs = System.currentTimeMillis()
 
     val currentMs = System.currentTimeMillis()
@@ -148,7 +148,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
     (elapsedMs >= idleTimeoutMs) should be(false) // Not idle yet
 
     // Simulate after timeout
-    val futureMs = connectionCreatedMs + idleTimeoutMs + 1000
+    val futureMs      = connectionCreatedMs + idleTimeoutMs + 1000
     val futureElapsed = futureMs - connectionCreatedMs
     (futureElapsed >= idleTimeoutMs) should be(true) // Now idle
   }
@@ -156,7 +156,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
   // ===== Phase 2B: Data Integrity =====
 
   "Persistent streaming" should "preserve data integrity across multiple batches" in {
-    val originalData = List("batch1", "batch2", "batch3")
+    val originalData  = List("batch1", "batch2", "batch3")
     val processedData = originalData.map(s => s"processed:$s")
 
     processedData should contain("processed:batch1")
@@ -169,13 +169,14 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
     val connectionActive = new AtomicLong(1) // Connection is active
 
     // Simulate error on batch
-    val resultOpt: Option[String] = try {
-      Some("processed")
-    } catch {
-      case e: Exception =>
-        // Error occurs but connection remains
-        None
-    }
+    val resultOpt: Option[String] =
+      try
+        Some("processed")
+      catch {
+        case e: Exception =>
+          // Error occurs but connection remains
+          None
+      }
 
     // Connection should still be active
     connectionActive.get() should be(1)
@@ -197,15 +198,15 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
   "Persistent streaming fallback" should "gracefully degrade to request-response" in {
     val persistentStreamingAvailable = false // Simulate unavailable
 
-    val executionPath = if (persistentStreamingAvailable) "streaming" else "request-response"
+    val executionPath = if persistentStreamingAvailable then "streaming" else "request-response"
     executionPath should be("request-response")
   }
 
   it should "work transparently for non-streaming clients" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Deploy with streaming disabled
     val options = StreamOptions(
@@ -232,7 +233,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
   it should "auto-detect streaming capability and switch modes" in {
     val streamingCapable = true
 
-    val selectedMode = if (streamingCapable) "streaming" else "request-response"
+    val selectedMode = if streamingCapable then "streaming" else "request-response"
     selectedMode should be("streaming")
   }
 
@@ -243,7 +244,10 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
     val connectionSetupTimeMs = 1.5
 
     connectionSetupTimeMs should be > 0.0
-    assert(connectionSetupTimeMs <= 2.0, s"Connection setup time should be <= 2.0ms, got $connectionSetupTimeMs")
+    assert(
+      connectionSetupTimeMs <= 2.0,
+      s"Connection setup time should be <= 2.0ms, got $connectionSetupTimeMs"
+    )
   }
 
   it should "show improvement from connection reuse (10-20% target)" in {
@@ -251,7 +255,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
     val phase1bThroughput = 5000.0
 
     // Phase 2B with connection reuse: 5,500-6,000 elem/sec (10-20% improvement)
-    val phase2bLowEstimate = phase1bThroughput * 1.10 // 10% improvement
+    val phase2bLowEstimate  = phase1bThroughput * 1.10 // 10% improvement
     val phase2bHighEstimate = phase1bThroughput * 1.20 // 20% improvement
 
     phase2bLowEstimate should be(5500.0)
@@ -300,9 +304,9 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
   "Persistent streaming benchmarks" should "compare baseline vs streaming performance" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Baseline: request-response (no persistent streaming)
     val startBaseline = System.nanoTime()
@@ -341,12 +345,15 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
     timeStreaming should be > 0.0
     // Streaming should be comparable to or better than baseline
-    assert(timeStreaming <= (timeBaseline + 100.0), s"Streaming time $timeStreaming should be <= baseline $timeBaseline + 100ms margin")
+    assert(
+      timeStreaming <= (timeBaseline + 100.0),
+      s"Streaming time $timeStreaming should be <= baseline $timeBaseline + 100ms margin"
+    )
   }
 
   it should "validate memory overhead from connection pooling" in {
     // Connection pool with 20 connections, ~1KB per connection (metadata, buffers)
-    val poolSize = 20
+    val poolSize           = 20
     val memPerConnectionKb = 1
 
     val totalMemoryKb = poolSize * memPerConnectionKb
@@ -360,14 +367,14 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
   "Persistent streaming integration" should "work with adaptive batching" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     val options = StreamOptions(
       maxBatchSize = 50,
-      adaptiveBatching = true, // Phase 2A: adaptive sizing
-      batchRouting = true,     // Phase 2A: routing decisions
+      adaptiveBatching = true,   // Phase 2A: adaptive sizing
+      batchRouting = true,       // Phase 2A: routing decisions
       persistentStreaming = true // Phase 2B: persistent connection
     )
 
@@ -386,9 +393,9 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
   it should "work with all Phase 1B and Phase 2A features enabled" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Full-featured: Phase 1B + Phase 2A + Phase 2B
     val options = StreamOptions(
@@ -429,7 +436,7 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
   it should "handle connection timeouts gracefully" in {
     val connectionTimeoutMs = 30_000L
-    val connectionStartMs = System.currentTimeMillis() - 35_000L // Older than timeout
+    val connectionStartMs   = System.currentTimeMillis() - 35_000L // Older than timeout
 
     val isTimedOut = (System.currentTimeMillis() - connectionStartMs) > connectionTimeoutMs
     isTimedOut should be(true)
@@ -439,9 +446,9 @@ class Phase2PersistentStreamingTest extends AnyFlatSpec with Matchers {
 
   "Phase 2B deployment" should "maintain backward compatibility" in {
     val (dagSpec, moduleId, _) = createSimpleDag()
-    val registry                = ConnectorRegistry.empty
-    val modules                 = Map(moduleId -> singleElementFn)
-    val batchModules            = Map(moduleId -> batchFn)
+    val registry               = ConnectorRegistry.empty
+    val modules                = Map(moduleId -> singleElementFn)
+    val batchModules           = Map(moduleId -> batchFn)
 
     // Old code: no Phase 2B options
     val graphV1 = StreamCompiler

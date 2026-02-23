@@ -7,8 +7,8 @@ import io.constellation.CValue
 
 /** RFC-034 Phase 1B: Batch splitting and adaptive batching strategies.
   *
-  * Splits large batches into chunks respecting max_batch_size constraints,
-  * and provides adaptive batching based on performance characteristics.
+  * Splits large batches into chunks respecting max_batch_size constraints, and provides adaptive
+  * batching based on performance characteristics.
   */
 object BatchSplitter {
 
@@ -22,10 +22,10 @@ object BatchSplitter {
     *   List of batches, each with at most maxBatchSize elements
     */
   def splitBatch(inputs: List[CValue], maxBatchSize: Int): List[List[CValue]] =
-    if (maxBatchSize <= 0) {
+    if maxBatchSize <= 0 then {
       // No limit - return single batch
       List(inputs)
-    } else if (inputs.length <= maxBatchSize) {
+    } else if inputs.length <= maxBatchSize then {
       // Fits in one batch
       List(inputs)
     } else {
@@ -35,8 +35,8 @@ object BatchSplitter {
 
   /** Process a batch through a batch function, splitting if necessary.
     *
-    * Splits the batch according to maxBatchSize, processes each chunk, and
-    * combines results preserving original order.
+    * Splits the batch according to maxBatchSize, processes each chunk, and combines results
+    * preserving original order.
     *
     * @param inputs
     *   List of input values
@@ -63,10 +63,10 @@ object BatchSplitter {
   /** Adaptive batch sizing based on throughput metrics.
     *
     * Adjusts batch size based on observed performance:
-    * - If throughput is high (>1000 elem/sec): keep current size
-    * - If throughput is medium (100-1000): stay with current size
-    * - If throughput is low (<100): consider smaller batch size
-    * - If throughput is very high (>5000): consider increasing batch size
+    *   - If throughput is high (>1000 elem/sec): keep current size
+    *   - If throughput is medium (100-1000): stay with current size
+    *   - If throughput is low (<100): consider smaller batch size
+    *   - If throughput is very high (>5000): consider increasing batch size
     */
   case class AdaptiveBatchConfig(
       currentBatchSize: Int,
@@ -76,13 +76,13 @@ object BatchSplitter {
     def recommendedBatchSize: Int = {
       val ratio = observedThroughputPerSec / targetThroughputPerSec
 
-      if (ratio > 1.2) {
+      if ratio > 1.2 then {
         // Throughput is very high - increase batch size to improve amortization
         math.min((currentBatchSize * 1.5).toInt, 1000)
-      } else if (ratio > 0.8) {
+      } else if ratio > 0.8 then {
         // Throughput is good - keep current size
         currentBatchSize
-      } else if (ratio > 0.5) {
+      } else if ratio > 0.5 then {
         // Throughput is moderate - slightly decrease
         math.max((currentBatchSize * 0.9).toInt, 10)
       } else {
@@ -93,13 +93,13 @@ object BatchSplitter {
 
     def shouldIncreaseSize: Boolean = recommendedBatchSize > currentBatchSize
     def shouldDecreaseSize: Boolean = recommendedBatchSize < currentBatchSize
-    def isOptimal: Boolean = recommendedBatchSize == currentBatchSize
+    def isOptimal: Boolean          = recommendedBatchSize == currentBatchSize
   }
 
   /** Conditional batch routing based on batch characteristics.
     *
-    * Decides whether to use batch function or fall back to single-element
-    * based on batch size and expected overhead amortization.
+    * Decides whether to use batch function or fall back to single-element based on batch size and
+    * expected overhead amortization.
     */
   case class BatchRoutingDecision(
       useBatchFunction: Boolean,
@@ -109,9 +109,9 @@ object BatchSplitter {
   /** Determine whether to use batch function for a given batch size.
     *
     * Uses batch function if:
-    * - Batch size is large enough to amortize fixed overhead (typically >5)
-    * - Batch function is available
-    * - Batch function overhead is low relative to throughput gain
+    *   - Batch size is large enough to amortize fixed overhead (typically >5)
+    *   - Batch function is available
+    *   - Batch function overhead is low relative to throughput gain
     *
     * @param batchSize
     *   Number of elements in batch
@@ -129,28 +129,27 @@ object BatchSplitter {
       hasBatchFunction: Boolean,
       fixedOverheadMs: Double = 1.0,
       singleElementTimeMs: Double = 0.1
-  ): BatchRoutingDecision = {
-    if (!hasBatchFunction) {
+  ): BatchRoutingDecision =
+    if !hasBatchFunction then {
       BatchRoutingDecision(false, "No batch function available")
-    } else if (batchSize < 2) {
+    } else if batchSize < 2 then {
       BatchRoutingDecision(false, "Batch size too small")
     } else {
       // Calculate amortization benefit
       val singleElementTotal = singleElementTimeMs * batchSize
-      val batchTotal = fixedOverheadMs + (singleElementTimeMs * batchSize)
-      val amortization = singleElementTotal / batchTotal
+      val batchTotal         = fixedOverheadMs + (singleElementTimeMs * batchSize)
+      val amortization       = singleElementTotal / batchTotal
 
-      if (amortization > 1.1) {
+      if amortization > 1.1 then {
         // >10% improvement
         BatchRoutingDecision(true, s"Good amortization: ${amortization}x speedup expected")
-      } else if (amortization > 1.01) {
+      } else if amortization > 1.01 then {
         // >1% improvement, but marginal
         BatchRoutingDecision(true, s"Marginal amortization: ${amortization}x speedup")
       } else {
         BatchRoutingDecision(false, s"Insufficient amortization: ${amortization}x")
       }
     }
-  }
 
   /** Estimate overhead based on batch history.
     *
@@ -160,8 +159,8 @@ object BatchSplitter {
       batchSizes: List[Int],
       executionTimesMs: List[Double]
   ) {
-    def averageFixedOverhead: Double = {
-      if (batchSizes.isEmpty) 1.0
+    def averageFixedOverhead: Double =
+      if batchSizes.isEmpty then 1.0
       else {
         val perElementCosts = batchSizes.zip(executionTimesMs).map { case (size, time) =>
           time / size
@@ -178,10 +177,9 @@ object BatchSplitter {
           }
           .sum / batchSizes.length
       }
-    }
 
-    def averagePerElementTime: Double = {
-      if (batchSizes.isEmpty) 0.1
+    def averagePerElementTime: Double =
+      if batchSizes.isEmpty then 0.1
       else {
         batchSizes
           .zip(executionTimesMs)
@@ -190,7 +188,6 @@ object BatchSplitter {
           }
           .sum / batchSizes.length
       }
-    }
   }
 
   object BatchHistory {
@@ -207,7 +204,7 @@ object BatchSplitter {
       )
 
     def keep(history: BatchHistory, maxSize: Int = 100): BatchHistory =
-      if (history.batchSizes.length > maxSize) {
+      if history.batchSizes.length > maxSize then {
         val dropCount = history.batchSizes.length - maxSize
         history.copy(
           batchSizes = history.batchSizes.drop(dropCount),

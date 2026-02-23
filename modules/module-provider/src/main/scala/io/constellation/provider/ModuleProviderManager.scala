@@ -69,7 +69,8 @@ class ModuleProviderManager(
   /** Batch functions per qualified module name (RFC-034 Phase 1). Maps qualified name to batch
     * function if the provider supports batch, otherwise not present.
     */
-  private val batchFunctions: Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+  private val batchFunctions
+      : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
     Ref.unsafe[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]](Map.empty)
 
   /** Handle a Register RPC. */
@@ -278,22 +279,23 @@ class ModuleProviderManager(
 
           for {
             // Create batch function if supported (RFC-034 Phase 1)
-            _ <- if supportsBatch then {
-              ExternalModule.createBatchFunction(
-                name = decl.name,
-                executorPool = pool,
-                serializer = serializer,
-                channelCache = channelCache,
-                supportsBatch = true
-              ) match {
-                case Some(batchFn) =>
-                  batchFunctions.update(_ + (qualifiedName -> batchFn))
-                case None =>
-                  IO.unit
+            _ <-
+              if supportsBatch then {
+                ExternalModule.createBatchFunction(
+                  name = decl.name,
+                  executorPool = pool,
+                  serializer = serializer,
+                  channelCache = channelCache,
+                  supportsBatch = true
+                ) match {
+                  case Some(batchFn) =>
+                    batchFunctions.update(_ + (qualifiedName -> batchFn))
+                  case None =>
+                    IO.unit
+                }
+              } else {
+                IO.unit
               }
-            } else {
-              IO.unit
-            }
 
             _ <- delegate.setModule(module) >> IO(functionRegistry.register(signature))
           } yield ()

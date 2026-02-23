@@ -30,10 +30,10 @@ final case class StreamOptions(
     defaultBufferSize: Int = 256,
     shutdownTimeout: FiniteDuration = 30.seconds,
     metricsEnabled: Boolean = true,
-    maxBatchSize: Int = 0, // RFC-034: 0 = unlimited
-    adaptiveBatching: Boolean = false, // RFC-034 Phase 1B
-    batchRouting: Boolean = false, // RFC-034 Phase 1B
+    maxBatchSize: Int = 0,                // RFC-034: 0 = unlimited
+    adaptiveBatching: Boolean = false,    // RFC-034 Phase 1B
+    batchRouting: Boolean = false,        // RFC-034 Phase 1B
     persistentStreaming: Boolean = false, // RFC-034 Phase 2B: opt-in, disabled by default
-    connectionPoolSize: Int = 10, // RFC-034 Phase 2B: size of connection pool
-    connectionIdleTimeoutSec: Int = 60 // RFC-034 Phase 2B: idle timeout in seconds
+    connectionPoolSize: Int = 10,         // RFC-034 Phase 2B: size of connection pool
+    connectionIdleTimeoutSec: Int = 60    // RFC-034 Phase 2B: idle timeout in seconds
 )
