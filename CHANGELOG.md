@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-02-23
+
+### Added
+- **Comprehensive Logging for Debuggability**: Targeted, conservative logging on critical execution paths for production observability
+  - Module execution failures: WARN on timeout, ERROR on exception with full stacktrace
+  - Pipeline execution lifecycle: INFO start/completion with timing and status
+  - Compilation failures: ERROR with error counts and diagnostic details (searchable logs)
+  - Compilation cache observability: DEBUG hits/misses (silent in production)
+- **Logging Configuration Guide** (`website/docs/operations/logging.md`): User-facing documentation covering development/production/library setups, environment variables, advanced configuration (file rotation, JSON structured logging)
+- **Logging Architecture Documentation** (`organon/features/tooling/logging.md`): LLM-focused technical reference with implementation patterns, critical path details, and observability SPI coordination
+
+### Changed
+- **Debugging guide** (`website/docs/cookbook/debugging.md`): Added `CONSTELLATION_LOG_LEVEL` environment variable reference with examples
+
 ## [0.8.3] - 2026-02-23
 
 ### Added
