@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.FiniteDuration
 
-import cats.effect.{Deferred, IO}
+import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
 
 import io.constellation.*
@@ -59,6 +59,12 @@ object StreamCompiler {
     for {
       metrics <-
         if options.metricsEnabled then StreamMetrics.create else IO.pure(StreamMetrics.noop)
+      // RFC-034 Phase 2: Create BatchHistory tracking when adaptive batching enabled
+      batchHistory <-
+        if options.adaptiveBatching then
+          Ref.of[IO, BatchSplitter.BatchHistory](BatchSplitter.BatchHistory.empty)
+        else
+          Ref.of[IO, BatchSplitter.BatchHistory](BatchSplitter.BatchHistory.empty) // Unused but created for consistency
       shutdown <- Deferred[IO, Either[Throwable, Unit]]
       graph <- buildGraph(
         dagSpec,
@@ -69,6 +75,7 @@ object StreamCompiler {
         joinStrategy,
         metrics,
         shutdown,
+        batchHistory,
         moduleOptions,
         batchModules
       )
@@ -151,6 +158,7 @@ object StreamCompiler {
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
       shutdownSignal: Deferred[IO, Either[Throwable, Unit]],
+      batchHistory: Ref[IO, BatchSplitter.BatchHistory],  // RFC-034 Phase 2: Batch execution history for adaptive sizing
       moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
       batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
@@ -263,14 +271,33 @@ object StreamCompiler {
                         true // Use batch function by default if routing disabled
                       }
 
-                      // Execute batches through batch function with splitting and handle results
+                      // RFC-034 Phase 2: Execute batches with timing and metrics recording
                       val resultsIO = if (shouldUseBatchFn) {
-                        // Process via batch function with splitting
-                        batches
-                          .traverse { batch =>
-                            bf(batch)
+                        for {
+                          startNanos <- IO(System.nanoTime())
+                          // Process via batch function with splitting
+                          batchResults <- batches
+                            .traverse { batch =>
+                              bf(batch)
+                            }
+                            .map(_.flatten) // Flatten results from all batches
+                          endNanos <- IO(System.nanoTime())
+                          // RFC-034 Phase 2: Record metrics if adaptive batching enabled
+                          _ <- if (options.adaptiveBatching) {
+                            val executionTimeMs = (endNanos - startNanos) / 1_000_000.0
+                            batchHistory.update { history =>
+                              val updated = BatchSplitter.BatchHistory.record(
+                                history,
+                                batchSize = inputs.length,
+                                executionTimeMs = executionTimeMs
+                              )
+                              // Keep only recent history (trim to 100 entries)
+                              BatchSplitter.BatchHistory.keep(updated, maxSize = 100)
+                            }
+                          } else {
+                            IO.unit
                           }
-                          .map(_.flatten) // Flatten results from all batches
+                        } yield batchResults
                       } else {
                         // Fallback: process single-element for each item
                         inputs
