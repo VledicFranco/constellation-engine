@@ -1,3 +1,8 @@
 # Syntax highlighting for constellation-lang files on GitHub
 # Maps .cst files to Python highlighting (similar syntax: type annotations, simple assignments)
 *.cst linguist-language=Python
+
+# Line ending normalization: Scala/Java source files should always use LF
+*.scala text eol=lf
+*.java text eol=lf
+*.proto text eol=lf
