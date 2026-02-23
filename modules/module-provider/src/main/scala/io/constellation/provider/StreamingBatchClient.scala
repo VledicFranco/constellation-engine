@@ -13,22 +13,18 @@ import io.grpc.stub.StreamObserver
 
 /** Manages one persistent bidirectional gRPC stream to a single executor endpoint.
   *
-  * Multiplexes multiple concurrent batch requests over the stream using correlation IDs.
-  * When a request is sent:
-  * 1. Generate a UUID correlation ID
-  * 2. Create a Deferred for the result
-  * 3. Store correlation ID -> Deferred in pending map
-  * 4. Send request on the stream with correlation ID
-  * 5. Await the Deferred
+  * Multiplexes multiple concurrent batch requests over the stream using correlation IDs. When a
+  * request is sent:
+  *   1. Generate a UUID correlation ID 2. Create a Deferred for the result 3. Store correlation ID
+  *      -> Deferred in pending map 4. Send request on the stream with correlation ID 5. Await the
+  *      Deferred
   *
   * Response callback:
-  * 1. Receive response with correlation ID
-  * 2. Look up Deferred by correlation ID
-  * 3. Complete the Deferred with the result
-  * 4. Remove from pending map
+  *   1. Receive response with correlation ID 2. Look up Deferred by correlation ID 3. Complete the
+  *      Deferred with the result 4. Remove from pending map
   *
-  * If the stream breaks, `broken` flag is set and future calls return an error.
-  * The StreamingBatchPool recreates the client when broken.
+  * If the stream breaks, `broken` flag is set and future calls return an error. The
+  * StreamingBatchPool recreates the client when broken.
   */
 class StreamingBatchClient(
     requestObserver: StreamObserver[pb.ExecuteBatchStreamRequest],
@@ -46,9 +42,10 @@ class StreamingBatchClient(
   ): IO[List[Either[Throwable, CValue]]] =
     for {
       isBroken <- broken.get
-      _ <- if isBroken then
-        IO.raiseError(new IllegalStateException("Streaming batch stream is broken"))
-      else IO.unit
+      _ <-
+        if isBroken then
+          IO.raiseError(new IllegalStateException("Streaming batch stream is broken"))
+        else IO.unit
 
       correlationId = UUID.randomUUID().toString
       deferred <- Deferred[IO, Either[Throwable, List[Either[Throwable, CValue]]]]
@@ -99,9 +96,9 @@ class StreamingBatchClient(
         case None    => IO.unit.as(null) // Safe: we check before use
       }
       // Complete the deferred if found
-      _ <- if deferred != null then
-        deferred.complete(outcomes) *> pending.update(_ - correlationId)
-      else IO.unit
+      _ <-
+        if deferred != null then deferred.complete(outcomes) *> pending.update(_ - correlationId)
+        else IO.unit
     } yield ()
 
   /** Mark the stream as broken so no more requests are accepted. */
@@ -129,9 +126,8 @@ object StreamingBatchClient {
 
   /** Create a StreamingBatchClient as a Resource that manages lifecycle and response callback.
     *
-    * Opens the persistent bidirectional stream via asyncStub.executeBatchStream(),
-    * returns a new StreamingBatchClient that sends requests on the stream.
-    * On close, completes the stream.
+    * Opens the persistent bidirectional stream via asyncStub.executeBatchStream(), returns a new
+    * StreamingBatchClient that sends requests on the stream. On close, completes the stream.
     */
   def resource(
       asyncStub: pb.ModuleExecutorGrpc.ModuleExecutorStub,
@@ -139,8 +135,10 @@ object StreamingBatchClient {
   ): Resource[IO, StreamingBatchClient] =
     Resource.make(
       for {
-        pending <- Ref[IO].of(Map.empty[String, Deferred[IO, Either[Throwable, List[Either[Throwable, CValue]]]]])
-        broken  <- Ref[IO].of(false)
+        pending <- Ref[IO].of(
+          Map.empty[String, Deferred[IO, Either[Throwable, List[Either[Throwable, CValue]]]]]
+        )
+        broken <- Ref[IO].of(false)
 
         // Build response observer that completes pending requests
         responseObserver = new StreamObserver[pb.ExecuteBatchStreamResponse] {
@@ -154,39 +152,45 @@ object StreamingBatchClient {
                 case None    => IO.unit.as(null)
               }
               // Process response
-              _ <- if deferred != null then
-                // Deserialize results and complete deferred
-                for {
-                  outcomes <- if response.error.nonEmpty then
-                    IO.pure(Left(new RuntimeException(response.error)))
-                  else
-                    response.results.toList
-                      .traverse { batchResult =>
-                        batchResult.result match {
-                          case pb.ExecuteBatchResult.Result.OutputData(outputBytes) =>
-                            IO.fromEither(
-                              serializer
-                                .deserialize(outputBytes.toByteArray)
-                                .left
-                                .map(e => new RuntimeException(s"Stream batch deserialization error: $e"))
-                            ).map(Right(_))
-                          case pb.ExecuteBatchResult.Result.Error(err) =>
-                            IO.pure(
-                              Left(
-                                new RuntimeException(
-                                  s"Stream batch element error: [${err.code}] ${err.message}"
+              _ <-
+                if deferred != null then
+                  // Deserialize results and complete deferred
+                  for {
+                    outcomes <-
+                      if response.error.nonEmpty then
+                        IO.pure(Left(new RuntimeException(response.error)))
+                      else
+                        response.results.toList
+                          .traverse { batchResult =>
+                            batchResult.result match {
+                              case pb.ExecuteBatchResult.Result.OutputData(outputBytes) =>
+                                IO.fromEither(
+                                  serializer
+                                    .deserialize(outputBytes.toByteArray)
+                                    .left
+                                    .map(e =>
+                                      new RuntimeException(
+                                        s"Stream batch deserialization error: $e"
+                                      )
+                                    )
+                                ).map(Right(_))
+                              case pb.ExecuteBatchResult.Result.Error(err) =>
+                                IO.pure(
+                                  Left(
+                                    new RuntimeException(
+                                      s"Stream batch element error: [${err.code}] ${err.message}"
+                                    )
+                                  )
                                 )
-                              )
-                            )
-                          case pb.ExecuteBatchResult.Result.Empty =>
-                            IO.pure(Left(new RuntimeException("Stream batch empty result")))
-                        }
-                      }
-                      .map(Right(_))
-                  _ <- deferred.complete(outcomes)
-                  _ <- pending.update(_ - response.correlationId)
-                } yield ()
-              else IO.unit
+                              case pb.ExecuteBatchResult.Result.Empty =>
+                                IO.pure(Left(new RuntimeException("Stream batch empty result")))
+                            }
+                          }
+                          .map(Right(_))
+                    _ <- deferred.complete(outcomes)
+                    _ <- pending.update(_ - response.correlationId)
+                  } yield ()
+                else IO.unit
             } yield ()
             io.unsafeRunAndForget()
           }
@@ -220,7 +224,7 @@ object StreamingBatchClient {
 
         // Open the stream
         requestObserver = asyncStub.executeBatchStream(responseObserver)
-        client = new StreamingBatchClient(requestObserver, pending, serializer, broken)
+        client          = new StreamingBatchClient(requestObserver, pending, serializer, broken)
       } yield client
     )(client => client.close)
 

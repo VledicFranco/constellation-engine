@@ -42,8 +42,8 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
       // Stub: streaming batch not used in these tests
       new io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamRequest] {
         override def onNext(request: pb.ExecuteBatchStreamRequest): Unit = ()
-        override def onError(t: Throwable): Unit = ()
-        override def onCompleted(): Unit = ()
+        override def onError(t: Throwable): Unit                         = ()
+        override def onCompleted(): Unit                                 = ()
       }
   }
 

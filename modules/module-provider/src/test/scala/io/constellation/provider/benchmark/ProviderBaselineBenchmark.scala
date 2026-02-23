@@ -587,7 +587,7 @@ private class BenchmarkExecutorImpl(handler: pb.ExecuteRequest => IO[pb.ExecuteR
     // Stub: streaming batch not used in these tests
     new io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamRequest] {
       override def onNext(request: pb.ExecuteBatchStreamRequest): Unit = ()
-      override def onError(t: Throwable): Unit = ()
-      override def onCompleted(): Unit = ()
+      override def onError(t: Throwable): Unit                         = ()
+      override def onCompleted(): Unit                                 = ()
     }
 }

@@ -235,10 +235,10 @@ class StreamRoutes(
 
   /** Extract batch functions for external modules in the DAG (RFC-034 Phase 1 and 2B).
     *
-    * For each module in the DAG, requests batch or streaming batch functions from constellation
-    * by qualified name. If `options.persistentStreaming` is true, uses ExecuteBatchStream RPC
-    * via persistent bidirectional streams (Phase 2B); otherwise uses ExecuteBatch RPC (Phase 1).
-    * Maps module UUID to batch function if available.
+    * For each module in the DAG, requests batch or streaming batch functions from constellation by
+    * qualified name. If `options.persistentStreaming` is true, uses ExecuteBatchStream RPC via
+    * persistent bidirectional streams (Phase 2B); otherwise uses ExecuteBatch RPC (Phase 1). Maps
+    * module UUID to batch function if available.
     */
   private def extractBatchFunctions(
       dagSpec: DagSpec,
@@ -251,10 +251,9 @@ class StreamRoutes(
         // Module names in constellation can be qualified (namespace.name) or unqualified
         val candidateNames = List(spec.name, spec.metadata.name)
 
-        val batchFnIO = if useStreamingBatch then
-          constellation.getStreamingBatchFunctions(candidateNames)
-        else
-          constellation.getBatchFunctions(candidateNames)
+        val batchFnIO =
+          if useStreamingBatch then constellation.getStreamingBatchFunctions(candidateNames)
+          else constellation.getBatchFunctions(candidateNames)
 
         batchFnIO.map { batchFnMap =>
           batchFnMap.values.headOption.map(moduleId -> _)

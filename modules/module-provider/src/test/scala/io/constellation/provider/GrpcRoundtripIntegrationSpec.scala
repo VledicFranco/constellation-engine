@@ -51,9 +51,18 @@ class GrpcRoundtripIntegrationSpec extends AnyFlatSpec with Matchers {
     val state  = cats.effect.Ref.of[IO, Map[String, ProviderConnection]](Map.empty).unsafeRunSync()
     val cp     = new ControlPlaneManager(state, config, _ => IO.unit)
     val cache  = new GrpcChannelCache
-    val streamPool = StreamingBatchPool.resource(cache, JsonCValueSerializer).allocated.unsafeRunSync()._1
+    val streamPool =
+      StreamingBatchPool.resource(cache, JsonCValueSerializer).allocated.unsafeRunSync()._1
     val manager =
-      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache, streamPool)
+      new ModuleProviderManager(
+        constellation,
+        compiler,
+        config,
+        cp,
+        JsonCValueSerializer,
+        cache,
+        streamPool
+      )
 
     // Start gRPC server hosting the ModuleProvider service
     val serviceImpl = new ModuleProviderServiceImplForTest(manager)
@@ -363,7 +372,7 @@ private class TestModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.Execute
     // Stub: streaming batch not used in these tests
     new io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamRequest] {
       override def onNext(request: pb.ExecuteBatchStreamRequest): Unit = ()
-      override def onError(t: Throwable): Unit = ()
-      override def onCompleted(): Unit = ()
+      override def onError(t: Throwable): Unit                         = ()
+      override def onCompleted(): Unit                                 = ()
     }
 }

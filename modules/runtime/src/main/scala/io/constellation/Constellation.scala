@@ -72,9 +72,9 @@ trait Constellation {
 
   /** Get streaming batch functions for persistent bidirectional gRPC streaming (RFC-034 Phase 2B).
     *
-    * Used by StreamRoutes when `persistentStreaming: true` is passed in the HTTP request.
-    * Returns a map of qualified module names to streaming batch functions for modules
-    * that support persistent streaming via ExecuteBatchStream RPC.
+    * Used by StreamRoutes when `persistentStreaming: true` is passed in the HTTP request. Returns a
+    * map of qualified module names to streaming batch functions for modules that support persistent
+    * streaming via ExecuteBatchStream RPC.
     *
     * @param moduleNames
     *   Qualified module names to look up streaming batch functions for

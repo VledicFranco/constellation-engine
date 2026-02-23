@@ -74,9 +74,9 @@ class ModuleProviderManager(
       : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
     Ref.unsafe[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]](Map.empty)
 
-  /** Streaming batch functions per qualified module name (RFC-034 Phase 2B). Maps qualified name
-    * to streaming batch function if the provider supports batch_stream, otherwise not present.
-    * Used when persistentStreaming: true is passed in HTTP request.
+  /** Streaming batch functions per qualified module name (RFC-034 Phase 2B). Maps qualified name to
+    * streaming batch function if the provider supports batch_stream, otherwise not present. Used
+    * when persistentStreaming: true is passed in HTTP request.
     */
   private val streamingBatchFunctions
       : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
@@ -283,9 +283,9 @@ class ModuleProviderManager(
             outputType = outputType
           )
 
-          val supportsBatch = decl.capabilities.map(_.supportsBatch).getOrElse(false)
+          val supportsBatch       = decl.capabilities.map(_.supportsBatch).getOrElse(false)
           val supportsBatchStream = decl.capabilities.map(_.supportsBatchStream).getOrElse(false)
-          val qualifiedName = s"$namespace.${decl.name}"
+          val qualifiedName       = s"$namespace.${decl.name}"
 
           for {
             // Create batch function if supported (RFC-034 Phase 1)
@@ -406,9 +406,9 @@ class ModuleProviderManager(
 
   /** Get streaming batch functions for modules in a DAG spec by their names (RFC-034 Phase 2B).
     *
-    * Returns a map from module name to streaming batch function for modules that support
-    * persistent streaming. Used when persistentStreaming: true is passed in HTTP request.
-    * Non-streaming or non-external modules are omitted from the result.
+    * Returns a map from module name to streaming batch function for modules that support persistent
+    * streaming. Used when persistentStreaming: true is passed in HTTP request. Non-streaming or
+    * non-external modules are omitted from the result.
     */
   override def getStreamingBatchFunctions(
       moduleNames: List[String]
@@ -452,8 +452,16 @@ object ModuleProviderManager {
       callbackRef <- Resource.eval(Ref.of[IO, String => IO[Unit]](_ => IO.unit))
       cache       <- Resource.make(IO(new GrpcChannelCache))(c => IO(c.shutdownAll()))
       streamPool  <- StreamingBatchPool.resource(cache, serializer)
-      cp      = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
-      manager = new ModuleProviderManager(delegate, compiler, config, cp, serializer, cache, streamPool)
+      cp = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
+      manager = new ModuleProviderManager(
+        delegate,
+        compiler,
+        config,
+        cp,
+        serializer,
+        cache,
+        streamPool
+      )
       _ <- Resource.eval(callbackRef.set(connId => manager.deregisterAllForConnection(connId)))
       _ <- startGrpcServer(manager, config)
       // Graceful shutdown: deregister all active connections before server stops

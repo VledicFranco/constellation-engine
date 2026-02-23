@@ -136,9 +136,9 @@ class ModuleExecutorServer(
 
   /** Handle a bidirectional ExecuteBatchStream by dispatching each request (RFC-034 Phase 2B).
     *
-    * Each request has a correlation_id that must be echoed in the response.
-    * Errors at the batch level (module not found) go in the error field.
-    * Element-level errors go in results[].result.error.
+    * Each request has a correlation_id that must be echoed in the response. Errors at the batch
+    * level (module not found) go in the error field. Element-level errors go in
+    * results[].result.error.
     */
   def handleBatchStreamRequest(
       request: pb.ExecuteBatchStreamRequest,
@@ -239,9 +239,11 @@ class ModuleExecutorServer(
     }
 
   /** Convert this server into a batch stream handler function. */
-  def toBatchStreamHandler: PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[Unit]] = {
-    case request =>
-      sendResponse => handleBatchStreamRequest(request, sendResponse)
+  def toBatchStreamHandler
+      : PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[
+        Unit
+      ]] = { case request =>
+    sendResponse => handleBatchStreamRequest(request, sendResponse)
   }
 }
 

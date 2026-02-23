@@ -26,7 +26,11 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
   def createWithBatchAndStream(
       handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
       batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
-      batchStreamHandler: Option[PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[Unit]]],
+      batchStreamHandler: Option[
+        PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[
+          Unit
+        ]]
+      ],
       port: Int
   ): Resource[IO, Int] = {
     val serviceImpl = new GrpcModuleExecutorImpl(handler, batchHandler, batchStreamHandler)
@@ -48,7 +52,11 @@ class GrpcExecutorServerFactory extends ExecutorServerFactory {
 private class GrpcModuleExecutorImpl(
     handler: pb.ExecuteRequest => IO[pb.ExecuteResponse],
     batchHandler: Option[pb.ExecuteBatchRequest => IO[pb.ExecuteBatchResponse]],
-    batchStreamHandler: Option[PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[Unit]]] = None
+    batchStreamHandler: Option[
+      PartialFunction[pb.ExecuteBatchStreamRequest, (pb.ExecuteBatchStreamResponse => Unit) => IO[
+        Unit
+      ]]
+    ] = None
 ) extends pb.ModuleExecutorGrpc.ModuleExecutor {
 
   import cats.effect.unsafe.implicits.global

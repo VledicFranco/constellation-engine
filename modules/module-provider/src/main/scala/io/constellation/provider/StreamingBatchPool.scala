@@ -11,12 +11,11 @@ import io.constellation.provider.v1.provider as pb
 /** Pool of persistent bidirectional gRPC streams, one per executor endpoint URL.
   *
   * When a request is made to an executor URL:
-  * 1. Check if a client for that URL exists and is not broken
-  * 2. If missing or broken: create a new one
-  * 3. Send the request on the persistent stream
+  *   1. Check if a client for that URL exists and is not broken 2. If missing or broken: create a
+  *      new one 3. Send the request on the persistent stream
   *
-  * Clients are created with StreamingBatchClient.resource() but stored in
-  * a concurrent map for reuse. When a client breaks, it's recreated on next use.
+  * Clients are created with StreamingBatchClient.resource() but stored in a concurrent map for
+  * reuse. When a client breaks, it's recreated on next use.
   */
 class StreamingBatchPool private (
     private[provider] val clients: Ref[IO, Map[String, StreamingBatchClient]],
@@ -58,7 +57,7 @@ class StreamingBatchPool private (
       inputs: List[CValue]
   ): IO[List[Either[Throwable, CValue]]] =
     for {
-      client <- getOrCreate(executorUrl)
+      client  <- getOrCreate(executorUrl)
       results <- client.send(moduleName, inputs)
     } yield results
 }
