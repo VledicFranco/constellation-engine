@@ -7,16 +7,11 @@ import cats.effect.unsafe.implicits.global
 import cats.implicits.*
 
 import io.constellation.*
-import io.constellation.stream.StreamCompiler
-import io.constellation.stream.StreamGraph
-import io.constellation.stream.StreamOptions
-import io.constellation.stream.config.StreamPipelineConfig
-import io.constellation.stream.config.SinkBinding
-import io.constellation.stream.config.SourceBinding
-import io.constellation.stream.connector.ConnectorRegistry
-import io.constellation.stream.connector.MemoryConnector
+import io.constellation.stream.config.{SinkBinding, SourceBinding, StreamPipelineConfig}
+import io.constellation.stream.connector.{ConnectorRegistry, MemoryConnector}
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
+import io.constellation.stream.{StreamCompiler, StreamGraph, StreamOptions}
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

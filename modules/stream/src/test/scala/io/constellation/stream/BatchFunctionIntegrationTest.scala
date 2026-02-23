@@ -8,8 +8,7 @@ import cats.implicits.*
 
 import io.constellation.*
 import io.constellation.stream.config.StreamPipelineConfig
-import io.constellation.stream.connector.ConnectorRegistry
-import io.constellation.stream.connector.MemoryConnector
+import io.constellation.stream.connector.{ConnectorRegistry, MemoryConnector}
 import io.constellation.stream.error.StreamErrorStrategy
 import io.constellation.stream.join.JoinStrategy
 
