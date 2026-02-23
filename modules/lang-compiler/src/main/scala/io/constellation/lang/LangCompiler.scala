@@ -4,7 +4,6 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.effect.IO
-import org.slf4j.{Logger as SLF4JLogger, LoggerFactory}
 
 import io.constellation.*
 import io.constellation.cache.CacheBackend
@@ -13,6 +12,8 @@ import io.constellation.lang.compiler.*
 import io.constellation.lang.optimizer.{IROptimizer, OptimizationConfig}
 import io.constellation.lang.parser.ConstellationParser
 import io.constellation.lang.semantic.*
+
+import org.slf4j.{Logger as SLF4JLogger, LoggerFactory}
 
 /** Main interface for compiling constellation-lang programs */
 trait LangCompiler {

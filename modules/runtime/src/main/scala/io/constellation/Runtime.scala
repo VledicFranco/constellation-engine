@@ -18,14 +18,13 @@ import cats.implicits.{
 }
 import cats.{Eval, Monoid}
 
-import org.typelevel.log4cats.Logger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
-
 import io.constellation.execution.{CancellableExecution, ExecutionStatus, GlobalScheduler}
 import io.constellation.pool.RuntimePool
 import io.constellation.spi.ConstellationBackends
 
 import io.circe.Json
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 final case class Runtime(table: Runtime.MutableDataTable, state: Runtime.MutableState) {
 

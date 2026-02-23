@@ -4,14 +4,15 @@ import java.util.concurrent.ConcurrentHashMap
 
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
-import org.typelevel.log4cats.Logger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import io.constellation.ContentHash
 import io.constellation.cache.CacheStats
 import io.constellation.lang.ast.CompileError
 import io.constellation.lang.compiler.{CompilationOutput, IRPipeline}
 import io.constellation.lang.semantic.FunctionRegistry
+
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** A LangCompiler wrapper that caches compilation results.
   *

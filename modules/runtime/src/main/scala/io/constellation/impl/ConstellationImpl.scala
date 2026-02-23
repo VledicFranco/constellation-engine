@@ -7,8 +7,6 @@ import scala.concurrent.duration.FiniteDuration
 
 import cats.effect.IO
 import cats.implicits.*
-import org.typelevel.log4cats.Logger
-import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 import io.constellation.*
 import io.constellation.cache.CacheBackend
@@ -19,6 +17,9 @@ import io.constellation.spi.{
   MetricsProvider,
   TracerProvider
 }
+
+import org.typelevel.log4cats.Logger
+import org.typelevel.log4cats.slf4j.Slf4jLogger
 
 /** Default implementation of the [[io.constellation.Constellation]] API.
   *
