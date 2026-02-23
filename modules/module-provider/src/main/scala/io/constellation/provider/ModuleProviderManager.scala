@@ -27,7 +27,8 @@ class ModuleProviderManager(
     config: ProviderManagerConfig,
     val controlPlane: ControlPlaneManager,
     serializer: CValueSerializer,
-    private[provider] val channelCache: GrpcChannelCache
+    private[provider] val channelCache: GrpcChannelCache,
+    private[provider] val streamingBatchPool: StreamingBatchPool
 ) extends Constellation {
 
   // ===== Constellation delegation =====
@@ -70,6 +71,14 @@ class ModuleProviderManager(
     * function if the provider supports batch, otherwise not present.
     */
   private val batchFunctions
+      : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+    Ref.unsafe[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]](Map.empty)
+
+  /** Streaming batch functions per qualified module name (RFC-034 Phase 2B). Maps qualified name to
+    * streaming batch function if the provider supports batch_stream, otherwise not present. Used
+    * when persistentStreaming: true is passed in HTTP request.
+    */
+  private val streamingBatchFunctions
       : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
     Ref.unsafe[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]](Map.empty)
 
@@ -274,8 +283,9 @@ class ModuleProviderManager(
             outputType = outputType
           )
 
-          val supportsBatch = decl.capabilities.map(_.supportsBatch).getOrElse(false)
-          val qualifiedName = s"$namespace.${decl.name}"
+          val supportsBatch       = decl.capabilities.map(_.supportsBatch).getOrElse(false)
+          val supportsBatchStream = decl.capabilities.map(_.supportsBatchStream).getOrElse(false)
+          val qualifiedName       = s"$namespace.${decl.name}"
 
           for {
             // Create batch function if supported (RFC-034 Phase 1)
@@ -290,6 +300,24 @@ class ModuleProviderManager(
                 ) match {
                   case Some(batchFn) =>
                     batchFunctions.update(_ + (qualifiedName -> batchFn))
+                  case None =>
+                    IO.unit
+                }
+              } else {
+                IO.unit
+              }
+
+            // Create streaming batch function if supported (RFC-034 Phase 2B)
+            _ <-
+              if supportsBatchStream then {
+                ExternalModule.createStreamingBatchFunction(
+                  name = decl.name,
+                  executorPool = pool,
+                  streamingBatchPool = streamingBatchPool,
+                  supportsBatchStream = true
+                ) match {
+                  case Some(streamingBatchFn) =>
+                    streamingBatchFunctions.update(_ + (qualifiedName -> streamingBatchFn))
                   case None =>
                     IO.unit
                 }
@@ -358,6 +386,7 @@ class ModuleProviderManager(
       _ <- delegate.removeModule(qualifiedName)
       _ <- IO(functionRegistry.deregister(qualifiedName))
       _ <- batchFunctions.update(_ - qualifiedName)
+      _ <- streamingBatchFunctions.update(_ - qualifiedName)
     } yield ()
 
   /** Get batch functions for modules in a DAG spec by their names (RFC-034 Phase 1).
@@ -372,6 +401,22 @@ class ModuleProviderManager(
       allBatchFns <- batchFunctions.get
       result = moduleNames.flatMap { name =>
         allBatchFns.get(name).map(name -> _)
+      }.toMap
+    } yield result
+
+  /** Get streaming batch functions for modules in a DAG spec by their names (RFC-034 Phase 2B).
+    *
+    * Returns a map from module name to streaming batch function for modules that support persistent
+    * streaming. Used when persistentStreaming: true is passed in HTTP request. Non-streaming or
+    * non-external modules are omitted from the result.
+    */
+  override def getStreamingBatchFunctions(
+      moduleNames: List[String]
+  ): IO[Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+    for {
+      allStreamingFns <- streamingBatchFunctions.get
+      result = moduleNames.flatMap { name =>
+        allStreamingFns.get(name).map(name -> _)
       }.toMap
     } yield result
 }
@@ -406,8 +451,17 @@ object ModuleProviderManager {
       state       <- Resource.eval(Ref.of[IO, Map[String, ProviderConnection]](Map.empty))
       callbackRef <- Resource.eval(Ref.of[IO, String => IO[Unit]](_ => IO.unit))
       cache       <- Resource.make(IO(new GrpcChannelCache))(c => IO(c.shutdownAll()))
-      cp      = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
-      manager = new ModuleProviderManager(delegate, compiler, config, cp, serializer, cache)
+      streamPool  <- StreamingBatchPool.resource(cache, serializer)
+      cp = new ControlPlaneManager(state, config, connId => callbackRef.get.flatMap(_(connId)))
+      manager = new ModuleProviderManager(
+        delegate,
+        compiler,
+        config,
+        cp,
+        serializer,
+        cache,
+        streamPool
+      )
       _ <- Resource.eval(callbackRef.set(connId => manager.deregisterAllForConnection(connId)))
       _ <- startGrpcServer(manager, config)
       // Graceful shutdown: deregister all active connections before server stops

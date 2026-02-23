@@ -35,6 +35,12 @@ service ModuleExecutor {
   // Providers that advertise supports_batch=true in ModuleCapabilities must implement this.
   // Fallback: Constellation loops Execute() per element if this is not available.
   rpc ExecuteBatch(ExecuteBatchRequest) returns (ExecuteBatchResponse);
+
+  // Persistent bidirectional stream for batch execution (RFC-034 Phase 2B).
+  // Multiplexes multiple batch requests over a single persistent stream using correlation IDs.
+  // Providers may advertise supports_batch_stream=true in ModuleCapabilities to enable this.
+  // Reduces overhead: ~1-2ms per-call HTTP/2 setup eliminated via persistent stream.
+  rpc ExecuteBatchStream(stream ExecuteBatchStreamRequest) returns (stream ExecuteBatchStreamResponse);
 }
 
 // ===== Registration Messages =====
@@ -78,6 +84,9 @@ message ModuleCapabilities {
   bool supports_batch = 1;
   // Maximum batch size the provider can handle (0 = no limit)
   int32 max_batch_size = 2;
+  // Whether this module supports ExecuteBatchStream RPC (RFC-034 Phase 2B).
+  // If true, provider must implement the bidirectional stream RPC.
+  bool supports_batch_stream = 3;
 }
 
 message RegisterResponse {
@@ -219,6 +228,32 @@ message ExecuteBatchResult {
     bytes output_data = 1;
     ExecutionError error = 2;
   }
+}
+
+// ===== Persistent Batch Stream Messages (RFC-034 Phase 2B) =====
+
+message ExecuteBatchStreamRequest {
+  // Unique correlation ID for this batch request. Used to match responses.
+  string correlation_id = 1;
+  // Short name within the provider's namespace
+  string module_name = 2;
+  // Each entry is a serialized CValue (same format as ExecuteBatchRequest.inputs)
+  repeated bytes inputs = 3;
+  // For tracing
+  string execution_id = 4;
+  map<string, string> metadata = 5;
+}
+
+message ExecuteBatchStreamResponse {
+  // Correlation ID from the corresponding ExecuteBatchStreamRequest.
+  // Client uses this to match response to pending request.
+  string correlation_id = 1;
+  // Results in same order as inputs. Each is either output_data or error.
+  repeated ExecuteBatchResult results = 2;
+  // Non-empty if batch-level failure (e.g., module not found).
+  // Element-level errors appear in results[].result.error.
+  string error = 3;
+  ExecutionMetrics aggregate_metrics = 4;
 }
 
 // ===== Type System Messages =====

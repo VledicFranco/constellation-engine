@@ -256,6 +256,34 @@ object ExternalModule {
         } yield results
       }
 
+  /** Create a streaming batch function for an external module (RFC-034 Phase 2B).
+    *
+    * Returns `Some(batchFn)` if the provider declared `supports_batch_stream = true`, `None`
+    * otherwise. Uses a persistent bidirectional gRPC stream to multiplex requests via correlation
+    * IDs. Reduces per-call overhead by eliminating HTTP/2 stream setup (~1-2ms per call).
+    *
+    * The streaming batch function is used when `persistentStreaming: true` is passed in the HTTP
+    * request; otherwise the regular batch function is used.
+    */
+  def createStreamingBatchFunction(
+      name: String,
+      executorPool: ExecutorPool,
+      streamingBatchPool: StreamingBatchPool,
+      supportsBatchStream: Boolean
+  ): Option[List[CValue] => IO[List[Either[Throwable, CValue]]]] =
+    if !supportsBatchStream then None
+    else
+      Some { (inputs: List[CValue]) =>
+        for {
+          executor <- executorPool.next
+          results <- streamingBatchPool.executeBatch(
+            executor.executorUrl,
+            name,
+            inputs
+          )
+        } yield results
+      }
+
   private def callExecutor(
       channelCache: GrpcChannelCache,
       executorUrl: String,
