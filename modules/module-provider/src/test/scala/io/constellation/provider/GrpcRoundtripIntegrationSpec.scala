@@ -356,4 +356,14 @@ private class TestModuleExecutorImpl(handler: pb.ExecuteRequest => IO[pb.Execute
   ): scala.concurrent.Future[pb.ExecuteBatchResponse] =
     // Stub: batch not used in these tests
     scala.concurrent.Future.successful(pb.ExecuteBatchResponse())
+
+  override def executeBatchStream(
+      responseObserver: io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamResponse]
+  ): io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamRequest] =
+    // Stub: streaming batch not used in these tests
+    new io.grpc.stub.StreamObserver[pb.ExecuteBatchStreamRequest] {
+      override def onNext(request: pb.ExecuteBatchStreamRequest): Unit = ()
+      override def onError(t: Throwable): Unit = ()
+      override def onCompleted(): Unit = ()
+    }
 }

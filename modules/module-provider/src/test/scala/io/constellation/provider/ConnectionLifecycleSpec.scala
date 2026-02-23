@@ -105,8 +105,9 @@ class ConnectionLifecycleSpec extends AnyFlatSpec with Matchers {
     val deregRef = Ref.of[IO, String => IO[Unit]](_ => IO.unit).unsafeRunSync()
     val cp       = new ControlPlaneManager(state, config, connId => deregRef.get.flatMap(_(connId)))
     val cache    = new GrpcChannelCache
+    val streamPool = StreamingBatchPool.resource(cache, JsonCValueSerializer).allocated.unsafeRunSync()._1
     val manager =
-      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache)
+      new ModuleProviderManager(constellation, compiler, config, cp, JsonCValueSerializer, cache, streamPool)
     deregRef.set(connId => manager.deregisterAllForConnection(connId)).unsafeRunSync()
 
     (manager, cp, testFunctionRegistry)
