@@ -66,6 +66,13 @@ class ModuleProviderManager(
   private[provider] val executorPools: Ref[IO, Map[String, ExecutorPool]] =
     Ref.unsafe[IO, Map[String, ExecutorPool]](Map.empty)
 
+  /** Batch functions per qualified module name (RFC-034 Phase 1). Maps qualified name to batch
+    * function if the provider supports batch, otherwise not present.
+    */
+  private val batchFunctions
+      : Ref[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+    Ref.unsafe[IO, Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]](Map.empty)
+
   /** Handle a Register RPC. */
   def handleRegister(request: pb.RegisterRequest, connectionId: String): IO[pb.RegisterResponse] =
     for {
@@ -267,7 +274,31 @@ class ModuleProviderManager(
             outputType = outputType
           )
 
-          delegate.setModule(module) >> IO(functionRegistry.register(signature))
+          val supportsBatch = decl.capabilities.map(_.supportsBatch).getOrElse(false)
+          val qualifiedName = s"$namespace.${decl.name}"
+
+          for {
+            // Create batch function if supported (RFC-034 Phase 1)
+            _ <-
+              if supportsBatch then {
+                ExternalModule.createBatchFunction(
+                  name = decl.name,
+                  executorPool = pool,
+                  serializer = serializer,
+                  channelCache = channelCache,
+                  supportsBatch = true
+                ) match {
+                  case Some(batchFn) =>
+                    batchFunctions.update(_ + (qualifiedName -> batchFn))
+                  case None =>
+                    IO.unit
+                }
+              } else {
+                IO.unit
+              }
+
+            _ <- delegate.setModule(module) >> IO(functionRegistry.register(signature))
+          } yield ()
         } else IO.unit
     } yield ()
 
@@ -326,7 +357,23 @@ class ModuleProviderManager(
     for {
       _ <- delegate.removeModule(qualifiedName)
       _ <- IO(functionRegistry.deregister(qualifiedName))
+      _ <- batchFunctions.update(_ - qualifiedName)
     } yield ()
+
+  /** Get batch functions for modules in a DAG spec by their names (RFC-034 Phase 1).
+    *
+    * Returns a map from module name to batch function for modules that support batch execution.
+    * Non-batch or non-external modules are omitted from the result.
+    */
+  override def getBatchFunctions(
+      moduleNames: List[String]
+  ): IO[Map[String, List[CValue] => IO[List[Either[Throwable, CValue]]]]] =
+    for {
+      allBatchFns <- batchFunctions.get
+      result = moduleNames.flatMap { name =>
+        allBatchFns.get(name).map(name -> _)
+      }.toMap
+    } yield result
 }
 
 /** Summary information about a connected provider. */

@@ -27,8 +27,13 @@ final case class ModuleDefinition(
     outputType: CType,
     version: String,
     description: String,
-    handler: CValue => IO[CValue]
+    handler: CValue => IO[CValue],
+    batchHandler: Option[List[CValue] => IO[List[Either[Throwable, CValue]]]] = None,
+    maxBatchSize: Int = 0
 ) {
+
+  /** Whether this module supports batch execution (RFC-034 Phase 1). */
+  def supportsBatch: Boolean = batchHandler.isDefined
 
   /** Convert to a protobuf ModuleDeclaration for registration. */
   def toDeclaration: pb.ModuleDeclaration =
@@ -37,7 +42,13 @@ final case class ModuleDefinition(
       inputSchema = Some(TypeSchemaConverter.toTypeSchema(inputType)),
       outputSchema = Some(TypeSchemaConverter.toTypeSchema(outputType)),
       version = version,
-      description = description
+      description = description,
+      capabilities = Some(
+        pb.ModuleCapabilities(
+          supportsBatch = supportsBatch,
+          maxBatchSize = maxBatchSize
+        )
+      )
     )
 
   /** Produce the fully qualified module name within a namespace. */

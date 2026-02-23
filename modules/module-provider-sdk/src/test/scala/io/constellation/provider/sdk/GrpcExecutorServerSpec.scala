@@ -14,7 +14,7 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
   private def startServer(
       handler: pb.ExecuteRequest => IO[pb.ExecuteResponse]
   ): (io.grpc.Server, Int) = {
-    val impl = new GrpcModuleExecutorImpl(handler)
+    val impl = new GrpcModuleExecutorImpl(handler, None)
     val serviceDef =
       pb.ModuleExecutorGrpc.bindService(impl, scala.concurrent.ExecutionContext.global)
     val server = io.grpc.ServerBuilder.forPort(0).addService(serviceDef).build().start()
@@ -128,7 +128,7 @@ class GrpcExecutorServerSpec extends AnyFlatSpec with Matchers {
         )
       )
 
-    val impl = new GrpcModuleExecutorImpl(handler)
+    val impl = new GrpcModuleExecutorImpl(handler, None)
     val future = impl.execute(
       pb.ExecuteRequest(moduleName = "Direct", executionId = "e1")
     )

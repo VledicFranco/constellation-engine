@@ -29,6 +29,12 @@ class ExternalModuleExecutionSpec extends AnyFlatSpec with Matchers {
   ) extends pb.ModuleExecutorGrpc.ModuleExecutor {
     override def execute(request: pb.ExecuteRequest): scala.concurrent.Future[pb.ExecuteResponse] =
       scala.concurrent.Future.successful(behavior(request))
+
+    override def executeBatch(
+        request: pb.ExecuteBatchRequest
+    ): scala.concurrent.Future[pb.ExecuteBatchResponse] =
+      // Stub: batch not used in these tests
+      scala.concurrent.Future.successful(pb.ExecuteBatchResponse())
   }
 
   private def echoExecutor: FakeExecutorService = new FakeExecutorService(req => {

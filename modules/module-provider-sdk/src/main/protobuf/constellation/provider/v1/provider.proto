@@ -30,6 +30,11 @@ service ModuleProvider {
 
 service ModuleExecutor {
   rpc Execute(ExecuteRequest) returns (ExecuteResponse);
+
+  // Batch variant: process multiple inputs in a single call (RFC-034 Phase 1).
+  // Providers that advertise supports_batch=true in ModuleCapabilities must implement this.
+  // Fallback: Constellation loops Execute() per element if this is not available.
+  rpc ExecuteBatch(ExecuteBatchRequest) returns (ExecuteBatchResponse);
 }
 
 // ===== Registration Messages =====
@@ -64,6 +69,15 @@ message ModuleDeclaration {
   string version = 4;
   // Human-readable description
   string description = 5;
+  // Provider capabilities (RFC-034 Phase 1)
+  ModuleCapabilities capabilities = 6;
+}
+
+message ModuleCapabilities {
+  // Whether this module supports ExecuteBatch RPC
+  bool supports_batch = 1;
+  // Maximum batch size the provider can handle (0 = no limit)
+  int32 max_batch_size = 2;
 }
 
 message RegisterResponse {
@@ -180,6 +194,31 @@ message ExecutionError {
 message ExecutionMetrics {
   int64 duration_ms = 1;
   int64 memory_bytes = 2;
+}
+
+// ===== Batch Execution Messages (RFC-034 Phase 1) =====
+
+message ExecuteBatchRequest {
+  // Short name within the provider's namespace
+  string module_name = 1;
+  // Each entry is a serialized CValue (same format as ExecuteRequest.input_data)
+  repeated bytes inputs = 2;
+  // For tracing
+  string execution_id = 3;
+  map<string, string> metadata = 4;
+}
+
+message ExecuteBatchResponse {
+  // Results in same order as inputs. Each is either output_data or error.
+  repeated ExecuteBatchResult results = 1;
+  ExecutionMetrics aggregate_metrics = 2;
+}
+
+message ExecuteBatchResult {
+  oneof result {
+    bytes output_data = 1;
+    ExecutionError error = 2;
+  }
 }
 
 // ===== Type System Messages =====

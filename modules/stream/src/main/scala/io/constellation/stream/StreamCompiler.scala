@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit
 
 import scala.concurrent.duration.FiniteDuration
 
-import cats.effect.{Deferred, IO}
+import cats.effect.{Deferred, IO, Ref}
 import cats.implicits.*
 
 import io.constellation.*
@@ -53,11 +53,20 @@ object StreamCompiler {
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] =
     for {
       metrics <-
         if options.metricsEnabled then StreamMetrics.create else IO.pure(StreamMetrics.noop)
+      // RFC-034 Phase 2: Create BatchHistory tracking when adaptive batching enabled
+      batchHistory <-
+        if options.adaptiveBatching then
+          Ref.of[IO, BatchSplitter.BatchHistory](BatchSplitter.BatchHistory.empty)
+        else
+          Ref.of[IO, BatchSplitter.BatchHistory](
+            BatchSplitter.BatchHistory.empty
+          ) // Unused but created for consistency
       shutdown <- Deferred[IO, Either[Throwable, Unit]]
       graph <- buildGraph(
         dagSpec,
@@ -68,7 +77,9 @@ object StreamCompiler {
         joinStrategy,
         metrics,
         shutdown,
-        moduleOptions
+        batchHistory,
+        moduleOptions,
+        batchModules
       )
     } yield graph
 
@@ -85,7 +96,8 @@ object StreamCompiler {
       options: StreamOptions = StreamOptions(),
       errorStrategy: StreamErrorStrategy = StreamErrorStrategy.Log,
       joinStrategy: JoinStrategy = JoinStrategy.CombineLatest,
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source and sink names from the DAG
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -133,7 +145,8 @@ object StreamCompiler {
           options,
           errorStrategy,
           joinStrategy,
-          moduleOptions
+          moduleOptions,
+          batchModules
         )
     }
   }
@@ -147,7 +160,12 @@ object StreamCompiler {
       joinStrategy: JoinStrategy,
       metrics: StreamMetrics,
       shutdownSignal: Deferred[IO, Either[Throwable, Unit]],
-      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty
+      batchHistory: Ref[
+        IO,
+        BatchSplitter.BatchHistory
+      ], // RFC-034 Phase 2: Batch execution history for adaptive sizing
+      moduleOptions: Map[UUID, ModuleCallOptions] = Map.empty,
+      batchModules: Map[UUID, List[CValue] => IO[List[Either[Throwable, CValue]]]] = Map.empty
   ): IO[StreamGraph] = {
     // Identify source nodes (data nodes with no incoming edges from module outputs)
     val moduleOutputDataIds = dagSpec.outEdges.map(_._2)
@@ -216,36 +234,141 @@ object StreamCompiler {
 
           outputDataIds.map(_ -> collected).toMap
         } else {
-          // Standard module processing with error handling
+          // Standard module processing with batch support (RFC-034 Phase 1)
+          val opts      = moduleOptions.get(moduleId)
+          val batchSize = opts.flatMap(_.batchSize).getOrElse(1)
+          val batchTimeout = opts
+            .flatMap(_.batchTimeoutMs)
+            .map(ms => FiniteDuration(ms, TimeUnit.MILLISECONDS))
+            .getOrElse(FiniteDuration(1, TimeUnit.SECONDS))
+          val batchFn = batchModules.get(moduleId)
+
           outputDataIds.flatMap { outDataId =>
             moduleFn.map { fn =>
+              val processed = (batchFn, batchSize > 1) match {
+                case (Some(bf), true) =>
+                  // Batch path with Phase 1B batch splitting and routing integration (RFC-034 Phase 1B)
+                  val maxBatchSize    = options.maxBatchSize // RFC-034: max batch size constraint
+                  val useBatchRouting = options.batchRouting // RFC-034: enable conditional routing
 
-              val processed = errorStrategy match {
-                case StreamErrorStrategy.Skip =>
-                  // Skip genuinely drops failed elements instead of emitting a sentinel
-                  inputStream.evalMapFilter { input =>
-                    (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
-                      .handleError(_ => None)
-                  }
-                case StreamErrorStrategy.Log =>
-                  inputStream.evalMap { input =>
-                    val wrapped = fn(input).handleErrorWith { err =>
-                      metrics.recordError(moduleName) *>
-                        IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
+                  inputStream
+                    .groupWithin(batchSize, batchTimeout)
+                    .evalMap { chunk =>
+                      val inputs = chunk.toList
+
+                      // RFC-034 Phase 1B: Apply batch splitting if max_batch_size constraint is set
+                      val batches = if maxBatchSize > 0 then {
+                        BatchSplitter.splitBatch(inputs, maxBatchSize)
+                      } else {
+                        List(inputs) // No constraint: single batch
+                      }
+
+                      // RFC-034 Phase 1B: Decide whether to use batch function based on routing
+                      val shouldUseBatchFn = if useBatchRouting then {
+                        val decision = BatchSplitter.decideBatchRouting(
+                          batchSize = inputs.length,
+                          hasBatchFunction = true,
+                          fixedOverheadMs = 1.0,    // Estimated per-batch overhead
+                          singleElementTimeMs = 0.1 // Estimated per-element cost
+                        )
+                        decision.useBatchFunction
+                      } else {
+                        true // Use batch function by default if routing disabled
+                      }
+
+                      // RFC-034 Phase 2: Execute batches with timing and metrics recording
+                      val resultsIO = if shouldUseBatchFn then {
+                        for {
+                          startNanos <- IO(System.nanoTime())
+                          // Process via batch function with splitting
+                          batchResults <- batches
+                            .traverse { batch =>
+                              bf(batch)
+                            }
+                            .map(_.flatten) // Flatten results from all batches
+                          endNanos <- IO(System.nanoTime())
+                          // RFC-034 Phase 2: Record metrics if adaptive batching enabled
+                          _ <-
+                            if options.adaptiveBatching then {
+                              val executionTimeMs = (endNanos - startNanos) / 1_000_000.0
+                              batchHistory.update { history =>
+                                val updated = BatchSplitter.BatchHistory.record(
+                                  history,
+                                  batchSize = inputs.length,
+                                  executionTimeMs = executionTimeMs
+                                )
+                                // Keep only recent history (trim to 100 entries)
+                                BatchSplitter.BatchHistory.keep(updated, maxSize = 100)
+                              }
+                            } else {
+                              IO.unit
+                            }
+                        } yield batchResults
+                      } else {
+                        // Fallback: process single-element for each item
+                        inputs
+                          .traverse { input =>
+                            fn(input).map(Right(_))
+                          }
+                      }
+
+                      // Handle results and errors according to error strategy
+                      resultsIO.flatMap { results =>
+                        results.traverse {
+                          case Right(v) =>
+                            metrics.recordElement(moduleName).as(Some(v))
+                          case Left(err) =>
+                            errorStrategy match {
+                              case StreamErrorStrategy.Skip =>
+                                metrics.recordError(moduleName).as(None)
+                              case StreamErrorStrategy.Log =>
+                                metrics
+                                  .recordError(moduleName)
+                                  .as(
+                                    Some(CValue.CString(s"error: ${safeMessage(err)}"))
+                                  )
+                              case StreamErrorStrategy.Dlq =>
+                                metrics
+                                  .recordDlq(moduleName)
+                                  .as(
+                                    Some(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                                  )
+                              case StreamErrorStrategy.Propagate =>
+                                IO.raiseError(err)
+                            }
+                        }
+                      }
                     }
-                    wrapped <* metrics.recordElement(moduleName)
-                  }
-                case StreamErrorStrategy.Propagate =>
-                  inputStream.evalMap { input =>
-                    fn(input) <* metrics.recordElement(moduleName)
-                  }
-                case StreamErrorStrategy.Dlq =>
-                  inputStream.evalMap { input =>
-                    val wrapped = fn(input).handleErrorWith { err =>
-                      metrics.recordDlq(moduleName) *>
-                        IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
-                    }
-                    wrapped <* metrics.recordElement(moduleName)
+                    .flatMap(results => Stream.emits(results.flatten))
+
+                case _ =>
+                  // Per-element path (unchanged)
+                  errorStrategy match {
+                    case StreamErrorStrategy.Skip =>
+                      inputStream.evalMapFilter { input =>
+                        (fn(input).map(Some(_)) <* metrics.recordElement(moduleName))
+                          .handleError(_ => None)
+                      }
+                    case StreamErrorStrategy.Log =>
+                      inputStream.evalMap { input =>
+                        val wrapped = fn(input).handleErrorWith { err =>
+                          metrics.recordError(moduleName) *>
+                            IO.pure(CValue.CString(s"error: ${safeMessage(err)}"))
+                        }
+                        wrapped <* metrics.recordElement(moduleName)
+                      }
+                    case StreamErrorStrategy.Propagate =>
+                      inputStream.evalMap { input =>
+                        fn(input) <* metrics.recordElement(moduleName)
+                      }
+                    case StreamErrorStrategy.Dlq =>
+                      inputStream.evalMap { input =>
+                        val wrapped = fn(input).handleErrorWith { err =>
+                          metrics.recordDlq(moduleName) *>
+                            IO.pure(CValue.CString(s"dlq: ${safeMessage(err)}"))
+                        }
+                        wrapped <* metrics.recordElement(moduleName)
+                      }
                   }
               }
 
