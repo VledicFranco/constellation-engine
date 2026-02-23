@@ -1,0 +1,15 @@
+# RFC-032: Lambda expressions with infix operators
+in numbers: List<Int>
+in threshold: Int
+
+# Arithmetic operators in lambda bodies
+doubled = Map(numbers, (x) => Add(x, x))
+halved = Map(numbers, (x) => Divide(x, 2))
+squared = Map(numbers, (x) => Multiply(x, x))
+
+# Comparison operators in lambda bodies
+filtered = Filter(numbers, (x) => GreaterThan(x, threshold))
+evens = Filter(numbers, (x) => Equal(Modulo(x, 2), 0))
+
+out doubled
+out filtered

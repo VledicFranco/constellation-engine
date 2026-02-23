@@ -1,0 +1,18 @@
+# RFC-033: Implicit `it` variable and infix HOF syntax
+in numbers: List<Int>
+in threshold: Int
+
+# Traditional lambda form (for comparison)
+positives_traditional = Filter(numbers, (x) => GreaterThan(x, threshold))
+
+# RFC-033 implicit `it` variable in HOF arguments
+positives = Filter(numbers, it > threshold)
+doubled = Map(numbers, it * 2)
+has_large = any(numbers, it > 100)
+all_positive = all(numbers, it > 0)
+
+# RFC-033 infix HOF syntax
+# Note: These combine infix functions with implicit it
+result = numbers Filter it > threshold Map it * 2
+
+out result

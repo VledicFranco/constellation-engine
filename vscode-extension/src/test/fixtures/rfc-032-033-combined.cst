@@ -1,0 +1,27 @@
+# RFC-032 & RFC-033 Combined: Complete example with lambda operators and implicit it
+in numbers: List<Int>
+in words: List<String>
+in threshold: Int
+in minLength: Int
+
+# RFC-032: Infix operators in lambda bodies
+# Arithmetic transformations
+squared = Map(numbers, (n) => Multiply(n, n))
+adjusted = Map(numbers, (n) => Add(n, threshold))
+
+# RFC-033: Implicit `it` in HOF arguments
+# Same operations using implicit it variable
+squared_it = Map(numbers, it * it)
+adjusted_it = Map(numbers, it + threshold)
+
+# RFC-033: Filtering with implicit it
+long_words = Filter(words, it > minLength)
+large_numbers = Filter(numbers, it >= threshold)
+
+# RFC-033: Combining multiple HOF operations
+# Pipeline: filter -> map
+result = numbers Filter it > threshold Map it * 2
+
+# Verification outputs
+out squared
+out result

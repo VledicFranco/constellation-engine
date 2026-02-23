@@ -13,6 +13,9 @@
       "include": "#keywords"
     },
     {
+      "include": "#boolean-literals"
+    },
+    {
       "include": "#types"
     },
     {
@@ -22,10 +25,16 @@
       "include": "#numbers"
     },
     {
+      "include": "#operators"
+    },
+    {
       "include": "#qualified-function-calls"
     },
     {
       "include": "#function-calls"
+    },
+    {
+      "include": "#hof-keywords"
     },
     {
       "include": "#variables"
@@ -66,7 +75,31 @@
       "patterns": [
         {
           "name": "keyword.control.constellation",
-          "match": "\\b(in|out|if|else|type|use|as)\\b"
+          "match": "\\b(in|out|if|else|type|use|as|and|or|not|when|branch|otherwise|with|lazy|match|is)\\b"
+        }
+      ]
+    },
+    "boolean-literals": {
+      "patterns": [
+        {
+          "name": "constant.language.constellation",
+          "match": "\\b(true|false)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.constellation",
+          "match": "(>=|<=|==|!=|=>|>|<|\\+|-|\\*|/)"
+        }
+      ]
+    },
+    "hof-keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.hof.constellation",
+          "match": "\\b(filter|map|all|any)\\b(?!\\s*\\()"
         }
       ]
     },

@@ -10,6 +10,84 @@ Language support for Constellation orchestration DSL with integrated Language Se
 - **Hover Information** - View module documentation on hover
 - **Execute Pipeline** - Run pipelines directly from the editor
 
+## Language Syntax
+
+Constellation DSL includes several language features for composing pipelines:
+
+### Pipeline I/O
+
+Pipelines are defined with explicit input and output declarations:
+
+```constellation
+in text: String
+in count: Int
+
+result = Uppercase(text)
+
+out result
+```
+
+### Lambda Expressions
+
+Functions can accept lambda expressions for higher-order operations:
+
+```constellation
+numbers = List(1, 2, 3, 4, 5)
+squared = Map(numbers, (x) => Multiply(x, x))
+```
+
+### Infix Operators in Lambda Bodies (RFC-032)
+
+Lambda bodies support infix operators for arithmetic and comparisons:
+
+```constellation
+# Arithmetic operators
+doubled = Map(numbers, (x) => Add(x, x))
+halved = Map(numbers, (x) => Divide(x, 2))
+
+# Comparison operators
+filtered = Filter(numbers, (x) => GreaterThan(x, 5))
+isZero = Map(numbers, (x) => Equal(x, 0))
+```
+
+### Implicit `it` Variable in HOF Arguments (RFC-033)
+
+When calling higher-order functions like `filter`, `map`, `all`, `any`, you can use the implicit variable `it` to refer to each element, eliminating the need for explicit lambda parameters:
+
+```constellation
+# Traditional form (still supported)
+positives = Filter(numbers, (x) => GreaterThan(x, 0))
+
+# RFC-033 implicit `it` form (idiomatic)
+positives = Filter(numbers, it > 0)
+```
+
+### Infix HOF Syntax (RFC-033)
+
+Higher-order functions support infix notation for more fluent code:
+
+```constellation
+# Traditional: function call syntax
+result = Map(numbers, it * 2)
+
+# Idiomatic: infix syntax
+result = numbers Map it * 2
+result = numbers Filter it > 0 Map it * 2
+```
+
+### Type Declarations
+
+Define custom record types for structured data:
+
+```constellation
+type Person = { name: String, age: Int }
+type Result = { total: Long, average: Float }
+
+in person: Person
+extracted = person.name
+out extracted
+```
+
 ## Quick Start
 
 Get up and running in 3 minutes:
@@ -108,20 +186,20 @@ There are two ways to install the extension: **Development Mode** (recommended f
    npm run package
    ```
 
-   This creates `constellation-lang-0.1.0.vsix` in the current directory.
+   This creates `constellation-lang-0.8.3.vsix` in the current directory.
 
 4. Install the VSIX file in VSCode:
 
    **Via Command Line:**
    ```bash
-   code --install-extension constellation-lang-0.1.0.vsix
+   code --install-extension constellation-lang-0.8.3.vsix
    ```
 
    **Via VSCode UI:**
    - Open VSCode
    - Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
    - Type "Extensions: Install from VSIX"
-   - Select the `constellation-lang-0.1.0.vsix` file
+   - Select the `constellation-lang-0.8.3.vsix` file
 
 5. Reload VSCode when prompted
 
@@ -319,27 +397,48 @@ The example server includes these modules (hover over them in VSCode to see full
 4. Build complex pipelines incrementally
 
 **Common Patterns:**
+
+**Pattern 1: Sequential transformation**
 ```constellation
-# Pattern 1: Sequential transformation
 in text: String
 step1 = Trim(text)
 step2 = Uppercase(step1)
 step3 = WordCount(step2)
 out step3
+```
 
-# Pattern 2: Multiple outputs
+**Pattern 2: Multiple outputs**
+```constellation
 in data: List<Long>
 total = SumList(data)
 avg = Average(data)
 out total
 out avg
+```
 
-# Pattern 3: Filtering and transformation
+**Pattern 3: Filtering and transformation (RFC-033 idiomatic style)**
+
+Using implicit `it` and infix HOF syntax for cleaner code:
+
+```constellation
 in numbers: List<Long>
-in min: Long
-filtered = FilterGreaterThan(numbers, min)
-doubled = MultiplyEach(filtered, 2)
-out doubled
+in threshold: Long
+
+# Idiomatic: infix syntax with implicit it
+result = numbers Filter it > threshold Map it * 2
+
+out result
+```
+
+Equivalent legacy form:
+```constellation
+in numbers: List<Long>
+in threshold: Long
+
+filtered = Filter(numbers, (x) => GreaterThan(x, threshold))
+result = Map(filtered, (x) => Multiply(x, 2))
+
+out result
 ```
 
 ## Configuration
