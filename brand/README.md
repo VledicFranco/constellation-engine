@@ -33,6 +33,11 @@ The Constellation logo represents the core concepts of the project:
 | `logo-icon-negative.svg` | Icon only (white nodes on purple background) | Buttons, badges, emphatic contexts |
 | `logo-icon-negative-dark.svg` | Icon only (dark nodes on light background) | Very light backgrounds, high contrast |
 
+### Outline Icon
+| File | Description | Use Case |
+|------|-------------|----------|
+| `logo-icon-outline.svg` | Icon outline (transparent, uses currentColor stroke) | Flexible backgrounds, scalable line weight, web/UI use |
+
 ### Full Logos
 | File | Description | Use Case |
 |------|-------------|----------|
