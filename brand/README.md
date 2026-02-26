@@ -20,11 +20,22 @@ The Constellation logo represents the core concepts of the project:
 
 ## Logo Files
 
+### Standard Icons
 | File | Description | Use Case |
 |------|-------------|----------|
 | `logo-icon.svg` | Icon only (indigo on transparent) | Favicons, app icons, small spaces |
 | `logo-icon-dark.svg` | Icon only (light indigo) | Dark backgrounds |
 | `logo-icon-mono.svg` | Icon only (currentColor) | Inherits text color, flexible theming |
+
+### Negative Icons (inverted)
+| File | Description | Use Case |
+|------|-------------|----------|
+| `logo-icon-negative.svg` | Icon only (white nodes on purple background) | Buttons, badges, emphatic contexts |
+| `logo-icon-negative-dark.svg` | Icon only (dark nodes on light background) | Very light backgrounds, high contrast |
+
+### Full Logos
+| File | Description | Use Case |
+|------|-------------|----------|
 | `logo-full.svg` | Icon + wordmark (light background) | Headers, documentation |
 | `logo-full-dark.svg` | Icon + wordmark (dark background) | Dark mode headers |
 
@@ -75,9 +86,14 @@ font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 ### Do
 
 - Use the logo with adequate spacing (minimum padding equal to the node radius)
-- Use the appropriate color variant for the background
+- Use the appropriate color variant for the background:
+  - Light backgrounds: `logo-icon.svg` or `logo-icon-negative-dark.svg`
+  - Dark backgrounds: `logo-icon-dark.svg`
+  - Emphasis/badges: `logo-icon-negative.svg`
+  - Flexible color contexts: `logo-icon-mono.svg`
 - Scale proportionally
 - Use the monochrome version when color isn't available
+- Use negative icons for buttons, badges, or high-contrast contexts
 
 ### Don't
 
@@ -118,6 +134,64 @@ For embedding in HTML without external files:
   <line x1="12" y1="10" x2="16" y2="12" stroke="currentColor" stroke-width="1.5"/>
 </svg>
 ```
+
+## Logo Variations Preview
+
+### Standard Icons
+
+<table>
+<tr>
+  <td align="center">
+    <strong>logo-icon.svg</strong><br/>
+    <em>Light backgrounds</em><br/>
+    <img src="logo-icon.svg" width="80" alt="Standard icon on light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+  </td>
+  <td align="center">
+    <strong>logo-icon-dark.svg</strong><br/>
+    <em>Dark backgrounds</em><br/>
+    <img src="logo-icon-dark.svg" width="80" alt="Icon for dark backgrounds" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+  </td>
+  <td align="center">
+    <strong>logo-icon-mono.svg</strong><br/>
+    <em>Flexible theming</em><br/>
+    <img src="logo-icon-mono.svg" width="80" alt="Monochrome icon" style="background: #a5b4fc; padding: 16px; border-radius: 8px; color: currentColor;"/>
+  </td>
+</tr>
+</table>
+
+### Negative Icons (Inverted)
+
+<table>
+<tr>
+  <td align="center">
+    <strong>logo-icon-negative.svg</strong><br/>
+    <em>Emphasis & buttons</em><br/>
+    <img src="logo-icon-negative.svg" width="80" alt="Negative icon on standard light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+  </td>
+  <td align="center">
+    <strong>logo-icon-negative-dark.svg</strong><br/>
+    <em>Very light backgrounds</em><br/>
+    <img src="logo-icon-negative-dark.svg" width="80" alt="Negative icon for high contrast" style="background: #ffffff; padding: 16px; border-radius: 8px;"/>
+  </td>
+</tr>
+</table>
+
+### Full Logos with Wordmark
+
+<table>
+<tr>
+  <td align="center">
+    <strong>logo-full.svg</strong><br/>
+    <em>Light background</em><br/>
+    <img src="logo-full.svg" width="160" alt="Full logo with wordmark" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+  </td>
+  <td align="center">
+    <strong>logo-full-dark.svg</strong><br/>
+    <em>Dark background</em><br/>
+    <img src="logo-full-dark.svg" width="160" alt="Full logo for dark mode" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+  </td>
+</tr>
+</table>
 
 ## License
 

@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "iconDefinitions": {
+    "constellation-file": {
+      "iconPath": "./constellation.svg"
+    }
+  },
+  "fileExtensions": {
+    "cst": "constellation-file"
+  },
+  "languageIds": {
+    "constellation": "constellation-file"
+  }
+}

@@ -169,7 +169,14 @@
           "description": "Default layout direction for the DAG Visualizer"
         }
       }
-    }
+    },
+    "iconThemes": [
+      {
+        "id": "constellation-icons",
+        "label": "Constellation Icons",
+        "path": "./icons/constellation-icons.json"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
