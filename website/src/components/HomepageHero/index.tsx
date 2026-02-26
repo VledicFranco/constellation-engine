@@ -30,7 +30,7 @@ const modules = [
 
 export default function HomepageHero(): JSX.Element {
   const [copied, setCopied] = useState<string | null>(null);
-  const version = '0.5.0';
+  const version = '0.8.4';
 
   const handleCopy = async (moduleName: string) => {
     const command = `"io.constellation" %% "${moduleName}" % "${version}"`;

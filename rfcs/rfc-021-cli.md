@@ -235,7 +235,7 @@ constellation deploy rollback my-pipeline
 # Health check
 constellation server health
 # ✓ Server healthy
-#   Version: 0.5.0
+#   Version: 0.8.4
 #   Uptime: 3d 14h 22m
 #   Pipelines: 12 loaded
 
@@ -321,7 +321,7 @@ Leverage Maven Central publishing for Coursier installation:
 cs install --channel https://constellation-engine.io/coursier/channel.json constellation
 
 # Or directly from Maven Central
-cs install io.constellation:constellation-cli_3:0.5.0
+cs install io.constellation:constellation-cli_3:0.8.4
 
 # Usage
 constellation --version
