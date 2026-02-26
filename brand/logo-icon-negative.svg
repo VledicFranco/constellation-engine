@@ -7,11 +7,11 @@
   <circle cx="32" cy="32" r="28" fill="#6366f1"/>
 
   <!-- Nodes (4-pointed stars) - rule of 3: top (1.0x) → right (1.1x) → left (1.25x), asymmetric diagonal -->
-  <polygon points="32,12.2 35,17.6 42.2,20 35,22.4 32,27.8 29,22.4 21.8,20 29,17.6" fill="white"/>
-  <polygon points="20,30.4 23.6,37 32.6,40 23.6,43 20,49.6 16.4,43 7.4,40 16.4,37" fill="white"/>
-  <polygon points="44,39.4 47.6,47 57.8,50 47.6,53 44,60.6 40.4,53 30.2,50 40.4,47" fill="white"/>
+  <polygon points="32,10.2 35,15.6 42.2,18 35,20.4 32,25.8 29,20.4 21.8,18 29,15.6" fill="white"/>
+  <polygon points="20,28.4 23.6,35 32.6,38 23.6,41 20,47.6 16.4,41 7.4,38 16.4,35" fill="white"/>
+  <polygon points="44,37.4 47.6,45 57.8,48 47.6,51 44,58.6 40.4,51 30.2,48 40.4,45" fill="white"/>
 
   <!-- Connections (white lines) - asymmetric cascade: top to left and right -->
-  <line x1="32" y1="20" x2="20" y2="40" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
-  <line x1="32" y1="20" x2="44" y2="50" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
+  <line x1="32" y1="18" x2="20" y2="38" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
+  <line x1="32" y1="18" x2="44" y2="48" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
 </svg>
