@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Constellation Engine',
   tagline: 'Type-safe pipeline orchestration for Scala',
-  favicon: 'img/logo-icon.svg',
+  favicon: 'img/logo-icon-cutout.svg',
 
   url: 'https://vledicfranco.github.io',
   baseUrl: '/constellation-engine/',

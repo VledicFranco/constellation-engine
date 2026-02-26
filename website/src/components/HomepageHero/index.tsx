@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Link from '@docusaurus/Link';
+import LogoImage from '@site/static/img/logo-icon-dark.svg';
 import styles from './styles.module.css';
 
 // Static constellation node positions — kept to edges/corners, away from center text
@@ -74,7 +75,7 @@ export default function HomepageHero(): JSX.Element {
       </svg>
       <div className={styles.content}>
         <img
-          src="/img/logo-icon-dark.svg"
+          src={LogoImage}
           alt="Constellation Engine Logo"
           className={styles.logo}
           width="80"
