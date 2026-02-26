@@ -7,9 +7,9 @@
   <circle cx="32" cy="32" r="28" fill="#f1f5f9"/>
 
   <!-- Nodes (dark purple cutouts) -->
-  <circle cx="32" cy="20" r="5" fill="#4338ca"/>
-  <circle cx="20" cy="40" r="5" fill="#4338ca"/>
-  <circle cx="44" cy="40" r="5" fill="#4338ca"/>
+  <circle cx="32" cy="20" r="6.5" fill="#4338ca"/>
+  <circle cx="20" cy="40" r="6.5" fill="#4338ca"/>
+  <circle cx="44" cy="40" r="6.5" fill="#4338ca"/>
 
   <!-- Connections (dark purple lines) -->
   <line x1="32" y1="25" x2="20" y2="35" stroke="#4338ca" stroke-width="3.6" stroke-linecap="round"/>
