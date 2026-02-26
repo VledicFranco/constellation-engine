@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="brand/logo-icon.svg" alt="Constellation Engine" width="80" height="80">
+  <img src="brand/logo-icon-negative-cutout.svg" alt="Constellation Engine" width="80" height="80">
 </p>
 
 <h1 align="center">Constellation Engine</h1>

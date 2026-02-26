@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Constellation Engine Logo - Negative Dark</title>
+  <desc>Inverted constellation logo dark variant: light background with dark purple nodes</desc>
+
+  <!-- Outer circle (light background) -->
+  <circle cx="32" cy="32" r="28" fill="#f1f5f9"/>
+
+  <!-- Nodes (4-pointed stars) - rule of 3: top (V-shape, no bottom) → right (0.8x smaller) → left (1.25x), centered -->
+  <polygon points="33,8.7 36,14.1 43.2,16.5 36,18.9 30,18.9 22.8,16.5 30,14.1" fill="#4338ca"/>
+  <polygon points="21,26.9 24,32.3 33.6,36.5 24.6,39.5 21,46.1 17.4,39.5 8.4,36.5 17.4,33.5" fill="#4338ca"/>
+  <polygon points="45,38 43,42.3 56,46.5 47.9,48.9 45,55 42.1,48.9 34,46.5 42.1,44.1" fill="#4338ca"/>
+
+  <!-- Connections (dark purple lines) - asymmetric cascade: top to left and right -->
+  <line x1="33" y1="16.5" x2="21" y2="36.5" stroke="#4338ca" stroke-width="3.6" stroke-linecap="round"/>
+  <line x1="33" y1="16.5" x2="45" y2="46.5" stroke="#4338ca" stroke-width="3.6" stroke-linecap="round"/>
+</svg>
