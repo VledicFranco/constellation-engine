@@ -166,12 +166,12 @@ For embedding in HTML without external files:
   <td align="center">
     <strong>logo-icon-negative.svg</strong><br/>
     <em>Emphasis & buttons</em><br/>
-    <img src="logo-icon-negative.svg" width="80" alt="Negative icon on standard light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <img src="logo-icon-negative.svg?v2" width="80" alt="Negative icon on standard light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-negative-dark.svg</strong><br/>
     <em>Very light backgrounds</em><br/>
-    <img src="logo-icon-negative-dark.svg" width="80" alt="Negative icon for high contrast" style="background: #ffffff; padding: 16px; border-radius: 8px;"/>
+    <img src="logo-icon-negative-dark.svg?v2" width="80" alt="Negative icon for high contrast" style="background: #ffffff; padding: 16px; border-radius: 8px;"/>
   </td>
 </tr>
 </table>
