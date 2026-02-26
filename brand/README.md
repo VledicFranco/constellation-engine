@@ -23,21 +23,16 @@ The Constellation logo represents the core concepts of the project:
 ### Standard Icons
 | File | Description | Use Case |
 |------|-------------|----------|
-| `logo-icon.svg` | Icon only (indigo on transparent) | Favicons, app icons, small spaces |
-| `logo-icon-dark.svg` | Icon only (light indigo) | Dark backgrounds |
-| `logo-icon-mono.svg` | Icon only (currentColor) | Inherits text color, flexible theming |
+| `logo-icon.svg` | Three-star cascade in indigo | Favicons, app icons, light backgrounds |
+| `logo-icon-dark.svg` | Three-star cascade in light indigo | Dark backgrounds |
+| `logo-icon-mono.svg` | Three-star cascade in currentColor | Flexible theming, text color inheritance |
 
-### Negative Icons (inverted)
+### Negative Icons (Canonical Variants)
 | File | Description | Use Case |
 |------|-------------|----------|
-| `logo-icon-negative.svg` | Icon only (white nodes on purple background) | Buttons, badges, emphatic contexts |
-| `logo-icon-negative-dark.svg` | Icon only (dark nodes on light background) | Very light backgrounds, high contrast |
-| `logo-icon-negative-cutout.svg` | Icon only (transparent nodes on purple background) | Glass morphism, frosted effects, layered designs |
-
-### Outline Icon
-| File | Description | Use Case |
-|------|-------------|----------|
-| `logo-icon-outline.svg` | Icon outline (transparent, uses currentColor stroke) | Flexible backgrounds, scalable line weight, web/UI use |
+| `logo-icon-negative.svg` | Three-star cascade (white) on purple background | Buttons, badges, emphatic contexts |
+| `logo-icon-negative-cutout.svg` | Three-star cascade (transparent) on purple background | Glass morphism, frosted effects, layered designs |
+| `logo-icon-negative-cutout-black.svg` | Three-star cascade (transparent) on black background | High-contrast contexts, dark surfaces |
 
 ### Full Logos
 | File | Description | Use Case |
@@ -171,13 +166,18 @@ For embedding in HTML without external files:
 <tr>
   <td align="center">
     <strong>logo-icon-negative.svg</strong><br/>
-    <em>Emphasis & buttons</em><br/>
-    <img src="logo-icon-negative.svg?v2" width="80" alt="Negative icon on standard light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <em>Buttons & badges</em><br/>
+    <img src="logo-icon-negative.svg?v3" width="80" alt="White stars on purple background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
-    <strong>logo-icon-negative-dark.svg</strong><br/>
-    <em>Very light backgrounds</em><br/>
-    <img src="logo-icon-negative-dark.svg?v2" width="80" alt="Negative icon for high contrast" style="background: #ffffff; padding: 16px; border-radius: 8px;"/>
+    <strong>logo-icon-negative-cutout.svg</strong><br/>
+    <em>Glass morphism</em><br/>
+    <img src="logo-icon-negative-cutout.svg?v3" width="80" alt="Transparent cutout on purple background" style="background: linear-gradient(135deg, #6366f1 0%, #a5b4fc 100%); padding: 16px; border-radius: 8px;"/>
+  </td>
+  <td align="center">
+    <strong>logo-icon-negative-cutout-black.svg</strong><br/>
+    <em>High-contrast</em><br/>
+    <img src="logo-icon-negative-cutout-black.svg?v3" width="80" alt="Transparent cutout on black background" style="background: #000000; padding: 16px; border-radius: 8px;"/>
   </td>
 </tr>
 </table>
