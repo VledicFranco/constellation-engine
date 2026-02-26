@@ -18,27 +18,32 @@ The Constellation logo represents the core concepts of the project:
     ●   ●      ← Child nodes (parallel execution)
 ```
 
-## Logo Files
+## Logo Variants
 
-### Standard Icons
-| File | Description | Use Case |
-|------|-------------|----------|
-| `logo-icon.svg` | Three-star cascade in indigo | Favicons, app icons, light backgrounds |
-| `logo-icon-dark.svg` | Three-star cascade in light indigo | Dark backgrounds |
-| `logo-icon-mono.svg` | Three-star cascade in currentColor | Flexible theming, text color inheritance |
+All logo variants use the same canonical three-star design with **3.6px line stroke width** and precise proportional node sizing.
 
-### Negative Icons (Canonical Variants)
-| File | Description | Use Case |
-|------|-------------|----------|
-| `logo-icon-negative.svg` | Three-star cascade (white) on purple background | Buttons, badges, emphatic contexts |
-| `logo-icon-negative-cutout.svg` | Three-star cascade (transparent) on purple background | Glass morphism, frosted effects, layered designs |
-| `logo-icon-negative-cutout-black.svg` | Three-star cascade (transparent) on black background | High-contrast contexts, dark surfaces |
+### Icon Variants (64×64 px)
 
-### Full Logos
-| File | Description | Use Case |
-|------|-------------|----------|
-| `logo-full.svg` | Icon + wordmark (light background) | Headers, documentation |
-| `logo-full-dark.svg` | Icon + wordmark (dark background) | Dark mode headers |
+| File | Foreground | Background | Use Case |
+|------|-----------|-----------|----------|
+| `logo-icon.svg` | Indigo #6366f1 | Transparent | Favicons, app icons, light backgrounds |
+| `logo-icon-dark.svg` | Light Indigo #a5b4fc | Transparent | Dark backgrounds, dark mode |
+| `logo-icon-mono.svg` | currentColor (inherits text color) | Transparent | Flexible theming, semantic color integration |
+
+### Canonical Variants (64×64 px)
+
+| File | Foreground | Background | Use Case |
+|------|-----------|-----------|----------|
+| `logo-icon-negative.svg` | **White (PRIMARY)** | **Indigo #6366f1** | Buttons, badges, high emphasis contexts |
+| `logo-icon-negative-cutout.svg` | **Transparent (CUTOUT)** | **Indigo #6366f1** | Glass morphism, frosted effects, layered designs |
+| `logo-icon-negative-cutout-black.svg` | **Transparent (CUTOUT)** | **Black #000000** | High-contrast surfaces, dark/black backgrounds |
+
+### Full Logo Variants (280×64 px)
+
+| File | Colors | Use Case |
+|------|--------|----------|
+| `logo-full.svg` | Indigo text + icon | Headers, documentation, light mode |
+| `logo-full-dark.svg` | Light indigo text + icon | Dark mode headers, dark backgrounds |
 
 ## Color Palette
 
@@ -84,25 +89,27 @@ font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 
 ## Usage Guidelines
 
-### Do
+### ✓ Do
 
-- Use the logo with adequate spacing (minimum padding equal to the node radius)
-- Use the appropriate color variant for the background:
-  - Light backgrounds: `logo-icon.svg` or `logo-icon-negative-dark.svg`
-  - Dark backgrounds: `logo-icon-dark.svg`
-  - Emphasis/badges: `logo-icon-negative.svg`
-  - Flexible color contexts: `logo-icon-mono.svg`
-- Scale proportionally
-- Use the monochrome version when color isn't available
-- Use negative icons for buttons, badges, or high-contrast contexts
+- Use **transparent icon variants** (`logo-icon.svg`, `logo-icon-dark.svg`, `logo-icon-mono.svg`) for flexible placement
+- Use **canonical variants** (`logo-icon-negative.svg`, `-cutout.svg`, `-cutout-black.svg`) for buttons, badges, and emphasis
+- Use **full logos** (`logo-full.svg`, `logo-full-dark.svg`) for headers and documentation
+- Scale proportionally — maintain viewBox aspect ratios
+- Use `logo-icon-mono.svg` when icon color should inherit from surrounding text
+- Use cutout variants for glass morphism, overlays, and layered designs
+- Maintain minimum 8px padding around icon edges within its viewBox
+- Use `logo-icon-negative-cutout-black.svg` for extreme high-contrast (dark/black surfaces)
 
-### Don't
+### ✗ Don't
 
-- Stretch or distort the logo
-- Change the logo colors outside the provided variants
-- Add effects (shadows, gradients, glows) to the logo
-- Place the logo on busy backgrounds without contrast
-- Rotate the logo
+- Mix stroke widths — canonical stroke width is **3.6px** (64×64) or **2.7px** (48×48 scaled)
+- Change colors outside the provided variants
+- Stretch or distort the logo (maintain viewBox aspect ratios)
+- Add effects (shadows, gradients, glows, blur) — logo is already complete
+- Place on busy backgrounds without adequate contrast
+- Rotate or flip the logo
+- Modify node positions or star shapes
+- Create new color variants (use the palette instead)
 
 ## Minimum Size
 
@@ -136,65 +143,71 @@ For embedding in HTML without external files:
 </svg>
 ```
 
-## Logo Variations Preview
+## Logo Previews
 
-### Standard Icons
+### Icon Variants (Transparent Background)
+
+Use these when you need the icon with transparency for flexible backgrounds.
 
 <table>
 <tr>
   <td align="center">
     <strong>logo-icon.svg</strong><br/>
-    <em>Light backgrounds</em><br/>
-    <img src="logo-icon.svg" width="80" alt="Standard icon on light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <em>Indigo (Light)</em><br/>
+    <img src="logo-icon.svg?v4" width="80" alt="Indigo icon on light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-dark.svg</strong><br/>
-    <em>Dark backgrounds</em><br/>
-    <img src="logo-icon-dark.svg" width="80" alt="Icon for dark backgrounds" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+    <em>Light Indigo (Dark)</em><br/>
+    <img src="logo-icon-dark.svg?v4" width="80" alt="Light indigo icon on dark background" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-mono.svg</strong><br/>
-    <em>Flexible theming</em><br/>
-    <img src="logo-icon-mono.svg" width="80" alt="Monochrome icon" style="background: #a5b4fc; padding: 16px; border-radius: 8px; color: currentColor;"/>
+    <em>currentColor (Flexible)</em><br/>
+    <img src="logo-icon-mono.svg?v4" width="80" alt="Monochrome icon inheriting text color" style="background: #f8fafc; padding: 16px; border-radius: 8px; color: #6366f1;"/>
   </td>
 </tr>
 </table>
 
-### Negative Icons (Inverted)
+### Canonical Variants (Solid Background)
+
+The primary and canonical variants with integral backgrounds. Use these for buttons, badges, and emphasis.
 
 <table>
 <tr>
   <td align="center">
     <strong>logo-icon-negative.svg</strong><br/>
-    <em>Buttons & badges</em><br/>
-    <img src="logo-icon-negative.svg?v3" width="80" alt="White stars on purple background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <em>Primary</em><br/>
+    <img src="logo-icon-negative.svg?v4" width="80" alt="White stars on indigo background" style="padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-negative-cutout.svg</strong><br/>
-    <em>Glass morphism</em><br/>
-    <img src="logo-icon-negative-cutout.svg?v3" width="80" alt="Transparent cutout on purple background" style="background: linear-gradient(135deg, #6366f1 0%, #a5b4fc 100%); padding: 16px; border-radius: 8px;"/>
+    <em>Cutout (Indigo)</em><br/>
+    <img src="logo-icon-negative-cutout.svg?v4" width="80" alt="Transparent cutout on indigo background" style="background: linear-gradient(135deg, #6366f1 0%, #a5b4fc 100%); padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-negative-cutout-black.svg</strong><br/>
-    <em>High-contrast</em><br/>
-    <img src="logo-icon-negative-cutout-black.svg?v3" width="80" alt="Transparent cutout on black background" style="background: #000000; padding: 16px; border-radius: 8px;"/>
+    <em>Cutout (Black)</em><br/>
+    <img src="logo-icon-negative-cutout-black.svg?v4" width="80" alt="Transparent cutout on black background" style="background: #000000; padding: 16px; border-radius: 8px;"/>
   </td>
 </tr>
 </table>
 
-### Full Logos with Wordmark
+### Full Logos (Icon + Wordmark)
+
+Use these for headers, documentation, and prominent branding placements.
 
 <table>
 <tr>
   <td align="center">
     <strong>logo-full.svg</strong><br/>
-    <em>Light background</em><br/>
-    <img src="logo-full.svg" width="160" alt="Full logo with wordmark" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <em>Light Mode</em><br/>
+    <img src="logo-full.svg?v4" width="200" alt="Full logo with wordmark for light backgrounds" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-full-dark.svg</strong><br/>
-    <em>Dark background</em><br/>
-    <img src="logo-full-dark.svg" width="160" alt="Full logo for dark mode" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+    <em>Dark Mode</em><br/>
+    <img src="logo-full-dark.svg?v4" width="200" alt="Full logo with wordmark for dark backgrounds" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
   </td>
 </tr>
 </table>

@@ -39,14 +39,14 @@
 
   <!-- Main logo (centered) -->
   <g transform="translate(440, 120)">
-    <!-- Nodes (4-pointed stars) - scaled to 160x160 -->
-    <polygon points="66,23 72,36 86,40.5 72,50 60,50 46,40.5 60,36" fill="#a5b4fc"/>
-    <polygon points="42,54 48,67 72,77.5 55.5,84 42,98 28.5,84 12,77.5 28.5,71" fill="#a5b4fc"/>
-    <polygon points="90,76 86,88.5 120,100.5 102,106 90,148 78,106 48,100.5 82,88.5" fill="#a5b4fc"/>
+    <!-- Nodes (4-pointed stars) - scaled 2.5x from 64x64 canonical -->
+    <polygon points="82.5,21.75 90,35.25 108,41.25 90,47.25 75,47.25 57,41.25 75,35.25" fill="#a5b4fc"/>
+    <polygon points="52.5,67.25 60,80.75 84,91.25 61.5,98.75 52.5,115.25 43.5,98.75 21,91.25 43.5,83.75" fill="#a5b4fc"/>
+    <polygon points="112.5,95 107.5,105.75 140,116.25 119.75,122.25 112.5,137.5 105.25,122.25 85,116.25 105.25,110.25" fill="#a5b4fc"/>
 
     <!-- Connections (lines) -->
-    <line x1="66" y1="40.5" x2="42" y2="77.5" stroke="#a5b4fc" stroke-width="4.8" stroke-linecap="round"/>
-    <line x1="66" y1="40.5" x2="90" y2="100.5" stroke="#a5b4fc" stroke-width="4.8" stroke-linecap="round"/>
+    <line x1="82.5" y1="41.25" x2="52.5" y2="91.25" stroke="#a5b4fc" stroke-width="9" stroke-linecap="round"/>
+    <line x1="82.5" y1="41.25" x2="112.5" y2="116.25" stroke="#a5b4fc" stroke-width="9" stroke-linecap="round"/>
   </g>
 
   <!-- Text -->
