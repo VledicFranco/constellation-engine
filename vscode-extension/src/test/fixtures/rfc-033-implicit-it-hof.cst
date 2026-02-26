@@ -8,6 +8,7 @@ positives_traditional = Filter(numbers, (x) => GreaterThan(x, threshold))
 # RFC-033 implicit `it` variable in HOF arguments
 positives = Filter(numbers, it > threshold)
 doubled = Map(numbers, it * 2)
+summed = Map(numbers, it + 10)
 has_large = any(numbers, it > 100)
 all_positive = all(numbers, it > 0)
 
