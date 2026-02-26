@@ -72,6 +72,12 @@
   margin: 0 auto;
 }
 
+.logo {
+  display: block;
+  margin: 0 auto 1.5rem auto;
+  filter: drop-shadow(0 0 20px rgba(165, 180, 252, 0.3));
+}
+
 .title {
   font-size: 3.5rem;
   font-weight: 800;

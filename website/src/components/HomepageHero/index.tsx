@@ -73,6 +73,13 @@ export default function HomepageHero(): JSX.Element {
         ))}
       </svg>
       <div className={styles.content}>
+        <img
+          src="/img/logo-icon-dark.svg"
+          alt="Constellation Engine Logo"
+          className={styles.logo}
+          width="80"
+          height="80"
+        />
         <h1 className={styles.title}>Constellation Engine</h1>
         <p className={styles.tagline}>
           Type-safe pipeline orchestration for Scala
