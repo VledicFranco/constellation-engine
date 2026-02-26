@@ -6,10 +6,10 @@
   <!-- Outer circle (purple background) -->
   <circle cx="32" cy="32" r="28" fill="#6366f1"/>
 
-  <!-- Nodes (4-pointed stars) - rule of 3: top (1.0x) → right (1.1x) → left (1.25x), asymmetric diagonal -->
-  <polygon points="32,10.2 35,15.6 42.2,18 35,20.4 32,25.8 29,20.4 21.8,18 29,15.6" fill="white"/>
+  <!-- Nodes (4-pointed stars) - rule of 3: top (V-shape, no bottom) → right (0.8x smaller) → left (1.25x) -->
+  <polygon points="32,10.2 35,15.6 42.2,18 35,20.4 29,20.4 21.8,18 29,15.6" fill="white"/>
   <polygon points="20,28.4 23.6,35 32.6,38 23.6,41 20,47.6 16.4,41 7.4,38 16.4,35" fill="white"/>
-  <polygon points="44,37.4 47.6,45 57.8,48 47.6,51 44,58.6 40.4,51 30.2,48 40.4,45" fill="white"/>
+  <polygon points="44,39.5 46.9,45.6 55,48 46.9,50.4 44,56.5 41.1,50.4 33,48 41.1,45.6" fill="white"/>
 
   <!-- Connections (white lines) - asymmetric cascade: top to left and right -->
   <line x1="32" y1="18" x2="20" y2="38" stroke="white" stroke-width="3.6" stroke-linecap="round"/>
