@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Link from '@docusaurus/Link';
-import LogoImage from '@site/static/img/logo-icon-dark.svg';
+import { useBaseUrl } from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 
 // Static constellation node positions — kept to edges/corners, away from center text
@@ -31,6 +31,7 @@ const modules = [
 
 export default function HomepageHero(): JSX.Element {
   const [copied, setCopied] = useState<string | null>(null);
+  const logoUrl = useBaseUrl('/img/logo-icon-dark.svg');
   const version = '0.8.4';
 
   const handleCopy = async (moduleName: string) => {
@@ -75,7 +76,7 @@ export default function HomepageHero(): JSX.Element {
       </svg>
       <div className={styles.content}>
         <img
-          src={LogoImage}
+          src={logoUrl}
           alt="Constellation Engine Logo"
           className={styles.logo}
           width="80"
