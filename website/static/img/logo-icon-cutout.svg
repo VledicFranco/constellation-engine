@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <title>Constellation Engine Logo - Negative Cutout</title>
-  <desc>Inverted constellation logo: purple background with transparent cutout shape</desc>
+  <title>Constellation Engine Logo - Negative Cutout Gradient</title>
+  <desc>Inverted constellation logo: purple background with gradient transparent cutout shape</desc>
 
   <defs>
+    <linearGradient id="whiteToClearGradient" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+    </linearGradient>
     <mask id="cutoutMask">
       <!-- White background = opaque, black shapes = transparent -->
       <circle cx="32" cy="32" r="28" fill="white"/>
