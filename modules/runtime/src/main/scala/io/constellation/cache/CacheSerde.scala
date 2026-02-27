@@ -128,8 +128,8 @@ object CacheSerde {
   /** Serde for Any values.
     *
     * Serializes CValue instances as JSON (no prefix), and other Serializable values using Java
-    * serialization with a 0x01 prefix. This is used by `DistributedCacheBackend` where the
-    * generic type is erased to `Any`.
+    * serialization with a 0x01 prefix. This is used by `DistributedCacheBackend` where the generic
+    * type is erased to `Any`.
     */
   val anySerde: CacheSerde[Any] = new CacheSerde[Any] {
     private val javaFallback = javaSerde[java.io.Serializable]
