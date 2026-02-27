@@ -127,16 +127,19 @@ object CacheSerde {
 
   /** Serde for Any values.
     *
-    * Attempts JSON serialization for CValue instances, falls back to Java serialization for other
-    * types. This is used by `DistributedCacheBackend` where the generic type is erased to `Any`.
+    * Serializes CValue instances as JSON (no prefix), and other Serializable values using Java
+    * serialization with a 0x01 prefix. This is used by `DistributedCacheBackend` where the
+    * generic type is erased to `Any`.
     */
   val anySerde: CacheSerde[Any] = new CacheSerde[Any] {
     private val javaFallback = javaSerde[java.io.Serializable]
 
     override def serialize(value: Any): Array[Byte] = value match {
-      case cv: CValue              => cvalueSerde.serialize(cv)
+      case cv: CValue =>
+        // JSON-serialized CValue (no prefix, starts with '{' or '[')
+        cvalueSerde.serialize(cv)
       case s: java.io.Serializable =>
-        // Prefix with 0x01 to distinguish from JSON (which starts with '{' or '[')
+        // Prefix with 0x01 to distinguish from JSON
         val bytes = javaFallback.serialize(s)
         Array[Byte](0x01) ++ bytes
       case other =>
@@ -153,13 +156,8 @@ object CacheSerde {
         // Java-serialized value (prefixed with 0x01)
         javaFallback.deserialize(bytes.drop(1))
       } else {
-        // Try JSON (CValue) first
-        try cvalueSerde.deserialize(bytes)
-        catch {
-          case _: CacheSerdeException =>
-            // Fallback to Java deserialization
-            javaFallback.deserialize(bytes)
-        }
+        // JSON-serialized CValue (no fallback to Java)
+        cvalueSerde.deserialize(bytes)
       }
     }
   }
