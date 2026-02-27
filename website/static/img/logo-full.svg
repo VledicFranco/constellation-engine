@@ -6,20 +6,20 @@
   <defs>
     <linearGradient id="fullLogoGradient" x1="100%" y1="100%" x2="0%" y2="0%">
       <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#a5b4fc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0e7ff;stop-opacity:1" />
     </linearGradient>
   </defs>
 
   <!-- Icon (scaled from 64x64 canonical design: 0.75x = 48x48) -->
   <g transform="translate(8, 8)">
-    <!-- Nodes (4-pointed stars) - scaled to 48x48 -->
+    <!-- Connections (lines) - drawn first, stars on top -->
+    <line x1="24.75" y1="12.4" x2="15.75" y2="27.4" stroke="url(#fullLogoGradient)" stroke-width="2.7" stroke-linecap="round"/>
+    <line x1="24.75" y1="12.4" x2="33.75" y2="34.9" stroke="url(#fullLogoGradient)" stroke-width="2.7" stroke-linecap="round"/>
+
+    <!-- Nodes (4-pointed stars) - drawn last to be on top -->
     <polygon points="24.75,6.5 27,10.6 32.4,12.4 27,14.2 22.5,14.2 17.1,12.4 22.5,10.6" fill="url(#fullLogoGradient)"/>
     <polygon points="15.75,20.2 18,24.3 25.2,27.4 18.45,29.6 15.75,34.6 13.05,29.6 6.3,27.4 13.05,25.1" fill="url(#fullLogoGradient)"/>
     <polygon points="33.75,28.5 32.25,31.7 42,34.9 35.9,36.7 33.75,41.25 31.6,36.7 25.5,34.9 31.6,33.1" fill="url(#fullLogoGradient)"/>
-
-    <!-- Connections (lines) - stroke width scaled 0.75x -->
-    <line x1="24.75" y1="12.4" x2="15.75" y2="27.4" stroke="url(#fullLogoGradient)" stroke-width="2.7" stroke-linecap="round"/>
-    <line x1="24.75" y1="12.4" x2="33.75" y2="34.9" stroke="url(#fullLogoGradient)" stroke-width="2.7" stroke-linecap="round"/>
   </g>
 
   <!-- Wordmark -->
