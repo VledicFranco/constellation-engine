@@ -7,8 +7,8 @@ const config: Config = {
   tagline: 'Type-safe pipeline orchestration for Scala',
   favicon: 'img/logo-icon-cutout.svg',
 
-  url: 'https://vledicfranco.github.io',
-  baseUrl: '/constellation-engine/',
+  url: process.env.NODE_ENV === 'production' ? 'https://vledicfranco.github.io' : 'http://localhost:3000',
+  baseUrl: process.env.NODE_ENV === 'production' ? '/constellation-engine/' : '/',
 
   organizationName: 'VledicFranco',
   projectName: 'constellation-engine',

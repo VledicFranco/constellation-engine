@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Link from '@docusaurus/Link';
-import { useBaseUrl } from '@docusaurus/useBaseUrl';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './styles.module.css';
 
 // Static constellation node positions — kept to edges/corners, away from center text
