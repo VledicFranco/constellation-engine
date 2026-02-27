@@ -26,9 +26,11 @@ All logo variants use the same canonical three-star design with **3.6px line str
 
 | File | Foreground | Background | Use Case |
 |------|-----------|-----------|----------|
-| `logo-icon.svg` | Indigo #6366f1 | Transparent | Favicons, app icons, light backgrounds |
-| `logo-icon-dark.svg` | Light Indigo #a5b4fc | Transparent | Dark backgrounds, dark mode |
+| `logo-icon.svg` | Indigo → Light Indigo gradient* | Transparent | Favicons, app icons, light backgrounds |
+| `logo-icon-dark.svg` | Light Indigo → Lighter Indigo gradient* | Transparent | Dark backgrounds, dark mode |
 | `logo-icon-mono.svg` | currentColor (inherits text color) | Transparent | Flexible theming, semantic color integration |
+
+*Gradient direction: bottom-right to top-left
 
 ### Canonical Variants (64×64 px)
 
@@ -38,12 +40,16 @@ All logo variants use the same canonical three-star design with **3.6px line str
 | `logo-icon-negative-cutout.svg` | **Transparent (CUTOUT)** | **Indigo #6366f1** | Glass morphism, frosted effects, layered designs |
 | `logo-icon-negative-cutout-black.svg` | **Transparent (CUTOUT)** | **Black #000000** | High-contrast surfaces, dark/black backgrounds |
 
+All cutout variants feature transparent star shapes with solid backgrounds.
+
 ### Full Logo Variants (280×64 px)
 
 | File | Colors | Use Case |
 |------|--------|----------|
-| `logo-full.svg` | Indigo text + icon | Headers, documentation, light mode |
-| `logo-full-dark.svg` | Light indigo text + icon | Dark mode headers, dark backgrounds |
+| `logo-full.svg` | Indigo → Light Indigo gradient icon + slate text | Headers, documentation, light mode |
+| `logo-full-dark.svg` | Light Indigo → Lighter Indigo gradient icon + light text | Dark mode headers, dark backgrounds |
+
+Icon uses bottom-right to top-left gradient for visual elegance.
 
 ## Color Palette
 
@@ -103,9 +109,9 @@ font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
 ### ✗ Don't
 
 - Mix stroke widths — canonical stroke width is **3.6px** (64×64) or **2.7px** (48×48 scaled)
-- Change colors outside the provided variants
+- Change colors outside the provided variants (gradients are built-in, don't add additional effects)
 - Stretch or distort the logo (maintain viewBox aspect ratios)
-- Add effects (shadows, gradients, glows, blur) — logo is already complete
+- Add additional effects (shadows, glows, blur) — logo is already complete with integrated gradients
 - Place on busy backgrounds without adequate contrast
 - Rotate or flip the logo
 - Modify node positions or star shapes
@@ -153,18 +159,18 @@ Use these when you need the icon with transparency for flexible backgrounds.
 <tr>
   <td align="center">
     <strong>logo-icon.svg</strong><br/>
-    <em>Indigo (Light)</em><br/>
-    <img src="logo-icon.svg?v4" width="80" alt="Indigo icon on light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <em>Indigo Gradient</em><br/>
+    <img src="logo-icon.svg?v5" width="80" alt="Indigo gradient icon on light background" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-dark.svg</strong><br/>
-    <em>Light Indigo (Dark)</em><br/>
-    <img src="logo-icon-dark.svg?v4" width="80" alt="Light indigo icon on dark background" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+    <em>Light Indigo Gradient</em><br/>
+    <img src="logo-icon-dark.svg?v5" width="80" alt="Light indigo gradient icon on dark background" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-mono.svg</strong><br/>
     <em>currentColor (Flexible)</em><br/>
-    <img src="logo-icon-mono.svg?v4" width="80" alt="Monochrome icon inheriting text color" style="background: #f8fafc; padding: 16px; border-radius: 8px; color: #6366f1;"/>
+    <img src="logo-icon-mono.svg?v5" width="80" alt="Monochrome icon inheriting text color" style="background: #f8fafc; padding: 16px; border-radius: 8px; color: #6366f1;"/>
   </td>
 </tr>
 </table>
@@ -177,18 +183,18 @@ The primary and canonical variants with integral backgrounds. Use these for butt
 <tr>
   <td align="center">
     <strong>logo-icon-negative.svg</strong><br/>
-    <em>Primary</em><br/>
-    <img src="logo-icon-negative.svg?v4" width="80" alt="White stars on indigo background" style="padding: 16px; border-radius: 8px;"/>
+    <em>Primary (Indigo)</em><br/>
+    <img src="logo-icon-negative.svg?v5" width="80" alt="White stars on indigo background" style="padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-negative-cutout.svg</strong><br/>
-    <em>Cutout (Indigo)</em><br/>
-    <img src="logo-icon-negative-cutout.svg?v4" width="80" alt="Transparent cutout on indigo background" style="background: linear-gradient(135deg, #6366f1 0%, #a5b4fc 100%); padding: 16px; border-radius: 8px;"/>
+    <em>Cutout (Purple)</em><br/>
+    <img src="logo-icon-negative-cutout.svg?v5" width="80" alt="Transparent cutout on indigo background" style="background: linear-gradient(135deg, #6366f1 0%, #a5b4fc 100%); padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-icon-negative-cutout-black.svg</strong><br/>
     <em>Cutout (Black)</em><br/>
-    <img src="logo-icon-negative-cutout-black.svg?v4" width="80" alt="Transparent cutout on black background" style="background: #000000; padding: 16px; border-radius: 8px;"/>
+    <img src="logo-icon-negative-cutout-black.svg?v5" width="80" alt="Transparent cutout on black background" style="background: #000000; padding: 16px; border-radius: 8px;"/>
   </td>
 </tr>
 </table>
@@ -202,12 +208,26 @@ Use these for headers, documentation, and prominent branding placements.
   <td align="center">
     <strong>logo-full.svg</strong><br/>
     <em>Light Mode</em><br/>
-    <img src="logo-full.svg?v4" width="200" alt="Full logo with wordmark for light backgrounds" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
+    <img src="logo-full.svg?v5" width="200" alt="Full logo with wordmark for light backgrounds" style="background: #f8fafc; padding: 16px; border-radius: 8px;"/>
   </td>
   <td align="center">
     <strong>logo-full-dark.svg</strong><br/>
     <em>Dark Mode</em><br/>
-    <img src="logo-full-dark.svg?v4" width="200" alt="Full logo with wordmark for dark backgrounds" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+    <img src="logo-full-dark.svg?v5" width="200" alt="Full logo with wordmark for dark backgrounds" style="background: #0f172a; padding: 16px; border-radius: 8px;"/>
+  </td>
+</tr>
+</table>
+
+### Social Preview (1200×630 px)
+
+High-resolution preview image for social media sharing and marketing materials.
+
+<table>
+<tr>
+  <td align="center">
+    <strong>social-preview.svg</strong><br/>
+    <em>Social Media</em><br/>
+    <img src="social-preview.svg?v5" width="400" alt="Constellation Engine social preview with gradient logo" style="border-radius: 8px; border: 1px solid #e2e8f0;"/>
   </td>
 </tr>
 </table>
