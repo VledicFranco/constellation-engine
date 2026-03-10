@@ -51,6 +51,22 @@ class PipelineDslSpec extends AnyFlatSpec with Matchers {
       .metadata("Merge", "Merges two strings", 1, 0)
       .implementationPure[MergeInput, MergeOutput](in => MergeOutput(in.text + "|" + in.result))
 
+  // 3-input fan-in fixture — exercises p.assemble with 3 upstream refs.
+  // Each upstream type has a field name matching the corresponding field in ThreeWayInput
+  // so that ctx.field(aRef, _.a) → nickname "a", ctx.field(bRef, _.b) → nickname "b", etc.
+  case class AInput(a: String)
+  case class BInput(b: String)
+  case class CInput(c: String)
+  case class ThreeWayInput(a: String, b: String, c: String)
+  case class ThreeWayOutput(combined: String)
+
+  private val threeWayBuilder =
+    ModuleBuilder
+      .metadata("ThreeWay", "Merges three strings", 1, 0)
+      .implementationPure[ThreeWayInput, ThreeWayOutput](in =>
+        ThreeWayOutput(in.a + "|" + in.b + "|" + in.c)
+      )
+
   // ---------------------------------------------------------------------------
   // Task 1.1 — TypedRef option accumulation
   // ---------------------------------------------------------------------------
@@ -508,5 +524,146 @@ class PipelineDslSpec extends AnyFlatSpec with Matchers {
       .unsafeRunSync()
 
     sig.outputs.get("out") shouldBe Some(CValue.CString("HELLO"))
+  }
+
+  it should "chain two adapts in sequence and execute correctly" in {
+    // input → adapt (TextInput→TextOutput, append "!") → adapt (TextOutput→TextInput, uppercase)
+    val pipeline = Pipeline.define("TwoAdaptsChained") { p =>
+      val ref      = p.input[TextInput]("in")
+      val adapted1 = p.adapt(ref)(ti => TextOutput(ti.text + "!"))
+      val adapted2 = p.adapt(adapted1)(to => TextInput(to.result.toUpperCase))
+      p.output("out", adapted2)
+    }
+
+    // Two synthetic modules, no named modules — no setModule needed
+    pipeline.syntheticModules should have size 2
+    pipeline.moduleBuilders shouldBe empty
+
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    val sig = constellation
+      .run(pipeline.load, Map("in" -> CValue.CString("hello")))
+      .unsafeRunSync()
+
+    sig.outputs.get("out") shouldBe Some(CValue.CString("HELLO!"))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Advanced topology — 3+ sequential steps
+  // ---------------------------------------------------------------------------
+
+  "Pipeline.define (three sequential steps)" should "produce correct DagSpec structure" in {
+    val pipeline = Pipeline.define("ThreeSteps") { p =>
+      val ref1 = p.input[TextInput]("in")
+      val ref2 = p.step(ref1)(uppercaseBuilder) // TextInput  → TextOutput
+      val ref3 = p.step(ref2)(identityBuilder)  // TextOutput → TextOutput
+      val ref4 = p.step(ref3)(identityBuilder)  // TextOutput → TextOutput
+      p.output("out", ref4)
+    }
+    val spec = pipeline.spec
+    spec.modules should have size 3
+    spec.data should have size 4 // in + 3 output nodes
+    spec.inEdges should have size 3
+    spec.outEdges should have size 3
+    pipeline.moduleBuilders should have size 3
+  }
+
+  it should "execute correctly end-to-end" in {
+    val pipeline = Pipeline.define("ThreeStepsE2E") { p =>
+      val ref1 = p.input[TextInput]("in")
+      val ref2 = p.step(ref1)(uppercaseBuilder)
+      val ref3 = p.step(ref2)(identityBuilder)
+      val ref4 = p.step(ref3)(identityBuilder)
+      p.output("out", ref4)
+    }
+
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    pipeline.registerModules(constellation).unsafeRunSync()
+
+    val sig = constellation
+      .run(pipeline.load, Map("in" -> CValue.CString("hello")))
+      .unsafeRunSync()
+
+    sig.outputs.get("out") shouldBe Some(CValue.CString("HELLO"))
+  }
+
+  // ---------------------------------------------------------------------------
+  // Advanced topology — 3-input fan-in via p.assemble
+  // ---------------------------------------------------------------------------
+
+  "p.assemble (3-input fan-in)" should "produce correct DagSpec structure" in {
+    val pipeline = Pipeline.define("ThreeWayAssemble") { p =>
+      val aRef = p.input[AInput]("a-in")
+      val bRef = p.input[BInput]("b-in")
+      val cRef = p.input[CInput]("c-in")
+      val out = p.assemble(threeWayBuilder) { ctx =>
+        ThreeWayInput(
+          a = ctx.field(aRef, _.a),
+          b = ctx.field(bRef, _.b),
+          c = ctx.field(cRef, _.c)
+        )
+      }
+      p.output("out", out)
+    }
+    val spec = pipeline.spec
+    spec.modules should have size 1
+    spec.data should have size 4    // a-in + b-in + c-in + ThreeWay-out
+    spec.inEdges should have size 3 // a→ThreeWay, b→ThreeWay, c→ThreeWay
+    spec.outEdges should have size 1
+    spec.declaredOutputs should contain("out")
+  }
+
+  it should "wire nicknames for all three upstream nodes" in {
+    val pipeline = Pipeline.define("ThreeWayNicknames") { p =>
+      val aRef = p.input[AInput]("a-in")
+      val bRef = p.input[BInput]("b-in")
+      val cRef = p.input[CInput]("c-in")
+      p.assemble(threeWayBuilder) { ctx =>
+        ThreeWayInput(
+          a = ctx.field(aRef, _.a),
+          b = ctx.field(bRef, _.b),
+          c = ctx.field(cRef, _.c)
+        )
+      }
+    }
+    val spec       = pipeline.spec
+    val moduleUUID = spec.modules.keys.head
+    val aNode      = spec.data.values.find(_.name == "a-in").get
+    val bNode      = spec.data.values.find(_.name == "b-in").get
+    val cNode      = spec.data.values.find(_.name == "c-in").get
+    aNode.nicknames should contain(moduleUUID -> "a")
+    bNode.nicknames should contain(moduleUUID -> "b")
+    cNode.nicknames should contain(moduleUUID -> "c")
+  }
+
+  it should "execute correctly end-to-end" in {
+    val pipeline = Pipeline.define("ThreeWayE2E") { p =>
+      val aRef = p.input[AInput]("a")
+      val bRef = p.input[BInput]("b")
+      val cRef = p.input[CInput]("c")
+      val out = p.assemble(threeWayBuilder) { ctx =>
+        ThreeWayInput(
+          a = ctx.field(aRef, _.a),
+          b = ctx.field(bRef, _.b),
+          c = ctx.field(cRef, _.c)
+        )
+      }
+      p.output("out", out)
+    }
+
+    val constellation = ConstellationImpl.init.unsafeRunSync()
+    pipeline.registerModules(constellation).unsafeRunSync()
+
+    val sig = constellation
+      .run(
+        pipeline.load,
+        Map(
+          "a" -> CValue.CString("foo"),
+          "b" -> CValue.CString("bar"),
+          "c" -> CValue.CString("baz")
+        )
+      )
+      .unsafeRunSync()
+
+    sig.outputs.get("out") shouldBe Some(CValue.CString("foo|bar|baz"))
   }
 }
