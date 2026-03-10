@@ -157,10 +157,17 @@ if (-not $DryRun) {
 Write-Success "CHANGELOG.md updated with release date"
 
 # Run tests
+# Note: temporarily suspend Stop on stderr so that sbt's normal stderr output
+# (build logs) does not set $LASTEXITCODE to 1 via PowerShell's native command
+# error action preference. We capture the actual exit code explicitly.
 Write-Step "Running tests..."
 if (-not $DryRun) {
-    $testResult = sbt test 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    sbt test
+    $sbtExit = $LASTEXITCODE
+    $ErrorActionPreference = $prev
+    if ($sbtExit -ne 0) {
         Write-Error "Tests failed! Aborting release."
         # Revert changes
         git checkout -- build.sbt vscode-extension/package.json sdks/typescript/package.json CHANGELOG.md
