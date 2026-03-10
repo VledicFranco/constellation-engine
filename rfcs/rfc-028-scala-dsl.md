@@ -95,14 +95,14 @@ sealed trait TypedRef[A] {
   def retry(n: Int): TypedRef[A]
   def timeout(d: FiniteDuration): TypedRef[A]
   def delay(d: FiniteDuration): TypedRef[A]
+  def backoff(strategy: String): TypedRef[A]  // "fixed" | "linear" | "exponential"
   def cache(d: FiniteDuration): TypedRef[A]
   def cacheBackend(name: String): TypedRef[A]
   def throttle(count: Int, per: FiniteDuration): TypedRef[A]
   def concurrency(n: Int): TypedRef[A]
-  def onError(strategy: ErrorStrategy): TypedRef[A]
+  def onError(strategy: String): TypedRef[A]  // "propagate" | "skip" | "log" | "wrap"
   def lazyEval: TypedRef[A]
-  def priority(level: PriorityLevel): TypedRef[A]
-  def withFallback[B >: A](fallback: TypedRef[B]): TypedRef[B]
+  def priority(p: Int): TypedRef[A]
 }
 
 // The builder scope passed to Pipeline.define's block.
@@ -261,8 +261,9 @@ val result: TypedRef[UpperOutput] =
 ```
 
 - Options accumulate on the `TypedRef` and are packaged into `PipelineImage.moduleOptions` at `TypedPipeline` construction time
-- Keyed by the output `DataNodeSpec` UUID (matching the key used by `Runtime` when resolving options)
-- `withFallback(other)` requires `other: TypedRef[B]` where `B >: A` — type-checked at compile time; the fallback ref's UUID is recorded as `IRModuleCallOptions.fallback`
+- Keyed by the **module node UUID** registered during `p.step` / `p.assemble` — this is the UUID key `Runtime` uses when looking up call options during execution
+- `ErrorStrategy` and `BackoffStrategy` are plain strings at the `ModuleCallOptions` layer (`"propagate"`, `"exponential"`, etc.) — no dependency on `lang-ast` enum types
+- `withFallback` is **not supported in v1** — fallback is an `IRModuleCallOptions`-level mechanism with no representation in `DagSpec`-layer `ModuleCallOptions`; v2 follow-up
 
 ---
 
@@ -436,9 +437,10 @@ No changes to `Runtime`, `DagSpec` execution, or any existing code paths. The `D
 | `with timeout(500ms)` | `.timeout(500.millis)` on `TypedRef` |
 | `with cache(30s)` | `.cache(30.seconds)` on `TypedRef` |
 | `with cache_backend("redis")` | `.cacheBackend("redis")` on `TypedRef` |
-| `with fallback(x)` | `.withFallback(xRef)` on `TypedRef` |
+| `with fallback(x)` | **Not supported in v1** — IR-level only (see Open Questions) |
+| `with backoff(exponential)` | `.backoff("exponential")` on `TypedRef` |
 | `with lazy` | `.lazyEval` on `TypedRef` |
-| `with priority(high)` | `.priority(PriorityLevel.High)` on `TypedRef` |
+| `with priority(high)` | `.priority(80)` on `TypedRef` (normalized Int: critical=100, high=80, normal=50, low=20) |
 | `with on_error(skip)` | `.onError(ErrorStrategy.Skip)` on `TypedRef` |
 | `with throttle(10/1s)` | `.throttle(10, 1.second)` on `TypedRef` |
 | `with concurrency(4)` | `.concurrency(4)` on `TypedRef` |
@@ -481,7 +483,7 @@ No changes to `Runtime`, `DagSpec` execution, or any existing code paths. The `D
 
 - [ ] `p.input`, `p.step`, `p.assemble`, `p.adapt`, `p.output` all compile and produce a correct `DagSpec`
 - [ ] Type mismatch on `p.step` (wrong `TypedRef[I]`) is a compile error with a readable message
-- [ ] All 11 call option methods on `TypedRef` produce correct `ModuleCallOptions` in `PipelineImage.moduleOptions`
+- [ ] All 11 call option methods on `TypedRef` (retry, timeout, delay, backoff, cache, cacheBackend, throttle, concurrency, onError, lazyEval, priority) produce correct `ModuleCallOptions` in `PipelineImage.moduleOptions`, keyed by module node UUID
 - [ ] `ctx.field` macro extracts field names correctly for all direct case class field selectors
 - [ ] `ctx.field` with a non-selector expression (e.g. `_.field.nested`) emits a compile error
 - [ ] `pipeline.load` produces a `LoadedPipeline` that `constellation.run` executes correctly end-to-end
