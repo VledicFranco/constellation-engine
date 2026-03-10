@@ -317,4 +317,4 @@ The key difference: the DSL catches field name mismatches at compile time; the `
 
 - [Embedding Guide](./embedding-guide.md) — Using Constellation in a JVM application with `.cst`
 - [Tutorial](./tutorial.md) — Learning constellation-lang syntax
-- [RFC-028](../../rfcs/rfc-028-scala-dsl.md) — Design specification for the Scala DSL
+- RFC-028 (`rfcs/rfc-028-scala-dsl.md` in the repository) — Design specification for the Scala DSL
