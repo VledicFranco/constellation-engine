@@ -5,6 +5,25 @@ All notable changes to Constellation Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Scala DSL for pipeline composition** (RFC-028): Type-safe pipeline wiring entirely in Scala 3 — no `.cst` files required
+  - `Pipeline.define(name) { p => ... }` — entry point that seals a `TypedPipeline`
+  - `p.input[T](name)` — declare a typed pipeline input with compile-time CType derivation
+  - `p.step(ref)(moduleBuilder)` — wire a single-input/output module; both I/O types must be single-field (enforced at compile time via `requireSingleField`)
+  - `p.assemble(moduleBuilder) { ctx => ... }` — fan-in from N upstream nodes using `ctx.field(ref, _.fieldName)` (compile-time macro, extracts field name at compile time)
+  - `p.adapt(ref)(f)` — bridge two type-incompatible single-field wrappers via an inline synthetic module (never registered in the module registry)
+  - `p.output(name, ref)` — declare a named pipeline output
+  - 11 `TypedRef[A]` call-option methods: `.retry`, `.timeout`, `.delay`, `.backoff`, `.cache`, `.cacheBackend`, `.throttle`, `.concurrency`, `.onError`, `.lazyEval`, `.priority` — immutable, chain-able, flushed into `ModuleCallOptions` at the next consumption point
+  - `TypedPipeline.registerModules(constellation)` — bulk-registers all named modules (from `p.step`/`p.assemble`) in one call; synthetic adapt modules excluded automatically
+  - `TypedPipeline.load` — wraps `PipelineImage` into `LoadedPipeline` for `Constellation.run`
+- **Scala DSL getting-started guide** (`website/docs/getting-started/scala-dsl-guide.md`): Full user guide covering DSL vs `.cst` trade-offs, I/O type design, all DSL methods, call options, and a complete runnable example
+- **Organon catalog for `io.constellation.dsl`** (`organon/generated/io.constellation.dsl.md`): Auto-generated type catalog for all DSL public symbols
+
+### Fixed
+- **`ContentHash` nickname sort determinism**: Nicknames were sorted by random `UUID.toString` order, causing non-deterministic structural hashes across JVM runs. Now sorted by canonical rendering order, making `PipelineImage.structuralHash` stable across restarts
+
 ## [0.8.4] - 2026-02-23
 
 ## [0.8.4] - 2026-02-23
