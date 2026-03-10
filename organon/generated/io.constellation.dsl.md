@@ -1,21 +1,20 @@
 <!-- GENERATED: Do not edit manually -->
 <!-- Source: modules/core/src/main/scala/io/constellation -->
 <!-- Hash: 509e1b331609 -->
-<!-- Generated: 2026-03-10T05:05:52.026267600Z -->
+<!-- Generated: 2026-03-10T05:05:52.055751900Z -->
 
-# io.constellation.lang
+# io.constellation.dsl
 
 ## Objects
 
-### CachingLangCompiler$
+### AssemblyCtx$
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `withConfig` | `(underlying: LangCompiler, config: Config): CachingLangCompiler` | /** Create a CachingLangCompiler with custom cache configuration */ |
-| `apply` | `(underlying: LangCompiler, cache: CompilationCache): CachingLangCompiler` | /** Create a CachingLangCompiler wrapping the given compiler */ |
-| `withDefaults` | `(underlying: LangCompiler): CachingLangCompiler` | /** Create a CachingLangCompiler with default cache configuration */ |
+| `fieldImpl` | `[A, B](ref: Expr[TypedRef[A]], selector: Expr[Function1[A, B]], ctx: Expr[AssemblyCtx], evidence$1: Type[A], evidence$2: Type[B], x$4: Quotes): Expr[Any]` | /** Scala 3 macro: extracts the field name from `selector` at compile time, generates code to |
+| `apply` | `(): AssemblyCtx` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
@@ -34,29 +33,50 @@
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
-### CompilationCache$
+### Pipeline$
+
+/** Entry point for the Scala pipeline DSL. */
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `createWithBackend$default$2` | `(): Config` | /** Create a CompilationCache with a specific cache backend. |
-| `create$default$1` | `(): Config` | /** Create a new CompilationCache with the default in-memory backend. */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `createUnsafe$default$1` | `(): Config` | /** Create a CompilationCache synchronously (for use in non-IO contexts). Should only be used |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `create` | `(config: Config): IO[CompilationCache]` | /** Create a new CompilationCache with the default in-memory backend. */ |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `define` | `(name: String, f: Function1[PipelineBuilder, Unit]): TypedPipeline` | /** Define a named pipeline. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### PipelineBuilder$package$
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `fieldMapOf` | `[T](tag: CTypeTag[T]): Map[String, CType]` | /** Extract the field name → [[io.constellation.CType]] map from a single-field or multi-field |
+| `requireSingleField` | `[T](m: ProductOf[T]): Unit` | /** Require at compile time that `T` has exactly one field. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `createUnsafeWithBackend$default$2` | `(): Config` | /** Create a CompilationCache synchronously with a specific cache backend. */ |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `createWithBackend` | `(backend: CacheBackend, config: Config): IO[CompilationCache]` | /** Create a CompilationCache with a specific cache backend. |
-| `createUnsafe` | `(config: Config): CompilationCache` | /** Create a CompilationCache synchronously (for use in non-IO contexts). Should only be used |
-| `createUnsafeWithBackend` | `(backend: CacheBackend, config: Config): CompilationCache` | /** Create a CompilationCache synchronously with a specific cache backend. */ |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
@@ -66,114 +86,22 @@
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
-### LangCompiler$
+### TypedRef$
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `apply$default$3` | `(): OptimizationConfig` | /** Create a new LangCompiler with the given function registry and module map. |
-| `apply` | `(registry: FunctionRegistry, modules: Map[String, Uninitialized], optimizationConfig: OptimizationConfig): LangCompiler` | /** Create a new LangCompiler with the given function registry and module map. |
+| `apply` | `[A](uuid: UUID): TypedRef[Any]` | /** Create a fresh [[TypedRef]] for a data node with no accumulated options. */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `empty` | `(): LangCompiler` | /** Create an empty LangCompiler (no registered functions or modules) */ |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `builder` | `(): LangCompilerBuilder` | /** Builder for constructing a LangCompiler */ |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
-| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-
-### LangCompilerBuilder$
-
-/** Builder for LangCompiler with fluent API.
-  *
-  * Optimization is disabled by default. Use `.withOptimization()` to enable.
-  */
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `unapply` | `(x$1: LangCompilerBuilder): LangCompilerBuilder` |  |
-| `apply` | `(registry: FunctionRegistry, modules: Map[String, Uninitialized], cacheConfig: Option[Config], cacheBackend: Option[CacheBackend], optimizationConfig: OptimizationConfig): LangCompilerBuilder` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` |  |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `fromProduct` | `(x$0: Product): MirroredMonoType` |  |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
-| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-
-### LangCompilerImpl$
-
-/** Implementation of LangCompiler */
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `apply` | `(registry: FunctionRegistry, modules: Map[String, Uninitialized], optimizationConfig: OptimizationConfig): LangCompilerImpl` |  |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
-| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-
-### ModuleBridge$
-
-/** Utilities for registering modules with the compiler */
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `extractParams` | `(module: Uninitialized): List[Tuple2[String, SemanticType]]` | /** Extract input parameter types from a module spec */ |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `signatureFromModule` | `(languageName: String, module: Uninitialized, params: List[Tuple2[String, SemanticType]], returns: SemanticType): FunctionSignature` | /** Create a function signature from a module spec */ |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `extractReturns` | `(module: Uninitialized): SemanticType` | /** Extract output type from a module spec (assumes single output named "out") */ |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `ctypeToSemanticType` | `(ctype: CType): SemanticType` | /** Convert CType to SemanticType for module integration */ |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
@@ -185,219 +113,184 @@
 
 ## Classes
 
-### class CachingLangCompiler
+### class AssemblyCtx
 
-/** A LangCompiler wrapper that caches compilation results.
+/** Mutable dependency collector used inside a [[PipelineBuilder.assemble]] block.
   *
-  * Provides transparent caching of compilation results to avoid redundant parsing, type checking,
-  * and IR generation when the same source is compiled multiple times.
+  * Each [[field]] call records one input-field binding (upstream data node UUID → field name of the
+  * assembled input type) and returns a placeholder value of the field's type.
   *
-  * Cache invalidation occurs when:
-  *   - Source code changes (different sourceHash)
-  *   - Function registry changes (different registryHash)
-  *   - TTL expires (configurable)
+  * The collected bindings are consumed by [[PipelineBuilderImpl.assemble]] after the user-supplied
+  * lambda returns, to wire `inEdges` and `DataNodeSpec.nicknames` for the fan-in module.
   *
-  * @param underlying
-  *   the underlying compiler to delegate to on cache miss
-  * @param cache
-  *   the compilation cache
-  */
-
-**Extends:** LangCompiler
-
-**Methods:**
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `compile` | `(source: String, dagName: String): Either[List[CompileError], CompilationOutput]` |  |
-| `functionRegistry` | `(): FunctionRegistry` |  |
-| `cacheStats` | `(): CacheStats` | /** Get cache statistics (blocking, for backward compatibility). */ |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `invalidateIO` | `(dagName: String): IO[Unit]` | /** Invalidate a specific cached compilation (IO-based). */ |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `cacheStatsIO` | `(): IO` | /** Get cache statistics (IO-based, preferred). */ |
-| `invalidateAll` | `(): Unit` | /** Invalidate all cached compilations (blocking). */ |
-| `toString` | `(): String` | /** Returns a string representation of the object. |
-| `compileIO` | `(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]]` |  |
-| `compileToIR` | `(source: String, dagName: String): Either[List[CompileError], IRPipeline]` |  |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `invalidateAllIO` | `(): IO` | /** Invalidate all cached compilations (IO-based). */ |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `invalidate` | `(dagName: String): Unit` | /** Invalidate a specific cached compilation (blocking). */ |
-| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
-| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
-| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
-
-### class CompilationCache
-
-/** Thread-safe cache for compilation results.
-  *
-  * Delegates storage to a `CacheBackend` (defaulting to `InMemoryCacheBackend`) for consistency
-  * with the runtime cache SPI. The compilation cache adds hash-based validation on top: a cached
-  * result is only returned if both the source hash and registry hash match the stored entry.
-  *
-  * Statistics are tracked at this layer (not delegated to the backend) to ensure accurate hit/miss
-  * counts regardless of backend caching behavior.
-  *
-  * '''Note:''' `CompilationOutput` contains closures (`Module.Uninitialized`) that cannot be
-  * serialized, so this cache must use an in-memory backend. The `CacheBackend` abstraction is used
-  * for API consistency, not for enabling distributed caching of compilation results.
-  *
-  * @param backend
-  *   the underlying cache backend for storage
-  * @param state
-  *   thread-safe reference holding the key index and access timestamps
-  * @param statsRef
-  *   the thread-safe reference to cache statistics
-  * @param config
-  *   cache configuration
+  * ==Usage==
+  * {{{
+  * p.assemble(mergeModule) { ctx =>
+  *   MergeInput(
+  *     left  = ctx.field(nodeA, _.left),   // records nodeA.uuid → "left"
+  *     right = ctx.field(nodeB, _.right)   // records nodeB.uuid → "right"
+  *   )
+  * }
+  * }}}
   */
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `size` | `(): IO` | /** Get current number of entries in the cache. */ |
-| `getBackend` | `(): CacheBackend` | /** Get the underlying cache backend. */ |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
-| `get` | `(dagName: String, sourceHash: String, registryHash: String): IO[Option[CompilationOutput]]` | /** Look up a cached compilation result. |
-| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
-| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
-| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `invalidateAll` | `(): IO[Unit]` | /** Invalidate all cache entries. */ |
-| `put` | `(dagName: String, sourceHash: String, registryHash: String, result: CompilationOutput): IO[Unit]` | /** Store a compilation result in the cache. |
+| `recordDep` | `(ref: TypedRef[Any], fieldName: String): Unit` | /** Record a dependency: upstream data node `ref` feeds field `fieldName` of the assembled type. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `invalidate` | `(dagName: String): IO[Unit]` | /** Invalidate a specific cache entry by dagName. */ |
-| `stats` | `(): IO` | /** Get current cache statistics. |
+| `field` | `[A, B](ref: TypedRef[A], selector: Function1[A, B]): Any` | /** Extract the field name from `selector` at compile time, record the dependency at runtime, and |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `getDeps` | `(): List` | /** The collected (dataNodeUUID, fieldName) pairs in recording order. */ |
+| `getDepsWithRefs` | `(): List` | /** The collected (TypedRefImpl, fieldName) pairs — used by [[PipelineBuilderImpl]] to flush |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
-### case class LangCompilerBuilder
+### class PipelineBuilderImpl
 
-/** Builder for LangCompiler with fluent API.
+/** Mutable accumulator that backs [[PipelineBuilder]] during a [[Pipeline.define]] block.
   *
-  * Optimization is disabled by default. Use `.withOptimization()` to enable.
+  * Sealed to `private[dsl]` — the public contract is [[PipelineBuilder]].
   */
 
-**Extends:** Product, Serializable
-
-**Fields:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `registry` | `FunctionRegistry` |  |
-| `modules` | `Map[String, Uninitialized]` |  |
-| `cacheConfig` | `Option[Config]` |  |
-| `cacheBackend` | `Option[CacheBackend]` |  |
-| `optimizationConfig` | `OptimizationConfig` |  |
+**Extends:** PipelineBuilder
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `copy$default$1` | `(): FunctionRegistry` |  |
-| `_1` | `(): FunctionRegistry` |  |
+| `io$constellation$dsl$PipelineBuilder$$inline$stepImpl` | `[I, O](ref: TypedRef[I], built: Uninitialized, evidence$1: CTypeTag[I], evidence$2: CTypeTag[O]): TypedRef[Product]` |  |
+| `io$constellation$dsl$PipelineBuilder$$inline$adaptImpl` | `[A, B](ref: TypedRef[A], f: Function1[A, B], ma: ProductOf[A], mb: ProductOf[B], evidence$1: CTypeTag[A], evidence$2: CTypeTag[B]): TypedRef[Product]` |  |
+| `adapt` | `[A, B](ref: TypedRef[A], f: Function1[A, B], evidence$1: CTypeTag[A], evidence$2: CTypeTag[B], ma: ProductOf[A], mb: ProductOf[B]): TypedRef[Product]` | /** Insert an inline type-adaptation step between two type-incompatible nodes. |
+| `getSyntheticModules` | `(): Map` | /** Synthetic modules created by `p.adapt` calls, keyed by their module node UUID. */ |
+| `io$constellation$dsl$PipelineBuilder$$inline$assembleImpl` | `[I, O](built: Uninitialized, f: Function1[AssemblyCtx, I], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O]): TypedRef[Product]` |  |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `input` | `[I](name: String, evidence$1: CTypeTag[I]): TypedRef[Any]` |  |
+| `getCallOptions` | `(): Map` | /** Call options collected from [[TypedRef]] chains, keyed by module node UUID. */ |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `withFunction` | `(sig: FunctionSignature): LangCompilerBuilder` | /** Register a function signature for type checking */ |
-| `withCaching` | `(config: Config): LangCompilerBuilder` | /** Enable compilation caching with the given configuration */ |
+| `assemble` | `[I, O](module: ModuleBuilder[I, O], f: Function1[AssemblyCtx, I], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O], mi: ProductOf[I], mo: ProductOf[O]): TypedRef[Product]` | /** Wire a multi-input module into the pipeline using an [[AssemblyCtx]] binding block. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `buildDagSpec` | `(name: String): DagSpec` | /** Seal the accumulated state into a [[DagSpec]]. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `output` | `(name: String, ref: TypedRef[Any]): Unit` |  |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
-| `build` | `(): LangCompiler` | /** Build the LangCompiler, optionally wrapped with caching */ |
-| `_3` | `(): Option` |  |
-| `productPrefix` | `(): String` |  |
-| `withCaching$default$1` | `(): Config` | /** Enable compilation caching with the given configuration */ |
-| `withOptimization$default$1` | `(): OptimizationConfig` | /** Enable IR optimization with the given configuration */ |
-| `copy$default$4` | `(): Option` |  |
-| `copy$default$5` | `(): OptimizationConfig` |  |
-| `withoutCaching` | `(): LangCompilerBuilder` | /** Disable compilation caching */ |
-| `withOptimization` | `(config: OptimizationConfig): LangCompilerBuilder` | /** Enable IR optimization with the given configuration */ |
-| `_5` | `(): OptimizationConfig` |  |
-| `canEqual` | `(that: Any): Boolean` |  |
-| `productArity` | `(): Int` |  |
-| `copy$default$3` | `(): Option` |  |
-| `withModule` | `(languageName: String, module: Uninitialized, params: List[Tuple2[String, SemanticType]], returns: SemanticType): LangCompilerBuilder` | /** Register a module with its signature */ |
-| `toString` | `(): String` |  |
-| `productElementName` | `(n: Int): String` |  |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `withModules` | `(newModules: Map[String, Uninitialized]): LangCompilerBuilder` | /** Register multiple modules for DagCompiler to access at compile time. This is separate from |
-| `withoutOptimization` | `(): LangCompilerBuilder` | /** Disable IR optimization */ |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
-| `withCacheBackend` | `(backend: CacheBackend): LangCompilerBuilder` | /** Set a custom cache backend for the compilation cache. |
-| `copy$default$2` | `(): Map` |  |
-| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
-| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
-| `_2` | `(): Map` |  |
-| `_4` | `(): Option` |  |
-| `productElement` | `(n: Int): Any` |  |
-| `equals` | `(x$0: Any): Boolean` |  |
-| `productElementNames` | `(): Iterator` |  |
-| `copy` | `(registry: FunctionRegistry, modules: Map[String, Uninitialized], cacheConfig: Option[Config], cacheBackend: Option[CacheBackend], optimizationConfig: OptimizationConfig): LangCompilerBuilder` |  |
-| `hashCode` | `(): Int` |  |
-| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
-| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
-| `productIterator` | `(): Iterator` |  |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+| `step` | `[I, O](ref: TypedRef[I], module: ModuleBuilder[I, O], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O], mi: ProductOf[I], mo: ProductOf[O]): TypedRef[Product]` | /** Wire a module into the pipeline, consuming `ref` as its single input. |
+| `getNamedModules` | `(): List` | /** Named modules collected by `p.step` and `p.assemble`, in declaration order. |
 
-### class LangCompilerImpl
+### class TypedPipeline
 
-/** Implementation of LangCompiler */
-
-**Extends:** LangCompiler
+/** An immutable, executable pipeline built from a [[Pipeline.define]] block.
+  *
+  * Holds the sealed [[DagSpec]] and any accumulated [[ModuleCallOptions]] from [[TypedRef]] chains.
+  * Call [[load]] to obtain a [[LoadedPipeline]] ready to pass to
+  * [[io.constellation.Constellation.run]].
+  */
 
 **Methods:**
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `compile` | `(source: String, dagName: String): Either[List[CompileError], CompilationOutput]` |  |
-| `functionRegistry` | `(): FunctionRegistry` |  |
 | `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
-| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `compileIO` | `(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]]` | /** Async variant of compile that avoids blocking threads. |
-| `compileToIR` | `(source: String, dagName: String): Either[List[CompileError], IRPipeline]` |  |
-| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
-| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `load` | `(): LoadedPipeline` | /** Wrap the image into a [[LoadedPipeline]] ready for execution. |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `registerModules` | `(constellation: Constellation): IO[Unit]` | /** Register each module builder with `constellation` so the runtime can find it by name. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### class TypedRefImpl[A]
+
+**Extends:** TypedRef
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `cacheBackend` | `(name: String): TypedRef[A]` |  |
+| `onError` | `(strategy: String): TypedRef[A]` |  |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `concurrency` | `(n: Int): TypedRef[A]` |  |
+| `priority` | `(p: Int): TypedRef[A]` |  |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `retry` | `(n: Int): TypedRef[A]` |  |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `cache` | `(d: FiniteDuration): TypedRef[A]` |  |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `timeout` | `(d: FiniteDuration): TypedRef[A]` |  |
+| `lazyEval` | `(): TypedRef` |  |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `throttle` | `(count: Int, per: FiniteDuration): TypedRef[A]` |  |
+| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
+| `delay` | `(d: FiniteDuration): TypedRef[A]` |  |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `backoff` | `(strategy: String): TypedRef[A]` |  |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
 
 ## Traits
 
-### trait LangCompiler
+### trait PipelineBuilder
 
-/** Main interface for compiling constellation-lang programs */
+/** User-facing DSL scope for building type-safe pipelines.
+  *
+  * Obtained exclusively via [[Pipeline.define]]; never instantiated directly by user code.
+  *
+  * ==Compile-time type safety==
+  * `step` and `adapt` require both input and output types to be single-field case classes —
+  * enforced at compile time via `requireSingleField`. Multi-field fan-in requires `p.assemble`.
+  *
+  * ==Module registration==
+  * Named modules passed to `step` and `assemble` are collected and exposed via
+  * [[TypedPipeline.moduleBuilders]], allowing [[TypedPipeline.registerModules]] to register them
+  * with a [[io.constellation.Constellation]] instance. Synthetic modules created by `adapt` are
+  * never registered — they execute via [[LoadedPipeline.syntheticModules]] directly.
+  */
 
 **Extends:** Object
 
@@ -405,24 +298,72 @@
 
 | Method | Signature | Description |
 |--------|-----------|-------------|
-| `compile` | `(source: String, dagName: String): Either[List[CompileError], CompilationOutput]` | /** Compile a constellation-lang source to a CompilationOutput (LoadedPipeline + warnings). */ |
-| `functionRegistry` | `(): FunctionRegistry` | /** Get the function registry for namespace/function introspection */ |
-| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `input` | `[I](name: String, evidence$1: CTypeTag[I]): TypedRef[Any]` | /** Declare a typed pipeline input and return a handle to it. |
+| `io$constellation$dsl$PipelineBuilder$$inline$stepImpl` | `[I, O](ref: TypedRef[I], built: Uninitialized, evidence$1: CTypeTag[I], evidence$2: CTypeTag[O]): TypedRef[Product]` |  |
+| `io$constellation$dsl$PipelineBuilder$$inline$adaptImpl` | `[A, B](ref: TypedRef[A], f: Function1[A, B], ma: ProductOf[A], mb: ProductOf[B], evidence$1: CTypeTag[A], evidence$2: CTypeTag[B]): TypedRef[Product]` |  |
+| `adapt` | `[A, B](ref: TypedRef[A], f: Function1[A, B], evidence$1: CTypeTag[A], evidence$2: CTypeTag[B], ma: ProductOf[A], mb: ProductOf[B]): TypedRef[Product]` | /** Insert an inline type-adaptation step between two type-incompatible nodes. |
+| `io$constellation$dsl$PipelineBuilder$$inline$assembleImpl` | `[I, O](built: Uninitialized, f: Function1[AssemblyCtx, I], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O]): TypedRef[Product]` |  |
 | `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
 | `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
 | `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `output` | `(name: String, ref: TypedRef[Any]): Unit` | /** Declare a named output for the pipeline, bound to the data node referenced by `ref`. |
 | `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
 | `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
 | `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `step` | `[I, O](ref: TypedRef[I], module: ModuleBuilder[I, O], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O], mi: ProductOf[I], mo: ProductOf[O]): TypedRef[Product]` | /** Wire a module into the pipeline, consuming `ref` as its single input. |
 | `toString` | `(): String` | /** Returns a string representation of the object. |
-| `compileIO` | `(source: String, dagName: String): IO[Either[List[CompileError], CompilationOutput]]` | /** Async variant of compile that avoids blocking threads. |
-| `compileToIR` | `(source: String, dagName: String): Either[List[CompileError], IRPipeline]` | /** Compile to IR only (for visualization) */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `assemble` | `[I, O](module: ModuleBuilder[I, O], f: Function1[AssemblyCtx, I], evidence$1: CTypeTag[I], evidence$2: CTypeTag[O], mi: ProductOf[I], mo: ProductOf[O]): TypedRef[Product]` | /** Wire a multi-input module into the pipeline using an [[AssemblyCtx]] binding block. |
 | `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
 | `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
 | `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
 | `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
 | `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
 | `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
+| `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
+| `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |
+
+### trait TypedRef[A]
+
+/** A handle to a typed data node in a pipeline under construction.
+  *
+  * Carries the UUID of the underlying [[io.constellation.DataNodeSpec]] and any accumulated
+  * [[ModuleCallOptions]] for the module that produces it. All option methods return a new
+  * `TypedRef[A]` — accumulation is immutable.
+  */
+
+**Extends:** Object
+
+**Methods:**
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `cacheBackend` | `(name: String): TypedRef[A]` | /** Named cache backend to use (overrides the default). */ |
+| `onError` | `(strategy: String): TypedRef[A]` | /** Error handling strategy: `"propagate"`, `"skip"`, `"log"`, or `"wrap"`. */ |
+| `getClass` | `[X0](): Class[Any]` | /** Returns the runtime class representation of the object. |
+| `!=` | `(x$0: Any): Boolean` | /** Test two objects for inequality. |
+| `concurrency` | `(n: Int): TypedRef[A]` | /** Maximum concurrent executions of the producing module. */ |
+| `priority` | `(p: Int): TypedRef[A]` | /** Scheduling priority for the producing module (higher value = higher priority). */ |
+| `equals` | `(x$0: Any): Boolean` | /** Compares the receiver object (`this`) with the argument object (`that`) for equivalence. |
+| `retry` | `(n: Int): TypedRef[A]` | /** Retry the producing module up to `n` times on failure. */ |
+| `wait` | `(x$0: Long, x$1: Int): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-int-]] |
+| `wait` | `(x$0: Long): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait-long-]]. |
+| `wait` | `(): Unit` | /** See [[https://docs.oracle.com/javase/8/docs/api/java/lang/Object.html#wait--]]. |
+| `cache` | `(d: FiniteDuration): TypedRef[A]` | /** Cache the output of the producing module for `d`. */ |
+| `toString` | `(): String` | /** Returns a string representation of the object. |
+| `timeout` | `(d: FiniteDuration): TypedRef[A]` | /** Abort the producing module if it does not complete within `d`. */ |
+| `lazyEval` | `(): TypedRef` | /** Evaluate the producing module lazily (only when its output is consumed). */ |
+| `notifyAll` | `(): Unit` | /** Wakes up all threads that are waiting on the receiver object's monitor. |
+| `notify` | `(): Unit` | /** Wakes up a single thread that is waiting on the receiver object's monitor. |
+| `eq` | `(x$0: Object): Boolean` | /** Tests whether the argument (`that`) is a reference to the receiver object (`this`). |
+| `==` | `(x$0: Any): Boolean` | /** Test two objects for equality. |
+| `throttle` | `(count: Int, per: FiniteDuration): TypedRef[A]` | /** Throttle calls to the producing module: at most `count` per `per` window. */ |
+| `hashCode` | `(): Int` | /** Calculates a hash code value for the object. |
+| `delay` | `(d: FiniteDuration): TypedRef[A]` | /** Delay execution of the producing module by `d`. */ |
+| `asInstanceOf` | `[X0](): Any` | /** Cast the receiver object to be of type `T0`. |
+| `isInstanceOf` | `[X0](): Boolean` | /** Test whether the dynamic type of the receiver object is `T0`. |
+| `backoff` | `(strategy: String): TypedRef[A]` | /** Backoff strategy for retries: `"fixed"`, `"linear"`, or `"exponential"`. */ |
 | `synchronized` | `[X0](x$0: X0): Any` | /** Executes the code in `body` with an exclusive lock on `this`. |
 | `ne` | `(x$0: Object): Boolean` | /** Equivalent to `!(this eq that)`. |
 | `##` | `(): Int` | /** Equivalent to `x.hashCode` except for boxed numeric types and `null`. |

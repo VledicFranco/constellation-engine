@@ -10,6 +10,7 @@ This directory contains auto-generated documentation extracted from Scala source
 |---------|-------------|
 | [io.constellation](./io.constellation.md) | |
 | [io.constellation.cache](./io.constellation.cache.md) | |
+| [io.constellation.dsl](./io.constellation.dsl.md) | |
 | [io.constellation.errors](./io.constellation.errors.md) | |
 | [io.constellation.examples](./io.constellation.examples.md) | |
 | [io.constellation.execution](./io.constellation.execution.md) | |

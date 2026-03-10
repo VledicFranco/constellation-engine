@@ -54,9 +54,10 @@ object ContentHash {
     dag.data.toList.sortBy { case (_, spec) => (spec.name, spec.cType.toString) }.foreach {
       case (uuid, spec) =>
         sb.append(s"  data[${idx(uuid)}]:${spec.name}=${spec.cType}\n")
-        spec.nicknames.toList.sortBy(_._1.toString).foreach { case (moduleUuid, nick) =>
-          sb.append(s"    nickname:${idx(moduleUuid)}=$nick\n")
-        }
+        spec.nicknames.toList
+          .map { case (moduleUuid, nick) => s"    nickname:${idx(moduleUuid)}=$nick\n" }
+          .sorted
+          .foreach(sb.append)
         spec.inlineTransform.foreach { t =>
           sb.append(s"    transform:${t.getClass.getSimpleName}\n")
         }
