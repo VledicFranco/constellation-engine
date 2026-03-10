@@ -2,7 +2,7 @@
   "name": "constellation-lang",
   "displayName": "Constellation Language Support",
   "description": "Language support for Constellation orchestration DSL with LSP integration",
-  "version": "0.8.5",
+  "version": "0.9.0",
   "publisher": "vledicfranco",
   "icon": "icon.png",
   "license": "Apache-2.0",

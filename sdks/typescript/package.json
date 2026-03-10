@@ -1,6 +1,6 @@
 {
   "name": "@constellation-engine/provider-sdk",
-  "version": "0.8.5",
+  "version": "0.9.0",
   "description": "TypeScript SDK for the Constellation Engine Module Provider Protocol",
   "license": "MIT",
   "repository": {
